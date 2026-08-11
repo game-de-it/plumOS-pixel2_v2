@@ -36,7 +36,8 @@ printf '%s\n' "$PARTITION_INFO" | grep -q 'Partition Offset:.*16777216 Bytes' ||
 
 mkdir -p "$(dirname -- "$OUT")"
 TMP_OUT="$(mktemp "${OUT}.tmp.XXXXXX")"
-RAW_DISK="${DISK/\/dev\/disk/\/dev\/rdisk}"
+trap 'unlink "$TMP_OUT" 2>/dev/null || true' EXIT
+RAW_DISK="/dev/r${DISK#/dev/}"
 
 printf 'Reading the first 16 MiB from %s; the SD card is not written.\n' "$RAW_DISK"
 sudo dd if="$RAW_DISK" of="$TMP_OUT" bs=1048576 count=16
@@ -45,4 +46,3 @@ sudo chown "$(id -u):$(id -g)" "$TMP_OUT"
 mv "$TMP_OUT" "$OUT"
 shasum -a 256 "$OUT"
 printf 'created: %s\n' "$OUT"
-

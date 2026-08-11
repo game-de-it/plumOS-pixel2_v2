@@ -15,6 +15,9 @@ grep -q 'analysis-only-not-copied' "$ROOT_DIR/scripts/capture-stock-boot-artifac
 ! grep -q 'cp .*SYSTEM' "$ROOT_DIR/scripts/capture-stock-boot-artifacts.sh"
 grep -q 'Removable Media:' "$ROOT_DIR/scripts/capture-stock-prefix-macos.sh"
 grep -q '16777216 Bytes' "$ROOT_DIR/scripts/capture-stock-prefix-macos.sh"
+grep -Fq 'RAW_DISK="/dev/r${DISK#/dev/}"' \
+    "$ROOT_DIR/scripts/capture-stock-prefix-macos.sh"
+test_disk=/dev/disk4
+test "/dev/r${test_disk#/dev/}" = /dev/rdisk4
 
 printf 'stock_capture_scripts=result-ok\n'
-
