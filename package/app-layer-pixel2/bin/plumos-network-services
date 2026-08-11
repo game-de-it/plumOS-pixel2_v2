@@ -1,0 +1,173 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+RUN_DIR="${PLUMOS_NETWORK_SERVICES_RUN_DIR:-$RUNTIME_ROOT/network-services}"
+LOG_DIR="${PLUMOS_ROOT}/logs"
+CONFIG_DIR="${PLUMOS_ROOT}/config/network"
+SERVICES_CONF="${CONFIG_DIR}/services.conf"
+LOG_FILE="${LOG_DIR}/network-services.log"
+
+mkdir -p "$RUN_DIR" "$LOG_DIR" "$CONFIG_DIR" 2>/dev/null || true
+
+log() {
+  printf '%s service=%s %s\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" \
+    "${2:-network}" "$1" >>"$LOG_FILE" 2>/dev/null || true
+}
+
+config_key() {
+  case "$1" in
+    ssh) printf '%s\n' ssh_enabled ;;
+    ftp) printf '%s\n' ftp_enabled ;;
+    sftp) printf '%s\n' sftp_enabled ;;
+    samba) printf '%s\n' samba_enabled ;;
+    adb) printf '%s\n' adb_enabled ;;
+    *) return 1 ;;
+  esac
+}
+
+service_enabled() {
+  service="$1"
+  key="$(config_key "$service")" || return 1
+  [ -r "$SERVICES_CONF" ] || { [ "$service" = ssh ] || [ "$service" = adb ]; return $?; }
+  value="$(sed -n "s/^${key}=//p" "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
+  [ -n "$value" ] || { [ "$service" = ssh ] || [ "$service" = adb ]; return $?; }
+  [ "$value" = 1 ] || [ "$value" = true ] || [ "$value" = on ]
+}
+
+set_service_enabled() {
+  service="$1"
+  enabled="$2"
+  key="$(config_key "$service")" || return 1
+  tmp="$SERVICES_CONF.tmp.$$"
+  if [ -r "$SERVICES_CONF" ]; then
+    grep -v "^${key}=" "$SERVICES_CONF" >"$tmp" 2>/dev/null || true
+  else
+    : >"$tmp"
+  fi
+  printf '%s=%s\n' "$key" "$enabled" >>"$tmp"
+  mv -f "$tmp" "$SERVICES_CONF"
+}
+
+process_has() {
+  needle="$1"
+  for proc in /proc/[0-9]*; do
+    [ -r "$proc/cmdline" ] || continue
+    cmdline="$(tr '\000' ' ' <"$proc/cmdline" 2>/dev/null || true)"
+    case "$cmdline" in *"$needle"*) return 0 ;; esac
+  done
+  return 1
+}
+
+adb_running() {
+  [ -x /usr/lib/plumos/init.d/10-adbd ] &&
+    /usr/lib/plumos/init.d/10-adbd status 2>/dev/null | grep -q '^state=running$'
+}
+
+ssh_running() {
+  process_has dropbear
+}
+
+print_status() {
+  service="$1"
+  state="$2"
+  summary="$3"
+  printf 'service=%s\n' "$service"
+  printf 'state=%s\n' "$state"
+  printf 'summary=%s\n' "$summary"
+  if service_enabled "$service"; then
+    printf 'enabled=1\n'
+  else
+    printf 'enabled=0\n'
+  fi
+  printf 'share_dir=%s\n' "${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+}
+
+status_service() {
+  case "$1" in
+    adb)
+      if adb_running; then
+        print_status adb running 'ADB over USB FunctionFS'
+      else
+        print_status adb stopped 'ADB stopped'
+      fi
+      ;;
+    ssh)
+      if ! command -v dropbear >/dev/null 2>&1; then
+        print_status ssh not_installed 'Dropbear not installed'
+      elif ssh_running; then
+        print_status ssh running 'SSH service controlled by plumOS'
+      else
+        print_status ssh stopped 'SSH stopped'
+      fi
+      ;;
+    ftp) print_status ftp not_installed 'FTP not packaged for Pixel2 yet'; return 1 ;;
+    sftp) print_status sftp not_installed 'SFTP not packaged for Pixel2 yet'; return 1 ;;
+    samba) print_status samba not_installed 'Samba not packaged for Pixel2 yet'; return 1 ;;
+    *) return 2 ;;
+  esac
+}
+
+start_service() {
+  service="$1"
+  set_service_enabled "$service" 1 || return 1
+  case "$service" in
+    adb)
+      # Keep the live ADB transport stable. The frontend tells users that this
+      # setting is applied after reboot on Pixel2.
+      log 'enabled=1 apply=reboot-required' adb
+      return 0
+      ;;
+    ssh)
+      if [ -x /usr/lib/plumos/init.d/30-ssh ]; then
+        /usr/lib/plumos/init.d/30-ssh start >/dev/null 2>&1 || true
+      fi
+      ssh_running || {
+        log 'result=not-running reason=authorized-keys-or-dropbear-missing' ssh
+        return 0
+      }
+      ;;
+    ftp|sftp|samba)
+      log 'result=not-installed' "$service"
+      return 1
+      ;;
+    *) return 2 ;;
+  esac
+}
+
+stop_service() {
+  service="$1"
+  set_service_enabled "$service" 0 || return 1
+  case "$service" in
+    adb)
+      log 'enabled=0 apply=reboot-required' adb
+      return 0
+      ;;
+    ssh)
+      for proc in /proc/[0-9]*; do
+        [ -r "$proc/cmdline" ] || continue
+        pid="${proc##*/}"
+        [ "$pid" = "$$" ] && continue
+        cmdline="$(tr '\000' ' ' <"$proc/cmdline" 2>/dev/null || true)"
+        case "$cmdline" in *dropbear*) kill "$pid" 2>/dev/null || true ;; esac
+      done
+      ;;
+    ftp|sftp|samba)
+      log 'result=not-installed' "$service"
+      return 1
+      ;;
+    *) return 2 ;;
+  esac
+}
+
+case "${1:-}" in
+  status) [ "$#" -ge 2 ] || exit 2; status_service "$2" ;;
+  start) [ "$#" -ge 2 ] || exit 2; start_service "$2" ;;
+  stop) [ "$#" -ge 2 ] || exit 2; stop_service "$2" ;;
+  -h|--help|help)
+    printf '%s\n' 'Usage: plumos-network-services status|start|stop ssh|ftp|sftp|samba|adb'
+    ;;
+  *) printf '%s\n' 'Usage: plumos-network-services status|start|stop ssh|ftp|sftp|samba|adb' >&2; exit 2 ;;
+esac

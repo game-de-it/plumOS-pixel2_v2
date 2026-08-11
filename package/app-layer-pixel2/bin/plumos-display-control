@@ -1,0 +1,184 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+SYSTEM_SETTINGS="${PLUMOS_SYSTEM_SETTINGS_JSON:-$PLUMOS_ROOT/config/system/settings.json}"
+RUNTIME_STATE="${PLUMOS_DISPLAY_RUNTIME_STATE:-/run/plumos/display/brightness}"
+LOG="${PLUMOS_DISPLAY_LOG:-/run/plumos/display/last-apply.log}"
+BACKLIGHT="${PLUMOS_PIXEL2_BACKLIGHT:-/sys/class/backlight/backlight/brightness}"
+MAX_BRIGHTNESS="${PLUMOS_PIXEL2_MAX_BRIGHTNESS:-${BACKLIGHT%/*}/max_brightness}"
+LEVEL_MAX=20
+LEVEL_DEFAULT=10
+
+mkdir -p "${RUNTIME_STATE%/*}" "${LOG%/*}" 2>/dev/null || true
+
+usage() {
+  printf '%s\n' \
+    'Usage: plumos-display-control apply [1..20]|up|down|get|status' \
+    '       plumos-display-control runtime-up|runtime-down|persist-runtime'
+}
+
+normalize() {
+  value="${1:-}"
+  case "$value" in ""|*[!0-9]*) return 1 ;; esac
+  value="$(printf '%s' "$value" | sed 's/^0*//')"
+  [ -n "$value" ] || value=1
+  [ "$value" -lt 1 ] && value=1
+  [ "$value" -gt "$LEVEL_MAX" ] && value="$LEVEL_MAX"
+  printf '%s\n' "$value"
+}
+
+read_saved() {
+  value=""
+  if [ -r "$SYSTEM_SETTINGS" ]; then
+    value="$(sed -n 's/.*"brightness"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' \
+      "$SYSTEM_SETTINGS" 2>/dev/null | head -n 1)"
+  fi
+  normalize "${value:-$LEVEL_DEFAULT}" || printf '%s\n' "$LEVEL_DEFAULT"
+}
+
+read_runtime() {
+  value=""
+  if [ -r "$RUNTIME_STATE" ]; then
+    value="$(sed -n '1s/^\([0-9][0-9]*\).*$/\1/p' "$RUNTIME_STATE" 2>/dev/null)"
+  fi
+  case "$value" in ""|*[!0-9]*) read_saved ;; *) normalize "$value" ;; esac
+}
+
+write_runtime() {
+  level="$(normalize "$1")" || return 2
+  tmp="$RUNTIME_STATE.tmp.$$"
+  printf '%s\n' "$level" >"$tmp" && mv -f "$tmp" "$RUNTIME_STATE" || {
+    rm -f "$tmp"
+    return 1
+  }
+}
+
+write_saved() {
+  level="$(normalize "$1")" || return 2
+  mkdir -p "${SYSTEM_SETTINGS%/*}" || return 1
+  tmp="$SYSTEM_SETTINGS.tmp.$$"
+  if [ -r "$SYSTEM_SETTINGS" ] &&
+     grep -q '"brightness"[[:space:]]*:' "$SYSTEM_SETTINGS" 2>/dev/null; then
+    sed 's/"brightness"[[:space:]]*:[[:space:]]*[0-9][0-9]*/"brightness": '"$level"'/' \
+      "$SYSTEM_SETTINGS" >"$tmp" || {
+        rm -f "$tmp"
+        return 1
+      }
+  elif [ -r "$SYSTEM_SETTINGS" ]; then
+    awk -v level="$level" '
+      BEGIN { inserted = 0; previous = "" }
+      {
+        if (!inserted && $0 ~ /^[[:space:]]*}[[:space:]]*$/) {
+          if (previous != "") {
+            sub(/[[:space:]]*$/, "", previous)
+            if (previous !~ /,[[:space:]]*$/) previous = previous ","
+            print previous
+            previous = ""
+          }
+          print "  \"brightness\": " level
+          inserted = 1
+        }
+        if (previous != "") print previous
+        previous = $0
+      }
+      END { if (previous != "") print previous }
+    ' "$SYSTEM_SETTINGS" >"$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+  else
+    {
+      printf '{\n'
+      printf '  "version": 1,\n'
+      printf '  "brightness": %s\n' "$level"
+      printf '}\n'
+    } >"$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+  fi
+  mv -f "$tmp" "$SYSTEM_SETTINGS"
+}
+
+raw_for_level() {
+  case "$(normalize "$1")" in
+    1) printf '%s\n' 1 ;;   2) printf '%s\n' 2 ;;
+    3) printf '%s\n' 3 ;;   4) printf '%s\n' 4 ;;
+    5) printf '%s\n' 5 ;;   6) printf '%s\n' 7 ;;
+    7) printf '%s\n' 10 ;;  8) printf '%s\n' 14 ;;
+    9) printf '%s\n' 20 ;; 10) printf '%s\n' 28 ;;
+    11) printf '%s\n' 39 ;; 12) printf '%s\n' 52 ;;
+    13) printf '%s\n' 68 ;; 14) printf '%s\n' 86 ;;
+    15) printf '%s\n' 106 ;; 16) printf '%s\n' 128 ;;
+    17) printf '%s\n' 151 ;; 18) printf '%s\n' 177 ;;
+    19) printf '%s\n' 205 ;; 20) printf '%s\n' 255 ;;
+  esac
+}
+
+apply_level() {
+  level="$(normalize "${1:-$(read_runtime)}")" || return 2
+  [ -w "$BACKLIGHT" ] || {
+    {
+      printf 'backend=unavailable\n'
+      printf 'path=%s\n' "$BACKLIGHT"
+    } >"$LOG"
+    return 1
+  }
+  raw="$(raw_for_level "$level")"
+  printf '%s\n' "$raw" >"$BACKLIGHT" || return 1
+  write_runtime "$level" || return 1
+  {
+    printf 'backend=pixel2-pwm-backlight\n'
+    printf 'brightness=%s\n' "$level"
+    printf 'backlight_raw=%s\n' "$raw"
+    if [ -r "$MAX_BRIGHTNESS" ]; then
+      printf 'max_brightness='
+      cat "$MAX_BRIGHTNESS"
+    fi
+  } >"$LOG"
+}
+
+change_runtime() {
+  current="$(read_runtime)"
+  next=$((current + $1))
+  [ "$next" -lt 1 ] && next=1
+  [ "$next" -gt "$LEVEL_MAX" ] && next="$LEVEL_MAX"
+  apply_level "$next"
+}
+
+change_saved() {
+  current="$(read_saved)"
+  next=$((current + $1))
+  [ "$next" -lt 1 ] && next=1
+  [ "$next" -gt "$LEVEL_MAX" ] && next="$LEVEL_MAX"
+  write_saved "$next" && apply_level "$next"
+}
+
+case "${1:-}" in
+  init) apply_level "$(read_runtime)" ;;
+  apply) apply_level "${2:-$(read_runtime)}" ;;
+  up) change_saved 1 ;;
+  down) change_saved -1 ;;
+  runtime-up) change_runtime 1 ;;
+  runtime-down) change_runtime -1 ;;
+  persist-runtime)
+    level="$(read_runtime)"
+    write_saved "$level"
+    sync
+    ;;
+  get) read_saved ;;
+  status)
+    [ -w "$BACKLIGHT" ] || exit 1
+    printf 'backend=pixel2-pwm-backlight\n'
+    printf 'brightness=%s\n' "$(read_runtime)"
+    printf 'backlight_raw='
+    cat "$BACKLIGHT"
+    if [ -r "$MAX_BRIGHTNESS" ]; then
+      printf 'max_brightness='
+      cat "$MAX_BRIGHTNESS"
+    fi
+    ;;
+  -h|--help|help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

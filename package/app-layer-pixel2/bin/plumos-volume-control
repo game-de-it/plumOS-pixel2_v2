@@ -1,0 +1,164 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+SYSTEM_SETTINGS="${PLUMOS_SYSTEM_SETTINGS_JSON:-$PLUMOS_ROOT/config/system/settings.json}"
+RUNTIME_STATE="${PLUMOS_VOLUME_RUNTIME_STATE:-/run/plumos/volume/current}"
+LOG="${PLUMOS_VOLUME_LOG:-/run/plumos/volume/last-apply.log}"
+VOLUME_MAX=20
+VOLUME_DEFAULT=8
+
+mkdir -p "${RUNTIME_STATE%/*}" "${LOG%/*}" 2>/dev/null || true
+
+usage() {
+  printf '%s\n' \
+    'Usage: plumos-volume-control init|apply [0..20]|up|down|step +/-N|get|status' \
+    '       plumos-volume-control runtime-up|runtime-down|runtime-step +/-N|persist-runtime'
+}
+
+normalize() {
+  value="${1:-}"
+  case "$value" in ""|*[!0-9]*) return 1 ;; esac
+  value="$(printf '%s' "$value" | sed 's/^0*//')"
+  [ -n "$value" ] || value=0
+  [ "$value" -gt "$VOLUME_MAX" ] && value="$VOLUME_MAX"
+  printf '%s\n' "$value"
+}
+
+valid_signed_int() {
+  value="${1:-}"
+  case "$value" in -*) value="${value#-}" ;; esac
+  case "$value" in ""|*[!0-9]*) return 1 ;; esac
+}
+
+read_saved() {
+  value=""
+  if [ -r "$SYSTEM_SETTINGS" ]; then
+    value="$(sed -n 's/.*"volume"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' \
+      "$SYSTEM_SETTINGS" 2>/dev/null | head -n 1)"
+  fi
+  normalize "${value:-$VOLUME_DEFAULT}" || printf '%s\n' "$VOLUME_DEFAULT"
+}
+
+read_runtime() {
+  value=""
+  if [ -r "$RUNTIME_STATE" ]; then
+    value="$(sed -n '1s/^\([0-9][0-9]*\).*$/\1/p' "$RUNTIME_STATE" 2>/dev/null)"
+  fi
+  case "$value" in ""|*[!0-9]*) read_saved ;; *) normalize "$value" ;; esac
+}
+
+write_runtime() {
+  volume="$(normalize "$1")" || return 2
+  tmp="$RUNTIME_STATE.tmp.$$"
+  printf '%s\n' "$volume" >"$tmp" && mv -f "$tmp" "$RUNTIME_STATE" || {
+    rm -f "$tmp"
+    return 1
+  }
+}
+
+write_saved() {
+  volume="$(normalize "$1")" || return 2
+  mkdir -p "${SYSTEM_SETTINGS%/*}" || return 1
+  tmp="$SYSTEM_SETTINGS.tmp.$$"
+  if [ -r "$SYSTEM_SETTINGS" ] &&
+     grep -q '"volume"[[:space:]]*:' "$SYSTEM_SETTINGS" 2>/dev/null; then
+    sed 's/"volume"[[:space:]]*:[[:space:]]*[0-9][0-9]*/"volume": '"$volume"'/' \
+      "$SYSTEM_SETTINGS" >"$tmp" || {
+        rm -f "$tmp"
+        return 1
+      }
+  elif [ -r "$SYSTEM_SETTINGS" ]; then
+    awk -v volume="$volume" '
+      BEGIN { inserted = 0; previous = "" }
+      {
+        if (!inserted && $0 ~ /^[[:space:]]*}[[:space:]]*$/) {
+          if (previous != "") {
+            sub(/[[:space:]]*$/, "", previous)
+            if (previous !~ /,[[:space:]]*$/) previous = previous ","
+            print previous
+            previous = ""
+          }
+          print "  \"volume\": " volume
+          inserted = 1
+        }
+        if (previous != "") print previous
+        previous = $0
+      }
+      END { if (previous != "") print previous }
+    ' "$SYSTEM_SETTINGS" >"$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+  else
+    {
+      printf '{\n'
+      printf '  "version": 1,\n'
+      printf '  "volume": %s\n' "$volume"
+      printf '}\n'
+    } >"$tmp" || {
+      rm -f "$tmp"
+      return 1
+    }
+  fi
+  mv -f "$tmp" "$SYSTEM_SETTINGS"
+}
+
+apply_volume() {
+  volume="$(normalize "${1:-$(read_runtime)}")" || return 2
+  write_runtime "$volume" || return 1
+  {
+    printf 'backend=pixel2-state-only\n'
+    printf 'volume=%s\n' "$volume"
+    printf 'note=RK817 mixer command backend is not packaged yet\n'
+  } >"$LOG"
+}
+
+change_saved() {
+  current="$(read_saved)"
+  delta="$1"
+  next=$((current + delta))
+  [ "$next" -lt 0 ] && next=0
+  [ "$next" -gt "$VOLUME_MAX" ] && next="$VOLUME_MAX"
+  write_saved "$next" && apply_volume "$next"
+}
+
+change_runtime() {
+  current="$(read_runtime)"
+  delta="$1"
+  next=$((current + delta))
+  [ "$next" -lt 0 ] && next=0
+  [ "$next" -gt "$VOLUME_MAX" ] && next="$VOLUME_MAX"
+  apply_volume "$next"
+}
+
+case "${1:-}" in
+  init) apply_volume "$(read_runtime)" ;;
+  apply) apply_volume "${2:-$(read_runtime)}" ;;
+  up) change_saved 1 ;;
+  down) change_saved -1 ;;
+  step)
+    [ "$#" -eq 2 ] && valid_signed_int "$2" || { usage >&2; exit 2; }
+    change_saved "$2"
+    ;;
+  runtime-up) change_runtime 1 ;;
+  runtime-down) change_runtime -1 ;;
+  runtime-step)
+    [ "$#" -eq 2 ] && valid_signed_int "$2" || { usage >&2; exit 2; }
+    change_runtime "$2"
+    ;;
+  persist-runtime)
+    volume="$(read_runtime)"
+    write_saved "$volume"
+    sync
+    ;;
+  get) read_saved ;;
+  status)
+    printf 'backend=pixel2-state-only\n'
+    printf 'volume=%s\n' "$(read_runtime)"
+    printf 'alsa_card='
+    sed -n '1p' /proc/asound/card0/id 2>/dev/null || printf 'unknown\n'
+    ;;
+  -h|--help|help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

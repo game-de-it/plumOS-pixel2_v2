@@ -8,6 +8,8 @@ for path in \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
     bin/plumos-retroarch-launch bin/retroarch cores/quicknes_libretro.so \
     bin/plumos-safe-shutdown bin/plumos-run-with-input-map \
+    bin/plumos-display-control bin/plumos-volume-control \
+    bin/plumos-network-control bin/plumos-network-services \
     emulator/lib/libpthread.so.0 \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
     config/system/input-map.env config/system/input-map.json \
@@ -27,9 +29,11 @@ grep -q '^PLUMOS_INPUT_AB_LAYOUT=east-confirm$' "$ROOT/config/system/input-map.e
 grep -q '^PLUMOS_INPUT_A_CODE=305$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_CODE=304$' "$ROOT/config/system/input-map.env"
 grep -q '"ab_layout": "east-confirm"' "$ROOT/config/system/input-map.json"
-grep -q '"action": "internal:system-information"' \
+grep -q '"action": "internal:system-settings"' \
     "$ROOT/config/frontend/menus.json"
-grep -q '"action": "internal:network-information"' \
+grep -q '"action": "internal:network-settings"' \
+    "$ROOT/config/frontend/menus.json"
+grep -q '"action": "menu:apps"' \
     "$ROOT/config/frontend/menus.json"
 if grep -Eq 'plumos-(nextcommander|music-player|retroarch-menu|pyxel|portmaster)' \
     "$ROOT/config/frontend/apps.json"; then

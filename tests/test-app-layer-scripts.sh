@@ -11,13 +11,19 @@ for script in \
     scripts/verify-app-layer.sh \
     package/app-layer-pixel2/bin/plumos-retroarch-launch \
     package/app-layer-pixel2/bin/plumos-safe-shutdown \
-    package/app-layer-pixel2/bin/plumos-run-with-input-map; do
+    package/app-layer-pixel2/bin/plumos-run-with-input-map \
+    package/app-layer-pixel2/bin/plumos-display-control \
+    package/app-layer-pixel2/bin/plumos-volume-control \
+    package/app-layer-pixel2/bin/plumos-network-control \
+    package/app-layer-pixel2/bin/plumos-network-services; do
     bash -n "$ROOT_DIR/$script"
 done
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
-grep -q 'internal:system-information' \
+grep -q 'internal:system-settings' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
-grep -q 'internal:network-information' \
+grep -q 'internal:network-settings' \
+    "$ROOT_DIR/package/frontend-pixel2/menus.json"
+grep -q 'menu:apps' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
 grep -q '"apps": \[\]' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \

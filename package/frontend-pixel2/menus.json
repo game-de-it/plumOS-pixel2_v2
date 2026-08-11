@@ -13,16 +13,22 @@
           "action": "internal:ui-settings"
         },
         {
-          "id": "system-information",
-          "display_name": "System Information",
+          "id": "system-settings",
+          "display_name": "System Settings",
           "kind": "internal",
-          "action": "internal:system-information"
+          "action": "internal:system-settings"
         },
         {
-          "id": "network-information",
-          "display_name": "Network Information",
+          "id": "network-settings",
+          "display_name": "Network Settings",
           "kind": "internal",
-          "action": "internal:network-information"
+          "action": "internal:network-settings"
+        },
+        {
+          "id": "apps",
+          "display_name": "Apps",
+          "kind": "submenu",
+          "action": "menu:apps"
         },
         {
           "id": "help",

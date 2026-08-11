@@ -1,0 +1,192 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+RUN_DIR="${PLUMOS_NETWORK_RUN_DIR:-$RUNTIME_ROOT/network-control}"
+LOG_DIR="${PLUMOS_ROOT}/logs"
+CONFIG_DIR="${PLUMOS_ROOT}/config"
+NETWORK_CONFIG_DIR="${PLUMOS_ROOT}/config/network"
+LOG_FILE="${LOG_DIR}/network-control.log"
+WPA_STATUS="${PLUMOS_WPA_STATUS:-$RUN_DIR/wpa_status.txt}"
+WPA_CONFIG="${PLUMOS_WPA_CONFIG:-${CONFIG_DIR}/wpa_supplicant.conf}"
+ROOT_WIFI_SERVICE="/usr/lib/plumos/init.d/20-usb-wifi"
+
+ACTION=status
+CONNECT_FILE=
+
+usage() {
+  cat <<'USAGE'
+Usage: plumos-network-control [options]
+
+Options:
+  --wifi on       Start USB Wi-Fi runtime from the saved config and request DHCP.
+  --wifi off      Stop Wi-Fi runtime without changing saved credentials.
+  --wifi status   Print redacted runtime status. Default.
+  --scan          Print visible SSIDs as tab-separated network rows.
+  --connect-file FILE
+                  Connect using SSID/PSK read from a mode-0600 temp file.
+USAGE
+}
+
+mkdir -p "$RUN_DIR" "$LOG_DIR" "$NETWORK_CONFIG_DIR" 2>/dev/null || true
+
+log() {
+  printf '%s service=network-control %s\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf unknown-time)" \
+    "$*" >>"$LOG_FILE" 2>/dev/null || true
+}
+
+find_wifi_iface() {
+  for iface in /sys/class/net/wlan* /sys/class/net/wlp*; do
+    [ -e "$iface" ] || continue
+    basename "$iface"
+    return 0
+  done
+  return 1
+}
+
+iface_ip() {
+  iface="$1"
+  ip -4 address show dev "$iface" 2>/dev/null |
+    sed -n 's/^[[:space:]]*inet \([0-9.]*\)\/.*/\1/p' |
+    sed -n '1p'
+}
+
+wpa_running() {
+  [ -s /run/plumos/wpa_supplicant.pid ] &&
+    kill -0 "$(cat /run/plumos/wpa_supplicant.pid 2>/dev/null)" 2>/dev/null
+}
+
+write_status() {
+  state=DISCONNECTED
+  ip_addr=
+  iface="$(find_wifi_iface 2>/dev/null || true)"
+  if [ -z "$iface" ]; then
+    state=NO_WIFI_INTERFACE
+  elif wpa_running; then
+    state=COMPLETED
+    ip_addr="$(iface_ip "$iface" || true)"
+  fi
+  tmp="$WPA_STATUS.tmp.$$"
+  {
+    printf 'wpa_state=%s\n' "$state"
+    printf 'ip_address=%s\n' "$ip_addr"
+    printf 'RSSI=\n'
+    printf 'LINKSPEED=\n'
+    printf 'FREQUENCY=\n'
+  } >"$tmp" && mv -f "$tmp" "$WPA_STATUS"
+  printf 'state=%s\n' "$state"
+  [ -z "$ip_addr" ] || printf 'ip=%s\n' "$ip_addr"
+}
+
+stop_wifi() {
+  if [ -s /run/plumos/wpa_supplicant.pid ]; then
+    pid="$(cat /run/plumos/wpa_supplicant.pid 2>/dev/null || true)"
+    case "$pid" in ''|*[!0-9]*) ;; *) kill "$pid" 2>/dev/null || true ;; esac
+    rm -f /run/plumos/wpa_supplicant.pid
+  fi
+  for pidfile in /run/plumos/udhcpc-*.pid; do
+    [ -s "$pidfile" ] || continue
+    pid="$(cat "$pidfile" 2>/dev/null || true)"
+    case "$pid" in ''|*[!0-9]*) ;; *) kill "$pid" 2>/dev/null || true ;; esac
+    rm -f "$pidfile"
+  done
+  iface="$(find_wifi_iface 2>/dev/null || true)"
+  [ -z "$iface" ] || ip link set "$iface" down 2>/dev/null || true
+  write_status >/dev/null || true
+  log 'result=wifi-off'
+  printf 'result=stopped\n'
+}
+
+start_wifi() {
+  [ -s "$WPA_CONFIG" ] || {
+    write_status >/dev/null || true
+    log 'result=failed stage=config-missing'
+    printf 'result=failed\nstage=config-missing\n'
+    return 1
+  }
+  if [ -x "$ROOT_WIFI_SERVICE" ]; then
+    "$ROOT_WIFI_SERVICE" start >>"$LOG_FILE" 2>&1 || true
+  fi
+  write_status >/dev/null || true
+  iface="$(find_wifi_iface 2>/dev/null || true)"
+  if [ -z "$iface" ]; then
+    log 'result=failed stage=no_wifi_interface'
+    printf 'result=failed\nstage=no_wifi_interface\n'
+    return 1
+  fi
+  ip_addr="$(iface_ip "$iface" || true)"
+  if [ -n "$ip_addr" ]; then
+    printf 'result=connected\nip=%s\n' "$ip_addr"
+  else
+    printf 'result=ready\nstage=waiting_dhcp\n'
+  fi
+}
+
+scan_wifi() {
+  iface="$(find_wifi_iface 2>/dev/null || true)"
+  [ -n "$iface" ] || return 0
+  if command -v iw >/dev/null 2>&1; then
+    iw dev "$iface" scan 2>/dev/null |
+      awk '
+        /^BSS / { ssid=""; signal="" }
+        /^[ \t]*signal:/ { signal=$2 }
+        /^[ \t]*SSID:/ {
+          ssid=substr($0, index($0, "SSID:") + 6)
+          if (ssid != "") printf "network\tWPA\t%s\t%s\n", signal, ssid
+        }'
+  fi
+}
+
+connect_from_file() {
+  file="$1"
+  [ -r "$file" ] || return 1
+  ssid="$(sed -n 's/^ssid=//p' "$file" 2>/dev/null | sed -n '1p')"
+  psk="$(sed -n 's/^psk=//p' "$file" 2>/dev/null | sed -n '1p')"
+  [ -n "$ssid" ] || return 1
+  mkdir -p "${WPA_CONFIG%/*}" || return 1
+  {
+    printf 'ctrl_interface=/run/wpa_supplicant\n'
+    printf 'update_config=1\n'
+    printf 'country=JP\n'
+    printf 'network={\n'
+    printf '\tssid="%s"\n' "$ssid"
+    if [ -n "$psk" ]; then
+      printf '\tpsk="%s"\n' "$psk"
+    else
+      printf '\tkey_mgmt=NONE\n'
+    fi
+    printf '}\n'
+  } >"$WPA_CONFIG" || return 1
+  chmod 0600 "$WPA_CONFIG" 2>/dev/null || true
+  start_wifi
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --wifi)
+      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+      case "$2" in on|off|status) ACTION="wifi-$2" ;; *) usage >&2; exit 2 ;; esac
+      shift 2
+      ;;
+    --scan) ACTION=scan; shift ;;
+    --connect-file)
+      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+      ACTION=connect-file
+      CONNECT_FILE="$2"
+      shift 2
+      ;;
+    -h|--help|help) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+done
+
+case "$ACTION" in
+  wifi-on) start_wifi ;;
+  wifi-off) stop_wifi ;;
+  wifi-status|status) write_status ;;
+  scan) scan_wifi ;;
+  connect-file) connect_from_file "$CONNECT_FILE" ;;
+  *) usage >&2; exit 2 ;;
+esac
