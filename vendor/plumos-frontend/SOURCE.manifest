@@ -1,5 +1,5 @@
 format=plumos-frontend-source-v1
-upstream_repository=/Users/kroot/plumOS-MF
+source_origin=local-reference-implementation
 upstream_commit=81e3ff8ec5cdd444a033c0c686d40bbd774225e0
 scope=controller-ui,fbdev-drm-renderer,library-scanner,text-resolver,frontend-diagnostics,horizontal-theme,frontend-config
 target_device=pixel2

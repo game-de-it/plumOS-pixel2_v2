@@ -1507,8 +1507,8 @@
           {"root": "sdcard", "path": "Images/pyxel"}
         ]
       },
-      "launch_profiles": ["pyxel:mf"],
-      "default_launch_profile": "pyxel:mf",
+      "launch_profiles": ["pyxel:pixel2"],
+      "default_launch_profile": "pyxel:pixel2",
       "default_cpu_policy": "ondemand",
       "scraper": {
         "enabled": false,

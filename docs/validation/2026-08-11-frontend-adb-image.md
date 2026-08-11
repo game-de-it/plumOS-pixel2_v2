@@ -8,7 +8,7 @@ Scope: host-side build and image validation; physical Pixel2 pending
 The Pixel2 System now starts the plumOS frontend after mounting STATE and ROMS.
 It uses `/dev/fb0`, selects the Pixel2 gamepad or gpio-keys event device, and
 keeps PID 1 alive while the frontend runs. The frontend snapshot is derived
-from the pinned plumOS-MF commit recorded in
+from the pinned reference implementation commit recorded in
 `vendor/plumos-frontend/SOURCE.manifest`. Foreign distribution names were
 removed from source, configuration, themes and the generated System.
 

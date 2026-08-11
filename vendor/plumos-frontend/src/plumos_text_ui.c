@@ -1000,7 +1000,7 @@ static __attribute__((noinline)) const char *runtime_shell_path(void) {
   if (configured && configured[0] && access(configured, X_OK) == 0) {
     return configured;
   }
-  if (!device_id || strcmp(device_id, "mf") != 0) {
+  if (!device_id || strcmp(device_id, "pixel2") != 0) {
     return "/bin/sh";
   }
   if (access("/mnt/SDCARD/.tmp_update/busybox", X_OK) == 0) {
@@ -1360,7 +1360,7 @@ static int picoarch_core_id_allowed(const char *core_id) {
     return 0;
   }
   /*
-   * The MF PicoArch component is a software framebuffer host. Cores packaged
+   * The Pixel2 PicoArch component is a software framebuffer host. Cores packaged
    * with the hardware-GLES rendering contract must stay on RetroArch, which
    * can create the required graphics context.
    */
@@ -1379,7 +1379,7 @@ static int picoarch_core_id_allowed(const char *core_id) {
   }
   /*
    * ChaiLove embeds its own SDL video runtime. It cannot acquire a second
-   * V90S video device below PicoArch and terminates with a segmentation fault.
+   * second video device below PicoArch and terminates with a segmentation fault.
    */
   if (strcmp(core_id, "chailove") == 0) {
     return 0;
@@ -1387,7 +1387,7 @@ static int picoarch_core_id_allowed(const char *core_id) {
   return 1;
 }
 
-static int launch_profile_allowed_on_mmf(const char *profile) {
+static int launch_profile_allowed_on_pixel2(const char *profile) {
   if (!profile || !profile[0]) {
     return 0;
   }
@@ -1401,7 +1401,7 @@ static int launch_profile_allowed_on_mmf(const char *profile) {
 }
 
 static int add_core_profile(struct core_system_def *system, const char *profile) {
-  if (!valid_launch_profile_id(profile) || !launch_profile_allowed_on_mmf(profile)) {
+  if (!valid_launch_profile_id(profile) || !launch_profile_allowed_on_pixel2(profile)) {
     return 0;
   }
   if (core_profile_index(system, profile) >= 0) {
@@ -1417,11 +1417,11 @@ static int add_core_profile(struct core_system_def *system, const char *profile)
 }
 
 static int picoarch_companion_core_allowed(const char *system_id, const char *core_id) {
-  /* N64 hardware-render cores are not supported by the MF PicoArch host. */
+  /* N64 hardware-render cores are not supported by the Pixel2 PicoArch host. */
   if (system_id && strcmp(system_id, "n64") == 0) {
     return 0;
   }
-  /* No Saturn core reaches a usable launch path through PicoArch on MF. */
+  /* No Saturn core reaches a usable launch path through PicoArch on Pixel2. */
   if (system_id && strcmp(system_id, "saturn") == 0) {
     return 0;
   }
@@ -1455,7 +1455,7 @@ static void add_picoarch_companion_profiles(struct core_system_def *system) {
         (int)sizeof(pico_profile)) {
       continue;
     }
-    if (!launch_profile_allowed_on_mmf(pico_profile)) {
+    if (!launch_profile_allowed_on_pixel2(pico_profile)) {
       continue;
     }
     add_core_profile(system, pico_profile);
@@ -3020,19 +3020,11 @@ static int build_launch_plan(struct launch_plan *plan, const char *plumos_root,
     char launcher_dir[PATH_MAX];
     char extension[32];
     const char *pyxel_profile = launch_profile + 6;
-    const char *launcher_name = "plumos-pyxel-mf-launch";
+    const char *launcher_name = "plumos-pyxel-pixel2-launch";
     const char *pyxel_command = NULL;
 
     copy_string(plan->kind, sizeof(plan->kind), "pyxel");
-    if (strcmp(pyxel_profile, "mf") == 0) {
-      launcher_name = "plumos-pyxel-mf-launch";
-    } else if (strcmp(pyxel_profile, "a30") == 0) {
-      launcher_name = "plumos-pyxel-a30-launch";
-    } else if (strcmp(pyxel_profile, "mmf") == 0) {
-      launcher_name = "plumos-pyxel-mmf-launch";
-    } else if (!pyxel_profile[0] || strcmp(pyxel_profile, "v90s") == 0) {
-      launcher_name = "plumos-pyxel-v90s-launch";
-    } else {
+    if (pyxel_profile[0] && strcmp(pyxel_profile, "pixel2") != 0) {
       plan->can_execute = 0;
       return 1;
     }

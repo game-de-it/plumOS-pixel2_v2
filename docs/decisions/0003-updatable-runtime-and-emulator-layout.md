@@ -5,8 +5,8 @@ Status: Adopted design; implementation is phased
 
 ## Decision
 
-plumOS Pixel2 adopts the update ownership model proven by plumOS V90S and the
-frontend/emulator component model proven by plumOS MF, while retaining the
+plumOS Pixel2 adopts update ownership and frontend/emulator component models
+proven by existing plumOS reference implementations, while retaining the
 Pixel2-specific Rockchip boot contract.
 
 The final SD layout is:
@@ -180,11 +180,11 @@ never repository or release-image inputs.
 
 ## Why this shape
 
-The V90S design demonstrates that a read-only A/B System, transactional ext4
-runtime and host-visible FAT32 content area provide bounded updates and clear
-ownership. MF demonstrates component manifests, pinned core recipes and a
-frontend-to-launcher lifecycle. Pixel2 does not need V90S's raw Android BOOT
-partition or MF's stock hook, because U-Boot already loads Pixel2 kernel files
+The reference designs demonstrate that a read-only A/B System, transactional
+ext4 runtime, host-visible FAT32 content area, component manifests, pinned core
+recipes, and a frontend-to-launcher lifecycle provide bounded updates and clear
+ownership. Pixel2 does not need a raw Android BOOT partition or a stock hook,
+because U-Boot already loads Pixel2 kernel files
 from p1 and plumOS owns first userspace.
 
 ## Release gates
@@ -198,4 +198,3 @@ from p1 and plumOS owns first userspace.
 - real Pixel2 cold boot, FE readiness, controls, video, audio, game launch,
   clean exit, save persistence, ADB and power behavior;
 - signed Runtime/System updates and rollback before public release.
-

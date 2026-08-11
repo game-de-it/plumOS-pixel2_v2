@@ -294,13 +294,13 @@ struct input_event {
 #define MMF_PWM_DUTY_PATH "/sys/class/pwm/pwmchip0/pwm0/duty_cycle"
 #define MMF_MI_DISP0_PATH "/proc/mi_modules/mi_disp/mi_disp0"
 #define MMF_STOCK_SYSTEM_JSON_PATH "/mnt/plumos/system.json"
-#define V90S_BACKLIGHT_PATH "/sys/class/backlight/sunxi_backlight/brightness"
-#define V90S_ENHANCE_BRIGHT_PATH "/sys/class/disp/disp/attr/enhance_bright"
-#define V90S_ENHANCE_CONTRAST_PATH "/sys/class/disp/disp/attr/enhance_contrast"
-#define V90S_ENHANCE_SATURATION_PATH "/sys/class/disp/disp/attr/enhance_saturation"
-#define V90S_ENHANCE_MODE_PATH "/sys/class/disp/disp/attr/enhance_mode"
-#define V90S_COLOR_TEMPERATURE_PATH "/sys/class/disp/disp/attr/color_temperature"
-#define MF_BACKLIGHT_PATH "/sys/class/backlight/backlight/brightness"
+#define LEGACY_SUNXI_BACKLIGHT_PATH "/sys/class/backlight/sunxi_backlight/brightness"
+#define LEGACY_SUNXI_ENHANCE_BRIGHT_PATH "/sys/class/disp/disp/attr/enhance_bright"
+#define LEGACY_SUNXI_ENHANCE_CONTRAST_PATH "/sys/class/disp/disp/attr/enhance_contrast"
+#define LEGACY_SUNXI_ENHANCE_SATURATION_PATH "/sys/class/disp/disp/attr/enhance_saturation"
+#define LEGACY_SUNXI_ENHANCE_MODE_PATH "/sys/class/disp/disp/attr/enhance_mode"
+#define LEGACY_SUNXI_COLOR_TEMPERATURE_PATH "/sys/class/disp/disp/attr/color_temperature"
+#define PIXEL2_BACKLIGHT_PATH "/sys/class/backlight/backlight/brightness"
 
 static int replace_json_key_value_atomic(const char *path, const char *key,
                                          const char *literal);
@@ -2348,7 +2348,7 @@ static int runtime_requires_busybox_shell(void) {
   if (configured && configured[0] && access(configured, X_OK) == 0) {
     return 1;
   }
-  return device_id && strcmp(device_id, "mf") == 0;
+  return device_id && strcmp(device_id, "pixel2") == 0;
 }
 
 static const char *runtime_busybox_shell_path(void) {
@@ -2454,7 +2454,7 @@ static int run_runtime_shell_command(const char *cmd) {
   if (pid == 0) {
     /*
      * The renderer and input descriptors are opened with CLOEXEC. Closing the
-     * duplicated DRM descriptor explicitly in a fork child can spin in the MF
+     * duplicated DRM descriptor explicitly in a fork child can spin on Pixel2
      * stock driver, so enter BusyBox immediately and let exec close them.
      */
     execve(shell_path, shell_argv, environ);
@@ -2620,7 +2620,7 @@ static const char *runtime_plumos_root(void) {
   return root && root[0] ? root : "/mnt/SDCARD/plumos";
 }
 
-static int runtime_device_is_mf(void);
+static int runtime_device_is_pixel2(void);
 
 static int runtime_volume_control_path(char *out, size_t out_size) {
   return join_path(out, out_size, runtime_plumos_root(), "bin/plumos-volume-control");
@@ -2706,7 +2706,7 @@ static int run_display_control_command(const char *action, long brightness,
     return 0;
   }
   if (include_brightness) {
-    long max_brightness = runtime_device_is_mf() ? 20 : 6;
+    long max_brightness = runtime_device_is_pixel2() ? 20 : 6;
     snprintf(brightness_buf, sizeof(brightness_buf), "%ld",
              clamp_long(brightness, 1, max_brightness));
   } else {
@@ -2732,9 +2732,9 @@ static int run_display_control_command(const char *action, long brightness,
   return system_command_succeeded(run_runtime_shell_command(cmd));
 }
 
-static int runtime_v90s_backlight_available(void) {
-  return access(V90S_BACKLIGHT_PATH, W_OK) == 0 ||
-         access(MF_BACKLIGHT_PATH, W_OK) == 0 ||
+static int runtime_system_backlight_available(void) {
+  return access(LEGACY_SUNXI_BACKLIGHT_PATH, W_OK) == 0 ||
+         access(PIXEL2_BACKLIGHT_PATH, W_OK) == 0 ||
          run_display_control_command("status", 0, 0);
 }
 
@@ -2742,13 +2742,13 @@ static int runtime_enhance_backend_available(void) {
   return access(A30_DISPLAY_ENHANCE_PATH, W_OK) == 0;
 }
 
-static int runtime_device_is_v90s(void) {
+static int runtime_device_uses_legacy_sunxi(void) {
   const char *device_id = getenv("PLUMOS_DEVICE_ID");
 
   if (device_id && device_id[0]) {
-    return strcmp(device_id, "v90s") == 0;
+    return 0;
   }
-  return !runtime_device_is_mf();
+  return !runtime_device_is_pixel2();
 }
 
 static int runtime_device_is_mmf(void) {
@@ -2757,19 +2757,19 @@ static int runtime_device_is_mmf(void) {
   return device_id && strcmp(device_id, "mmf") == 0;
 }
 
-static int runtime_device_is_mf(void) {
+static int runtime_device_is_pixel2(void) {
   const char *device_id = getenv("PLUMOS_DEVICE_ID");
   char compat_path[PATH_MAX];
   char compat_vendor[64];
 
   if (device_id && device_id[0]) {
-    return strcmp(device_id, "mf") == 0;
+    return strcmp(device_id, "pixel2") == 0;
   }
   if (join_path(compat_path, sizeof(compat_path), runtime_plumos_root(),
                 "COMPAT_VENDOR") &&
       read_first_line_file(compat_path, compat_vendor, sizeof(compat_vendor)) &&
-      (strcmp(compat_vendor, "mf") == 0 ||
-       strncmp(compat_vendor, "mf-", 3) == 0)) {
+      (strcmp(compat_vendor, "pixel2") == 0 ||
+       strncmp(compat_vendor, "pixel2-", 7) == 0)) {
     return 1;
   }
   return access("/sys/devices/platform/hall-mh248/hallvalue", R_OK) == 0;
@@ -2784,27 +2784,27 @@ static int runtime_mmf_enhance_backend_available(void) {
   return runtime_device_is_mmf() && access(MMF_MI_DISP0_PATH, W_OK) == 0;
 }
 
-static int runtime_v90s_enhance_bright_available(void) {
-  return access(V90S_ENHANCE_BRIGHT_PATH, W_OK) == 0;
+static int runtime_legacy_sunxi_enhance_bright_available(void) {
+  return access(LEGACY_SUNXI_ENHANCE_BRIGHT_PATH, W_OK) == 0;
 }
 
-static int runtime_v90s_enhance_contrast_available(void) {
-  return access(V90S_ENHANCE_CONTRAST_PATH, W_OK) == 0;
+static int runtime_legacy_sunxi_enhance_contrast_available(void) {
+  return access(LEGACY_SUNXI_ENHANCE_CONTRAST_PATH, W_OK) == 0;
 }
 
-static int runtime_v90s_enhance_saturation_available(void) {
-  return access(V90S_ENHANCE_SATURATION_PATH, W_OK) == 0;
+static int runtime_legacy_sunxi_enhance_saturation_available(void) {
+  return access(LEGACY_SUNXI_ENHANCE_SATURATION_PATH, W_OK) == 0;
 }
 
-static int runtime_v90s_color_temperature_available(void) {
-  return access(V90S_COLOR_TEMPERATURE_PATH, W_OK) == 0;
+static int runtime_legacy_sunxi_color_temperature_available(void) {
+  return access(LEGACY_SUNXI_COLOR_TEMPERATURE_PATH, W_OK) == 0;
 }
 
-static int runtime_v90s_enhance_backend_available(void) {
-  return runtime_v90s_enhance_bright_available() ||
-         runtime_v90s_enhance_contrast_available() ||
-         runtime_v90s_enhance_saturation_available() ||
-         runtime_v90s_color_temperature_available();
+static int runtime_legacy_sunxi_enhance_backend_available(void) {
+  return runtime_legacy_sunxi_enhance_bright_available() ||
+         runtime_legacy_sunxi_enhance_contrast_available() ||
+         runtime_legacy_sunxi_enhance_saturation_available() ||
+         runtime_legacy_sunxi_color_temperature_available();
 }
 
 static int system_number_setting_needs_runtime_backend(const char *id) {
@@ -2824,28 +2824,28 @@ static int system_number_setting_runtime_available(const char *id) {
     return runtime_volume_backend_available();
   }
   if (strcmp(id, "system_brightness") == 0) {
-    return runtime_v90s_backlight_available() ||
+    return runtime_system_backlight_available() ||
            runtime_lcd_backend_available() || runtime_mmf_lcd_backend_available();
   }
   if (strcmp(id, "system_lumination") == 0) {
     return runtime_enhance_backend_available() ||
            runtime_mmf_enhance_backend_available() ||
-           runtime_v90s_enhance_bright_available();
+           runtime_legacy_sunxi_enhance_bright_available();
   }
   if (strcmp(id, "system_contrast") == 0) {
     return runtime_enhance_backend_available() ||
            runtime_mmf_enhance_backend_available() ||
-           runtime_v90s_enhance_contrast_available();
+           runtime_legacy_sunxi_enhance_contrast_available();
   }
   if (strcmp(id, "system_hue") == 0) {
     return runtime_enhance_backend_available() ||
            runtime_mmf_enhance_backend_available() ||
-           runtime_v90s_color_temperature_available();
+           runtime_legacy_sunxi_color_temperature_available();
   }
   if (strcmp(id, "system_saturation") == 0) {
     return runtime_enhance_backend_available() ||
            runtime_mmf_enhance_backend_available() ||
-           runtime_v90s_enhance_saturation_available();
+           runtime_legacy_sunxi_enhance_saturation_available();
   }
   return 1;
 }
@@ -2883,17 +2883,17 @@ static void update_device_backend_status(struct device_settings *device) {
   int enhance_available;
   int mmf_lcd_available;
   int mmf_enhance_available;
-  int v90s_backlight_available;
+  int system_backlight_available;
 
   if (!device) {
     return;
   }
   /*
-   * The MF launcher already owns and initializes the RK817 volume route.
+   * The Pixel2 launcher owns and initializes the RK817 volume route.
    * Reporting that managed backend must not execute a helper through
-   * system(), because the stock /bin/sh is not a valid MF runtime backend.
+   * system(), because the minimal runtime uses the configured BusyBox shell.
    */
-  if (runtime_device_is_mf()) {
+  if (runtime_device_is_pixel2()) {
     if (runtime_volume_control_path(volume_helper, sizeof(volume_helper)) &&
         access(volume_helper, X_OK) == 0) {
       copy_string(device->volume_backend, sizeof(device->volume_backend),
@@ -2925,17 +2925,17 @@ static void update_device_backend_status(struct device_settings *device) {
   enhance_available = runtime_enhance_backend_available();
   mmf_lcd_available = runtime_mmf_lcd_backend_available();
   mmf_enhance_available = runtime_mmf_enhance_backend_available();
-  v90s_backlight_available = runtime_v90s_backlight_available();
-  if (runtime_device_is_mf() && v90s_backlight_available) {
+  system_backlight_available = runtime_system_backlight_available();
+  if (runtime_device_is_pixel2() && system_backlight_available) {
     copy_string(device->brightness_backend, sizeof(device->brightness_backend),
-                "MF RK3566 backlight");
-  } else if (v90s_backlight_available && runtime_v90s_enhance_backend_available()) {
+                "Pixel2 PWM backlight");
+  } else if (system_backlight_available && runtime_legacy_sunxi_enhance_backend_available()) {
     copy_string(device->brightness_backend, sizeof(device->brightness_backend),
                 "sunxi backlight + disp enhance");
-  } else if (v90s_backlight_available) {
+  } else if (system_backlight_available) {
     copy_string(device->brightness_backend, sizeof(device->brightness_backend),
                 "sunxi backlight");
-  } else if (runtime_v90s_enhance_backend_available()) {
+  } else if (runtime_legacy_sunxi_enhance_backend_available()) {
     copy_string(device->brightness_backend, sizeof(device->brightness_backend),
                 lcd_available ? "disp enhance+lcdbl" : "disp enhance");
   } else if (lcd_available && enhance_available) {
@@ -3012,7 +3012,7 @@ static long brightness_setting_from_raw(long raw) {
 }
 
 static long brightness_setting_from_stored(long stored) {
-  if (runtime_device_is_v90s()) {
+  if (runtime_device_uses_legacy_sunxi()) {
     return clamp_long(stored, 1, 6);
   }
   if (stored >= 1 && stored <= 20) {
@@ -3024,14 +3024,14 @@ static long brightness_setting_from_stored(long stored) {
   return brightness_setting_from_raw(stored);
 }
 
-static int apply_runtime_v90s_brightness(
+static int apply_runtime_system_brightness(
     const struct device_settings *device) {
   long maximum;
 
-  if (!device || (!runtime_device_is_v90s() && !runtime_device_is_mf())) {
+  if (!device || (!runtime_device_uses_legacy_sunxi() && !runtime_device_is_pixel2())) {
     return 0;
   }
-  maximum = runtime_device_is_mf() ? 20 : 6;
+  maximum = runtime_device_is_pixel2() ? 20 : 6;
   return run_display_control_command(
       "apply", clamp_long(device->brightness, 1, maximum), 1);
 }
@@ -3141,7 +3141,7 @@ static int write_runtime_long_file(const char *path, long value) {
   return write_text_file(path, text);
 }
 
-static int apply_runtime_v90s_display_enhance(const struct device_settings *device,
+static int apply_runtime_legacy_sunxi_display_enhance(const struct device_settings *device,
                                               const char *id) {
   int ok = 1;
   int attempted = 0;
@@ -3153,50 +3153,50 @@ static int apply_runtime_v90s_display_enhance(const struct device_settings *devi
   }
 
   if (!id || strcmp(id, "system_lumination") == 0) {
-    if (runtime_v90s_enhance_bright_available()) {
+    if (runtime_legacy_sunxi_enhance_bright_available()) {
       value = scale_setting_to_runtime(device->lumination, 10, 100);
       attempted = 1;
       enable_enhance = 1;
-      ok = write_runtime_long_file(V90S_ENHANCE_BRIGHT_PATH, value) && ok;
+      ok = write_runtime_long_file(LEGACY_SUNXI_ENHANCE_BRIGHT_PATH, value) && ok;
     } else if (id) {
       ok = 0;
     }
   }
 
   if (!id || strcmp(id, "system_contrast") == 0) {
-    if (runtime_v90s_enhance_contrast_available()) {
+    if (runtime_legacy_sunxi_enhance_contrast_available()) {
       value = scale_setting_to_runtime(device->contrast, 20, 100);
       attempted = 1;
       enable_enhance = 1;
-      ok = write_runtime_long_file(V90S_ENHANCE_CONTRAST_PATH, value) && ok;
+      ok = write_runtime_long_file(LEGACY_SUNXI_ENHANCE_CONTRAST_PATH, value) && ok;
     } else if (id) {
       ok = 0;
     }
   }
 
   if (!id || strcmp(id, "system_hue") == 0) {
-    if (runtime_v90s_color_temperature_available()) {
+    if (runtime_legacy_sunxi_color_temperature_available()) {
       value = scale_setting_to_runtime_range(device->hue, 20, -150, 150);
       attempted = 1;
-      ok = write_runtime_long_file(V90S_COLOR_TEMPERATURE_PATH, value) && ok;
+      ok = write_runtime_long_file(LEGACY_SUNXI_COLOR_TEMPERATURE_PATH, value) && ok;
     } else if (id) {
       ok = 0;
     }
   }
 
   if (!id || strcmp(id, "system_saturation") == 0) {
-    if (runtime_v90s_enhance_saturation_available()) {
+    if (runtime_legacy_sunxi_enhance_saturation_available()) {
       value = scale_setting_to_runtime(device->saturation, 20, 100);
       attempted = 1;
       enable_enhance = 1;
-      ok = write_runtime_long_file(V90S_ENHANCE_SATURATION_PATH, value) && ok;
+      ok = write_runtime_long_file(LEGACY_SUNXI_ENHANCE_SATURATION_PATH, value) && ok;
     } else if (id) {
       ok = 0;
     }
   }
 
-  if (enable_enhance && access(V90S_ENHANCE_MODE_PATH, W_OK) == 0) {
-    (void)write_text_file(V90S_ENHANCE_MODE_PATH, "1\n");
+  if (enable_enhance && access(LEGACY_SUNXI_ENHANCE_MODE_PATH, W_OK) == 0) {
+    (void)write_text_file(LEGACY_SUNXI_ENHANCE_MODE_PATH, "1\n");
   }
   return attempted && ok;
 }
@@ -3253,9 +3253,9 @@ static int apply_device_runtime_settings(const struct device_settings *device,
       ok = 0;
     }
   }
-  if (needs_brightness && runtime_v90s_backlight_available()) {
+  if (needs_brightness && runtime_system_backlight_available()) {
     attempted = 1;
-    if (!apply_runtime_v90s_brightness(device)) {
+    if (!apply_runtime_system_brightness(device)) {
       ok = 0;
     }
   } else if (needs_brightness && runtime_lcd_backend_available()) {
@@ -3281,9 +3281,9 @@ static int apply_device_runtime_settings(const struct device_settings *device,
     if (!apply_runtime_mmf_display_enhance(device)) {
       ok = 0;
     }
-  } else if (needs_enhance && runtime_v90s_enhance_backend_available()) {
+  } else if (needs_enhance && runtime_legacy_sunxi_enhance_backend_available()) {
     attempted = 1;
-    if (!apply_runtime_v90s_display_enhance(device, id)) {
+    if (!apply_runtime_legacy_sunxi_display_enhance(device, id)) {
       ok = 0;
     }
   } else if (needs_enhance && id) {
@@ -3539,64 +3539,6 @@ static int copy_first_yyyymmdd(const char *text, char *out, size_t out_size) {
   return 0;
 }
 
-static int valid_fw_printenv_key(const char *key) {
-  if (!key || !key[0]) {
-    return 0;
-  }
-  while (*key) {
-    unsigned char c = (unsigned char)*key++;
-    if (!(isalnum(c) || c == '_')) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
-static int read_fw_printenv_value(const char *key, char *out, size_t out_size) {
-  char cmd[128];
-  char line[256];
-  FILE *pipe;
-  pid_t pipe_pid;
-  size_t key_len;
-
-  if (!out || out_size == 0) {
-    return 0;
-  }
-  out[0] = '\0';
-  if (!valid_fw_printenv_key(key)) {
-    return 0;
-  }
-  if (snprintf(cmd, sizeof(cmd), "/etc/fw_printenv %s 2>/dev/null", key) >=
-      (int)sizeof(cmd)) {
-    return 0;
-  }
-  pipe = open_runtime_shell_pipe(cmd, &pipe_pid);
-  if (!pipe) {
-    return 0;
-  }
-  key_len = strlen(key);
-  while (fgets(line, sizeof(line), pipe)) {
-    char *value;
-    trim_line_end(line);
-    value = trim_ascii_ws(line);
-    if (!value[0]) {
-      continue;
-    }
-    if (strncmp(value, key, key_len) == 0 && value[key_len] == '=') {
-      value = trim_ascii_ws(value + key_len + 1);
-    } else if (strchr(value, '=')) {
-      continue;
-    }
-    if (value[0]) {
-      copy_truncated_string(out, out_size, value);
-      close_runtime_shell_pipe(pipe, pipe_pid);
-      return out[0] != '\0';
-    }
-  }
-  close_runtime_shell_pipe(pipe, pipe_pid);
-  return 0;
-}
-
 static void format_firmware_version_status(char *out, size_t out_size) {
   char *text;
   char version[64];
@@ -3605,18 +3547,7 @@ static void format_firmware_version_status(char *out, size_t out_size) {
     return;
   }
   out[0] = '\0';
-  /*
-   * MF's stock /bin/sh can spin while popen() waits for the inherited
-   * V90S-only fw_printenv probe. MF has no product setting backed by those
-   * keys, so use the regular release files below without spawning a shell.
-   */
-  if (!runtime_device_is_mf() &&
-      (read_fw_printenv_value("v90s_version", version, sizeof(version)) ||
-       read_fw_printenv_value("board_version", version, sizeof(version))) &&
-      version[0]) {
-    copy_string(out, out_size, version);
-    return;
-  }
+  /* Pixel2 version information is owned by plumOS release metadata. */
   if (read_first_line_file("/etc/plumos-release", version, sizeof(version)) &&
       version[0]) {
     copy_string(out, out_size, version);
@@ -4727,7 +4658,7 @@ static void init_device_settings(struct device_settings *device) {
   device->wifi_enabled = 1;
   device->automatic_time_enabled = 1;
   device->lid_suspend_enabled = 1;
-  device->brightness = runtime_device_is_v90s() ? 6 : 10;
+  device->brightness = runtime_device_uses_legacy_sunxi() ? 6 : 10;
   device->lumination = 5;
   device->contrast = 10;
   device->hue = 10;
@@ -6323,7 +6254,7 @@ static void add_system_information_entries(struct ui_state *ui) {
                     device->storage_health);
   add_setting_entry(ui, "system_memory", "Memory", device->memory_usage);
   add_setting_entry(ui, "system_firmware", "Base OS", device->firmware_version);
-  if (runtime_device_is_mf()) {
+  if (runtime_device_is_pixel2()) {
     if (!read_first_line_file("/sys/class/power_supply/battery/capacity",
                               battery_capacity, sizeof(battery_capacity))) {
       copy_string(battery_capacity, sizeof(battery_capacity), "N/A");
@@ -9657,7 +9588,7 @@ static void setting_help_lines(const struct ui_state *ui,
     } else if (strcmp(id, "network_adb_enabled") == 0) {
       copy_string(line1, line1_size, "ADB over USB cable.");
       copy_string(line2, line2_size,
-                  "Changes apply after reboot to avoid the MF vendor USB hang.");
+                  "Changes apply after reboot on Pixel2.");
     } else if (strcmp(id, "network_ftp_status") == 0) {
       copy_string(line1, line1_size, "Current FTP service status.");
       copy_string(line2, line2_size, "FTP home is /mnt/SDCARD.");
@@ -9718,11 +9649,11 @@ static void setting_help_lines(const struct ui_state *ui,
     } else if (strcmp(id, "system_brightness") == 0) {
       copy_string(line1, line1_size, "Screen brightness setting.");
       copy_string(line2, line2_size,
-                  runtime_device_is_mf()
-                      ? "Uses the MF RK3566 backlight in twenty steps."
-                      : "Uses the V90S vendor firmware sunxi backlight in six steps.");
+                  runtime_device_is_pixel2()
+                      ? "Uses the Pixel2 PWM backlight."
+                      : "Uses the active system backlight backend.");
     } else if (strcmp(id, "system_lid_suspend") == 0) {
-      copy_string(line1, line1_size, "Suspend the MF when its lid closes.");
+      copy_string(line1, line1_size, "Pixel2 has no lid switch.");
       copy_string(line2, line2_size,
                   "The hall sensor wakes and restores display, audio, input, Wi-Fi, and FE.");
     } else if (strcmp(id, "system_lumination") == 0) {
@@ -13344,7 +13275,7 @@ static int save_setting_number(struct ui_state *ui, const char *id,
   } else if (strcmp(id, "system_brightness") == 0) {
     system_key = "brightness";
     min_value = 1;
-    max_value = runtime_device_is_v90s() ? 6 : 20;
+    max_value = runtime_device_uses_legacy_sunxi() ? 6 : 20;
   } else if (strcmp(id, "system_lumination") == 0) {
     system_key = "lumination";
     min_value = 0;
@@ -14807,8 +14738,8 @@ static enum ui_action action_from_key_code(unsigned int code) {
     return ACTION_NONE;
   case KEY_VOLUMEDOWN:
   case KEY_VOLUMEUP:
-    /* The boot-persistent hardware-key service owns the physical V90S
-     * volume keys so they keep working after the frontend exits. */
+    /* The system service owns physical volume keys so they remain available
+     * after the frontend exits. */
     return ACTION_NONE;
   case KEY_Q:
     return ACTION_QUIT;
@@ -16059,7 +15990,7 @@ int main(int argc, char **argv) {
     ui.mali_fallback_font_path[0] = '\0';
   } else {
     apply_frontend_cpu_default();
-    if (load_device_settings(&ui) && !runtime_device_is_mf()) {
+    if (load_device_settings(&ui) && !runtime_device_is_pixel2()) {
       apply_device_runtime_settings(&ui.device, NULL, NULL, 0);
     }
     load_translations(&ui);
@@ -16122,7 +16053,7 @@ int main(int argc, char **argv) {
       copy_string(ui.status, sizeof(ui.status), "Network Recovery is disabled");
     }
     if (!ui.rescue_network && !ui.power_overlay &&
-        !runtime_device_is_mf()) {
+        !runtime_device_is_pixel2()) {
       apply_device_runtime_settings(&ui.device, "system_brightness", NULL, 0);
       schedule_mmf_brightness_reapply(&ui);
     }

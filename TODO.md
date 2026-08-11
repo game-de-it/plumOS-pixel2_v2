@@ -2,7 +2,7 @@
 
 ## Adopted architecture
 
-- [x] V90S update/storage design and MF frontend/emulator build historyを調査する
+- [x] 既存plumOS機のupdate/storage/frontend/emulator設計を調査する
 - [x] Pixel2のRockchip prefix + System A/B + ext4 Runtime + FAT32 User構成を決定する
 - [x] ownership、update、rollback、first-boot provisioning contractを文書化する
 
@@ -61,7 +61,7 @@
 
 ## Frontend
 
-- [x] plumOS-MF由来frontendをPixel2用としてvendor化し、旧distribution名称を除去する
+- [x] 参照frontendをPixel2専用としてvendor化し、他機種・旧distribution名称を除去する
 - [x] Pixel2 framebufferとgpio-key inputを自動選択してboot時にfrontendを起動する
 - [x] frontendとADBの診断logをSTATE partitionへ保存する
 - [x] 実機LCDでfrontend描画と90度回転を確認する
