@@ -7,6 +7,8 @@
 - [ ] SD先頭16 MiBのRockchip boot領域を管理者権限で採取する
 - [ ] ext4 `/storage` のfilesystem label、UUID、初回resize markerを確認する
 - [ ] boot artifactのprovenance、hash、サイズをmanifest化する
+- [x] stock内蔵initramfsを最終imageで廃止するkernel所有方針を決定する
+- [ ] Pixel2対応kernel/DTS/patchをpinned sourceからplumOSとしてbuildする
 
 ## plumOS System
 
@@ -27,4 +29,3 @@
 - [ ] image内のpartition境界、hash、SquashFS内容をhost検証する
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [ ] app-layer manifest/checksumを実機deploy単位で検証する
-
