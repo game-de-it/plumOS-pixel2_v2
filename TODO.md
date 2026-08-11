@@ -8,12 +8,12 @@
 - [ ] ext4 `/storage` のfilesystem label、UUID、初回resize markerを確認する
 - [ ] boot artifactのprovenance、hash、サイズをmanifest化する
 - [x] stock内蔵initramfsを最終imageで廃止するkernel所有方針を決定する
-- [ ] Pixel2対応kernel/DTS/patchをpinned sourceからplumOSとしてbuildする
+- [x] Pixel2対応kernel/DTS/patchをpinned sourceからplumOSとしてbuildする
 
 ## plumOS System
 
 - [x] plumOS Pixel2 rootfsを再現可能に生成する
-- [ ] plumOS initでboot FAT、System、state、ROM領域をmountする
+- [x] plumOS initramfsでboot FATとSystemをmountし、initでstateとROMをmountする
 - [x] stock由来名称・unit・frontendがSystemへ混入しないgateを実装する
 - [ ] Pixel2 kernel moduleとfirmwareをboot artifactとして分離する
 

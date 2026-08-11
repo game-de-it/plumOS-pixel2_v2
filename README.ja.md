@@ -28,3 +28,16 @@ arm64 Docker toolchainを使ってplumOS所有のSquashFSを生成する。
 
 成果物は`output/system-rootfs/pixel2/payload/SYSTEM`に生成され、build中に
 再展開、主要binaryの実行、manifest、旧distribution名の不在を検証する。
+
+## Kernel
+
+Linux 6.12.79、Pixel2/PX30S hardware support、plumOS initramfsから
+`Image`、DTB、moduleを生成する。
+
+```sh
+./scripts/build-kernel.sh
+```
+
+hardware supportはcommit固定し、gamepadは標準`gpio-keys`、DSI compatibleは
+`plumos,generic-dsi`としてbuildする。第三者codeの出所とlicenseは
+`output/kernel/pixel2/source.manifest`と`licenses/`へ記録する。

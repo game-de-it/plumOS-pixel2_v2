@@ -1,0 +1,48 @@
+#!/bin/busybox sh
+set -u
+
+bb=/bin/busybox
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+$bb mkdir -p /proc /sys /dev /run /boot /newroot
+$bb mount -t proc proc /proc
+$bb mount -t sysfs sysfs /sys
+$bb mount -t devtmpfs devtmpfs /dev
+$bb mkdir -p /dev/pts
+$bb mount -t devpts devpts /dev/pts
+$bb echo /sbin/mdev >/proc/sys/kernel/hotplug
+$bb mdev -s
+
+exec >/dev/console 2>&1
+printf 'plumos-initramfs=result-start device=pixel2\n'
+
+attempt=0
+while [ "$attempt" -lt 10 ]; do
+    bootdev=$($bb blkid -L PLUMOS_BOOT 2>/dev/null || true)
+    [ -n "$bootdev" ] || bootdev=/dev/mmcblk0p1
+    if [ -b "$bootdev" ] && $bb mount -t vfat -o ro "$bootdev" /boot; then
+        break
+    fi
+    $bb sleep 1
+    $bb mdev -s
+    attempt=$((attempt + 1))
+done
+
+[ -r /boot/SYSTEM ] || {
+    printf 'plumos-initramfs=result-failed reason=system-missing\n'
+    exec $bb sh
+}
+$bb mount -t squashfs -o loop,ro /boot/SYSTEM /newroot || {
+    printf 'plumos-initramfs=result-failed reason=squashfs-mount\n'
+    exec $bb sh
+}
+[ -x /newroot/sbin/init ] || {
+    printf 'plumos-initramfs=result-failed reason=init-missing\n'
+    exec $bb sh
+}
+
+$bb mount --move /dev /newroot/dev
+$bb mount --move /proc /newroot/proc
+$bb mount --move /sys /newroot/sys
+printf 'plumos-initramfs=result-switch-root\n'
+exec $bb switch_root /newroot /sbin/init
