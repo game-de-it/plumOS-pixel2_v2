@@ -51,6 +51,16 @@ The corrected image was generated from implementation commit `f23dafd` and
 passed the complete host image verifier. Button mapping, audio, USB Wi-Fi, SSH
 and power behavior remain separate hardware gates.
 
+The corrected System was also deployed over ADB to the live BOOT partition so
+the rotation fix persists across reboot. The copy was verified before and after
+activation, and BOOT was returned to read-only mode.
+
+- active System SHA-256:
+  `21c523e0093fada60a644d619835a055de2d7de2fe52cc0bcf35e6f7a84f5297`
+- recoverable previous System: `/boot/SYSTEM.bak-f5af0b81`
+- previous System SHA-256:
+  `f5af0b817dadb94715d3ae99941ad9d044db4e20c2b8ffdd9518a0637c1f9d7b`
+
 ## Hardware gate
 
 For subsequent hardware passes, flash the image to the test SD, cold boot the
