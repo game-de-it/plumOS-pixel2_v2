@@ -23,6 +23,7 @@
 
 - [x] FE catalogは存在するruntime/coreだけを公開する
 - [x] NES ROM scan -> `retroarch:quicknes` launch planをhost検証する
+- [x] Pixel2 live launcherで`PLUMOS_ROM_ROOT=/roms`からNESがRetroArchへ到達することをADB検証する
 - [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
 - [ ] audio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
