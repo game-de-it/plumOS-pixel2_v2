@@ -39,7 +39,8 @@ test -x "$tmp/rootfs/usr/bin/plumos-diagnostics"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/40-frontend"
 test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
 test -x "$tmp/rootfs/lib/ld-linux-aarch64.so.1"
-for directory in dev dev/pts proc sys run tmp boot state roms root; do
+for directory in dev dev/pts proc sys run tmp boot state roms root \
+    mnt mnt/plumos mnt/plumos-user; do
     test -d "$tmp/rootfs/$directory" || {
         printf 'error: required rootfs mountpoint missing: /%s\n' "$directory" >&2
         exit 1

@@ -31,7 +31,8 @@ rm -rf "$OUT_DIR"
 mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR" \
     "$ROOTFS_DIR/dev/pts" "$ROOTFS_DIR/proc" "$ROOTFS_DIR/sys" \
     "$ROOTFS_DIR/run" "$ROOTFS_DIR/tmp" "$ROOTFS_DIR/boot" \
-    "$ROOTFS_DIR/state" "$ROOTFS_DIR/roms" "$ROOTFS_DIR/root"
+    "$ROOTFS_DIR/state" "$ROOTFS_DIR/roms" "$ROOTFS_DIR/root" \
+    "$ROOTFS_DIR/mnt/plumos" "$ROOTFS_DIR/mnt/plumos-user"
 cp -a "$ROOT_DIR/rootfs/pixel2/." "$ROOTFS_DIR/"
 "$ROOT_DIR/scripts/build-adbd-overlay.sh" --inside "$ROOTFS_DIR"
 "$ROOT_DIR/scripts/install-kernel-runtime.sh" "$ROOTFS_DIR"
