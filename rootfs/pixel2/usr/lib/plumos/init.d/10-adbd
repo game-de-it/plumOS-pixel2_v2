@@ -7,9 +7,29 @@ GADGET=/sys/kernel/config/usb_gadget/plumos_pixel2
 FFS=/dev/usb-ffs/adb
 PID=/run/plumos/adbd.pid
 LOG=/state/plumos/logs/adbd.log
+SERIAL_FILE=/state/plumos/config/adb-serial
 
 log() {
+    mkdir -p "${LOG%/*}"
     printf '%s service=adb %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
+}
+
+stop_adbd() {
+    if [ -e "$GADGET/UDC" ]; then
+        : >"$GADGET/UDC" 2>>"$LOG" || true
+    fi
+    if [ -s "$PID" ]; then
+        pid=$(cat "$PID")
+        kill "$pid" 2>/dev/null || true
+        elapsed=0
+        while kill -0 "$pid" 2>/dev/null && [ "$elapsed" -lt 5 ]; do
+            sleep 1
+            elapsed=$((elapsed + 1))
+        done
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+    rm -f "$PID"
+    log 'result=stopped'
 }
 
 start_adbd() {
@@ -17,6 +37,10 @@ start_adbd() {
         log 'result=failed reason=binary-missing'
         return 1
     }
+    if [ -s "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
+        log "result=already-running pid=$(cat "$PID")"
+        return 0
+    fi
     [ -d /sys/kernel/config/usb_gadget ] || \
         mount -t configfs configfs /sys/kernel/config
     for role_file in /sys/class/usb_role/*/role; do
@@ -41,8 +65,13 @@ start_adbd() {
     printf '0x4ee7\n' >"$GADGET/idProduct"
     printf '0x0200\n' >"$GADGET/bcdUSB"
     printf '0x0100\n' >"$GADGET/bcdDevice"
-    serial=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null | tr -d '-' | cut -c1-16)
-    printf 'plumos-pixel2-%s\n' "${serial:-unknown}" >"$GADGET/strings/0x409/serialnumber"
+    mkdir -p "${SERIAL_FILE%/*}"
+    if [ ! -s "$SERIAL_FILE" ]; then
+        serial=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null | tr -d '-' | cut -c1-16)
+        printf 'plumos-pixel2-%s\n' "${serial:-unknown}" >"$SERIAL_FILE"
+    fi
+    serial=$(tr -cd 'A-Za-z0-9._-' <"$SERIAL_FILE" | cut -c1-64)
+    printf '%s\n' "${serial:-plumos-pixel2-unknown}" >"$GADGET/strings/0x409/serialnumber"
     printf 'plumOS\n' >"$GADGET/strings/0x409/manufacturer"
     printf 'plumOS Pixel2 ADB\n' >"$GADGET/strings/0x409/product"
     printf 'ADB maintenance\n' >"$GADGET/configs/c.1/strings/0x409/configuration"
@@ -68,11 +97,18 @@ start_adbd() {
         log 'result=failed reason=functionfs-timeout'
         return 1
     }
-    printf '%s\n' "$udc" >"$GADGET/UDC"
+    : >"$GADGET/UDC" 2>>"$LOG" || true
+    printf '%s\n' "$udc" >"$GADGET/UDC" || {
+        log 'result=failed reason=udc-bind'
+        stop_adbd
+        return 1
+    }
     log "result=started udc=$udc auth=disabled-development"
 }
 
 case "${1:-}" in
     start) start_adbd ;;
-    *) printf 'usage: %s start\n' "$0" >&2; exit 2 ;;
+    stop) stop_adbd ;;
+    restart) stop_adbd; start_adbd ;;
+    *) printf 'usage: %s {start|stop|restart}\n' "$0" >&2; exit 2 ;;
 esac

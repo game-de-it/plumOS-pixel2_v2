@@ -51,23 +51,13 @@ perl -0pi -e \
   's/#if defined\(__ANDROID__\)\n    if \(access\(USB_FFS_ADB_EP0, F_OK\) == 0\) \{/#if defined(__ANDROID__) || defined(PLUMOS_ADBD_USB_FFS)\n    if (access(USB_FFS_ADB_EP0, F_OK) == 0) {/g' \
   "$src/system/core/adb/daemon/main.cpp"
 grep -q PLUMOS_ADBD_USB_FFS "$src/system/core/adb/daemon/main.cpp"
-perl -0pi -e \
-  's/bool use_nonblocking = android::base::GetBoolProperty\(\n            "persist\.adb\.nonblocking_ffs",\n            android::base::GetBoolProperty\("ro\.adb\.nonblocking_ffs", true\)\);/#if defined(PLUMOS_ADBD_LEGACY_FFS)\n    bool use_nonblocking = false;\n#else\n    bool use_nonblocking = android::base::GetBoolProperty(\n            "persist.adb.nonblocking_ffs",\n            android::base::GetBoolProperty("ro.adb.nonblocking_ffs", true));\n#endif/g' \
-  "$src/system/core/adb/daemon/usb.cpp"
-grep -q PLUMOS_ADBD_LEGACY_FFS "$src/system/core/adb/daemon/usb.cpp"
-perl -0pi -e \
-  's/if \(android::base::GetBoolProperty\("sys\.usb\.ffs\.aio_compat", false\)\) \{/#if defined(PLUMOS_ADBD_SYNC_FFS)\n    if (true) {\n#else\n    if (android::base::GetBoolProperty("sys.usb.ffs.aio_compat", false)) {\n#endif/g' \
-  "$src/system/core/adb/daemon/usb_legacy.cpp"
-grep -q PLUMOS_ADBD_SYNC_FFS "$src/system/core/adb/daemon/usb_legacy.cpp"
-
 build="$work/build"
 mkdir -p "$build"
 cxxflags=(
   -std=gnu++2a -fPIC -fno-exceptions -fno-strict-aliasing
   -no-canonical-prefixes -fmessage-length=0 -Wno-c++11-narrowing
   -DNDEBUG -UDEBUG -D_GNU_SOURCE -DADB_HOST=0 -DALLOW_ADBD_ROOT=1
-  -DALLOW_ADBD_NO_AUTH -DPLUMOS_ADBD_USB_FFS -DPLUMOS_ADBD_LEGACY_FFS
-  -DPLUMOS_ADBD_SYNC_FFS -DPAGE_SIZE=4096
+  -DALLOW_ADBD_NO_AUTH -DPLUMOS_ADBD_USB_FFS -DPAGE_SIZE=4096
   "-DADB_VERSION=\"${VERSION}-plumos\""
   "-DPLATFORM_TOOLS_VERSION=\"${VERSION}\""
   -I/usr/include/android -Isystem/core/adb -Isystem/core/adb/daemon/include
@@ -162,7 +152,7 @@ $DSC_SHA  $DSC
 $ORIG_SHA  $ORIG
 $DEBIAN_SHA  $DEBIAN
 patch=enable FunctionFS daemon path outside Android framework
-patch=use legacy synchronous FunctionFS for Pixel2 bring-up
+transport=nonblocking FunctionFS
 authentication=disabled for development image only
 EOF
 printf 'adbd_overlay=result-ok destination=%s\n' "$DEST"
