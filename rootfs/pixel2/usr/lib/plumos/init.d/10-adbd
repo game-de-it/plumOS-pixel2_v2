@@ -14,11 +14,25 @@ log() {
     printf '%s service=adb %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
 }
 
+pid_running() {
+    [ -s "$PID" ] || return 1
+    pid=$(tr -d '[:space:]' <"$PID" 2>/dev/null || true)
+    case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$pid" 2>/dev/null || return 1
+    cmdline=$(tr '\000' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)
+    case "$cmdline" in *adbd*) return 0 ;; esac
+    return 1
+}
+
+gadget_bound() {
+    [ -r "$GADGET/UDC" ] && [ -n "$(cat "$GADGET/UDC" 2>/dev/null)" ]
+}
+
 stop_adbd() {
     if [ -e "$GADGET/UDC" ]; then
         : >"$GADGET/UDC" 2>>"$LOG" || true
     fi
-    if [ -s "$PID" ]; then
+    if pid_running; then
         pid=$(cat "$PID")
         kill "$pid" 2>/dev/null || true
         elapsed=0
@@ -37,9 +51,13 @@ start_adbd() {
         log 'result=failed reason=binary-missing'
         return 1
     }
-    if [ -s "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
+    if pid_running && gadget_bound; then
         log "result=already-running pid=$(cat "$PID")"
         return 0
+    fi
+    if pid_running; then
+        log 'event=running-unbound action=clean-restart'
+        stop_adbd
     fi
     [ -d /sys/kernel/config/usb_gadget ] || \
         mount -t configfs configfs /sys/kernel/config
@@ -106,9 +124,47 @@ start_adbd() {
     log "result=started udc=$udc auth=disabled-development"
 }
 
+recover_adbd() {
+    if pid_running && gadget_bound; then
+        log 'result=recover-not-needed'
+        return 0
+    fi
+    if pid_running && [ -e "$GADGET/UDC" ]; then
+        set -- /sys/class/udc/*
+        [ -e "$1" ] || return 1
+        printf '%s\n' "${1##*/}" >"$GADGET/UDC" && {
+            log "result=recovered action=rebind udc=${1##*/}"
+            return 0
+        }
+    fi
+    log 'action=recover-restart'
+    stop_adbd
+    start_adbd
+}
+
+status_adbd() {
+    state=stopped
+    bound=0
+    gadget_bound && bound=1
+    udc_state=unknown
+    set -- /sys/class/udc/*
+    [ -e "$1/state" ] && udc_state=$(cat "$1/state" 2>/dev/null || true)
+    if pid_running && [ "$bound" -eq 1 ]; then
+        case "$udc_state" in
+            configured|suspended) state=running ;;
+            *) state=waiting_usb ;;
+        esac
+    fi
+    printf 'service=adb\nrunning=%s\ngadget_bound=%s\nudc_state=%s\n' \
+        "$(pid_running && echo 1 || echo 0)" "$bound" "$udc_state"
+    printf 'state=%s\n' "$state"
+}
+
 case "${1:-}" in
     start) start_adbd ;;
     stop) stop_adbd ;;
     restart) stop_adbd; start_adbd ;;
-    *) printf 'usage: %s {start|stop|restart}\n' "$0" >&2; exit 2 ;;
+    recover) recover_adbd ;;
+    status) status_adbd ;;
+    *) printf 'usage: %s {start|stop|restart|recover|status}\n' "$0" >&2; exit 2 ;;
 esac
