@@ -77,7 +77,8 @@
 
 ## Image and hardware validation
 
-- [x] MBR、Rockchip boot領域、boot FAT、state ext4、ROMS FATを生成する
+- [x] MBR、Rockchip boot領域、`PLUMOS_BOOT`、`PLUMOS_SYS`、`PLUMOS_USER`を生成する
 - [x] image内のpartition境界、hash、SquashFS内容をhost検証する
+- [x] 同一source refから生成したSD imageのSHA-256再現性をhost検証する
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [ ] app-layer manifest/checksumを実機deploy単位で検証する
