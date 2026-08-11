@@ -41,8 +41,19 @@ $bb mount -t squashfs -o loop,ro /boot/SYSTEM /newroot || {
     exec $bb sh
 }
 
-$bb mount --move /dev /newroot/dev
-$bb mount --move /proc /newroot/proc
-$bb mount --move /sys /newroot/sys
+for target in dev proc sys; do
+    [ -d "/newroot/$target" ] || {
+        printf 'plumos-initramfs=result-failed reason=mountpoint-missing target=%s\n' \
+            "$target"
+        exec $bb sh
+    }
+done
+for target in dev proc sys; do
+    $bb mount --move "/$target" "/newroot/$target" || {
+        printf 'plumos-initramfs=result-failed reason=mount-move target=%s\n' \
+            "$target"
+        exec $bb sh
+    }
+done
 printf 'plumos-initramfs=result-switch-root\n'
 exec $bb switch_root /newroot /sbin/init

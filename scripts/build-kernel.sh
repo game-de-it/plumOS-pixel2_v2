@@ -96,6 +96,8 @@ mkdir -p "$INITRAMFS/bin" "$INITRAMFS/sbin" "$INITRAMFS/dev" \
 install -m 0755 /bin/busybox "$INITRAMFS/bin/busybox"
 install -m 0755 "$ROOT_DIR/initramfs/pixel2/init" "$INITRAMFS/init"
 ln -s /bin/busybox "$INITRAMFS/sbin/mdev"
+mknod -m 0600 "$INITRAMFS/dev/console" c 5 1
+mknod -m 0666 "$INITRAMFS/dev/null" c 1 3
 
 cp "$SUPPORT/projects/ROCKNIX/devices/RK3326/linux/linux.aarch64.conf" "$SRC/.config"
 config_set() {

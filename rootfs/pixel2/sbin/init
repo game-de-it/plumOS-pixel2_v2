@@ -5,11 +5,15 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH HOME=/root HOSTNAME=plumos-pixel2
 
 bb=/bin/busybox
-$bb mountpoint -q /proc || $bb mount -t proc proc /proc
-$bb mountpoint -q /sys || $bb mount -t sysfs sysfs /sys
-$bb mountpoint -q /dev || $bb mount -t devtmpfs devtmpfs /dev
+is_mounted() {
+    $bb grep -qs " $1 " /proc/mounts 2>/dev/null
+}
+
+is_mounted /proc || $bb mount -t proc proc /proc
+is_mounted /sys || $bb mount -t sysfs sysfs /sys
+is_mounted /dev || $bb mount -t devtmpfs devtmpfs /dev
 $bb mkdir -p /dev/pts /run /tmp /boot /state /roms /root
-$bb mountpoint -q /dev/pts || $bb mount -t devpts devpts /dev/pts
+is_mounted /dev/pts || $bb mount -t devpts devpts /dev/pts
 $bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run 2>/dev/null || true
 $bb mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp 2>/dev/null || true
 $bb hostname "$HOSTNAME"

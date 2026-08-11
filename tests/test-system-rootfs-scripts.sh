@@ -14,6 +14,9 @@ for script in \
     bash -n "$script"
 done
 
+! grep -q '\$bb mountpoint' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'ROOTFS_DIR/dev/pts' "$ROOT_DIR/scripts/build-system-rootfs.sh"
+
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli)' \
     "$ROOT_DIR/rootfs/pixel2" >/dev/null; then
     printf 'error: foreign distribution identity in source overlay\n' >&2

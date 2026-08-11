@@ -33,6 +33,12 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/sbin/adbd"
 test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
 test -x "$tmp/rootfs/lib/ld-linux-aarch64.so.1"
+for directory in dev dev/pts proc sys run tmp boot state roms root; do
+    test -d "$tmp/rootfs/$directory" || {
+        printf 'error: required rootfs mountpoint missing: /%s\n' "$directory" >&2
+        exit 1
+    }
+done
 test -f "$tmp/rootfs/usr/lib/plumos/kernel-runtime.sha256"
 release=$(find "$tmp/rootfs/lib/modules" -mindepth 1 -maxdepth 1 -type d \
     -printf '%f\n')
