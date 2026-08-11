@@ -76,6 +76,23 @@ s = p.read_text()
 s = s.replace('compatible = "rocknix-singleadc-joypad";', 'compatible = "gpio-keys";')
 s = s.replace('rocknix,generic-dsi', 'plumos,generic-dsi')
 s = s.replace('ROCKNIX', 'plumOS').replace('rocknix', 'plumos')
+
+# The Pixel2 uses Nintendo-style face-button positions.  Keep the event-code
+# contract from the stock DTB: physical A/PD1 is BTN_EAST and physical B/PD2
+# is BTN_SOUTH.  The upstream reconstructed DTS had only these two codes
+# reversed, which made the frontend's confirm/back mapping appear dead.
+def set_button_code(node, expected, corrected):
+    global s
+    pattern = (r'(\n\s*' + re.escape(node) +
+               r'\s*\{.*?linux,code\s*=\s*<)' + re.escape(expected) +
+               r'(>;.*?\n\s*\};)')
+    s, count = re.subn(pattern, r'\1' + corrected + r'\2', s, count=1,
+                       flags=re.S)
+    if count != 1:
+        raise SystemExit(f'expected exactly one {node} with {expected}')
+
+set_button_code('button-a', 'BTN_SOUTH', 'BTN_EAST')
+set_button_code('button-b', 'BTN_EAST', 'BTN_SOUTH')
 for key in ('joypad-name', 'joypad-vendor', 'joypad-product', 'joypad-revision',
             'amux-count', 'poll-interval'):
     s = re.sub(r'^\s*' + re.escape(key) + r'\s*=.*?;\n', '', s, flags=re.M)
