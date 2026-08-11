@@ -10807,6 +10807,19 @@ static void open_power_menu(struct ui_state *ui) {
   set_status(ui, "power menu ready");
 }
 
+static void open_power_menu_for_action(struct ui_state *ui, const char *action) {
+  size_t i;
+
+  open_power_menu(ui);
+  for (i = 0; i < POWER_ENTRY_COUNT; i++) {
+    if (strcmp(POWER_ENTRIES[i].id, action) == 0) {
+      ui->power_cursor = i;
+      break;
+    }
+  }
+  set_status(ui, "A: confirm  B: cancel");
+}
+
 static void open_favorites_screen(struct ui_state *ui) {
   ui->screen = SCREEN_FAVORITES;
   ui->rom_directory[0] = '\0';
@@ -14398,9 +14411,17 @@ static void handle_action(struct ui_state *ui, enum ui_action action) {
       } else if (strcmp(entry->action, "system:sleep") == 0) {
         run_power_action(ui, "sleep", 0);
       } else if (strcmp(entry->action, "system:reboot") == 0) {
-        run_power_action(ui, "reboot", 0);
+        if (entry->confirm) {
+          open_power_menu_for_action(ui, "reboot");
+        } else {
+          run_power_action(ui, "reboot", 0);
+        }
       } else if (strcmp(entry->action, "system:shutdown") == 0) {
-        run_power_action(ui, "shutdown", 1);
+        if (entry->confirm) {
+          open_power_menu_for_action(ui, "shutdown");
+        } else {
+          run_power_action(ui, "shutdown", 1);
+        }
       } else if (strcmp(entry->action, "menu:apps") == 0) {
         open_apps_menu(ui);
       } else if (strncmp(entry->action, "shell:", 6) == 0) {

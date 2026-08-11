@@ -32,6 +32,10 @@ grep -q 'east_is_confirm ? ACTION_A : ACTION_B' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'strcmp(device_id, "pixel2") == 0' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'open_power_menu_for_action(ui, "reboot")' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'open_power_menu_for_action(ui, "shutdown")' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'SOURCE_COMMIT=058d6651' "$ROOT_DIR/scripts/build-libretro-cores.sh"
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
     "$ROOT_DIR/package/frontend-pixel2" \
