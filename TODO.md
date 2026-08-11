@@ -1,5 +1,47 @@
 # TODO
 
+## Adopted architecture
+
+- [x] V90S update/storage design and MF frontend/emulator build historyを調査する
+- [x] Pixel2のRockchip prefix + System A/B + ext4 Runtime + FAT32 User構成を決定する
+- [x] ownership、update、rollback、first-boot provisioning contractを文書化する
+
+## Build system and app layer
+
+- [ ] Pixel2共通Docker entry pointとcomponent targetを実装する
+- [ ] frontendをSystemからapp-layer componentへ分離する
+- [ ] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
+- [ ] Pixel2向けRetroArchをpinned sourceからbuildする
+- [ ] QuickNESをpinned sourceからbuildしcomponent manifest/checksumを生成する
+- [ ] strict app-layer assemblerとmanaged/mutable path gateを実装する
+- [ ] app-layerをseedしたext4 filesystemをSD image buildへ統合する
+- [ ] canonical libretro core recipe catalogとfilter buildを実装する
+- [ ] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
+- [ ] PicoArchとstandalone emulator componentを段階的に統合する
+
+## Frontend game lifecycle
+
+- [ ] FE catalogは存在するruntime/coreだけを公開する
+- [ ] NES ROM scan -> `retroarch:quicknes` launch planをhost検証する
+- [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
+- [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
+- [ ] audio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
+- [ ] save/stateが再起動後も保持されることを実機確認する
+
+## Final partition and update contract
+
+- [ ] p1を512 MiB System A/B layoutへ変更する
+- [ ] p2を2048 MiB seed ext4 `PLUMOS_SYS`として生成する
+- [ ] first bootでp2を8192 MiBへ拡張しp3 `PLUMOS_USER`を作る
+- [ ] provisioningを中断・再開可能かつ既存p3非破壊にする
+- [ ] initramfsへSystem A/B選択、SHA-256検証、rollbackを実装する
+- [ ] frontend renderer-readyによるSystem/Runtime health promotionを実装する
+- [ ] journaled Runtime updaterと1世代rollbackを実装する
+- [ ] inactive-slot System updaterとreadback検証を実装する
+- [ ] Ed25519署名package builder/verifierと公開鍵を実装する
+- [ ] FE System Update画面とsafe reboot flowを統合する
+- [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
+
 ## Boot artifact boundary
 
 - [x] stock SDのパーティション、kernel、DTB、initramfsを読み取り専用で解析する
