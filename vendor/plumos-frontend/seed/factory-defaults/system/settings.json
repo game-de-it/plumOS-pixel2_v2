@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "volume": 8,
+  "audio_output": "speaker",
+  "brightness": 10,
+  "lid_suspend_enabled": true
+}

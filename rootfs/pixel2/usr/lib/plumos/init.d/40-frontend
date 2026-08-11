@@ -1,0 +1,77 @@
+#!/bin/sh
+set -u
+
+bb=/bin/busybox
+SEED=/usr/share/plumos/frontend-seed
+ROOT=/state/plumos/frontend
+LOG=/state/plumos/logs/frontend.log
+PID=/run/plumos/frontend.pid
+
+find_input() {
+    for event in /sys/class/input/event*; do
+        [ -r "$event/device/name" ] || continue
+        name=$($bb cat "$event/device/name" 2>/dev/null || true)
+        case "$name" in
+            *gkd-pixel2*|*gpio-keys*|*gamepad*)
+                printf '/dev/input/%s\n' "${event##*/}"
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+start_frontend() {
+    $bb mkdir -p "$ROOT" /run/plumos /state/plumos/logs
+    $bb cp -a "$SEED/." "$ROOT/" >>"$LOG" 2>&1 || {
+        printf 'frontend=result-failed reason=seed-copy\n' >>"$LOG"
+        return 1
+    }
+    $bb mkdir -p "$ROOT/bin" "$ROOT/config/frontend" "$ROOT/config/system" \
+        "$ROOT/state/frontend" "$ROOT/logs"
+    $bb ln -sf /usr/bin/plumos-frontend-pixel2 \
+        "$ROOT/bin/plumos-frontend-pixel2"
+    $bb ln -sf /usr/bin/plumos-library-scan "$ROOT/bin/plumos-library-scan"
+    [ -s "$ROOT/config/frontend/settings.json" ] || \
+        $bb cp "$ROOT/factory-defaults/frontend/settings.json" \
+            "$ROOT/config/frontend/settings.json"
+    [ -s "$ROOT/config/system/settings.json" ] || \
+        $bb cp "$ROOT/factory-defaults/system/settings.json" \
+            "$ROOT/config/system/settings.json"
+
+    input=$(find_input || true)
+    [ -n "$input" ] || input=/dev/input/event0
+    export PLUMOS_ROOT="$ROOT"
+    export PLUMOS_SDCARD_ROOT=/roms
+    export PLUMOS_ROM_ROOT=/roms
+    export PLUMOS_DEVICE_ID=pixel2
+    export PLUMOS_DEVICE_NAME='GKD Pixel2'
+    export PLUMOS_RENDERER=fbdev
+    export PLUMOS_FB=/dev/fb0
+    export PLUMOS_DRM_DEVICE=/dev/dri/card0
+    export PLUMOS_FBDEV_ROTATION=none
+    export PLUMOS_INPUT_EVENT="$input"
+    export PLUMOS_BUSYBOX=/bin/busybox
+    export PLUMOS_FRONTEND_MODE=manual
+    export PLUMOS_INPUT_TRACE_PATH=/run/plumos/frontend-input.log
+
+    printf 'frontend=result-starting renderer=fbdev input=%s fb=/dev/fb0\n' \
+        "$input" >>"$LOG"
+    PLUMOS_ROOT="$ROOT" /usr/bin/plumos-library-scan --defer-thumbnails \
+        >>"$LOG" 2>&1 || printf 'frontend=warning scanner-failed\n' >>"$LOG"
+    /usr/bin/plumos-frontend-pixel2 --renderer fbdev --fb /dev/fb0 \
+        --event "$input" >>"$LOG" 2>&1 &
+    frontend_pid=$!
+    printf '%s\n' "$frontend_pid" >"$PID"
+    $bb sleep 1
+    if ! $bb kill -0 "$frontend_pid" 2>/dev/null; then
+        printf 'frontend=result-failed reason=early-exit\n' >>"$LOG"
+        return 1
+    fi
+    printf 'frontend=result-started pid=%s\n' "$frontend_pid" >>"$LOG"
+}
+
+case "${1:-}" in
+    start) start_frontend ;;
+    *) printf 'usage: %s start\n' "$0" >&2; exit 2 ;;
+esac

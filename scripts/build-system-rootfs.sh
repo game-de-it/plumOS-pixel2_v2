@@ -35,7 +35,9 @@ mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR" \
 cp -a "$ROOT_DIR/rootfs/pixel2/." "$ROOTFS_DIR/"
 "$ROOT_DIR/scripts/build-adbd-overlay.sh" --inside "$ROOTFS_DIR"
 "$ROOT_DIR/scripts/install-kernel-runtime.sh" "$ROOTFS_DIR"
+"$ROOT_DIR/scripts/install-frontend-rootfs.sh" "$ROOTFS_DIR"
 chmod 0755 "$ROOTFS_DIR/sbin/init" "$ROOTFS_DIR/usr/lib/plumos/init.d/"*
+chmod 0755 "$ROOTFS_DIR/usr/bin/plumos-diagnostics"
 chmod 0600 "$ROOTFS_DIR/etc/shadow"
 
 copy_elf() {

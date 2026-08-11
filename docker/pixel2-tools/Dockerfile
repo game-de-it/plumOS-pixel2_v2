@@ -6,7 +6,8 @@ RUN apt-get update \
         android-liblog-dev android-libutils-dev bc bison build-essential busybox-static \
         ca-certificates clang curl device-tree-compiler dosfstools dpkg-dev \
         dropbear-bin e2fsprogs file flex git iproute2 iw jq kmod libcap-dev \
-        libelf-dev libselinux1-dev libssl-dev mtools parted python3 rsync \
+        libdrm-dev libelf-dev libfreetype6-dev libpng-dev libselinux1-dev \
+        libssl-dev mtools parted pkg-config python3 rsync \
         squashfs-tools util-linux \
         wpasupplicant xz-utils \
     && rm -rf /var/lib/apt/lists/*

@@ -19,12 +19,20 @@ start_adbd() {
     }
     [ -d /sys/kernel/config/usb_gadget ] || \
         mount -t configfs configfs /sys/kernel/config
+    for role_file in /sys/class/usb_role/*/role; do
+        [ -w "$role_file" ] || continue
+        printf 'device\n' >"$role_file" 2>>"$LOG" || true
+        log "usb_role path=$role_file value=$(cat "$role_file" 2>/dev/null || true)"
+    done
+    mdev -s 2>/dev/null || true
+    sleep 1
     set -- /sys/class/udc/*
     [ -e "$1" ] || {
         log 'result=failed reason=udc-missing'
         return 1
     }
     udc=${1##*/}
+    log "udc=result-found name=$udc state=$(cat "$1/state" 2>/dev/null || true)"
 
     mkdir -p "$GADGET/strings/0x409" \
         "$GADGET/configs/c.1/strings/0x409" \

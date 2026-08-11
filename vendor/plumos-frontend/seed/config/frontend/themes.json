@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "themes": [
+    {
+      "id": "default",
+      "display_name": "Default",
+      "path": "/state/plumos/frontend/themes/default/theme.json",
+      "builtin_fallback": true
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "apps": [
+    {
+      "id": "scraping",
+      "display_name": "Scraping",
+      "kind": "tool",
+      "launch_profile": "internal:scraping",
+      "visible": true,
+      "menu": "apps"
+    },
+    {
+      "id": "file_manager",
+      "display_name": "File Manager",
+      "kind": "tool",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-nextcommander-launch",
+      "visible": true,
+      "menu": "apps"
+    },
+    {
+      "id": "music_player",
+      "display_name": "Music Player",
+      "kind": "tool",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-music-player-launch",
+      "visible": true,
+      "menu": "apps"
+    },
+    {
+      "id": "retroarch",
+      "display_name": "RetroArch",
+      "kind": "emulator",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-retroarch-menu-launch",
+      "visible": true,
+      "menu": "apps"
+    },
+    {
+      "id": "pyxel_setup",
+      "display_name": "Pyxel Setup",
+      "kind": "tool",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-pyxel-setup install",
+      "show_results": true,
+      "visible": true,
+      "menu": "apps"
+    },
+    {
+      "id": "portmaster",
+      "display_name": "PortMaster",
+      "kind": "tool",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-portmaster-launch",
+      "visible": true,
+      "menu": "apps"
+    },
+    {
+      "id": "portmaster_update",
+      "display_name": "Update PortMaster",
+      "kind": "tool",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-portmaster-update install stable",
+      "confirm": true,
+      "show_results": true,
+      "visible": true,
+      "menu": "apps"
+    },
+    {
+      "id": "thumbnail-plan",
+      "display_name": "Thumbnail Plan",
+      "kind": "tool",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-thumbnail-scraper --all --limit 50",
+      "show_results": true,
+      "visible": false,
+      "menu": "apps"
+    },
+    {
+      "id": "thumbnail-fetch",
+      "display_name": "Fetch Thumbnails",
+      "kind": "tool",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-thumbnail-scraper --fetch --all --limit 20",
+      "show_results": true,
+      "visible": false,
+      "menu": "apps"
+    },
+    {
+      "id": "thumbnail-results",
+      "display_name": "Thumbnail Results",
+      "kind": "info",
+      "launch_profile": "internal:thumbnail-results",
+      "visible": false,
+      "menu": "apps"
+    },
+    {
+      "id": "settings",
+      "display_name": "Settings",
+      "kind": "settings",
+      "launch_profile": "internal:settings",
+      "visible": false,
+      "menu": "start"
+    },
+    {
+      "id": "network",
+      "display_name": "Network",
+      "kind": "settings",
+      "launch_profile": "internal:network",
+      "visible": false,
+      "menu": "start"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "menus": [
+    {
+      "id": "start",
+      "display_name": "START",
+      "entries": [
+        {
+          "id": "ui-settings",
+          "display_name": "UI Settings",
+          "kind": "internal",
+          "action": "internal:ui-settings"
+        },
+        {
+          "id": "system-settings",
+          "display_name": "System Settings",
+          "kind": "internal",
+          "action": "internal:system-settings"
+        },
+        {
+          "id": "network-settings",
+          "display_name": "Network Settings",
+          "kind": "internal",
+          "action": "internal:network-settings"
+        },
+        {
+          "id": "apps",
+          "display_name": "Apps",
+          "kind": "submenu",
+          "action": "menu:apps"
+        },
+        {
+          "id": "help",
+          "display_name": "HELP",
+          "kind": "internal",
+          "action": "internal:help"
+        },
+        {
+          "id": "reboot",
+          "display_name": "Reboot",
+          "kind": "system",
+          "action": "system:reboot",
+          "confirm": true
+        },
+        {
+          "id": "shutdown",
+          "display_name": "Shutdown",
+          "kind": "system",
+          "action": "system:shutdown",
+          "confirm": true
+        }
+      ]
+    }
+  ]
+}

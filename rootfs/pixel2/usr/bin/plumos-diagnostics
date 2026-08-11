@@ -1,0 +1,31 @@
+#!/bin/sh
+set -u
+
+bb=/bin/busybox
+printf 'plumos-diagnostics=result-start device=pixel2\n'
+printf 'kernel='; $bb uname -a
+printf '\n[mounts]\n'; $bb cat /proc/mounts
+printf '\n[cmdline]\n'; $bb cat /proc/cmdline
+printf '\n[usb-role]\n'
+for role in /sys/class/usb_role/*/role; do
+    [ -e "$role" ] || continue
+    printf '%s=' "$role"; $bb cat "$role" 2>/dev/null || true
+done
+printf '\n[udc]\n'
+for udc in /sys/class/udc/*; do
+    [ -e "$udc" ] || continue
+    printf '%s state=' "${udc##*/}"
+    $bb cat "$udc/state" 2>/dev/null || true
+done
+printf '\n[drm]\n'
+for status in /sys/class/drm/*/status; do
+    [ -e "$status" ] || continue
+    printf '%s=' "$status"; $bb cat "$status" 2>/dev/null || true
+done
+printf '\n[framebuffer]\n'; $bb ls -l /dev/fb* 2>/dev/null || true
+printf '\n[input]\n'; $bb cat /proc/bus/input/devices 2>/dev/null || true
+printf '\n[services]\n'; $bb ls -l /run/plumos 2>/dev/null || true
+printf '\n[adb-log]\n'; $bb cat /state/plumos/logs/adbd.log 2>/dev/null || true
+printf '\n[frontend-log]\n'; $bb cat /state/plumos/logs/frontend.log 2>/dev/null || true
+printf '\n[dmesg-tail]\n'; $bb dmesg | $bb tail -n 200
+printf 'plumos-diagnostics=result-end\n'

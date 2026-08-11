@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "id": "default-horizontal",
+  "target": "graphic",
+  "display_name": "Default Horizontal",
+  "description": "Default plumOS Graphic horizontal theme. Text mode ignores theme colors, layout, and assets.",
+  "layout_preset": "strip_preview",
+  "assets": {
+    "font_ui": null,
+    "font_fallback": "system_cjk",
+    "background": null,
+    "system_logo_root": "logos/systems",
+    "system_icon_root": "icons/systems",
+    "placeholder_thumbnail": null,
+    "sound_effect_root": "sounds"
+  },
+  "colors": {
+    "background": "#030404",
+    "foreground": "#b8d0ca",
+    "muted": "#85a6a6",
+    "accent": "#ff850d",
+    "panel": "#1f2b2e",
+    "panel_inner": "#050808",
+    "media_panel": "#1c2a2e",
+    "selection_background": "#243a33",
+    "selection_foreground": "#ffe67a",
+    "danger": "#ff140a"
+  },
+  "graphic_mode": {
+    "top_layout": "tile_strip",
+    "rom_layout": "list_preview",
+    "transition": "slide",
+    "transition_ms": 1000,
+    "transition_axis": "horizontal",
+    "transition_easing": "smoothstep",
+    "thumbnail_fit": "contain",
+    "thumbnail_frame": "simple",
+    "missing_thumbnail": "text_fallback"
+  },
+  "spacing": {
+    "screen_padding": 8,
+    "row_gap": 2,
+    "column_gap": 10
+  },
+  "behavior_policy": {
+    "theme_may_change_input": false,
+    "theme_may_change_menu_actions": false,
+    "theme_may_change_launch_profiles": false,
+    "theme_may_change_rom_scan": false,
+    "theme_may_change_resume": false
+  }
+}
