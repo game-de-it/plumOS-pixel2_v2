@@ -12,6 +12,7 @@ for path in \
     bin/plumos-display-control bin/plumos-volume-control \
     bin/plumos-network-control bin/plumos-network-services \
     emulator/lib/libpthread.so.0 \
+    factory-defaults/alsa/alsa.conf \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
     config/system/input-map.env config/system/input-map.json \
     components/frontend/manifest.json components/retroarch/manifest.json \

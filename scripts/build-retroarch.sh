@@ -46,6 +46,7 @@ done
 rm -rf "$OUT_ROOT"
 mkdir -p "$PLUMOS_DIR/bin" "$PLUMOS_DIR/emulator/lib" \
     "$PLUMOS_DIR/factory-defaults/retroarch/autoconfig/udev" \
+    "$PLUMOS_DIR/factory-defaults/alsa" \
     "$PLUMOS_DIR/licenses" "$COMPONENT_DIR"
 install -m 0755 "$WORK/retroarch" "$PLUMOS_DIR/bin/retroarch"
 strip "$PLUMOS_DIR/bin/retroarch" 2>/dev/null || true
@@ -53,6 +54,8 @@ install -m 0644 "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg" \
     "$PLUMOS_DIR/factory-defaults/retroarch/retroarch.cfg"
 install -m 0644 "$ROOT_DIR/package/retroarch-pixel2/gkd-pixel2-joypad.cfg" \
     "$PLUMOS_DIR/factory-defaults/retroarch/autoconfig/udev/gkd-pixel2-joypad.cfg"
+install -m 0644 "$ROOT_DIR/package/retroarch-pixel2/alsa.conf" \
+    "$PLUMOS_DIR/factory-defaults/alsa/alsa.conf"
 install -m 0644 "$WORK/COPYING" "$PLUMOS_DIR/licenses/RetroArch-COPYING"
 
 ldd "$PLUMOS_DIR/bin/retroarch" 2>/dev/null | awk '/=> \// {print $3} /^\// {print $1}' |
@@ -94,7 +97,7 @@ cat >"$COMPONENT_DIR/manifest.json" <<EOF
 EOF
 (
     cd "$PLUMOS_DIR"
-    find bin emulator factory-defaults/retroarch licenses -type f -print | sort |
+    find bin emulator factory-defaults licenses -type f -print | sort |
         while IFS= read -r file; do sha256sum "$file"; done
     sha256sum components/retroarch/manifest.json
 ) >"$COMPONENT_DIR/checksums.sha256"

@@ -4,6 +4,7 @@ set -eu
 bb=/bin/busybox
 root=${PLUMOS_ROOT:-/mnt/plumos}
 rom_root=${PLUMOS_ROM_ROOT:-/mnt/plumos-user/roms}
+sdcard_root=${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}
 runtime_root=${PLUMOS_RUNTIME_ROOT:-/run/plumos}
 input_env=${PLUMOS_INPUT_MAP_ENV:-$root/config/system/input-map.env}
 system_id=
@@ -33,21 +34,36 @@ case "$system_id" in
         ;;
 esac
 core_root=$($bb readlink -f "$root/cores")
-rom_root=$($bb readlink -f "$rom_root")
+rom_root=$($bb readlink -f "$rom_root" 2>/dev/null || true)
+sdcard_rom_root=$($bb readlink -f "$sdcard_root/roms" 2>/dev/null || true)
+default_rom_root=$($bb readlink -f /mnt/plumos-user/roms 2>/dev/null || true)
+bind_rom_root=$($bb readlink -f /roms 2>/dev/null || true)
 core=$($bb readlink -f "$core")
 rom=$($bb readlink -f "$rom")
 case "$core" in "$core_root"/*_libretro.so) ;; *) exit 2 ;; esac
-case "$rom" in "$rom_root"/*) ;; *) exit 2 ;; esac
+rom_allowed=0
+for candidate_root in "$rom_root" "$sdcard_rom_root" "$default_rom_root" "$bind_rom_root"; do
+    [ -n "$candidate_root" ] || continue
+    case "$rom" in "$candidate_root"/*) rom_allowed=1 ;; esac
+done
+[ "$rom_allowed" = 1 ] || exit 2
 [ -f "$core" ] && [ -f "$rom" ] || exit 1
 
 config="$root/config/retroarch/retroarch.cfg"
 factory="$root/factory-defaults/retroarch/retroarch.cfg"
-$bb mkdir -p "$root/config/retroarch" "$root/saves/$system_id" \
+alsa_config="$root/config/alsa/alsa.conf"
+alsa_factory="$root/factory-defaults/alsa/alsa.conf"
+$bb mkdir -p "$root/config/retroarch" "$root/config/alsa" "$root/saves/$system_id" \
     "$root/states/$system_id" "$root/logs" "$runtime_root/retroarch"
 if [ ! -s "$config" ]; then
     $bb cp "$factory" "$config.next"
     $bb sync
     $bb mv "$config.next" "$config"
+fi
+if [ ! -s "$alsa_config" ] && [ -s "$alsa_factory" ]; then
+    $bb cp "$alsa_factory" "$alsa_config.next"
+    $bb sync
+    $bb mv "$alsa_config.next" "$alsa_config"
 fi
 
 append="$runtime_root/retroarch/append.cfg"
@@ -60,6 +76,9 @@ append="$runtime_root/retroarch/append.cfg"
 export HOME="$root/state/retroarch/home"
 export XDG_CONFIG_HOME="$root/config"
 export XDG_CACHE_HOME="$root/state/retroarch/cache"
+if [ -s "$alsa_config" ]; then
+    export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$alsa_config}"
+fi
 export LD_LIBRARY_PATH="$root/emulator/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 $bb mkdir -p "$HOME" "$XDG_CACHE_HOME"
 printf 'retroarch=result-start system=%s core=%s rom=%s\n' \
