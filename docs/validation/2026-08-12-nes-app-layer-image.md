@@ -73,6 +73,13 @@ fixed clock. This removes host copy time from the filesystem hash.
 
 ## Physical-device gate
 
+ADB inventory after the host build found device
+`plumos-pixel2-fb4fbe10585b4013` with model `GameKiddy GKD Pixel2`. The running
+bring-up image still mounted the legacy layout as `/boot`, `/state`, and
+`/roms`. No NES test content was present under `/roms`; only macOS FAT metadata
+was found. Consequently, the generated image has not yet been flashed and the
+game path has not been claimed as physically validated.
+
 Before this becomes the default image, flash a separate test SD and confirm:
 
 - frontend scans a user-provided NES ROM and releases display/input ownership
@@ -81,4 +88,3 @@ Before this becomes the default image, flash a separate test SD and confirm:
 - return to the frontend after emulator exit
 - save and state persistence after reboot
 - ADB remains available for log capture
-
