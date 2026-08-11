@@ -13,7 +13,7 @@ find_input() {
         [ -r "$event/device/name" ] || continue
         name=$($bb cat "$event/device/name" 2>/dev/null || true)
         case "$name" in
-            *gkd-pixel2*|*gamepad*)
+            *pixel2_joypad*|*gamekiddy-joypad*|*gkd-pixel2*|*gamepad*)
                 printf '/dev/input/%s\n' "${event##*/}"
                 return 0
                 ;;
