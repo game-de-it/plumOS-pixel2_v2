@@ -14690,6 +14690,9 @@ static void handle_action(struct ui_state *ui, enum ui_action action) {
 }
 
 static enum ui_action action_from_key_code(unsigned int code) {
+  const char *ab_layout = getenv("PLUMOS_INPUT_AB_LAYOUT");
+  int east_is_confirm = ab_layout && strcmp(ab_layout, "east-confirm") == 0;
+
   switch (code) {
   case KEY_UP:
   case BTN_DPAD_UP:
@@ -14704,14 +14707,16 @@ static enum ui_action action_from_key_code(unsigned int code) {
   case BTN_DPAD_RIGHT:
     return ACTION_RIGHT;
   case KEY_SPACE:
-  case BTN_SOUTH:
   case KEY_Z:
   case 7:
     return ACTION_A;
+  case BTN_SOUTH:
+    return east_is_confirm ? ACTION_B : ACTION_A;
   case KEY_LEFTCTRL:
-  case BTN_EAST:
   case 9:
     return ACTION_B;
+  case BTN_EAST:
+    return east_is_confirm ? ACTION_A : ACTION_B;
   case KEY_LEFTSHIFT:
   case BTN_NORTH:
   case KEY_X:

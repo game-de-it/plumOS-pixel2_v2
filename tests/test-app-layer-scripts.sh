@@ -26,6 +26,10 @@ grep -q 'required_library in libpthread.so.0' \
     "$ROOT_DIR/scripts/build-retroarch.sh"
 grep -q 'emulator/lib/libpthread.so.0' \
     "$ROOT_DIR/scripts/verify-app-layer.sh"
+grep -q 'PLUMOS_INPUT_AB_LAYOUT=east-confirm' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'east_is_confirm ? ACTION_A : ACTION_B' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'SOURCE_COMMIT=058d6651' "$ROOT_DIR/scripts/build-libretro-cores.sh"
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
     "$ROOT_DIR/package/frontend-pixel2" \
