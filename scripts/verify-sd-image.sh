@@ -10,6 +10,8 @@ PREFIX="${2:-}"
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 
 if ! command -v parted >/dev/null 2>&1; then
+    IMAGE="$(CDPATH= cd -- "$(dirname -- "$IMAGE")" && pwd)/$(basename -- "$IMAGE")"
+    PREFIX="$(CDPATH= cd -- "$(dirname -- "$PREFIX")" && pwd)/$(basename -- "$PREFIX")"
     case "$IMAGE:$PREFIX" in
         "$ROOT_DIR"/*:"$ROOT_DIR"/*) ;;
         *) printf 'error: inputs must be under repository for Docker verification\n' >&2; exit 2 ;;
