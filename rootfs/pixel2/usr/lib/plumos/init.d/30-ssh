@@ -1,0 +1,19 @@
+#!/bin/sh
+set -u
+
+KEYS=/state/plumos/root/.ssh/authorized_keys
+HOST_DIR=/state/plumos/ssh
+HOST_KEY=$HOST_DIR/dropbear_ed25519_host_key
+LOG=/state/plumos/logs/ssh.log
+
+[ "${1:-}" = start ] || exit 2
+[ -s "$KEYS" ] || {
+    printf '%s service=ssh result=disabled reason=authorized-keys-missing\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$LOG"
+    exit 0
+}
+chmod 0700 /state/plumos/root/.ssh
+chmod 0600 "$KEYS"
+mkdir -p "$HOST_DIR"
+[ -s "$HOST_KEY" ] || dropbearkey -t ed25519 -f "$HOST_KEY" >>"$LOG" 2>&1
+exec dropbear -F -E -s -g -r "$HOST_KEY" -p 22 >>"$LOG" 2>&1 &

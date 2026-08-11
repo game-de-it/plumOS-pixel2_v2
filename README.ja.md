@@ -16,3 +16,15 @@ Pixel2対応kernelをbuildします。stockのSquashFS、init、systemd unit、f
 - 初期bring-upではUSB ADBを既定の保守経路とし、USB Wi-Fiは任意機能とする
 
 進捗と実機gateは `TODO.md` と `docs/` を参照してください。
+
+## System rootfs
+
+arm64 Docker toolchainを使ってplumOS所有のSquashFSを生成する。
+
+```sh
+./scripts/build-tools-image.sh
+./scripts/build-system-rootfs.sh
+```
+
+成果物は`output/system-rootfs/pixel2/payload/SYSTEM`に生成され、build中に
+再展開、主要binaryの実行、manifest、旧distribution名の不在を検証する。

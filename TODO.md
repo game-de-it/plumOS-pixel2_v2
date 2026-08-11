@@ -12,15 +12,15 @@
 
 ## plumOS System
 
-- [ ] plumOS Pixel2 rootfsを再現可能に生成する
+- [x] plumOS Pixel2 rootfsを再現可能に生成する
 - [ ] plumOS initでboot FAT、System、state、ROM領域をmountする
-- [ ] stock由来名称・unit・frontendがSystemへ混入しないgateを実装する
+- [x] stock由来名称・unit・frontendがSystemへ混入しないgateを実装する
 - [ ] Pixel2 kernel moduleとfirmwareをboot artifactとして分離する
 
 ## Connectivity
 
 - [ ] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
-- [ ] USB Wi-Fi dongle用firmware/module検出とwpa_supplicant経路を実装する
+- [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [ ] ADB shell、USB Wi-Fi、SSHを実機検証する
 
 ## Image and hardware validation

@@ -1,0 +1,4 @@
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export HOME=/root
+export PS1='plumOS-pixel2# '
+umask 022

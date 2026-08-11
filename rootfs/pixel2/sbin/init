@@ -1,0 +1,60 @@
+#!/bin/sh
+set -u
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH HOME=/root HOSTNAME=plumos-pixel2
+
+bb=/bin/busybox
+$bb mountpoint -q /proc || $bb mount -t proc proc /proc
+$bb mountpoint -q /sys || $bb mount -t sysfs sysfs /sys
+$bb mountpoint -q /dev || $bb mount -t devtmpfs devtmpfs /dev
+$bb mkdir -p /dev/pts /run /tmp /boot /state /roms /root
+$bb mountpoint -q /dev/pts || $bb mount -t devpts devpts /dev/pts
+$bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run 2>/dev/null || true
+$bb mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp 2>/dev/null || true
+$bb hostname "$HOSTNAME"
+
+mkdir -p /run/plumos
+exec >/dev/console 2>&1
+printf 'plumos-init=result-start device=pixel2\n'
+
+echo /sbin/mdev >/proc/sys/kernel/hotplug 2>/dev/null || true
+$bb mdev -s
+
+find_label() {
+    $bb blkid -L "$1" 2>/dev/null || true
+}
+
+mount_partition() {
+    target=$1
+    label=$2
+    fallback=$3
+    options=$4
+    device=$(find_label "$label")
+    [ -n "$device" ] || device=$fallback
+    [ -b "$device" ] || return 1
+    $bb mount -o "$options" "$device" "$target"
+}
+
+mount_partition /boot PLUMOS_BOOT /dev/mmcblk0p1 ro 2>/dev/null || \
+    printf 'plumos-init=warn mount=boot\n'
+if ! mount_partition /state PLUMOS_STATE /dev/mmcblk0p2 rw 2>/dev/null; then
+    $bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /state
+    printf 'plumos-init=warn mount=state fallback=tmpfs\n'
+fi
+mount_partition /roms PLUMOS_ROMS /dev/mmcblk0p3 rw 2>/dev/null || \
+    printf 'plumos-init=warn mount=roms\n'
+
+mkdir -p /state/plumos/config /state/plumos/logs /state/plumos/root/.ssh
+chmod 0700 /state/plumos/root /state/plumos/root/.ssh
+$bb mount --bind /state/plumos/root /root 2>/dev/null || true
+
+for service in /usr/lib/plumos/init.d/*; do
+    [ -x "$service" ] || continue
+    printf 'plumos-init=service-start name=%s\n' "${service##*/}"
+    "$service" start || printf 'plumos-init=service-failed name=%s rc=%s\n' \
+        "${service##*/}" "$?"
+done
+
+printf 'plumos-init=result-ready console=tty1\n'
+exec $bb setsid $bb cttyhack /bin/sh -l
