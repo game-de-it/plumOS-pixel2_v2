@@ -26,7 +26,7 @@
 
 ## Image and hardware validation
 
-- [ ] MBR、Rockchip boot領域、boot FAT、state ext4、ROMS FATを生成する
-- [ ] image内のpartition境界、hash、SquashFS内容をhost検証する
+- [x] MBR、Rockchip boot領域、boot FAT、state ext4、ROMS FATを生成する
+- [x] image内のpartition境界、hash、SquashFS内容をhost検証する
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [ ] app-layer manifest/checksumを実機deploy単位で検証する

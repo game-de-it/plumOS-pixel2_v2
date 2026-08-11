@@ -44,3 +44,18 @@ Linux 6.12.79、Pixel2/PX30S hardware support、plumOS initramfsから
 hardware supportはcommit固定し、gamepadは標準`gpio-keys`、DSI compatibleは
 `plumos,generic-dsi`としてbuildする。第三者codeの出所とlicenseは
 `output/kernel/pixel2/source.manifest`と`licenses/`へ記録する。
+
+## SD image
+
+stock SDの先頭16 MiBを読み取り専用で一度だけ採取した後、plumOS kernel、
+DTB、SYSTEMから2 GiBのSD imageを生成する。
+
+```sh
+./scripts/capture-stock-prefix-macos.sh /dev/disk4
+./scripts/build-kernel.sh
+./scripts/build-system-rootfs.sh
+./scripts/build-sd-image.sh
+```
+
+成果物は`output/image/pixel2/`へ生成する。元のstock SDは変更せず、書き込みと
+実機試験には必ず別のSDカードを使用する。
