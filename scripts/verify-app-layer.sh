@@ -31,7 +31,7 @@ if grep -Eq 'plumos-(nextcommander|music-player|retroarch-menu|pyxel|portmaster)
     printf 'error: unavailable application exposed by Pixel2 frontend\n' >&2
     exit 1
 fi
-foreign_models='M''F|V90''S|M''MF|A3''0|Miy''oo'
+foreign_models='M[F]|V9[0]S|M[M]F|A3[0]|Miy[o]o'
 if find "$ROOT/config" "$ROOT/share" "$ROOT/licenses" -type f \
     \( -name '*.json' -o -name '*.lang' -o -name '*.manifest' \
        -o -name '*.txt' -o -name 'LICENSE' \) -exec \

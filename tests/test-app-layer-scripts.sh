@@ -49,7 +49,7 @@ if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
     printf 'error: foreign distribution identity in Pixel2 app sources\n' >&2
     exit 1
 fi
-foreign_models='M''F|V90''S|M''MF|A3''0|Miy''oo'
+foreign_models='M[F]|V9[0]S|M[M]F|A3[0]|Miy[o]o'
 if grep -R -I -E -i "(^|[^[:alnum:]_])($foreign_models)([^[:alnum:]_]|$)" \
     "$ROOT_DIR/package/frontend-pixel2" \
     "$ROOT_DIR/package/app-layer-pixel2" \
