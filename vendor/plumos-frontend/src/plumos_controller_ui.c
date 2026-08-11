@@ -14716,9 +14716,9 @@ static void handle_action(struct ui_state *ui, enum ui_action action) {
 static enum ui_action action_from_key_code(unsigned int code) {
   const char *ab_layout = getenv("PLUMOS_INPUT_AB_LAYOUT");
   const char *device_id = getenv("PLUMOS_DEVICE_ID");
-  int pixel2_uses_south_confirm = device_id && strcmp(device_id, "pixel2") == 0;
-  int east_is_confirm = !pixel2_uses_south_confirm && ab_layout &&
-                        strcmp(ab_layout, "east-confirm") == 0;
+  int east_is_confirm =
+      (ab_layout && strcmp(ab_layout, "east-confirm") == 0) ||
+      (device_id && strcmp(device_id, "pixel2") == 0);
 
   switch (code) {
   case KEY_UP:
@@ -15700,7 +15700,9 @@ static int run_event_loop(struct ui_state *ui, const char *event_path) {
     }
 
     if (action != ACTION_NONE) {
+      enum ui_screen screen_before = ui->screen;
       handle_action(ui, action);
+      trace_dispatched_action(ui, action, screen_before);
       if (action == ACTION_QUIT || ui->exit_requested) {
         break;
       }
