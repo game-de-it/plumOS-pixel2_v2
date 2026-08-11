@@ -1,9 +1,79 @@
 #!/bin/sh
 set -eu
 
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
 bb=${PLUMOS_BUSYBOX:-/bin/busybox}
 action=
 dry_run=0
+log_dir=${PLUMOS_POWER_LOG_DIR:-/state/plumos/logs}
+log_file=$log_dir/power.log
+
+mkdir -p "$log_dir" 2>/dev/null || true
+
+log() {
+    printf '%s\n' "$*"
+    printf '%s\n' "$*" >>"$log_file" 2>/dev/null || true
+}
+
+is_mounted() {
+    $bb grep -qs " $1 " /proc/mounts 2>/dev/null
+}
+
+stop_pid_file() {
+    pid_file=$1
+    name=$2
+    [ -s "$pid_file" ] || return 0
+    pid=$($bb cat "$pid_file" 2>/dev/null || true)
+    case "$pid" in
+        ''|*[!0-9]*|1|$$) return 0 ;;
+    esac
+    if $bb kill -0 "$pid" 2>/dev/null; then
+        log "power=stop-process name=$name pid=$pid signal=TERM"
+        $bb kill "$pid" 2>/dev/null || true
+        for _ in 1 2 3; do
+            $bb kill -0 "$pid" 2>/dev/null || break
+            $bb sleep 1
+        done
+        if $bb kill -0 "$pid" 2>/dev/null; then
+            log "power=stop-process name=$name pid=$pid signal=KILL"
+            $bb kill -9 "$pid" 2>/dev/null || true
+        fi
+    fi
+}
+
+umount_if_mounted() {
+    target=$1
+    is_mounted "$target" || return 0
+    for _ in 1 2 3; do
+        if $bb umount "$target" 2>/dev/null; then
+            log "power=unmount-result target=$target rc=0"
+            return 0
+        fi
+        $bb sleep 1
+    done
+    log "power=unmount-result target=$target rc=1"
+    return 1
+}
+
+prepare_power_transition() {
+    log "power=prepare-start action=$action"
+    stop_pid_file /run/plumos/frontend.pid frontend
+    umount_if_mounted /roms || true
+    umount_if_mounted /mnt/plumos-user || true
+    $bb sync
+    log "power=prepare-end action=$action"
+}
+
+rk817_dev_off() {
+    command -v i2cget >/dev/null 2>&1 || return 1
+    command -v i2cset >/dev/null 2>&1 || return 1
+    value=$(i2cget -f -y 0 0x20 0xf4 2>/dev/null) || return 1
+    value=$((value | 0x01))
+    log "$(printf 'power=shutdown-method method=rk817-dev-off bus=0 addr=0x20 reg=0xf4 value=0x%02x' "$value")"
+    i2cset -f -y 0 0x20 0xf4 "$value"
+}
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -25,18 +95,25 @@ case "$action" in
     *) printf 'plumos-safe-shutdown: reboot or shutdown action required\n' >&2; exit 2 ;;
 esac
 
-printf 'power=result-requested device=pixel2 action=%s dry_run=%s\n' \
+log "$(printf 'power=result-requested device=pixel2 action=%s dry_run=%s' \
     "$action" "$dry_run"
+)"
 "$bb" sync
 [ "$dry_run" -eq 0 ] || exit 0
+prepare_power_transition
 
 case "$action" in
     reboot)
         if [ -w /proc/sysrq-trigger ]; then
-            printf 'power=reboot-method method=sysrq-trigger-b\n'
+            log 'power=reboot-method method=sysrq-trigger-b'
             printf b >/proc/sysrq-trigger
         fi
         exec "$bb" reboot -f
         ;;
-    shutdown) exec "$bb" poweroff -f ;;
+    shutdown)
+        rk817_dev_off || log 'power=shutdown-method method=rk817-dev-off rc=1'
+        $bb sleep 5
+        log 'power=shutdown-method method=busybox-poweroff-fallback'
+        exec "$bb" poweroff -f
+        ;;
 esac
