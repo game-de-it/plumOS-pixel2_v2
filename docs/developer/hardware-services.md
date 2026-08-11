@@ -1,0 +1,62 @@
+# Hardware Services
+
+## Input
+
+The Pixel2 joypad event is `pixel2_joypad`. The shared input-map contract lives
+at:
+
+```text
+/mnt/plumos/config/system/input-map.env
+/mnt/plumos/config/system/input-map.json
+```
+
+Known face-button contract:
+
+| Physical | evdev code | joy button |
+| --- | ---: | ---: |
+| A | 305 | 1 |
+| B | 304 | 0 |
+| X | 307 | 3 |
+| Y | 308 | 4 |
+
+`PLUMOS_INPUT_AB_LAYOUT=east-confirm` makes the physical A button confirm in
+the FE while keeping RetroArch and standalone launchers on the shared contract.
+
+## Global Volume and Brightness
+
+The hardware-key daemon is based on the MF/V90S service contract:
+
+- plain volume keys adjust logical volume;
+- SELECT + volume keys adjust backlight brightness;
+- repeated holds repeat at a bounded interval;
+- the final value is persisted after idle.
+
+Pixel2 volume is currently `pixel2-state-only` because the RK817 mixer command
+backend is not finalized. Brightness uses the kernel PWM backlight sysfs path:
+
+```text
+/sys/class/backlight/backlight/brightness
+```
+
+## Display
+
+The FE uses fbdev on `/dev/fb0` with `PLUMOS_FBDEV_ROTATION=ccw`. Brightness is
+20 logical steps mapped to the 0..255 hardware range.
+
+## Audio
+
+The RK817 ALSA card is visible as `rockchiprk817`, but the final plumOS audio
+router and mixer control are still pending. Until that lands, runtime volume
+state is tracked so FE and future standalone launchers can use the same API.
+
+## Power
+
+Reboot uses the stock-kernel sysrq path. Shutdown uses RK817 PMIC `DEV_OFF`:
+
+```text
+i2c bus 0, addr 0x20, reg 0xf4, bit 0
+```
+
+The FE power action path has been validated for reboot. FE shutdown has been
+validated through dry-run plus the RK817 helper path; actual FE-menu poweroff
+is still a terminal physical-device test.
