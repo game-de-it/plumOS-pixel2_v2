@@ -55,7 +55,9 @@
 - [x] stock initramfsの`SYSTEM` handoff contractを実機で再確認する
 - [x] stock initramfs hookとplumOS init早期logを実機SDから回収する
 - [ ] Linux 6.12 plumOS-owned kernel経路をexperimental扱いへ隔離する
-- [ ] 充電中rebootがstock boot substrate + plumOS SYSTEMでOSへ戻ることを実機確認する
+- [x] 充電中rebootがstock boot substrate + plumOS SYSTEMでOSへ戻ることを実機確認する
+- [x] Pixel2のRK817 DEV_OFF経路で画面消灯することを実機確認する
+- [ ] FEメニュー経由のreboot/shutdownをapp-layer checksum込みで実機確認する
 
 ## plumOS System
 
