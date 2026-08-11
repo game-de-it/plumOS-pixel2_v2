@@ -27,6 +27,7 @@ fi
 
 ROOT_DIR=/work
 PREFIX="${PLUMOS_PIXEL2_BOOT_PREFIX:-/work/artifacts/vendor/pixel2-stock-source/rockchip-boot-prefix.bin}"
+PREFIX_MANIFEST="$ROOT_DIR/artifacts/manifests/pixel2-stock-prefix.manifest"
 KERNEL_DIR="$ROOT_DIR/output/kernel/pixel2"
 SYSTEM_DIR="$ROOT_DIR/output/system-rootfs/pixel2/payload"
 OUT_DIR="$ROOT_DIR/output/image/pixel2"
@@ -40,6 +41,17 @@ case "$SOURCE_EPOCH" in
 esac
 [ "$(stat -c '%s' "$PREFIX")" -eq 16777216 ] || {
     printf 'error: Rockchip boot prefix must be exactly 16 MiB\n' >&2
+    exit 2
+}
+[ -f "$PREFIX_MANIFEST" ] || {
+    printf 'error: registered boot prefix manifest is missing\n' >&2
+    exit 2
+}
+expected_prefix_sha=$(awk -F= '$1 == "capture_sha256" { print $2 }' \
+    "$PREFIX_MANIFEST")
+actual_prefix_sha=$(sha256sum "$PREFIX" | awk '{print $1}')
+[ -n "$expected_prefix_sha" ] && [ "$actual_prefix_sha" = "$expected_prefix_sha" ] || {
+    printf 'error: boot prefix does not match registered Pixel2 stock capture\n' >&2
     exit 2
 }
 for file in Image rk3326s-gkd-pixel2.dtb; do
@@ -94,7 +106,7 @@ install -m 0644 "$KERNEL_DIR/Image" "$WORK/boot/Image"
 install -m 0644 "$KERNEL_DIR/rk3326s-gkd-pixel2.dtb" \
     "$WORK/boot/rk3326s-gkd-pixel2.dtb"
 install -m 0644 "$SYSTEM_DIR/SYSTEM" "$WORK/boot/SYSTEM"
-prefix_sha=$(sha256sum "$PREFIX" | awk '{print $1}')
+prefix_sha=$actual_prefix_sha
 cat >"$WORK/boot/plumos-image.manifest" <<EOF
 format=plumos-pixel2-image-v1
 device=pixel2

@@ -10,10 +10,9 @@ minimal System SquashFS and a complete 2 GiB SD image. The stock userspace is
 not copied. The only retained inputs are the Rockchip boot prefix and selected
 USB Wi-Fi firmware captured from the stock kernel overlay.
 
-The real Rockchip boot prefix has not yet been captured because reading the raw
-macOS disk requires an interactive administrator action. Image generation was
-therefore exercised with an explicit 16 MiB all-zero test prefix. That image is
-structural test output and must not be written to a device or distributed.
+Initial image generation was exercised with an explicit 16 MiB all-zero test
+prefix. That structural test image was deleted. The real prefix was then
+captured read-only from `/dev/disk4` and used for the final host build below.
 
 ## Kernel result
 
@@ -55,13 +54,23 @@ filesystem and the complete image. Verification also checked the preserved
 prefix bytes (excluding the regenerated MBR), partition boundaries, FAT and
 ext4 consistency, embedded boot payload equality and embedded SquashFS.
 
+## Real-prefix image result
+
+- prefix size: 16,777,216 bytes
+- prefix SHA-256: `c434f3f4ba7ed3077efc13f2a22a92b4b1519ed381fbe64ad5caa34221039814`
+- image: `plumOS-Pixel2-0.1.0-dev.img`
+- image size: 2,147,483,648 bytes
+- image SHA-256: `bed189c699dcea8f013eebeb91d03351b0408c700fc76e0a7bc275683f4dfff6`
+- source commit: `abdd08a`
+
+The real image passed prefix byte comparison, partition boundary checks,
+read-only FAT/ext4 checks, embedded payload comparison, SquashFS verification,
+module ABI verification and foreign distribution identity gates.
+
 ## Gates still requiring hardware
 
-1. Capture and hash the real 16 MiB prefix with
-   `./scripts/capture-stock-prefix-macos.sh /dev/disk4`.
-2. Rebuild all artifacts from the current commit and generate the real image.
-3. Write only to a separate SD card.
-4. Prove cold boot, LCD, controls, audio, power behavior, ADB and at least one
+1. Write only to a separate SD card.
+2. Prove cold boot, LCD, controls, audio, power behavior, ADB and at least one
    supported USB Wi-Fi dongle on the physical Pixel2.
-5. Replace development no-auth ADB with authentication or explicit opt-in
+3. Replace development no-auth ADB with authentication or explicit opt-in
    before a release image.

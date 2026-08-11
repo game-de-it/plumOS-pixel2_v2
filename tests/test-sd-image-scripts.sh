@@ -7,4 +7,5 @@ bash -n "$ROOT_DIR/scripts/verify-sd-image.sh"
 grep -q 'BOOT_START=32768' "$ROOT_DIR/scripts/build-sd-image.sh"
 grep -q 'refusing\|boot prefix missing' "$ROOT_DIR/scripts/build-sd-image.sh"
 grep -q 'cmp.*image-prefix' "$ROOT_DIR/scripts/verify-sd-image.sh"
+grep -q 'capture_sha256' "$ROOT_DIR/scripts/build-sd-image.sh"
 printf 'sd_image_scripts=result-ok\n'

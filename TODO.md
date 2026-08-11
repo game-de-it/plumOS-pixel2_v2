@@ -4,9 +4,9 @@
 
 - [x] stock SDのパーティション、kernel、DTB、initramfsを読み取り専用で解析する
 - [x] stock userspaceを廃止し、保持するboot artifactの境界を決定する
-- [ ] SD先頭16 MiBのRockchip boot領域を管理者権限で採取する
+- [x] SD先頭16 MiBのRockchip boot領域を管理者権限で読み取り採取する
 - [ ] ext4 `/storage` のfilesystem label、UUID、初回resize markerを確認する
-- [ ] boot artifactのprovenance、hash、サイズをmanifest化する
+- [x] boot artifactのprovenance、hash、サイズをmanifest化する
 - [x] stock内蔵initramfsを最終imageで廃止するkernel所有方針を決定する
 - [x] Pixel2対応kernel/DTS/patchをpinned sourceからplumOSとしてbuildする
 

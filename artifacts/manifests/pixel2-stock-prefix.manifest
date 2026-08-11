@@ -1,0 +1,9 @@
+format=plumos-pixel2-rockchip-prefix-v1
+device=pixel2
+source_device=/dev/disk4
+source_media_size=62239277056
+capture_mode=read-only
+capture_size=16777216
+capture_sha256=c434f3f4ba7ed3077efc13f2a22a92b4b1519ed381fbe64ad5caa34221039814
+partition_1_offset=16777216
+mbr_signature=55aa
