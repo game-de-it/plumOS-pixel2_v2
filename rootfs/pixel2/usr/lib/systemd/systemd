@@ -1,0 +1,7 @@
+#!/bin/sh
+# Compatibility entrypoint for the stock Pixel2 initramfs.
+#
+# The retained stock initramfs performs switch_root to this fixed LibreELEC-style
+# path.  plumOS does not run systemd on Pixel2; ownership begins here and is
+# handed to the plumOS init script.
+exec /sbin/init "$@"

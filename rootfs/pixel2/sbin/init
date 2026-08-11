@@ -13,7 +13,7 @@ is_mounted /proc || $bb mount -t proc proc /proc
 is_mounted /sys || $bb mount -t sysfs sysfs /sys
 is_mounted /dev || $bb mount -t devtmpfs devtmpfs /dev
 $bb mkdir -p /dev/pts /run /tmp /boot /state /roms /root \
-    /mnt/plumos /mnt/plumos-user
+    /flash /storage /mnt/plumos /mnt/plumos-user
 is_mounted /dev/pts || $bb mount -t devpts devpts /dev/pts
 $bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run 2>/dev/null || true
 $bb mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp 2>/dev/null || true
@@ -41,9 +41,17 @@ mount_partition() {
     $bb mount -o "$options" "$device" "$target"
 }
 
-mount_partition /boot PLUMOS_BOOT /dev/mmcblk0p1 ro 2>/dev/null || \
-    printf 'plumos-init=warn mount=boot\n'
-if ! mount_partition /mnt/plumos PLUMOS_SYS /dev/mmcblk0p2 rw 2>/dev/null; then
+if is_mounted /flash; then
+    is_mounted /boot || $bb mount --bind /flash /boot 2>/dev/null || true
+else
+    mount_partition /boot PLUMOS_BOOT /dev/mmcblk0p1 ro 2>/dev/null || \
+        printf 'plumos-init=warn mount=boot\n'
+fi
+if is_mounted /storage; then
+    is_mounted /mnt/plumos || $bb mount --bind /storage /mnt/plumos 2>/dev/null || true
+fi
+if ! is_mounted /mnt/plumos && \
+    ! mount_partition /mnt/plumos PLUMOS_SYS /dev/mmcblk0p2 rw 2>/dev/null; then
     if mount_partition /mnt/plumos PLUMOS_STATE /dev/mmcblk0p2 rw 2>/dev/null; then
         printf 'plumos-init=warn mount=runtime legacy-label=PLUMOS_STATE\n'
     else

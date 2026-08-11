@@ -15,6 +15,7 @@ for script in \
     "$ROOT_DIR/scripts/verify-app-layer.sh" \
     "$ROOT_DIR/scripts/verify-system-rootfs.sh" \
     "$ROOT_DIR/rootfs/pixel2/sbin/init" \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/systemd/systemd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh"; do
@@ -43,6 +44,9 @@ grep -q 'app-layer-verified' \
 grep -q 'ROOTFS_DIR/dev/pts' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'ROOTFS_DIR/mnt/plumos' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'mnt/plumos-user' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
+grep -q 'ROOTFS_DIR/flash' "$ROOT_DIR/scripts/build-system-rootfs.sh"
+grep -q 'usr/lib/systemd/systemd' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
+grep -q 'is_mounted /storage' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q '5.10.198' "$ROOT_DIR/scripts/install-kernel-runtime.sh"
 grep -q 'stock-pixel2' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'stock-pixel2' "$ROOT_DIR/scripts/verify-system-rootfs.sh"

@@ -51,7 +51,8 @@
 - [x] boot artifactのprovenance、hash、サイズをmanifest化する
 - [x] stock内蔵initramfsをboot substrateとして許容し、`SYSTEM`内init以降をplumOS所有にする方針を決定する
 - [x] release imageをstock `Image`/stock DTB/stock kernel ABIへ戻す
-- [ ] stock initramfsの`SYSTEM` handoff contractを実機とhostで再確認する
+- [x] stock initramfsの`SYSTEM` handoff contractをhostで再確認する
+- [ ] stock initramfsの`SYSTEM` handoff contractを実機で再確認する
 - [ ] Linux 6.12 plumOS-owned kernel経路をexperimental扱いへ隔離する
 - [ ] 充電中rebootがstock boot substrate + plumOS SYSTEMでOSへ戻ることを実機確認する
 
