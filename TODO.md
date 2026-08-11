@@ -17,6 +17,13 @@
 - [x] stock由来名称・unit・frontendがSystemへ混入しないgateを実装する
 - [x] Pixel2 kernel moduleと最小USB Wi-Fi firmwareをSystemへ統合する
 
+## Frontend
+
+- [x] plumOS-MF由来frontendをPixel2用としてvendor化し、旧distribution名称を除去する
+- [x] Pixel2 framebufferとgpio-key inputを自動選択してboot時にfrontendを起動する
+- [x] frontendとADBの診断logをSTATE partitionへ保存する
+- [ ] 実機LCDでfrontend描画、回転、button mappingを確認する
+
 ## Connectivity
 
 - [x] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
