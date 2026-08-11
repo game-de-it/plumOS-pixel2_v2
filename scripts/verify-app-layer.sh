@@ -7,9 +7,10 @@ for path in \
     manifest.json checksums.sha256 VERSION COMPAT_VENDOR RUNTIME_ABI \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
     bin/plumos-retroarch-launch bin/retroarch cores/quicknes_libretro.so \
-    bin/plumos-safe-shutdown \
+    bin/plumos-safe-shutdown bin/plumos-run-with-input-map \
     emulator/lib/libpthread.so.0 \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
+    config/system/input-map.env config/system/input-map.json \
     components/frontend/manifest.json components/retroarch/manifest.json \
     components/libretro-cores/manifest.json; do
     [ -f "$ROOT/$path" ] || { printf 'error: app-layer file missing: %s\n' "$path" >&2; exit 1; }
@@ -22,6 +23,10 @@ grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
 grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
+grep -q '^PLUMOS_INPUT_AB_LAYOUT=east-confirm$' "$ROOT/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_A_CODE=305$' "$ROOT/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_B_CODE=304$' "$ROOT/config/system/input-map.env"
+grep -q '"ab_layout": "east-confirm"' "$ROOT/config/system/input-map.json"
 grep -q '"action": "internal:system-information"' \
     "$ROOT/config/frontend/menus.json"
 grep -q '"action": "internal:network-information"' \

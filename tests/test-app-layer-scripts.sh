@@ -10,7 +10,8 @@ for script in \
     scripts/build-app-layer.sh \
     scripts/verify-app-layer.sh \
     package/app-layer-pixel2/bin/plumos-retroarch-launch \
-    package/app-layer-pixel2/bin/plumos-safe-shutdown; do
+    package/app-layer-pixel2/bin/plumos-safe-shutdown \
+    package/app-layer-pixel2/bin/plumos-run-with-input-map; do
     bash -n "$ROOT_DIR/$script"
 done
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
@@ -30,7 +31,15 @@ grep -q 'required_library in libpthread.so.0' \
     "$ROOT_DIR/scripts/build-retroarch.sh"
 grep -q 'emulator/lib/libpthread.so.0' \
     "$ROOT_DIR/scripts/verify-app-layer.sh"
-grep -q 'PLUMOS_INPUT_AB_LAYOUT=east-confirm' \
+grep -q '^PLUMOS_INPUT_A_CODE=305$' \
+    "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_B_CODE=304$' \
+    "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
+grep -q 'input-map.env' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'input-map.env' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-run-with-input-map"
+grep -q 'east-confirm' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'strcmp(ab_layout, "east-confirm")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"

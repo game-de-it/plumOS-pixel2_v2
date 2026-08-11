@@ -5,9 +5,16 @@ bb=/bin/busybox
 root=${PLUMOS_ROOT:-/mnt/plumos}
 rom_root=${PLUMOS_ROM_ROOT:-/mnt/plumos-user/roms}
 runtime_root=${PLUMOS_RUNTIME_ROOT:-/run/plumos}
+input_env=${PLUMOS_INPUT_MAP_ENV:-$root/config/system/input-map.env}
 system_id=
 core=
 rom=
+
+if [ -r "$input_env" ]; then
+    set -a
+    . "$input_env"
+    set +a
+fi
 
 while [ "$#" -gt 0 ]; do
     case "$1" in

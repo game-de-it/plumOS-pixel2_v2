@@ -69,12 +69,18 @@ start_frontend() {
     export PLUMOS_BIOS_ROOT=/mnt/plumos-user/bios
     export PLUMOS_DEVICE_ID=pixel2
     export PLUMOS_DEVICE_NAME='GKD Pixel2'
+    input_env="$ROOT/config/system/input-map.env"
+    if [ -r "$input_env" ]; then
+        set -a
+        . "$input_env"
+        set +a
+    fi
     export PLUMOS_RENDERER=fbdev
     export PLUMOS_FB=/dev/fb0
     export PLUMOS_DRM_DEVICE=/dev/dri/card0
     export PLUMOS_FBDEV_ROTATION=ccw
     export PLUMOS_INPUT_EVENT="$input"
-    export PLUMOS_INPUT_AB_LAYOUT=east-confirm
+    export PLUMOS_INPUT_AB_LAYOUT="${PLUMOS_INPUT_AB_LAYOUT:-east-confirm}"
     export PLUMOS_BUSYBOX=/bin/busybox
     export PLUMOS_FRONTEND_MODE=manual
     export PLUMOS_INPUT_TRACE_PATH=/run/plumos/frontend-input.log

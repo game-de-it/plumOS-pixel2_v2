@@ -1,0 +1,32 @@
+{
+  "format": "plumos-pixel2-input-v1",
+  "device": "pixel2",
+  "evdev": {
+    "preferred_device_name": "pixel2_joypad",
+    "ab_layout": "east-confirm",
+    "buttons": {
+      "a": 305,
+      "b": 304,
+      "x": 307,
+      "y": 308
+    }
+  },
+  "joydev": {
+    "buttons": {
+      "a": 1,
+      "b": 0,
+      "x": 3,
+      "y": 4,
+      "l": 6,
+      "r": 7,
+      "l2": 8,
+      "r2": 9,
+      "select": 10,
+      "start": 11,
+      "up": 12,
+      "down": 13,
+      "left": 14,
+      "right": 15
+    }
+  }
+}

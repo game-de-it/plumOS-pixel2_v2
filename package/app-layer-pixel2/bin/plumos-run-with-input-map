@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+root=${PLUMOS_ROOT:-/mnt/plumos}
+input_env=${PLUMOS_INPUT_MAP_ENV:-$root/config/system/input-map.env}
+
+if [ -r "$input_env" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$input_env"
+    set +a
+fi
+
+[ "$#" -gt 0 ] || {
+    printf 'usage: %s COMMAND [ARG...]\n' "$0" >&2
+    exit 2
+}
+
+exec "$@"
