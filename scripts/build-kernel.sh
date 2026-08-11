@@ -77,22 +77,31 @@ s = s.replace('compatible = "rocknix-singleadc-joypad";', 'compatible = "gpio-ke
 s = s.replace('rocknix,generic-dsi', 'plumos,generic-dsi')
 s = s.replace('ROCKNIX', 'plumOS').replace('rocknix', 'plumos')
 
-# The Pixel2 uses Nintendo-style face-button positions.  Keep the event-code
-# contract from the stock DTB: physical A/PD1 is BTN_EAST and physical B/PD2
-# is BTN_SOUTH.  The upstream reconstructed DTS had only these two codes
-# reversed, which made the frontend's confirm/back mapping appear dead.
-def set_button_code(node, expected, corrected):
+# Live evdev capture is authoritative for the Pixel2 switch wiring.  The stock
+# DTB labels PD1 as A and PD2 as B, but the labeled physical A switch actually
+# drives PD2 and the labeled physical B switch drives PD1.  Normalize both the
+# GPIO and Linux positional code so every userspace sees an unambiguous pad:
+# physical A/right is BTN_EAST; physical B/bottom is BTN_SOUTH.
+def set_button_contract(node, expected_gpio, expected_code, corrected_gpio,
+                        corrected_label, corrected_code):
     global s
-    pattern = (r'(\n\s*' + re.escape(node) +
-               r'\s*\{.*?linux,code\s*=\s*<)' + re.escape(expected) +
-               r'(>;.*?\n\s*\};)')
-    s, count = re.subn(pattern, r'\1' + corrected + r'\2', s, count=1,
-                       flags=re.S)
+    pattern = (r'(\n\s*' + re.escape(node) + r'\s*\{\s*\n)'
+               r'(\s*)gpios = <&gpio3 ' + re.escape(expected_gpio) +
+               r' GPIO_ACTIVE_LOW>;\s*\n'
+               r'\s*label = "[^"]+";\s*\n'
+               r'\s*linux,code = <' + re.escape(expected_code) + r'>;'
+               r'(\s*\n\s*\};)')
+    replacement = (r'\1\2gpios = <&gpio3 ' + corrected_gpio +
+                   r' GPIO_ACTIVE_LOW>;\n\2label = "' + corrected_label +
+                   r'";\n\2linux,code = <' + corrected_code + r'>;\3')
+    s, count = re.subn(pattern, replacement, s, count=1)
     if count != 1:
-        raise SystemExit(f'expected exactly one {node} with {expected}')
+        raise SystemExit(f'expected exactly one source contract for {node}')
 
-set_button_code('button-a', 'BTN_SOUTH', 'BTN_EAST')
-set_button_code('button-b', 'BTN_EAST', 'BTN_SOUTH')
+set_button_contract('button-a', 'RK_PD1', 'BTN_SOUTH',
+                    'RK_PD2', 'A', 'BTN_EAST')
+set_button_contract('button-b', 'RK_PD2', 'BTN_EAST',
+                    'RK_PD1', 'B', 'BTN_SOUTH')
 for key in ('joypad-name', 'joypad-vendor', 'joypad-product', 'joypad-revision',
             'amux-count', 'poll-interval'):
     s = re.sub(r'^\s*' + re.escape(key) + r'\s*=.*?;\n', '', s, flags=re.M)

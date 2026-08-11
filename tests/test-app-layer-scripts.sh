@@ -21,6 +21,10 @@ grep -q 'internal:network-information' \
 grep -q '"apps": \[\]' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
+grep -q '^input_a_btn = "0"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/gkd-pixel2-joypad.cfg"
+grep -q '^input_b_btn = "1"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/gkd-pixel2-joypad.cfg"
 grep -q 'SOURCE_COMMIT=69a4f0ea' "$ROOT_DIR/scripts/build-retroarch.sh"
 grep -q 'required_library in libpthread.so.0' \
     "$ROOT_DIR/scripts/build-retroarch.sh"
