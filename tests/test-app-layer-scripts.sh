@@ -44,6 +44,8 @@ grep -q 'open_power_menu_for_action(ui, "reboot")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'open_power_menu_for_action(ui, "shutdown")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'sysrq-trigger' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'SOURCE_COMMIT=058d6651' "$ROOT_DIR/scripts/build-libretro-cores.sh"
 grep -q '^complete=true$' "$ROOT_DIR/scripts/build-app-layer.sh"
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
