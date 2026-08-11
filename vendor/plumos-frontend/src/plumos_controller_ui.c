@@ -234,6 +234,9 @@ struct input_event {
 #ifndef BTN_MODE
 #define BTN_MODE 316
 #endif
+#ifndef BTN_TRIGGER_HAPPY1
+#define BTN_TRIGGER_HAPPY1 704
+#endif
 #ifndef BTN_DPAD_UP
 #define BTN_DPAD_UP 544
 #endif
@@ -14756,6 +14759,7 @@ static enum ui_action action_from_key_code(unsigned int code) {
   case 10:
     return ACTION_START;
   case BTN_MODE:
+  case BTN_TRIGGER_HAPPY1:
     return ACTION_FUNCTION;
   case KEY_RIGHTCTRL:
   case KEY_SELECT:
@@ -14774,6 +14778,44 @@ static enum ui_action action_from_key_code(unsigned int code) {
     return ACTION_QUIT;
   default:
     return ACTION_NONE;
+  }
+}
+
+static const char *ui_action_name(enum ui_action action) {
+  switch (action) {
+  case ACTION_UP:
+    return "UP";
+  case ACTION_DOWN:
+    return "DOWN";
+  case ACTION_LEFT:
+    return "LEFT";
+  case ACTION_RIGHT:
+    return "RIGHT";
+  case ACTION_A:
+    return "A";
+  case ACTION_B:
+    return "B";
+  case ACTION_START:
+    return "START";
+  case ACTION_SELECT:
+    return "SELECT";
+  case ACTION_X:
+    return "X";
+  case ACTION_Y:
+    return "Y";
+  case ACTION_FUNCTION:
+    return "FUNCTION";
+  case ACTION_POWER:
+    return "POWER";
+  case ACTION_VOLUME_DOWN:
+    return "VOLUME_DOWN";
+  case ACTION_VOLUME_UP:
+    return "VOLUME_UP";
+  case ACTION_QUIT:
+    return "QUIT";
+  case ACTION_NONE:
+  default:
+    return "NONE";
   }
 }
 
@@ -15098,7 +15140,10 @@ static void dump_input_events(const char *event_path, int timeout_sec) {
     if (poll(&pfd, 1, 250) > 0 && (pfd.revents & POLLIN)) {
       struct input_event ev;
       while (read(fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
-        printf("type=%u code=%u value=%d\n", ev.type, ev.code, ev.value);
+        enum ui_action action =
+            ev.type == EV_KEY ? action_from_key_code(ev.code) : ACTION_NONE;
+        printf("type=%u code=%u value=%d action=%s\n", ev.type, ev.code, ev.value,
+               ui_action_name(action));
         fflush(stdout);
       }
     }
@@ -15115,7 +15160,8 @@ static void drain_input_fd(int fd) {
   }
 }
 
-static void trace_input_event(const struct input_event *ev, int power_only) {
+static void trace_input_event(const struct input_event *ev, int power_only,
+                              enum ui_action action) {
   const char *path = getenv("PLUMOS_INPUT_TRACE_PATH");
   FILE *f;
 
@@ -15126,9 +15172,9 @@ static void trace_input_event(const struct input_event *ev, int power_only) {
   if (!f) {
     return;
   }
-  fprintf(f, "ms=%lld source=%s type=%u code=%u value=%d\n",
+  fprintf(f, "ms=%lld source=%s type=%u code=%u value=%d action=%s\n",
           current_time_ms(), power_only ? "power" : "controller",
-          ev->type, ev->code, ev->value);
+          ev->type, ev->code, ev->value, ui_action_name(action));
   fclose(f);
 }
 
@@ -15140,13 +15186,14 @@ static void read_input_actions(struct ui_state *ui, int fd, int power_only,
     return;
   }
   while (read(fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
-    trace_input_event(&ev, power_only);
     if (ev.type == EV_KEY) {
       enum ui_action event_action;
       if (power_only && ev.code != KEY_POWER) {
+        trace_input_event(&ev, power_only, ACTION_NONE);
         continue;
       }
       event_action = action_from_key_code(ev.code);
+      trace_input_event(&ev, power_only, event_action);
       if (ev.value == 0) {
         if (!power_only && ui->repeat_action != ACTION_NONE &&
             ui->repeat_key_code == ev.code) {
@@ -15173,6 +15220,7 @@ static void read_input_actions(struct ui_state *ui, int fd, int power_only,
                  ev.value);
       }
     } else if (!power_only && ev.type == EV_ABS) {
+      trace_input_event(&ev, power_only, ACTION_NONE);
       enum ui_action event_action;
       unsigned int repeat_code;
       int released = 0;
@@ -15200,6 +15248,8 @@ static void read_input_actions(struct ui_state *ui, int fd, int power_only,
           ui->repeat_next_ms = current_time_ms() + UI_KEY_REPEAT_DELAY_MS;
         }
       }
+    } else {
+      trace_input_event(&ev, power_only, ACTION_NONE);
     }
   }
 }
