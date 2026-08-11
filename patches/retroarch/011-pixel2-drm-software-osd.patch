@@ -1,0 +1,275 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -34,6 +34,7 @@
+ #include "../../retroarch.h"
+ #include "../../verbosity.h"
+ #include "../common/drm_common.h"
++#include "../font_driver.h"
+ 
+ #include "drm_pixformats.h"
+ 
+@@ -167,6 +168,12 @@ struct drm_video
+     * so we keep it here for future reference. */
+    float current_aspect;
+ 
++   const font_renderer_driver_t *font_driver;
++   void *font_data;
++   char pending_osd_msg[1024];
++   struct font_params pending_osd_params;
++   bool pending_osd_msg_valid;
++
+ };
+ 
+ /* Some prototypes for later use */
+@@ -361,8 +368,136 @@ static void drm_page_flip(struct drm_surface *surface)
+    drmModeAtomicFree(req);
+ }
+ 
++static void drm_blend_osd_pixel(struct drm_surface *surface,
++      uint8_t *dst_base, int x, int y,
++      unsigned red, unsigned green, unsigned blue, unsigned alpha)
++{
++   if (x < 0 || y < 0 || x >= surface->src_width || y >= surface->src_height)
++      return;
++
++   if (surface->bpp == 2)
++   {
++      uint16_t *dst = (uint16_t *)(dst_base +
++            y * surface->pages[surface->flip_page].buf.stride) + x;
++      unsigned dst_red   = ((*dst >> 11) & 0x1f) * 255 / 31;
++      unsigned dst_green = ((*dst >>  5) & 0x3f) * 255 / 63;
++      unsigned dst_blue  = ( *dst        & 0x1f) * 255 / 31;
++
++      red   = (red   * alpha + dst_red   * (255 - alpha)) / 255;
++      green = (green * alpha + dst_green * (255 - alpha)) / 255;
++      blue  = (blue  * alpha + dst_blue  * (255 - alpha)) / 255;
++      *dst  = (uint16_t)(((red * 31 / 255) << 11) |
++            ((green * 63 / 255) << 5) | (blue * 31 / 255));
++   }
++   else
++   {
++      uint32_t *dst = (uint32_t *)(dst_base +
++            y * surface->pages[surface->flip_page].buf.stride) + x;
++      unsigned dst_red   = (*dst >> 16) & 0xff;
++      unsigned dst_green = (*dst >>  8) & 0xff;
++      unsigned dst_blue  =  *dst        & 0xff;
++
++      red   = (red   * alpha + dst_red   * (255 - alpha)) / 255;
++      green = (green * alpha + dst_green * (255 - alpha)) / 255;
++      blue  = (blue  * alpha + dst_blue  * (255 - alpha)) / 255;
++      *dst  = (red << 16) | (green << 8) | blue;
++   }
++}
++
++static void drm_render_osd_msg(struct drm_video *vid,
++      struct drm_surface *surface, uint8_t *dst_base,
++      const char *msg, const struct font_params *params)
++{
++   const struct font_atlas *atlas;
++   settings_t *settings = config_get_ptr();
++   float scale = 1.0f;
++   int start_x;
++   int pen_x;
++   int pen_y;
++   unsigned red;
++   unsigned green;
++   unsigned blue;
++   unsigned color_alpha = 255;
++
++   if (!vid->font_driver || !vid->font_data || !msg || !*msg)
++      return;
++
++   atlas = vid->font_driver->get_atlas(vid->font_data);
++   if (!atlas || !atlas->buffer)
++      return;
++
++   if (params)
++   {
++      start_x     = (int)(params->x * surface->src_width);
++      pen_y       = (int)((1.0f - params->y) * surface->src_height);
++      scale       = params->scale > 0.0f ? params->scale : 1.0f;
++      red         = FONT_COLOR_GET_RED(params->color);
++      green       = FONT_COLOR_GET_GREEN(params->color);
++      blue        = FONT_COLOR_GET_BLUE(params->color);
++      color_alpha = FONT_COLOR_GET_ALPHA(params->color);
++   }
++   else
++   {
++      start_x = settings
++         ? (int)(settings->floats.video_msg_pos_x * surface->src_width) : 12;
++      pen_y = settings
++         ? (int)((1.0f - settings->floats.video_msg_pos_y) *
++               surface->src_height) : surface->src_height - 12;
++      red   = settings ? (unsigned)(settings->floats.video_msg_color_r * 255.0f) : 255;
++      green = settings ? (unsigned)(settings->floats.video_msg_color_g * 255.0f) : 255;
++      blue  = settings ? (unsigned)(settings->floats.video_msg_color_b * 255.0f) : 255;
++   }
++
++   pen_x = start_x;
++   while (*msg)
++   {
++      const struct font_glyph *glyph;
++      const uint8_t *src;
++      unsigned x;
++      unsigned y;
++      unsigned code = (uint8_t)*msg++;
++
++      if (code == '\n')
++      {
++         pen_x  = start_x;
++         pen_y += (int)(vid->font_driver->get_glyph(vid->font_data, 'M')->height * scale);
++         continue;
++      }
++
++      glyph = vid->font_driver->get_glyph(vid->font_data, code);
++      if (!glyph)
++         glyph = vid->font_driver->get_glyph(vid->font_data, '?');
++      if (!glyph)
++         continue;
++
++      src = atlas->buffer + glyph->atlas_offset_x +
++         glyph->atlas_offset_y * atlas->width;
++
++      for (y = 0; y < (unsigned)(glyph->height * scale); y++)
++      {
++         unsigned src_y = (unsigned)(y / scale);
++         for (x = 0; x < (unsigned)(glyph->width * scale); x++)
++         {
++            unsigned src_x = (unsigned)(x / scale);
++            unsigned alpha = src[src_y * atlas->width + src_x] *
++               color_alpha / 255;
++
++            if (alpha)
++               drm_blend_osd_pixel(surface, dst_base,
++                     pen_x + (int)(glyph->draw_offset_x * scale) + (int)x,
++                     pen_y + (int)(glyph->draw_offset_y * scale) + (int)y,
++                     red, green, blue, alpha);
++         }
++      }
++
++      pen_x += (int)(glyph->advance_x * scale);
++      pen_y -= (int)(glyph->advance_y * scale);
++   }
++}
++
+ static void drm_surface_update(void *data, const void *frame,
+-      struct drm_surface *surface)
++      struct drm_surface *surface, const char *msg,
++      const char *stat_msg, const struct font_params *stat_params)
+ {
+    struct drm_video *_drmvars  = data;
+    struct drm_page       *page = NULL;
+@@ -397,6 +532,17 @@ static void drm_surface_update(void *data, const void *frame,
+       }
+    }
+ 
++   if (stat_msg && *stat_msg)
++      drm_render_osd_msg(_drmvars, surface, dst_base, stat_msg, stat_params);
++   if (msg && *msg)
++      drm_render_osd_msg(_drmvars, surface, dst_base, msg, NULL);
++   if (_drmvars->pending_osd_msg_valid)
++   {
++      drm_render_osd_msg(_drmvars, surface, dst_base,
++            _drmvars->pending_osd_msg, &_drmvars->pending_osd_params);
++      _drmvars->pending_osd_msg_valid = false;
++   }
++
+    /* Page flipping */
+    drm_page_flip(surface);
+ }
+@@ -766,6 +911,25 @@ static void *drm_init(const video_info_t *video,
+    _drmvars->menu_active      = false;
+    _drmvars->rgb32            = video->rgb32;
+ 
++   {
++      settings_t *settings = config_get_ptr();
++      if (settings && settings->bools.video_font_enable)
++      {
++         const char *font_path = settings->paths.path_font;
++         if (!font_renderer_create_default(
++                  &_drmvars->font_driver, &_drmvars->font_data,
++                  (font_path && *font_path) ? font_path : NULL,
++                  settings->floats.video_font_size))
++         {
++            _drmvars->font_driver = NULL;
++            _drmvars->font_data   = NULL;
++            RARCH_WARN("[DRM] Could not initialize OSD font renderer.\n");
++         }
++         else
++            RARCH_LOG("[DRM] OSD font renderer initialized.\n");
++      }
++   }
++
+    /* It's very important that we set aspect here because the
+     * call seq when a core is loaded is gfx_init()->set_aspect()->gfx_frame()
+     * and we don't want the main surface to be setup in set_aspect()
+@@ -853,7 +1015,14 @@ static bool drm_frame(void *data, const void *frame, unsigned width,
+     * Flipping the game surface as well makes the plane alternate between
+     * incompatible framebuffers and floods atomic commits with EINVAL. */
+    if (frame && !_drmvars->menu_active)
+-      drm_surface_update(_drmvars, frame, _drmvars->main_surface);
++   {
++      const char *stat_msg = video_info && video_info->statistics_show
++         ? video_info->stat_text : NULL;
++      const struct font_params *stat_params = video_info
++         ? (const struct font_params*)&video_info->osd_stat_params : NULL;
++      drm_surface_update(_drmvars, frame, _drmvars->main_surface,
++            msg, stat_msg, stat_params);
++   }
+ 
+    return true;
+ }
+@@ -962,7 +1156,8 @@ static void drm_set_texture_frame(void *data, const void *frame, bool rgb32,
+    }
+ 
+    /* We update the menu surface if menu is active. */
+-   drm_surface_update(_drmvars, frame_output, _drmvars->menu_surface);
++   drm_surface_update(_drmvars, frame_output, _drmvars->menu_surface,
++         NULL, NULL, NULL);
+ 
+    /*
+     * RGUI calls this once per menu frame. Keeping this allocation alive leaks
+@@ -993,6 +1161,22 @@ static void drm_set_aspect_ratio (void *data, unsigned aspect_ratio_idx)
+    }
+ }
+ 
++static void drm_set_osd_msg(void *data, const char *msg,
++      const struct font_params *params, void *font)
++{
++   struct drm_video *vid = data;
++
++   if (!vid || !msg || !*msg)
++      return;
++
++   strlcpy(vid->pending_osd_msg, msg, sizeof(vid->pending_osd_msg));
++   if (params)
++      vid->pending_osd_params = *params;
++   else
++      memset(&vid->pending_osd_params, 0, sizeof(vid->pending_osd_params));
++   vid->pending_osd_msg_valid = params != NULL;
++}
++
+ static const video_poke_interface_t drm_poke_interface = {
+    NULL, /* get_flags */
+    NULL, /* load_texture */
+@@ -1018,7 +1202,7 @@ static const video_poke_interface_t drm_poke_interface = {
+    drm_apply_state_changes,
+    drm_set_texture_frame,
+    drm_set_texture_enable,
+-   NULL, /* drm_set_osd_msg */
++   drm_set_osd_msg,
+    NULL, /* drm_show_mouse */
+    NULL, /* grab_mouse_toggle */
+    NULL, /* get_current_shader */
+@@ -1048,6 +1232,10 @@ static void drm_gfx_free(void *data)
+    if (_drmvars->menu_surface)
+       drm_surface_free(_drmvars, &_drmvars->menu_surface);
+ 
++
++   if (_drmvars->font_driver && _drmvars->font_data)
++      _drmvars->font_driver->free(_drmvars->font_data);
++
+    /* Destroy mutexes and conditions. */
+    slock_free(_drmvars->pending_mutex);
+    slock_free(_drmvars->vsync_cond_mutex);

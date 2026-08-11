@@ -4736,9 +4736,8 @@ static void init_device_settings(struct device_settings *device) {
   copy_string(device->language, sizeof(device->language), "en.lang");
   copy_string(device->theme, sizeof(device->theme), "default");
   copy_string(device->timezone, sizeof(device->timezone), plumos_default_timezone());
-  default_model = runtime_device_is_mf() ? "Miyoo Flip" : "POWKIDDY V90S";
-  default_gpu =
-      runtime_device_is_mf() ? "Mali-G52 / CPU DRM" : "PowerVR GE8300";
+  default_model = "GKD Pixel2";
+  default_gpu = "Mali-G31 / DRM";
   device_name = getenv("PLUMOS_DEVICE_NAME");
   copy_string(device->model, sizeof(device->model),
               device_name && device_name[0] ? device_name : default_model);
@@ -9728,7 +9727,7 @@ static void setting_help_lines(const struct ui_state *ui,
                   "The hall sensor wakes and restores display, audio, input, Wi-Fi, and FE.");
     } else if (strcmp(id, "system_lumination") == 0) {
       copy_string(line1, line1_size, "Display lumination setting.");
-      copy_string(line2, line2_size, "Uses the active MF display backend when available.");
+      copy_string(line2, line2_size, "Uses the active Pixel2 display backend when available.");
     } else if (strcmp(id, "system_display_color") == 0) {
       copy_string(line1, line1_size, "Open display color tuning.");
       copy_string(line2, line2_size, "Contrast, color temperature, and saturation are changed inside.");
@@ -9770,7 +9769,7 @@ static void setting_help_lines(const struct ui_state *ui,
       copy_string(line2, line2_size, "Applies to the display backend and saves to plumOS.");
     } else if (strcmp(id, "system_hue") == 0) {
       copy_string(line1, line1_size, "Display color temperature setting.");
-      copy_string(line2, line2_size, "Uses the active MF display backend when available.");
+      copy_string(line2, line2_size, "Uses the active Pixel2 display backend when available.");
     } else if (strcmp(id, "system_saturation") == 0) {
       copy_string(line1, line1_size, "Display saturation setting.");
       copy_string(line2, line2_size, "Applies to the display backend and saves to plumOS.");
@@ -9778,8 +9777,8 @@ static void setting_help_lines(const struct ui_state *ui,
       copy_string(line1, line1_size, "Frontend language setting.");
       copy_string(line2, line2_size, "Saves language to plumOS config.");
     } else if (strcmp(id, "system_update") == 0) {
-      copy_string(line1, line1_size, "plumOS MF uses manual SD card updates.");
-      copy_string(line2, line2_size, "Overwrite the distributed files from a PC.");
+      copy_string(line1, line1_size, "plumOS Pixel2 update support is under development.");
+      copy_string(line2, line2_size, "The current development image is replaced from a PC.");
     } else if (strcmp(id, "system_model") == 0 ||
                strcmp(id, "system_plumos_version") == 0 ||
                strcmp(id, "system_vendor_runtime") == 0 ||
@@ -9799,9 +9798,7 @@ static void setting_help_lines(const struct ui_state *ui,
       } else if (strcmp(id, "system_display_backend") == 0 ||
                  strcmp(id, "system_audio_backend") == 0) {
         copy_string(line2, line2_size,
-                    runtime_device_is_mf()
-                        ? "Live runtime backend selected for MF."
-                        : "Live runtime backend selected for V90S.");
+                    "Live runtime backend selected for Pixel2.");
       } else if (strcmp(id, "system_firmware") == 0) {
         copy_string(line2, line2_size,
                     "Read from vendor firmware or plumOS or rootfs release metadata.");

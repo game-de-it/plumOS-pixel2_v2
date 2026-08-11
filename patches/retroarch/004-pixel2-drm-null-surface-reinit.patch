@@ -1,0 +1,13 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -195,6 +195,9 @@ static void drm_surface_free(void *data, struct drm_surface **sp)
+    struct drm_video *_drmvars = data;
+    struct drm_surface *surface = *sp;
+ 
++   if (!surface)
++      return;
++
+    for (i = 0; i < surface->numpages; i++)
+       surface->pages[i].used = false;
+ 

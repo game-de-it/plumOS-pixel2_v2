@@ -1,0 +1,15 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+index 9a96d33..3753938 100644
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -326,7 +326,9 @@ static void drm_surface_update(void *data, const void *frame,
+             (uint8_t*)frame + src_offset,
+             surface->pitch);
+       src_offset += surface->total_pitch;
+-      dst_offset += surface->pitch;
++      /* Dumb buffers may align scanlines beyond visible width * bpp.
++       * The KMS plane scans with the kernel-provided stride. */
++      dst_offset += surface->pages[surface->flip_page].buf.stride;
+    }
+ 
+    /* Page flipping */

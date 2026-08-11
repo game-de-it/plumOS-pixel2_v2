@@ -1,0 +1,16 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+index d59eed9..ec440c9 100644
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -821,7 +821,10 @@ static bool drm_frame(void *data, const void *frame, unsigned width,
+    /* A NULL frame is the libretro duplicate-frame contract. Keep the
+     * currently scanned-out page instead of copying from a NULL source.
+     * Cores such as Gambatte use this while the emulated LCD is blank. */
+-   if (frame)
++   /* The menu callback owns the same KMS plane while its surface is active.
++    * Flipping the game surface as well makes the plane alternate between
++    * incompatible framebuffers and floods atomic commits with EINVAL. */
++   if (frame && !_drmvars->menu_active)
+       drm_surface_update(_drmvars, frame, _drmvars->main_surface);
+ 
+    return true;

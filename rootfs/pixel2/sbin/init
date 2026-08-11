@@ -12,7 +12,8 @@ is_mounted() {
 is_mounted /proc || $bb mount -t proc proc /proc
 is_mounted /sys || $bb mount -t sysfs sysfs /sys
 is_mounted /dev || $bb mount -t devtmpfs devtmpfs /dev
-$bb mkdir -p /dev/pts /run /tmp /boot /state /roms /root
+$bb mkdir -p /dev/pts /run /tmp /boot /state /roms /root \
+    /mnt/plumos /mnt/plumos-user
 is_mounted /dev/pts || $bb mount -t devpts devpts /dev/pts
 $bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run 2>/dev/null || true
 $bb mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp 2>/dev/null || true
@@ -42,16 +43,32 @@ mount_partition() {
 
 mount_partition /boot PLUMOS_BOOT /dev/mmcblk0p1 ro 2>/dev/null || \
     printf 'plumos-init=warn mount=boot\n'
-if ! mount_partition /state PLUMOS_STATE /dev/mmcblk0p2 rw 2>/dev/null; then
-    $bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /state
-    printf 'plumos-init=warn mount=state fallback=tmpfs\n'
+if ! mount_partition /mnt/plumos PLUMOS_SYS /dev/mmcblk0p2 rw 2>/dev/null; then
+    if mount_partition /mnt/plumos PLUMOS_STATE /dev/mmcblk0p2 rw 2>/dev/null; then
+        printf 'plumos-init=warn mount=runtime legacy-label=PLUMOS_STATE\n'
+    else
+        $bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /mnt/plumos
+        printf 'plumos-init=warn mount=runtime fallback=tmpfs\n'
+    fi
 fi
-mount_partition /roms PLUMOS_ROMS /dev/mmcblk0p3 rw 2>/dev/null || \
-    printf 'plumos-init=warn mount=roms\n'
+if ! mount_partition /mnt/plumos-user PLUMOS_USER /dev/mmcblk0p3 rw 2>/dev/null; then
+    if mount_partition /mnt/plumos-user PLUMOS_ROMS /dev/mmcblk0p3 rw 2>/dev/null; then
+        printf 'plumos-init=warn mount=user-data legacy-label=PLUMOS_ROMS\n'
+    else
+        $bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /mnt/plumos-user
+        printf 'plumos-init=warn mount=user-data fallback=tmpfs\n'
+    fi
+fi
 
-mkdir -p /state/plumos/config /state/plumos/logs /state/plumos/root/.ssh
-chmod 0700 /state/plumos/root /state/plumos/root/.ssh
-$bb mount --bind /state/plumos/root /root 2>/dev/null || true
+$bb mkdir -p /mnt/plumos/state /mnt/plumos/config /mnt/plumos/logs \
+    /mnt/plumos/root/.ssh /mnt/plumos-user/roms /mnt/plumos-user/bios \
+    /mnt/plumos-user/Images /mnt/plumos-user/Screenshots \
+    /mnt/plumos-user/updates
+$bb mount --bind /mnt/plumos/state /state 2>/dev/null || true
+[ -e /state/plumos ] || $bb ln -s /mnt/plumos /state/plumos
+$bb mount --bind /mnt/plumos-user/roms /roms 2>/dev/null || true
+chmod 0700 /mnt/plumos/root /mnt/plumos/root/.ssh
+$bb mount --bind /mnt/plumos/root /root 2>/dev/null || true
 /usr/bin/plumos-diagnostics > /state/plumos/logs/boot-diagnostics.txt 2>&1 || true
 
 for service in /usr/lib/plumos/init.d/*; do

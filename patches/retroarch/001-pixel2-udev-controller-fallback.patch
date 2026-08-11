@@ -1,0 +1,45 @@
+diff --git a/input/drivers_joypad/udev_joypad.c b/input/drivers_joypad/udev_joypad.c
+index ee1d474344..eaa8d79968 100644
+--- a/input/drivers_joypad/udev_joypad.c
++++ b/input/drivers_joypad/udev_joypad.c
+@@ -357,6 +357,31 @@ static void udev_check_device(struct udev_device *dev, const char *path)
+    }
+ }
+
++static void udev_check_mf_builtin_pad(void)
++{
++   unsigned i;
++
++   for (i = 0; i < 32; i++)
++   {
++      int fd;
++      char path[64];
++      char name[NAME_MAX_LENGTH] = {0};
++
++      snprintf(path, sizeof(path), "/dev/input/event%u", i);
++      if ((fd = open(path, O_RDONLY | O_NONBLOCK)) < 0)
++         continue;
++      if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) >= 0 &&
++          string_is_equal(name, "plumOS Pixel2 Controller"))
++      {
++         close(fd);
++         RARCH_LOG("[udev] Adding plumOS Pixel2 Controller without udev database: %s.\n", path);
++         udev_check_device(NULL, path);
++         return;
++      }
++      close(fd);
++   }
++}
++
+ static void udev_free_pad(unsigned pad)
+ {
+    if (udev_pads[pad].fd >= 0)
+@@ -643,6 +668,8 @@ static void *udev_joypad_init(void *data)
+       udev_device_unref(dev);
+    }
+
++   udev_check_mf_builtin_pad();
++
+    udev_enumerate_unref(enumerate);
+
+    return (void*)-1;

@@ -1,0 +1,18 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+index 6b2166af90..c96c5fe9c7 100644
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -801,7 +801,12 @@ static bool drm_frame(void *data, const void *frame, unsigned width,
+ #endif
+ 
+    /* Update main surface: locate free page, blit and flip. */
+-   drm_surface_update(_drmvars, frame, _drmvars->main_surface);
++   /* A NULL frame is the libretro duplicate-frame contract. Keep the
++    * currently scanned-out page instead of copying from a NULL source.
++    * Cores such as Gambatte use this while the emulated LCD is blank. */
++   if (frame)
++      drm_surface_update(_drmvars, frame, _drmvars->main_surface);
++
+    return true;
+ }
+ 

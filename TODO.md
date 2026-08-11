@@ -8,21 +8,21 @@
 
 ## Build system and app layer
 
-- [ ] Pixel2共通Docker entry pointとcomponent targetを実装する
-- [ ] frontendをSystemからapp-layer componentへ分離する
-- [ ] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
-- [ ] Pixel2向けRetroArchをpinned sourceからbuildする
-- [ ] QuickNESをpinned sourceからbuildしcomponent manifest/checksumを生成する
-- [ ] strict app-layer assemblerとmanaged/mutable path gateを実装する
-- [ ] app-layerをseedしたext4 filesystemをSD image buildへ統合する
+- [x] Pixel2共通Docker entry pointとcomponent targetを実装する
+- [x] frontendをSystemからapp-layer componentへ分離する
+- [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
+- [x] Pixel2向けRetroArchをpinned sourceからbuildする
+- [x] QuickNESをpinned sourceからbuildしcomponent manifest/checksumを生成する
+- [x] strict app-layer assemblerとmanaged/mutable path gateを実装する
+- [x] app-layerをseedしたext4 filesystemをSD image buildへ統合する
 - [ ] canonical libretro core recipe catalogとfilter buildを実装する
 - [ ] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
 - [ ] PicoArchとstandalone emulator componentを段階的に統合する
 
 ## Frontend game lifecycle
 
-- [ ] FE catalogは存在するruntime/coreだけを公開する
-- [ ] NES ROM scan -> `retroarch:quicknes` launch planをhost検証する
+- [x] FE catalogは存在するruntime/coreだけを公開する
+- [x] NES ROM scan -> `retroarch:quicknes` launch planをhost検証する
 - [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
 - [ ] audio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する

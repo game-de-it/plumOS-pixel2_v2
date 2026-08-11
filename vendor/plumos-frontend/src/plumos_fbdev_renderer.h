@@ -2479,7 +2479,7 @@ static void plumos_fbdev_draw_graphic_top_bar_overlay(
   plumos_fbdev_fill_rect(r, 0, 40, w, 2, p->panel);
   plumos_fbdev_fill_rect(r, 0, 0, 5, (int)r->var.yres, p->accent);
   plumos_fbdev_draw_text(r, 16, 12,
-                         title && title[0] ? title : "PLUMOS MF", 2,
+                         title && title[0] ? title : "PLUMOS PIXEL2", 2,
                          p->foreground, title_max_x);
   plumos_fbdev_draw_text(r, w - 14 - right_width, 12, right, 2, p->muted,
                          w - 12);
@@ -2514,7 +2514,7 @@ static void plumos_fbdev_draw_tty_top_bar(struct plumos_fbdev_renderer *r) {
 
   plumos_fbdev_fill_rect(r, 0, 0, w, 34, bg);
   plumos_fbdev_fill_rect(r, 0, 34, w, 2, border);
-  plumos_fbdev_draw_text(r, 14, 10, "PLUMOS MF", 2, prompt, w - 8);
+  plumos_fbdev_draw_text(r, 14, 10, "PLUMOS PIXEL2", 2, prompt, w - 8);
   plumos_fbdev_draw_text(r, w - 14 - right_width, 10, right, 2, muted, w - 8);
 }
 
@@ -3074,7 +3074,7 @@ static int plumos_fbdev_render_top(struct plumos_fbdev_renderer *r,
   }
   plumos_fbdev_draw_top_entries(r, p, &motion, entries, count,
                                 current_x_offset, current_y_offset);
-  plumos_fbdev_draw_graphic_top_bar_overlay(r, p, "PLUMOS MF");
+  plumos_fbdev_draw_graphic_top_bar_overlay(r, p, "PLUMOS PIXEL2");
   return 1;
 }
 

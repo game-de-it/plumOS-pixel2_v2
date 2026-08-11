@@ -1,0 +1,66 @@
+diff --git a/audio/drivers/alsa.c b/audio/drivers/alsa.c
+index a4c066d7ec..a617732724 100644
+--- a/audio/drivers/alsa.c
++++ b/audio/drivers/alsa.c
+@@ -15,7 +15,10 @@
+  *  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include <fcntl.h>
+ #include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
+ 
+ #include <lists/string_list.h>
+ #include <string/stdstring.h>
+@@ -304,6 +307,34 @@ typedef struct alsa
+    bool is_paused;
+ } alsa_t;
+ 
++static const char *alsa_plumos_fast_forward_state_path(void)
++{
++   const char *enabled = getenv("PLUMOS_AUDIO_FAST_FORWARD_DROP");
++   const char *path    = getenv("PLUMOS_AUDIO_FAST_FORWARD_STATE");
++
++   if (!enabled || strcmp(enabled, "1") != 0 || !path ||
++       strncmp(path, "/run/plumos/audio/", 18) != 0 ||
++       strstr(path, ".."))
++      return NULL;
++   return path;
++}
++
++static void alsa_plumos_set_fast_forward_state(bool state)
++{
++   const char *path = alsa_plumos_fast_forward_state_path();
++
++   if (!path)
++      return;
++   if (state)
++   {
++      int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
++      if (fd >= 0)
++         close(fd);
++   }
++   else
++      unlink(path);
++}
++
+ static bool alsa_use_float(void *data)
+ {
+    alsa_t *alsa = (alsa_t*)data;
+@@ -480,6 +511,7 @@ static void alsa_set_nonblock_state(void *data, bool state)
+ {
+    alsa_t *alsa = (alsa_t*)data;
+    alsa->nonblock = state;
++   alsa_plumos_set_fast_forward_state(state);
+ }
+ 
+ static void alsa_free(void *data)
+@@ -488,6 +520,7 @@ static void alsa_free(void *data)
+ 
+    if (alsa)
+    {
++      alsa_plumos_set_fast_forward_state(false);
+       alsa_free_pcm(alsa->pcm);
+ 
+       snd_config_update_free_global();

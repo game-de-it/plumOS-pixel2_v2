@@ -1,0 +1,143 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -20,10 +20,12 @@
+ 
+  /*  Plain DRM diver */
+ 
++#include <errno.h>
+ #include <xf86drm.h>
+ #include <xf86drmMode.h>
+ #include <libdrm/drm_fourcc.h>
+ #include <fcntl.h>
++#include <poll.h>
+ #include <sys/mman.h>
+ 
+ #include <compat/strl.h>
+@@ -116,7 +118,7 @@ struct drm_surface
+ 
+    float aspect;
+    struct video_viewport viewport;
+-   bool flip_page;
++   unsigned int flip_page;
+ };
+ 
+ struct drm_struct
+@@ -332,14 +334,37 @@ static void drm_surface_setup(void *data,  int src_width, int src_height,
+    surface->flip_page = 0;
+ }
+ 
+-static void drm_page_flip(struct drm_surface *surface)
++static void drm_page_flip_handler(int fd, unsigned int frame,
++      unsigned int sec, unsigned int usec, void *data)
++{
++   bool *pending = (bool*)data;
++
++   (void)fd;
++   (void)frame;
++   (void)sec;
++   (void)usec;
++
++   if (pending)
++      *pending = false;
++}
++
++static bool drm_page_flip(struct drm_surface *surface)
+ {
+    /* We already have the id of the FB_ID property of
+     * the plane on which we are going to do a pageflip:
+     * we got it back in drm_plane_setup()  */
+-   static drmModeAtomicReqPtr req = NULL;
++   drmModeAtomicReqPtr req = NULL;
++   drmEventContext event_context;
++   struct pollfd pfd;
++   bool pending = true;
++   int ret;
+ 
+    req = drmModeAtomicAlloc();
++   if (!req)
++   {
++      RARCH_ERR("[DRM] Failed to allocate atomic pageflip request.\n");
++      return false;
++   }
+ 
+    /* We add the buffer to the plane properties we want to
+     * set on an atomically, in a single step.
+@@ -349,21 +374,67 @@ static void drm_page_flip(struct drm_surface *surface)
+          drm.plane_fb_prop_id,
+          surface->pages[surface->flip_page].buf.fb_id) < 0)
+    {
+       RARCH_ERR("[DRM] Failed to add atomic property for pageflip.\n");
++      drmModeAtomicFree(req);
++      return false;
+    }
+-   /*... now we just need to do the commit */
+ 
+-   /* REMEMBER!!! The DRM_MODE_PAGE_FLIP_EVENT flag asks the kernel
+-    * to send you an event to the drm.fd once the
+-    * pageflip is complete. If you don't want -12 errors
+-    * (ENOMEM), namely "Cannot allocate memory", then
+-    * you must drain the event queue of that fd. */
+-   if (drmModeAtomicCommit(drm.fd, req, 0, NULL) < 0)
++   /*
++    * Keep the producer and the panel on the same presentation boundary.
++    * A successful atomic submission is not proof that the new framebuffer
++    * has reached scanout, so request a flip event and wait for it before
++    * making another dumb buffer writable. This mirrors the Pixel2 frontend and
++    * PicoArch presenters while retaining RetroArch's threaded video path.
++    */
++   ret = drmModeAtomicCommit(drm.fd, req,
++         DRM_MODE_PAGE_FLIP_EVENT, &pending);
++   drmModeAtomicFree(req);
++   if (ret < 0)
+    {
+-      RARCH_ERR("[DRM] Failed to commit for pageflip.\n");
++      RARCH_ERR("[DRM] Failed to commit for pageflip: %s.\n",
++            strerror(errno));
++      return false;
+    }
+ 
+-   surface->flip_page = !(surface->flip_page);
++   memset(&event_context, 0, sizeof(event_context));
++   event_context.version           = DRM_EVENT_CONTEXT_VERSION;
++   event_context.page_flip_handler = drm_page_flip_handler;
++   pfd.fd                          = drm.fd;
++   pfd.events                      = POLLIN;
+ 
+-   drmModeAtomicFree(req);
++   while (pending)
++   {
++      pfd.revents = 0;
++      ret = poll(&pfd, 1, 1000);
++      if (ret < 0)
++      {
++         if (errno == EINTR)
++            continue;
++         RARCH_ERR("[DRM] Failed while waiting for pageflip: %s.\n",
++               strerror(errno));
++         return false;
++      }
++      if (ret == 0)
++      {
++         RARCH_WARN("[DRM] Pageflip event has not arrived after 1000 ms; still waiting.\n");
++         continue;
++      }
++      if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
++      {
++         RARCH_ERR("[DRM] DRM fd failed while waiting for pageflip (revents=0x%x).\n",
++               pfd.revents);
++         return false;
++      }
++      if ((pfd.revents & POLLIN) &&
++          drmHandleEvent(drm.fd, &event_context) < 0)
++      {
++         RARCH_ERR("[DRM] Failed to drain pageflip event: %s.\n",
++               strerror(errno));
++         return false;
++      }
++   }
++
++   surface->current_page = &surface->pages[surface->flip_page];
++   surface->flip_page = (surface->flip_page + 1) % surface->numpages;
++   return true;
+ }

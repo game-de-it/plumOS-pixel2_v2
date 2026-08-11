@@ -39,10 +39,18 @@ gcc "${common_flags[@]}" $png_cflags $freetype_cflags $drm_cflags \
     $png_libs $freetype_libs $drm_libs
 gcc "${common_flags[@]}" "$SOURCE_DIR/plumos_library_scan.c" \
     -o "$ROOTFS_DIR/usr/bin/plumos-library-scan"
+gcc "${common_flags[@]}" "$SOURCE_DIR/plumos_text_ui.c" \
+    -o "$ROOTFS_DIR/usr/bin/plumos-text-ui"
+gcc "${common_flags[@]}" "$SOURCE_DIR/plumos_frontend.c" \
+    -o "$ROOTFS_DIR/usr/bin/plumos-frontend-diagnostics"
 strip "$ROOTFS_DIR/usr/bin/plumos-frontend-pixel2" \
-    "$ROOTFS_DIR/usr/bin/plumos-library-scan" 2>/dev/null || true
+    "$ROOTFS_DIR/usr/bin/plumos-library-scan" \
+    "$ROOTFS_DIR/usr/bin/plumos-text-ui" \
+    "$ROOTFS_DIR/usr/bin/plumos-frontend-diagnostics" 2>/dev/null || true
 chmod 0755 "$ROOTFS_DIR/usr/bin/plumos-frontend-pixel2" \
-    "$ROOTFS_DIR/usr/bin/plumos-library-scan"
+    "$ROOTFS_DIR/usr/bin/plumos-library-scan" \
+    "$ROOTFS_DIR/usr/bin/plumos-text-ui" \
+    "$ROOTFS_DIR/usr/bin/plumos-frontend-diagnostics"
 
 copy_dependencies() {
     ldd "$1" 2>/dev/null | awk '
@@ -56,5 +64,7 @@ copy_dependencies() {
 }
 copy_dependencies "$ROOTFS_DIR/usr/bin/plumos-frontend-pixel2"
 copy_dependencies "$ROOTFS_DIR/usr/bin/plumos-library-scan"
+copy_dependencies "$ROOTFS_DIR/usr/bin/plumos-text-ui"
+copy_dependencies "$ROOTFS_DIR/usr/bin/plumos-frontend-diagnostics"
 
 printf 'frontend-rootfs=result-ok target=pixel2 renderer=drm-fbdev\n'

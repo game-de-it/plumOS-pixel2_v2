@@ -7,6 +7,12 @@ for script in \
     "$ROOT_DIR/scripts/build-adbd-overlay.sh" \
     "$ROOT_DIR/scripts/install-kernel-runtime.sh" \
     "$ROOT_DIR/scripts/install-frontend-rootfs.sh" \
+    "$ROOT_DIR/scripts/docker-build.sh" \
+    "$ROOT_DIR/scripts/build-frontend-component.sh" \
+    "$ROOT_DIR/scripts/build-retroarch.sh" \
+    "$ROOT_DIR/scripts/build-libretro-cores.sh" \
+    "$ROOT_DIR/scripts/build-app-layer.sh" \
+    "$ROOT_DIR/scripts/verify-app-layer.sh" \
     "$ROOT_DIR/scripts/verify-system-rootfs.sh" \
     "$ROOT_DIR/rootfs/pixel2/sbin/init" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
@@ -24,6 +30,9 @@ grep -q 'PLUMOS_FBDEV_ROTATION=ccw' \
 grep -q 'physical_yres' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'PLUMOS_SYS' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'app-layer-verified' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 
 ! grep -q '\$bb mountpoint' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'ROOTFS_DIR/dev/pts' "$ROOT_DIR/scripts/build-system-rootfs.sh"

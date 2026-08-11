@@ -3,8 +3,9 @@ set -u
 
 bb=/bin/busybox
 SEED=/usr/share/plumos/frontend-seed
-ROOT=/state/plumos/frontend
-LOG=/state/plumos/logs/frontend.log
+APP_ROOT=/mnt/plumos
+FALLBACK_ROOT=/state/plumos/frontend
+LOG=/mnt/plumos/logs/frontend.log
 PID=/run/plumos/frontend.pid
 
 find_input() {
@@ -32,16 +33,27 @@ find_input() {
 }
 
 start_frontend() {
-    $bb mkdir -p "$ROOT" /run/plumos /state/plumos/logs
-    $bb cp -a "$SEED/." "$ROOT/" >>"$LOG" 2>&1 || {
-        printf 'frontend=result-failed reason=seed-copy\n' >>"$LOG"
-        return 1
-    }
+    ROOT=$APP_ROOT
+    $bb mkdir -p /run/plumos /mnt/plumos/logs
+    if [ -s "$APP_ROOT/manifest.json" ] && [ -s "$APP_ROOT/checksums.sha256" ] &&
+       (cd "$APP_ROOT" && $bb sha256sum -c checksums.sha256 >/dev/null 2>>"$LOG"); then
+        printf 'frontend=app-layer-verified root=%s\n' "$APP_ROOT" >>"$LOG"
+    else
+        ROOT=$FALLBACK_ROOT
+        LOG=/mnt/plumos/logs/frontend-recovery.log
+        $bb mkdir -p "$ROOT"
+        $bb cp -a "$SEED/." "$ROOT/" >>"$LOG" 2>&1 || {
+            printf 'frontend=result-failed reason=seed-copy\n' >>"$LOG"
+            return 1
+        }
+        $bb mkdir -p "$ROOT/bin"
+        $bb ln -sf /usr/bin/plumos-frontend-pixel2 "$ROOT/bin/plumos-frontend-pixel2"
+        $bb ln -sf /usr/bin/plumos-library-scan "$ROOT/bin/plumos-library-scan"
+        $bb ln -sf /usr/bin/plumos-text-ui "$ROOT/bin/plumos-text-ui"
+        printf 'frontend=app-layer-recovery root=%s\n' "$ROOT" >>"$LOG"
+    fi
     $bb mkdir -p "$ROOT/bin" "$ROOT/config/frontend" "$ROOT/config/system" \
         "$ROOT/state/frontend" "$ROOT/logs"
-    $bb ln -sf /usr/bin/plumos-frontend-pixel2 \
-        "$ROOT/bin/plumos-frontend-pixel2"
-    $bb ln -sf /usr/bin/plumos-library-scan "$ROOT/bin/plumos-library-scan"
     [ -s "$ROOT/config/frontend/settings.json" ] || \
         $bb cp "$ROOT/factory-defaults/frontend/settings.json" \
             "$ROOT/config/frontend/settings.json"
@@ -52,8 +64,9 @@ start_frontend() {
     input=$(find_input || true)
     [ -n "$input" ] || input=/dev/input/event0
     export PLUMOS_ROOT="$ROOT"
-    export PLUMOS_SDCARD_ROOT=/roms
+    export PLUMOS_SDCARD_ROOT=/mnt/plumos-user
     export PLUMOS_ROM_ROOT=/roms
+    export PLUMOS_BIOS_ROOT=/mnt/plumos-user/bios
     export PLUMOS_DEVICE_ID=pixel2
     export PLUMOS_DEVICE_NAME='GKD Pixel2'
     export PLUMOS_RENDERER=fbdev
@@ -64,12 +77,14 @@ start_frontend() {
     export PLUMOS_BUSYBOX=/bin/busybox
     export PLUMOS_FRONTEND_MODE=manual
     export PLUMOS_INPUT_TRACE_PATH=/run/plumos/frontend-input.log
+    export PLUMOS_RUNTIME_ROOT=/run/plumos
+    export LD_LIBRARY_PATH="$ROOT/frontend/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
     printf 'frontend=result-starting renderer=fbdev input=%s fb=/dev/fb0\n' \
         "$input" >>"$LOG"
-    PLUMOS_ROOT="$ROOT" /usr/bin/plumos-library-scan --defer-thumbnails \
+    PLUMOS_ROOT="$ROOT" "$ROOT/bin/plumos-library-scan" --defer-thumbnails \
         >>"$LOG" 2>&1 || printf 'frontend=warning scanner-failed\n' >>"$LOG"
-    /usr/bin/plumos-frontend-pixel2 --renderer fbdev --fb /dev/fb0 \
+    "$ROOT/bin/plumos-frontend-pixel2" --renderer fbdev --fb /dev/fb0 \
         --event "$input" >>"$LOG" 2>&1 &
     frontend_pid=$!
     printf '%s\n' "$frontend_pid" >"$PID"

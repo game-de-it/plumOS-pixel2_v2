@@ -30,6 +30,7 @@ PREFIX="${PLUMOS_PIXEL2_BOOT_PREFIX:-/work/artifacts/vendor/pixel2-stock-source/
 PREFIX_MANIFEST="$ROOT_DIR/artifacts/manifests/pixel2-stock-prefix.manifest"
 KERNEL_DIR="$ROOT_DIR/output/kernel/pixel2"
 SYSTEM_DIR="$ROOT_DIR/output/system-rootfs/pixel2/payload"
+APP_DIR="$ROOT_DIR/output/app-layer/pixel2/plumos"
 OUT_DIR="$ROOT_DIR/output/image/pixel2"
 VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
 SOURCE_REF="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || printf unknown)"
@@ -64,6 +65,11 @@ done
     printf 'error: SYSTEM missing; run ./scripts/build-system-rootfs.sh first\n' >&2
     exit 2
 }
+[ -f "$APP_DIR/manifest.json" ] && [ -f "$APP_DIR/checksums.sha256" ] || {
+    printf 'error: app layer missing; run ./scripts/docker-build.sh app-layer --strict\n' >&2
+    exit 2
+}
+"$ROOT_DIR/scripts/verify-app-layer.sh" "$APP_DIR"
 
 # Fixed 2 GiB layout, in 512-byte sectors.
 TOTAL_SECTORS=4194304
@@ -77,7 +83,8 @@ IMAGE="$OUT_DIR/plumOS-Pixel2-$VERSION.img"
 WORK="$(mktemp -d /tmp/plumos-pixel2-image.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
 rm -rf "$OUT_DIR"
-mkdir -p "$OUT_DIR" "$WORK/boot"
+mkdir -p "$OUT_DIR" "$WORK/boot" "$WORK/plumos-sys"
+cp -a "$APP_DIR/." "$WORK/plumos-sys/"
 
 truncate -s "$((TOTAL_SECTORS * 512))" "$IMAGE"
 dd if="$PREFIX" of="$IMAGE" bs=1M count=16 conv=notrunc status=none
@@ -95,12 +102,15 @@ truncate -s "$((STATE_SECTORS * 512))" "$WORK/state.ext4"
 truncate -s "$((ROMS_SECTORS * 512))" "$WORK/roms.fat"
 SOURCE_DATE_EPOCH="$SOURCE_EPOCH" mkfs.vfat --invariant -F 32 -n PLUMOS_BOOT \
     -i 504C554D "$WORK/boot.fat" >/dev/null
-E2FSPROGS_FAKE_TIME="$SOURCE_EPOCH" mkfs.ext4 -q -F -L PLUMOS_STATE \
+E2FSPROGS_FAKE_TIME="$SOURCE_EPOCH" mkfs.ext4 -q -F -L PLUMOS_SYS \
     -U 504c554d-5354-4154-4500-000000000002 \
     -E lazy_itable_init=0,lazy_journal_init=0,hash_seed=504c554d-5354-4154-4500-000000000002 \
-    "$WORK/state.ext4"
-SOURCE_DATE_EPOCH="$SOURCE_EPOCH" mkfs.vfat --invariant -F 32 -n PLUMOS_ROMS \
+    -d "$WORK/plumos-sys" "$WORK/state.ext4"
+SOURCE_DATE_EPOCH="$SOURCE_EPOCH" mkfs.vfat --invariant -F 32 -n PLUMOS_USER \
     -i 504C0003 "$WORK/roms.fat" >/dev/null
+for directory in roms bios Images Themes Screenshots Music updates imports exports plumos-logs; do
+    MTOOLS_SKIP_CHECK=1 mmd -i "$WORK/roms.fat" "::/$directory"
+done
 
 install -m 0644 "$KERNEL_DIR/Image" "$WORK/boot/Image"
 install -m 0644 "$KERNEL_DIR/rk3326s-gkd-pixel2.dtb" \
@@ -115,7 +125,8 @@ version=$VERSION
 source_ref=$SOURCE_REF
 source_date_epoch=$SOURCE_EPOCH
 boot_prefix_sha256=$prefix_sha
-layout=boot-prefix-16MiB,boot-fat-256MiB,state-ext4-512MiB,roms-fat-remainder
+layout=boot-prefix-16MiB,boot-fat-256MiB,plumos-sys-ext4-512MiB,plumos-user-fat32-remainder
+runtime_abi=plumos-pixel2-app-layer-v1
 EOF
 find "$WORK/boot" -exec touch -h -d "@$SOURCE_EPOCH" {} +
 MTOOLS_SKIP_CHECK=1 mcopy -m -o -i "$WORK/boot.fat" "$WORK/boot/"* ::/

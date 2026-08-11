@@ -33,6 +33,8 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/sbin/adbd"
 test -x "$tmp/rootfs/usr/bin/plumos-frontend-pixel2"
 test -x "$tmp/rootfs/usr/bin/plumos-library-scan"
+test -x "$tmp/rootfs/usr/bin/plumos-text-ui"
+test -x "$tmp/rootfs/usr/bin/plumos-frontend-diagnostics"
 test -x "$tmp/rootfs/usr/bin/plumos-diagnostics"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/40-frontend"
 test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
@@ -63,6 +65,7 @@ if [ "$(uname -m)" = aarch64 ]; then
     chroot "$tmp/rootfs" /usr/bin/kmod --version >/dev/null
     chroot "$tmp/rootfs" /usr/bin/plumos-frontend-pixel2 --help >/dev/null
     chroot "$tmp/rootfs" /usr/bin/plumos-library-scan --help >/dev/null
+    chroot "$tmp/rootfs" /usr/bin/plumos-text-ui --help >/dev/null
     first_module=$(find "$tmp/rootfs/lib/modules/$release" -name '*.ko' -print -quit)
     test -n "$first_module"
     case "$(chroot "$tmp/rootfs" /sbin/modinfo -F vermagic \

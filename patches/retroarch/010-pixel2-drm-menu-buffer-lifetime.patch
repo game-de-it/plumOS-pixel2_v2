@@ -1,0 +1,67 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -198,6 +198,7 @@ static void deinit_drm(void)
+ static void drm_surface_free(void *data, struct drm_surface **sp)
+ {
+    int i;
++   struct drm_mode_destroy_dumb destroy_dumb;
+    struct drm_video *_drmvars = data;
+    struct drm_surface *surface = *sp;
+ 
+@@ -205,8 +206,30 @@ static void drm_surface_free(void *data, struct drm_surface **sp)
+       return;
+ 
+    for (i = 0; i < surface->numpages; i++)
++   {
++      struct modeset_buf *buf = &surface->pages[i].buf;
++
+       surface->pages[i].used = false;
++      if (surface->pages[i].page_used_mutex)
++         slock_free(surface->pages[i].page_used_mutex);
++      if (buf->map && buf->map != MAP_FAILED && buf->size)
++         munmap(buf->map, buf->size);
++      if (buf->fb_id)
++         drmModeRmFB(drm.fd, buf->fb_id);
++      if (buf->handle)
++      {
++         memset(&destroy_dumb, 0, sizeof(destroy_dumb));
++         destroy_dumb.handle = buf->handle;
++         if (drmIoctl(drm.fd, DRM_IOCTL_MODE_DESTROY_DUMB,
++                  &destroy_dumb) < 0)
++            RARCH_WARN("[DRM] Failed to destroy dumb buffer.\n");
++      }
++   }
+ 
++   /*
++    * Menu surfaces are created and destroyed whenever RGUI is toggled.
++    * Release their mapped KMS buffers here instead of relying on process exit.
++    */
+    free(surface->pages);
+ 
+    free(surface);
+@@ -914,6 +936,11 @@ static void drm_set_texture_frame(void *data, const void *frame, bool rgb32,
+ 
+    /* The output pixel array with the converted pixels. */
+    char *frame_output = (char *) malloc (dst_pitch * height);
++   if (!frame_output)
++   {
++      RARCH_ERR("[DRM] Cannot allocate RGUI conversion buffer.\n");
++      return;
++   }
+ 
+    /* Remember, memcpy() works with 8bits pointers for increments. */
+    char *dst_base_addr           = frame_output;
+@@ -935,6 +962,12 @@ static void drm_set_texture_frame(void *data, const void *frame, bool rgb32,
+ 
+    /* We update the menu surface if menu is active. */
+    drm_surface_update(_drmvars, frame_output, _drmvars->menu_surface);
++
++   /*
++    * RGUI calls this once per menu frame. Keeping this allocation alive leaks
++    * width * height * 4 bytes every frame and OOM-kills RetroArch on Pixel2.
++    */
++   free(frame_output);
+ }
+ 
+ static void drm_set_nonblock_state(void *a, bool b, bool c, unsigned d) { }

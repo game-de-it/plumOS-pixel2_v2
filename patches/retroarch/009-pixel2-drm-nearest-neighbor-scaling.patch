@@ -1,0 +1,164 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -99,6 +99,11 @@ struct drm_surface
+    int src_width;
+    int src_height;
+ 
++   /* The libretro frame dimensions. The scanout buffer is sized to the
++    * viewport, so these remain separate from src_width/src_height. */
++   int frame_width;
++   int frame_height;
++
+    /* Surfaces with a higher layer will be on top of
+     * the ones with lower. Default is 0. */
+    int layer;
+@@ -216,6 +221,25 @@ static void drm_surface_set_aspect(struct drm_surface *surface, float aspect)
+       surface->aspect = aspect;
+ }
+ 
++/* The Pixel2 display plane applies a filtered scale when its source and CRTC
++ * rectangles differ. Keep those rectangles equal and scale into a viewport
++ * sized dumb buffer here, where nearest-neighbour is explicit. */
++static void drm_surface_update_viewport(struct drm_surface *surface)
++{
++   settings_t *settings              = config_get_ptr();
++   struct video_viewport *vp         = &surface->viewport;
++
++   vp->full_width  = drm.current_mode->hdisplay;
++   vp->full_height = drm.current_mode->vdisplay;
++   video_driver_update_viewport(vp, false,
++         settings ? settings->bools.video_force_aspect : true);
++
++   if (!vp->width)
++      vp->width = 1;
++   if (!vp->height)
++      vp->height = 1;
++}
++
+ static void drm_surface_setup(void *data,  int src_width, int src_height,
+       int pitch, int bpp, uint32_t pixformat,
+       int alpha, float aspect, int numpages, int layer,
+@@ -229,7 +253,8 @@ static void drm_surface_setup(void *data,  int src_width, int src_height,
+ 
+    surface = *sp;
+ 
+-   /* Setup surface parameters */
++   /* Setup surface parameters. The input dimensions are retained for the
++    * nearest-neighbour blit; page buffers use the final viewport size. */
+    surface->numpages = numpages;
+    /* We receive the total pitch, including things that are
+     * between scanlines and we calculate the visible pitch
+@@ -237,12 +262,15 @@ static void drm_surface_setup(void *data,  int src_width, int src_height,
+     *
+     * These will be used to increase the offsets for blitting. */
+    surface->total_pitch = pitch;
+-   surface->pitch       = src_width * bpp;
+    surface->bpp         = bpp;
+    surface->pixformat   = pixformat;
+-   surface->src_width   = src_width;
+-   surface->src_height  = src_height;
++   surface->frame_width = src_width;
++   surface->frame_height = src_height;
+    surface->aspect      = aspect;
++   drm_surface_update_viewport(surface);
++   surface->src_width   = surface->viewport.width;
++   surface->src_height  = surface->viewport.height;
++   surface->pitch       = surface->src_width * bpp;
+ 
+    /* Allocate memory for all the pages in each surface
+     * and initialize variables inside each page's struct. */
+@@ -260,8 +288,8 @@ static void drm_surface_setup(void *data,  int src_width, int src_height,
+    /* Create the framebuffer for each one of the pages of the surface. */
+    for (i = 0; i < surface->numpages; i++)
+    {
+-      surface->pages[i].buf.width  = src_width;
+-      surface->pages[i].buf.height = src_height;
++      surface->pages[i].buf.width  = surface->src_width;
++      surface->pages[i].buf.height = surface->src_height;
+       int ret                      = modeset_create_dumbfb(
+             drm.fd, &surface->pages[i].buf, bpp, pixformat);
+ 
+@@ -315,22 +343,38 @@ static void drm_surface_update(void *data, const void *frame,
+ {
+    struct drm_video *_drmvars  = data;
+    struct drm_page       *page = NULL;
+-   /* Frame blitting */
+-   int line                    = 0;
+-   int src_offset              = 0;
+-   int dst_offset              = 0;
++   unsigned int x;
++   unsigned int y;
++   uint8_t *dst_base = surface->pages[surface->flip_page].buf.map;
+ 
+-   for (line = 0; line < surface->src_height; line++)
++   if (surface->bpp == 2)
+    {
+-      memcpy (
+-            surface->pages[surface->flip_page].buf.map + dst_offset,
+-            (uint8_t*)frame + src_offset,
+-            surface->pitch);
+-      src_offset += surface->total_pitch;
+-      /* Dumb buffers may align scanlines beyond visible width * bpp.
+-       * The KMS plane scans with the kernel-provided stride. */
+-      dst_offset += surface->pages[surface->flip_page].buf.stride;
++      for (y = 0; y < (unsigned int)surface->src_height; y++)
++      {
++         const uint16_t *src = (const uint16_t *)((const uint8_t *)frame
++               + (y * (unsigned int)surface->frame_height /
++                  (unsigned int)surface->src_height) * surface->total_pitch);
++         uint16_t *dst = (uint16_t *)(dst_base +
++               y * surface->pages[surface->flip_page].buf.stride);
++         for (x = 0; x < (unsigned int)surface->src_width; x++)
++            dst[x] = src[x * (unsigned int)surface->frame_width /
++                  (unsigned int)surface->src_width];
++      }
+    }
++   else
++   {
++      for (y = 0; y < (unsigned int)surface->src_height; y++)
++      {
++         const uint32_t *src = (const uint32_t *)((const uint8_t *)frame
++               + (y * (unsigned int)surface->frame_height /
++                  (unsigned int)surface->src_height) * surface->total_pitch);
++         uint32_t *dst = (uint32_t *)(dst_base +
++               y * surface->pages[surface->flip_page].buf.stride);
++         for (x = 0; x < (unsigned int)surface->src_width; x++)
++            dst[x] = src[x * (unsigned int)surface->frame_width /
++                  (unsigned int)surface->src_width];
++      }
++   }
+ 
+    /* Page flipping */
+    drm_page_flip(surface);
+@@ -523,26 +567,11 @@ static void drm_plane_setup(struct drm_surface *surface)
+     * crtc_x and crtc_y are the position of the plane
+     * pw and ph are the input size: the size of the area we read from the fb. */
+    uint32_t plane_flags = 0;
+-   settings_t *settings = config_get_ptr();
+    struct video_viewport *vp = &surface->viewport;
+-   int32_t plane_x;
+-   int32_t plane_y;
+-   uint32_t plane_w;
+-   uint32_t plane_h;
+-
+-   vp->full_width  = drm.current_mode->hdisplay;
+-   vp->full_height = drm.current_mode->vdisplay;
+-   video_driver_update_viewport(vp, false,
+-         settings ? settings->bools.video_force_aspect : true);
+-   plane_x = vp->x;
+-   plane_y = vp->y;
+-   plane_w = vp->width;
+-   plane_h = vp->height;
+-
+-   if (!plane_w)
+-      plane_w = 1;
+-   if (!plane_h)
+-      plane_h = 1;
++   int32_t plane_x             = vp->x;
++   int32_t plane_y             = vp->y;
++   uint32_t plane_w            = surface->src_width;
++   uint32_t plane_h            = surface->src_height;
+ 
+    uint32_t src_w = surface->src_width;
+    uint32_t src_h = surface->src_height;

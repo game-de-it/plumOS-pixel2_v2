@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+for script in \
+    scripts/docker-build.sh \
+    scripts/build-frontend-component.sh \
+    scripts/build-retroarch.sh \
+    scripts/build-libretro-cores.sh \
+    scripts/build-app-layer.sh \
+    scripts/verify-app-layer.sh \
+    package/app-layer-pixel2/bin/plumos-retroarch-launch; do
+    bash -n "$ROOT_DIR/$script"
+done
+grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+grep -q 'video_rotation = "3"' \
+    "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
+grep -q 'SOURCE_COMMIT=69a4f0ea' "$ROOT_DIR/scripts/build-retroarch.sh"
+grep -q 'SOURCE_COMMIT=058d6651' "$ROOT_DIR/scripts/build-libretro-cores.sh"
+if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
+    "$ROOT_DIR/package/frontend-pixel2" \
+    "$ROOT_DIR/package/retroarch-pixel2" \
+    "$ROOT_DIR/package/app-layer-pixel2" >/dev/null; then
+    printf 'error: foreign distribution identity in Pixel2 app sources\n' >&2
+    exit 1
+fi
+printf 'app_layer_scripts=result-ok\n'

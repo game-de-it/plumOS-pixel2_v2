@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "systems": [
+    {
+      "id": "nes",
+      "display_name": "NES",
+      "short_name": "NES",
+      "sort_order": 10,
+      "hardware": "console",
+      "enabled": true,
+      "pinned": false,
+      "directory_aliases": [
+        {"name": "nes", "source": "plumos", "priority": 10},
+        {"name": "FC", "source": "compatibility", "priority": 20},
+        {"name": "famicom", "source": "compatibility", "priority": 30}
+      ],
+      "extensions": ["nes", "unf", "unif", "zip"],
+      "artwork": {
+        "lookup": [
+          {"root": "sdcard", "path": "Images/nes"}
+        ]
+      },
+      "launch_profiles": ["retroarch:quicknes"],
+      "default_launch_profile": "retroarch:quicknes",
+      "default_cpu_policy": "ondemand",
+      "scraper": {"enabled": false, "reason": "bringup"}
+    }
+  ]
+}
