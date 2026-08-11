@@ -14,6 +14,8 @@ for path in \
     emulator/lib/libpthread.so.0 \
     factory-defaults/alsa/alsa.conf \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
+    factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg \
+    factory-defaults/retroarch/autoconfig/linuxraw/pixel2_joypad.cfg \
     config/system/input-map.env config/system/input-map.json \
     components/frontend/manifest.json components/retroarch/manifest.json \
     components/libretro-cores/manifest.json; do
@@ -26,6 +28,14 @@ done
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
+grep -q '^input_device = "pixel2_joypad"$' \
+    "$ROOT/factory-defaults/retroarch/autoconfig/linuxraw/pixel2_joypad.cfg"
+grep -q '^input_joypad_driver = "linuxraw"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^video_rotation = "0"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^config_save_on_exit = "false"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
 grep -q '^PLUMOS_INPUT_AB_LAYOUT=east-confirm$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_A_CODE=305$' "$ROOT/config/system/input-map.env"

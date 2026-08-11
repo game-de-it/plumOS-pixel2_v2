@@ -68,6 +68,14 @@ fi
 
 append="$runtime_root/retroarch/append.cfg"
 {
+    printf 'audio_driver = "alsa"\n'
+    printf 'audio_device = "default"\n'
+    printf 'video_driver = "drm"\n'
+    printf 'video_rotation = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_ROTATION:-0}"
+    printf 'input_driver = "udev"\n'
+    printf 'input_joypad_driver = "linuxraw"\n'
+    printf 'joypad_autoconfig_dir = "%s"\n' "$root/factory-defaults/retroarch/autoconfig"
+    printf 'config_save_on_exit = "false"\n'
     printf 'savefile_directory = "%s"\n' "$root/saves/$system_id"
     printf 'savestate_directory = "%s"\n' "$root/states/$system_id"
     printf 'system_directory = "%s"\n' "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"
