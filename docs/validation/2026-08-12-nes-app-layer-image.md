@@ -88,3 +88,23 @@ Before this becomes the default image, flash a separate test SD and confirm:
 - return to the frontend after emulator exit
 - save and state persistence after reboot
 - ADB remains available for log capture
+
+## Mountpoint repair deployment
+
+The first physical boot of the generated image reached the maintenance shell.
+The console showed that `/mnt` could not be created on the read-only SquashFS;
+therefore `/mnt/plumos` and `/mnt/plumos-user` did not exist, the writable
+partitions could not be mounted, and every service log path failed afterward.
+
+Commit `ff39e41` adds `/mnt/plumos` and `/mnt/plumos-user` to the generated
+SYSTEM rootfs and makes both directories mandatory in host verification. The
+rebuilt SYSTEM was deployed to the mounted test card with readback hash:
+
+```text
+0c88ce9e165b78c5d2a0d647907f1e3b72f9b452ebaa8cae5581a2d339074b5e  SYSTEM
+```
+
+The previous payload remains recoverable on the card as
+`SYSTEM.bak-e7cbd8d2`. Read-only `fsck_msdos` validation passed for both
+`PLUMOS_BOOT` and `PLUMOS_USER`, after which `/dev/disk4` was ejected. A new
+physical cold boot is required to confirm mount, persistent logs, ADB, and FE.
