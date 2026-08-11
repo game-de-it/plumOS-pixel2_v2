@@ -31,16 +31,17 @@ if grep -Eq 'plumos-(nextcommander|music-player|retroarch-menu|pyxel|portmaster)
     printf 'error: unavailable application exposed by Pixel2 frontend\n' >&2
     exit 1
 fi
+foreign_models='M''F|V90''S|M''MF|A3''0|Miy''oo'
 if find "$ROOT/config" "$ROOT/share" "$ROOT/licenses" -type f \
     \( -name '*.json' -o -name '*.lang' -o -name '*.manifest' \
        -o -name '*.txt' -o -name 'LICENSE' \) -exec \
-    grep -EIil '(^|[^[:alnum:]_])(MF|V90S)([^[:alnum:]_]|$)' {} + | \
+    grep -EIil "(^|[^[:alnum:]_])($foreign_models)([^[:alnum:]_]|$)" {} + | \
     grep -q .; then
     printf 'error: foreign device identity in Pixel2 user-facing files\n' >&2
     exit 1
 fi
 if strings "$ROOT/bin/plumos-frontend-pixel2" "$ROOT/bin/plumos-text-ui" | \
-    grep -Eiq '(^|[^[:alnum:]_])(MF|V90S)([^[:alnum:]_]|$)'; then
+    grep -Eiq "(^|[^[:alnum:]_])($foreign_models)([^[:alnum:]_]|$)"; then
     printf 'error: foreign device identity in Pixel2 frontend binaries\n' >&2
     exit 1
 fi

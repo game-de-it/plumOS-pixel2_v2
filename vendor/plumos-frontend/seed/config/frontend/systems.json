@@ -10,7 +10,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "FC", "source": "miyoo", "priority": 10, "shared": true},
+        {"name": "FC", "source": "pixel2", "priority": 10, "shared": true},
         {"name": "nes", "source": "plumos", "priority": 20},
         {"name": "famicom", "source": "plumos", "priority": 30}
       ],
@@ -47,8 +47,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "FDS", "source": "miyoo", "priority": 10},
-        {"name": "FC", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "FDS", "source": "pixel2", "priority": 10},
+        {"name": "FC", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "fds", "source": "plumos", "priority": 30}
       ],
       "extensions": ["fds", "zip", "7z"],
@@ -77,7 +77,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "SFC", "source": "miyoo", "priority": 10},
+        {"name": "SFC", "source": "pixel2", "priority": 10},
         {"name": "sfc", "source": "plumos", "priority": 20},
         {"name": "snes", "source": "plumos", "priority": 30}
       ],
@@ -107,7 +107,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "GB", "source": "miyoo", "priority": 10, "shared": true},
+        {"name": "GB", "source": "pixel2", "priority": 10, "shared": true},
         {"name": "gb", "source": "plumos", "priority": 20}
       ],
       "extensions": ["gb", "zip", "7z"],
@@ -136,8 +136,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "GBC", "source": "miyoo", "priority": 10},
-        {"name": "GB", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "GBC", "source": "pixel2", "priority": 10},
+        {"name": "GB", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "gbc", "source": "plumos", "priority": 30}
       ],
       "extensions": ["gbc", "zip", "7z"],
@@ -166,7 +166,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "GBA", "source": "miyoo", "priority": 10},
+        {"name": "GBA", "source": "pixel2", "priority": 10},
         {"name": "gba", "source": "plumos", "priority": 20}
       ],
       "extensions": ["gba", "zip", "7z"],
@@ -195,7 +195,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "MD", "source": "miyoo", "priority": 10, "shared": true},
+        {"name": "MD", "source": "pixel2", "priority": 10, "shared": true},
         {"name": "megadrive", "source": "plumos", "priority": 20},
         {"name": "genesis", "source": "plumos", "priority": 30}
       ],
@@ -225,8 +225,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "MS", "source": "miyoo", "priority": 10},
-        {"name": "MD", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "MS", "source": "pixel2", "priority": 10},
+        {"name": "MD", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "mastersystem", "source": "plumos", "priority": 30}
       ],
       "extensions": ["sms", "bin", "zip", "7z"],
@@ -255,9 +255,9 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "GG", "source": "miyoo", "priority": 10},
-        {"name": "GameGear", "source": "miyoo", "priority": 20},
-        {"name": "MD", "source": "miyoo", "priority": 30, "shared": true},
+        {"name": "GG", "source": "pixel2", "priority": 10},
+        {"name": "GameGear", "source": "pixel2", "priority": 20},
+        {"name": "MD", "source": "pixel2", "priority": 30, "shared": true},
         {"name": "gamegear", "source": "plumos", "priority": 40}
       ],
       "extensions": ["gg", "zip", "7z"],
@@ -286,8 +286,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "THIRTYTWOX", "source": "miyoo", "priority": 10},
-        {"name": "MD", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "THIRTYTWOX", "source": "pixel2", "priority": 10},
+        {"name": "MD", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "sega32x", "source": "plumos", "priority": 30}
       ],
       "extensions": ["32x", "bin", "zip", "7z"],
@@ -316,7 +316,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "SEGACD", "source": "miyoo", "priority": 10},
+        {"name": "SEGACD", "source": "pixel2", "priority": 10},
         {"name": "segacd", "source": "plumos", "priority": 20},
         {"name": "megacd", "source": "plumos", "priority": 30}
       ],
@@ -343,7 +343,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "PCE", "source": "miyoo", "priority": 10},
+        {"name": "PCE", "source": "pixel2", "priority": 10},
         {"name": "pcengine", "source": "plumos", "priority": 20},
         {"name": "tg16", "source": "plumos", "priority": 30}
       ],
@@ -373,8 +373,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "SGX", "source": "miyoo", "priority": 10},
-        {"name": "PCE", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "SGX", "source": "pixel2", "priority": 10},
+        {"name": "PCE", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "supergrafx", "source": "plumos", "priority": 30}
       ],
       "extensions": ["sgx", "pce", "zip", "7z"],
@@ -403,7 +403,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "PCECD", "source": "miyoo", "priority": 10},
+        {"name": "PCECD", "source": "pixel2", "priority": 10},
         {"name": "pcenginecd", "source": "plumos", "priority": 20},
         {"name": "tg16cd", "source": "plumos", "priority": 30}
       ],
@@ -430,8 +430,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "PS", "source": "miyoo", "priority": 10},
-        {"name": "PSX", "source": "miyoo", "priority": 20},
+        {"name": "PS", "source": "pixel2", "priority": 10},
+        {"name": "PSX", "source": "pixel2", "priority": 20},
         {"name": "psx", "source": "plumos", "priority": 30}
       ],
       "extensions": ["cue", "chd", "pbp", "m3u", "iso", "img", "bin"],
@@ -457,8 +457,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "PSP", "source": "miyoo", "priority": 10},
-        {"name": "PPSSPP", "source": "miyoo", "priority": 20},
+        {"name": "PSP", "source": "pixel2", "priority": 10},
+        {"name": "PPSSPP", "source": "pixel2", "priority": 20},
         {"name": "psp", "source": "plumos", "priority": 30}
       ],
       "extensions": ["iso", "cso", "pbp"],
@@ -484,7 +484,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "N64", "source": "miyoo", "priority": 10},
+        {"name": "N64", "source": "pixel2", "priority": 10},
         {"name": "n64", "source": "plumos", "priority": 20}
       ],
       "extensions": ["z64", "n64", "v64", "zip", "7z"],
@@ -510,7 +510,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "NDS", "source": "miyoo", "priority": 10},
+        {"name": "NDS", "source": "pixel2", "priority": 10},
         {"name": "nds", "source": "plumos", "priority": 20}
       ],
       "extensions": ["nds"],
@@ -536,7 +536,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "DC", "source": "miyoo", "priority": 10},
+        {"name": "DC", "source": "pixel2", "priority": 10},
         {"name": "dreamcast", "source": "plumos", "priority": 20}
       ],
       "extensions": ["chd", "cdi", "gdi", "m3u"],
@@ -562,7 +562,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "SATURN", "source": "miyoo", "priority": 10},
+        {"name": "SATURN", "source": "pixel2", "priority": 10},
         {"name": "saturn", "source": "plumos", "priority": 20}
       ],
       "extensions": ["ccd", "cue", "chd", "iso", "m3u", "bin"],
@@ -588,7 +588,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "NEOGEO", "source": "miyoo", "priority": 10},
+        {"name": "NEOGEO", "source": "pixel2", "priority": 10},
         {"name": "neogeo", "source": "plumos", "priority": 20}
       ],
       "extensions": ["zip", "7z"],
@@ -614,7 +614,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "NEOCD", "source": "miyoo", "priority": 10},
+        {"name": "NEOCD", "source": "pixel2", "priority": 10},
         {"name": "neogeocd", "source": "plumos", "priority": 20}
       ],
       "extensions": ["cue", "chd"],
@@ -640,7 +640,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "NGP", "source": "miyoo", "priority": 10},
+        {"name": "NGP", "source": "pixel2", "priority": 10},
         {"name": "ngp", "source": "plumos", "priority": 20}
       ],
       "extensions": ["ngp", "zip", "7z"],
@@ -669,8 +669,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "NGPC", "source": "miyoo", "priority": 10},
-        {"name": "NGP", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "NGPC", "source": "pixel2", "priority": 10},
+        {"name": "NGP", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "ngpc", "source": "plumos", "priority": 30}
       ],
       "extensions": ["ngc", "ngpc", "zip", "7z"],
@@ -699,8 +699,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "WS", "source": "miyoo", "priority": 10},
-        {"name": "WSC", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "WS", "source": "pixel2", "priority": 10},
+        {"name": "WSC", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "wonderswan", "source": "plumos", "priority": 30}
       ],
       "extensions": ["ws", "zip", "7z"],
@@ -729,7 +729,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "WSC", "source": "miyoo", "priority": 10},
+        {"name": "WSC", "source": "pixel2", "priority": 10},
         {"name": "wonderswancolor", "source": "plumos", "priority": 20}
       ],
       "extensions": ["wsc", "zip", "7z"],
@@ -758,7 +758,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "LYNX", "source": "miyoo", "priority": 10},
+        {"name": "LYNX", "source": "pixel2", "priority": 10},
         {"name": "lynx", "source": "plumos", "priority": 20}
       ],
       "extensions": ["lnx", "lyx", "bll", "o", "zip", "7z"],
@@ -787,7 +787,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "VB", "source": "miyoo", "priority": 10},
+        {"name": "VB", "source": "pixel2", "priority": 10},
         {"name": "virtualboy", "source": "plumos", "priority": 20}
       ],
       "extensions": ["vb", "vboy", "bin", "zip", "7z"],
@@ -816,7 +816,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "ARCADE", "source": "miyoo", "priority": 10, "shared": true},
+        {"name": "ARCADE", "source": "pixel2", "priority": 10, "shared": true},
         {"name": "arcade", "source": "plumos", "priority": 20}
       ],
       "extensions": ["zip", "7z"],
@@ -842,8 +842,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "FBNEO", "source": "miyoo", "priority": 10},
-        {"name": "ARCADE", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "FBNEO", "source": "pixel2", "priority": 10},
+        {"name": "ARCADE", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "fbneo", "source": "plumos", "priority": 30}
       ],
       "extensions": ["zip", "7z"],
@@ -869,8 +869,8 @@
       "enabled": false,
       "pinned": false,
       "directory_aliases": [
-        {"name": "MAME2003PLUS", "source": "miyoo", "priority": 10},
-        {"name": "ARCADE", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "MAME2003PLUS", "source": "pixel2", "priority": 10},
+        {"name": "ARCADE", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "mame", "source": "plumos", "priority": 30}
       ],
       "extensions": ["zip", "7z"],
@@ -896,8 +896,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "CPS1", "source": "miyoo", "priority": 10},
-        {"name": "ARCADE", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "CPS1", "source": "pixel2", "priority": 10},
+        {"name": "ARCADE", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "cps1", "source": "plumos", "priority": 30}
       ],
       "extensions": ["zip", "7z"],
@@ -923,8 +923,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "CPS2", "source": "miyoo", "priority": 10},
-        {"name": "ARCADE", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "CPS2", "source": "pixel2", "priority": 10},
+        {"name": "ARCADE", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "cps2", "source": "plumos", "priority": 30}
       ],
       "extensions": ["zip", "7z"],
@@ -950,8 +950,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "CPS3", "source": "miyoo", "priority": 10},
-        {"name": "ARCADE", "source": "miyoo", "priority": 20, "shared": true},
+        {"name": "CPS3", "source": "pixel2", "priority": 10},
+        {"name": "ARCADE", "source": "pixel2", "priority": 20, "shared": true},
         {"name": "cps3", "source": "plumos", "priority": 30}
       ],
       "extensions": ["zip", "7z"],
@@ -977,7 +977,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "DOS", "source": "miyoo", "priority": 10},
+        {"name": "DOS", "source": "pixel2", "priority": 10},
         {"name": "pc", "source": "plumos", "priority": 20}
       ],
       "extensions": ["dosz", "conf", "exe", "bat", "zip"],
@@ -1003,7 +1003,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "EASYRPG", "source": "miyoo", "priority": 10},
+        {"name": "EASYRPG", "source": "pixel2", "priority": 10},
         {"name": "easyrpg", "source": "plumos", "priority": 20}
       ],
       "scan_directories": true,
@@ -1030,8 +1030,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "PICO8", "source": "miyoo", "priority": 10},
-        {"name": "PICO", "source": "miyoo", "priority": 20},
+        {"name": "PICO8", "source": "pixel2", "priority": 10},
+        {"name": "PICO", "source": "pixel2", "priority": 20},
         {"name": "pico-8", "source": "plumos", "priority": 30}
       ],
       "extensions": ["p8", "png"],
@@ -1057,7 +1057,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "SCUMMVM", "source": "miyoo", "priority": 10},
+        {"name": "SCUMMVM", "source": "pixel2", "priority": 10},
         {"name": "scummvm", "source": "plumos", "priority": 20}
       ],
       "scan_directories": true,
@@ -1084,7 +1084,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "OPENBOR", "source": "miyoo", "priority": 10},
+        {"name": "OPENBOR", "source": "pixel2", "priority": 10},
         {"name": "openbor", "source": "plumos", "priority": 20}
       ],
       "extensions": ["pak"],
@@ -1110,8 +1110,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "PORTS", "source": "miyoo", "priority": 10},
-        {"name": "A30PORTS", "source": "miyoo", "priority": 20},
+        {"name": "PORTS", "source": "pixel2", "priority": 10},
+        {"name": "Pixel2PORTS", "source": "pixel2", "priority": 20},
         {"name": "ports", "source": "plumos", "priority": 30}
       ],
       "extensions": ["sh"],
@@ -1137,7 +1137,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "MSX", "source": "miyoo", "priority": 10},
+        {"name": "MSX", "source": "pixel2", "priority": 10},
         {"name": "msx", "source": "plumos", "priority": 20}
       ],
       "extensions": ["rom", "mx1", "mx2", "dsk", "cas", "zip", "7z"],
@@ -1166,7 +1166,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "PC88", "source": "miyoo", "priority": 10},
+        {"name": "PC88", "source": "pixel2", "priority": 10},
         {"name": "pc-8800", "source": "plumos", "priority": 20}
       ],
       "extensions": ["d88", "u88", "m3u", "zip"],
@@ -1192,7 +1192,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "PC98", "source": "miyoo", "priority": 10},
+        {"name": "PC98", "source": "pixel2", "priority": 10},
         {"name": "pc-9800", "source": "plumos", "priority": 20}
       ],
       "extensions": ["d88", "fdi", "hdi", "fdd", "nhd", "hdd", "m3u", "zip"],
@@ -1218,7 +1218,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "X68000", "source": "miyoo", "priority": 10},
+        {"name": "X68000", "source": "pixel2", "priority": 10},
         {"name": "x68000", "source": "plumos", "priority": 20}
       ],
       "extensions": ["dim", "hdf", "xdf", "m3u", "zip", "7z"],
@@ -1244,7 +1244,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "TIC", "source": "miyoo", "priority": 10},
+        {"name": "TIC", "source": "pixel2", "priority": 10},
         {"name": "tic-80", "source": "plumos", "priority": 20}
       ],
       "extensions": ["tic"],
@@ -1270,7 +1270,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "ATARI2600", "source": "miyoo", "priority": 10},
+        {"name": "ATARI2600", "source": "pixel2", "priority": 10},
         {"name": "atari2600", "source": "plumos", "priority": 20}
       ],
       "extensions": ["a26", "bin", "zip", "7z"],
@@ -1299,7 +1299,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "ATARI7800", "source": "miyoo", "priority": 10},
+        {"name": "ATARI7800", "source": "pixel2", "priority": 10},
         {"name": "atari7800", "source": "plumos", "priority": 20}
       ],
       "extensions": ["a78", "bin", "cdf", "zip", "7z"],
@@ -1328,7 +1328,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "VECTREX", "source": "miyoo", "priority": 10},
+        {"name": "VECTREX", "source": "pixel2", "priority": 10},
         {"name": "vectrex", "source": "plumos", "priority": 20}
       ],
       "extensions": ["vec", "bin", "zip", "7z"],
@@ -1357,7 +1357,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "SUPERVISION", "source": "miyoo", "priority": 10},
+        {"name": "SUPERVISION", "source": "pixel2", "priority": 10},
         {"name": "supervision", "source": "plumos", "priority": 20}
       ],
       "extensions": ["sv", "bin", "zip", "7z"],
@@ -1386,8 +1386,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "ODYSSEY2", "source": "miyoo", "priority": 10},
-        {"name": "VIDEOPAC", "source": "miyoo", "priority": 20},
+        {"name": "ODYSSEY2", "source": "pixel2", "priority": 10},
+        {"name": "VIDEOPAC", "source": "pixel2", "priority": 20},
         {"name": "odyssey2", "source": "plumos", "priority": 30}
       ],
       "extensions": ["bin", "zip", "7z"],
@@ -1416,8 +1416,8 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "GW", "source": "miyoo", "priority": 10},
-        {"name": "GAMEANDWATCH", "source": "miyoo", "priority": 20},
+        {"name": "GW", "source": "pixel2", "priority": 10},
+        {"name": "GAMEANDWATCH", "source": "pixel2", "priority": 20},
         {"name": "gameandwatch", "source": "plumos", "priority": 30}
       ],
       "extensions": ["mgw", "zip", "7z"],
@@ -1443,7 +1443,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "POKEMINI", "source": "miyoo", "priority": 10},
+        {"name": "POKEMINI", "source": "pixel2", "priority": 10},
         {"name": "pokemini", "source": "plumos", "priority": 20}
       ],
       "extensions": ["min", "zip", "7z"],
@@ -1472,7 +1472,7 @@
       "enabled": true,
       "pinned": false,
       "directory_aliases": [
-        {"name": "DOOM", "source": "miyoo", "priority": 10},
+        {"name": "DOOM", "source": "pixel2", "priority": 10},
         {"name": "doom", "source": "plumos", "priority": 20}
       ],
       "extensions": ["wad", "iwad", "pwad", "zip"],

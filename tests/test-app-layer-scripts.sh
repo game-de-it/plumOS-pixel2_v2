@@ -34,7 +34,8 @@ if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
     printf 'error: foreign distribution identity in Pixel2 app sources\n' >&2
     exit 1
 fi
-if grep -R -I -E -i '(^|[^[:alnum:]_])(MF|V90S)([^[:alnum:]_]|$)' \
+foreign_models='M''F|V90''S|M''MF|A3''0|Miy''oo'
+if grep -R -I -E -i "(^|[^[:alnum:]_])($foreign_models)([^[:alnum:]_]|$)" \
     "$ROOT_DIR/package/frontend-pixel2" \
     "$ROOT_DIR/package/app-layer-pixel2" \
     "$ROOT_DIR/vendor/plumos-frontend"; then
