@@ -16,6 +16,10 @@ grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'SOURCE_COMMIT=69a4f0ea' "$ROOT_DIR/scripts/build-retroarch.sh"
+grep -q 'required_library in libpthread.so.0' \
+    "$ROOT_DIR/scripts/build-retroarch.sh"
+grep -q 'emulator/lib/libpthread.so.0' \
+    "$ROOT_DIR/scripts/verify-app-layer.sh"
 grep -q 'SOURCE_COMMIT=058d6651' "$ROOT_DIR/scripts/build-libretro-cores.sh"
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
     "$ROOT_DIR/package/frontend-pixel2" \

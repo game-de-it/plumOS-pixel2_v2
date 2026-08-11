@@ -7,6 +7,7 @@ for path in \
     manifest.json checksums.sha256 VERSION COMPAT_VENDOR RUNTIME_ABI \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
     bin/plumos-retroarch-launch bin/retroarch cores/quicknes_libretro.so \
+    emulator/lib/libpthread.so.0 \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
     components/frontend/manifest.json components/retroarch/manifest.json \
     components/libretro-cores/manifest.json; do

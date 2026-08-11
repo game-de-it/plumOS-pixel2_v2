@@ -59,9 +59,21 @@ ldd "$PLUMOS_DIR/bin/retroarch" 2>/dev/null | awk '/=> \// {print $3} /^\// {pri
     sort -u | while IFS= read -r library; do
         [ -f "$library" ] || continue
         base=${library##*/}
-        case "$base" in libc.so.*|libm.so.*|libdl.so.*|libpthread.so.*|librt.so.*|ld-linux-*.so.*) continue ;; esac
+        # libc, libm, and the ELF interpreter are part of the plumOS System ABI.
+        # The compatibility DSOs below are still explicit DT_NEEDED entries on
+        # Debian bookworm and must travel with the app layer: the minimal Pixel2
+        # System intentionally does not install them.
+        case "$base" in libc.so.*|libm.so.*|ld-linux-*.so.*) continue ;; esac
         install -m 0644 "$library" "$PLUMOS_DIR/emulator/lib/$base"
     done
+
+for required_library in libpthread.so.0; do
+    [ -f "$PLUMOS_DIR/emulator/lib/$required_library" ] || {
+        printf 'error: RetroArch runtime library was not bundled: %s\n' \
+            "$required_library" >&2
+        exit 1
+    }
+done
 
 cat >"$COMPONENT_DIR/manifest.json" <<EOF
 {
