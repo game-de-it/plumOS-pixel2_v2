@@ -72,6 +72,28 @@ done
 }
 "$ROOT_DIR/scripts/verify-app-layer.sh" "$APP_DIR"
 
+normalize_ext4_timestamps() {
+    local source_root=$1 image=$2 epoch=$3 commands path relative field
+    commands="$WORK/normalize-ext4.debugfs"
+    : >"$commands"
+    for path in '<2>' '<11>'; do
+        for field in atime ctime mtime crtime; do
+            printf 'set_inode_field %s %s @%s\n' "$path" "$field" "$epoch" >>"$commands"
+        done
+    done
+    while IFS= read -r -d '' path; do
+        relative=${path#"$source_root"/}
+        case "$relative" in
+            *'"'*) printf 'error: unsupported quote in app-layer path: %s\n' "$relative" >&2; exit 1 ;;
+        esac
+        for field in atime ctime mtime crtime; do
+            printf 'set_inode_field "/%s" %s @%s\n' \
+                "$relative" "$field" "$epoch" >>"$commands"
+        done
+    done < <(find "$source_root" -mindepth 1 -print0 | sort -z)
+    debugfs -w -f "$commands" "$image" >/dev/null 2>&1
+}
+
 # Fixed 2 GiB layout, in 512-byte sectors.
 TOTAL_SECTORS=4194304
 BOOT_START=32768
@@ -107,6 +129,7 @@ E2FSPROGS_FAKE_TIME="$SOURCE_EPOCH" mkfs.ext4 -q -F -L PLUMOS_SYS \
     -U 504c554d-5354-4154-4500-000000000002 \
     -E lazy_itable_init=0,lazy_journal_init=0,hash_seed=504c554d-5354-4154-4500-000000000002 \
     -d "$WORK/plumos-sys" "$WORK/plumos-sys.ext4"
+normalize_ext4_timestamps "$WORK/plumos-sys" "$WORK/plumos-sys.ext4" "$SOURCE_EPOCH"
 SOURCE_DATE_EPOCH="$SOURCE_EPOCH" mkfs.vfat --invariant -F 32 -n PLUMOS_USER \
     -i 504C0003 "$WORK/plumos-user.fat" >/dev/null
 for directory in roms bios Images Themes Screenshots Music updates imports exports plumos-logs; do
