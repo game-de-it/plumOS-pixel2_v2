@@ -4,4 +4,17 @@
 # The retained stock initramfs performs switch_root to this fixed LibreELEC-style
 # path.  plumOS does not run systemd on Pixel2; ownership begins here and is
 # handed to the plumOS init script.
+{
+    echo 'plumos-stock-handoff=shim-start path=/usr/lib/systemd/systemd'
+    echo "plumos-stock-handoff=shim-args args=$*"
+} >/dev/console 2>&1 || true
+{
+    echo 'plumos-stock-handoff=shim-start path=/usr/lib/systemd/systemd'
+    echo "plumos-stock-handoff=shim-args args=$*"
+} >/dev/kmsg 2>/dev/null || true
+mkdir -p /storage/plumos/logs 2>/dev/null || true
+{
+    echo 'plumos-stock-handoff=shim-start path=/usr/lib/systemd/systemd'
+    echo "plumos-stock-handoff=shim-args args=$*"
+} >>/storage/plumos/logs/stock-handoff.log 2>/dev/null || true
 exec /sbin/init "$@"

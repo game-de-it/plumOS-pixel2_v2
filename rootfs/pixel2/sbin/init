@@ -22,6 +22,12 @@ $bb hostname "$HOSTNAME"
 mkdir -p /run/plumos
 exec >/dev/console 2>&1
 printf 'plumos-init=result-start device=pixel2\n'
+printf 'plumos-init=result-start device=pixel2\n' >/dev/kmsg 2>/dev/null || true
+if is_mounted /storage; then
+    $bb mkdir -p /storage/plumos/logs
+    printf 'plumos-init=result-start device=pixel2 storage=pre-mounted\n' \
+        >>/storage/plumos/logs/init.log 2>/dev/null || true
+fi
 
 echo /sbin/mdev >/proc/sys/kernel/hotplug 2>/dev/null || true
 $bb mdev -s
@@ -42,12 +48,14 @@ mount_partition() {
 }
 
 if is_mounted /flash; then
+    printf 'plumos-init=mount-source flash=stock-initramfs\n'
     is_mounted /boot || $bb mount --bind /flash /boot 2>/dev/null || true
 else
     mount_partition /boot PLUMOS_BOOT /dev/mmcblk0p1 ro 2>/dev/null || \
         printf 'plumos-init=warn mount=boot\n'
 fi
 if is_mounted /storage; then
+    printf 'plumos-init=mount-source storage=stock-initramfs\n'
     is_mounted /mnt/plumos || $bb mount --bind /storage /mnt/plumos 2>/dev/null || true
 fi
 if ! is_mounted /mnt/plumos && \
@@ -77,6 +85,11 @@ $bb mount --bind /mnt/plumos/state /state 2>/dev/null || true
 $bb mount --bind /mnt/plumos-user/roms /roms 2>/dev/null || true
 chmod 0700 /mnt/plumos/root /mnt/plumos/root/.ssh
 $bb mount --bind /mnt/plumos/root /root 2>/dev/null || true
+printf 'plumos-init=mounts-ready boot=%s runtime=%s user=%s\n' \
+    "$(is_mounted /boot && echo 1 || echo 0)" \
+    "$(is_mounted /mnt/plumos && echo 1 || echo 0)" \
+    "$(is_mounted /mnt/plumos-user && echo 1 || echo 0)" \
+    >>/mnt/plumos/logs/init.log 2>/dev/null || true
 /usr/bin/plumos-diagnostics > /state/plumos/logs/boot-diagnostics.txt 2>&1 || true
 
 for service in /usr/lib/plumos/init.d/*; do

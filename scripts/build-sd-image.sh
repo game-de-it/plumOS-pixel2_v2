@@ -32,6 +32,7 @@ STOCK_BOOT_DIR="$ROOT_DIR/artifacts/vendor/pixel2-stock/boot"
 STOCK_BOOT_MANIFEST="$ROOT_DIR/artifacts/vendor/pixel2-stock/manifest.tsv"
 SYSTEM_DIR="$ROOT_DIR/output/system-rootfs/pixel2/payload"
 APP_DIR="$ROOT_DIR/output/app-layer/pixel2/plumos"
+BOOT_HOOK_DIR="$ROOT_DIR/boot-hooks/pixel2"
 OUT_DIR="$ROOT_DIR/output/image/pixel2"
 VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
 SOURCE_REF="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || printf unknown)"
@@ -146,6 +147,13 @@ install -m 0644 "$STOCK_BOOT_DIR/Image" "$WORK/boot/Image"
 install -m 0644 "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" \
     "$WORK/boot/rk3326s-gkd-pixel2.dtb"
 install -m 0644 "$SYSTEM_DIR/SYSTEM" "$WORK/boot/SYSTEM"
+for hook in post-flash.sh post-sysroot.sh; do
+    [ -f "$BOOT_HOOK_DIR/$hook" ] || {
+        printf 'error: boot hook missing: %s/%s\n' "$BOOT_HOOK_DIR" "$hook" >&2
+        exit 2
+    }
+    install -m 0755 "$BOOT_HOOK_DIR/$hook" "$WORK/boot/$hook"
+done
 prefix_sha=$actual_prefix_sha
 stock_image_sha=$(sha256sum "$STOCK_BOOT_DIR/Image" | awk '{print $1}')
 stock_dtb_sha=$(sha256sum "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" | awk '{print $1}')
@@ -162,6 +170,7 @@ stock_image_sha256=$stock_image_sha
 stock_dtb_sha256=$stock_dtb_sha
 layout=boot-prefix-16MiB,boot-fat-256MiB,plumos-sys-ext4-512MiB,plumos-user-fat32-remainder
 runtime_abi=plumos-pixel2-app-layer-v1
+stock_initramfs_hooks=post-flash.sh,post-sysroot.sh
 EOF
 find "$WORK/boot" -exec touch -h -d "@$SOURCE_EPOCH" {} +
 MTOOLS_SKIP_CHECK=1 mcopy -m -o -i "$WORK/boot.fat" "$WORK/boot/"* ::/

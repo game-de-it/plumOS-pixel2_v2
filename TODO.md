@@ -53,6 +53,7 @@
 - [x] release imageをstock `Image`/stock DTB/stock kernel ABIへ戻す
 - [x] stock initramfsの`SYSTEM` handoff contractをhostで再確認する
 - [ ] stock initramfsの`SYSTEM` handoff contractを実機で再確認する
+- [ ] stock initramfs hookとplumOS init早期logを実機SDから回収する
 - [ ] Linux 6.12 plumOS-owned kernel経路をexperimental扱いへ隔離する
 - [ ] 充電中rebootがstock boot substrate + plumOS SYSTEMでOSへ戻ることを実機確認する
 

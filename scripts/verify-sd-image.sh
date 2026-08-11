@@ -44,13 +44,18 @@ fsck.vfat -n "$WORK/plumos-user.fat" >/dev/null
 e2fsck -fn "$WORK/plumos-sys.ext4" >/dev/null
 [ "$(blkid -s LABEL -o value "$WORK/plumos-sys.ext4")" = PLUMOS_SYS ]
 [ "$(blkid -s LABEL -o value "$WORK/plumos-user.fat")" = PLUMOS_USER ]
-for file in Image SYSTEM rk3326s-gkd-pixel2.dtb plumos-image.manifest; do
+for file in Image SYSTEM rk3326s-gkd-pixel2.dtb plumos-image.manifest \
+    post-flash.sh post-sysroot.sh; do
     MTOOLS_SKIP_CHECK=1 mcopy -i "$WORK/boot.fat" "::/$file" "$WORK/$file"
 done
 cmp "$WORK/Image" "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/Image"
 cmp "$WORK/rk3326s-gkd-pixel2.dtb" \
     "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/rk3326s-gkd-pixel2.dtb"
 grep -q '^boot_substrate=stock-pixel2$' "$WORK/plumos-image.manifest"
+grep -q '^stock_initramfs_hooks=post-flash.sh,post-sysroot.sh$' \
+    "$WORK/plumos-image.manifest"
+grep -q 'post-flash' "$WORK/post-flash.sh"
+grep -q 'post-sysroot' "$WORK/post-sysroot.sh"
 cmp "$WORK/SYSTEM" "$ROOT_DIR/output/system-rootfs/pixel2/payload/SYSTEM"
 "$ROOT_DIR/scripts/verify-system-rootfs.sh" "$WORK/SYSTEM"
 mkdir -p "$WORK/app-layer"
