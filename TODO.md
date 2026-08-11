@@ -22,14 +22,16 @@
 - [x] plumOS-MF由来frontendをPixel2用としてvendor化し、旧distribution名称を除去する
 - [x] Pixel2 framebufferとgpio-key inputを自動選択してboot時にfrontendを起動する
 - [x] frontendとADBの診断logをSTATE partitionへ保存する
-- [ ] 実機LCDでfrontend描画、回転、button mappingを確認する
+- [x] 実機LCDでfrontend描画と90度回転を確認する
+- [ ] 実機でfrontendのbutton mappingを確認する
 
 ## Connectivity
 
 - [x] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
 - [ ] release imageではADB認証または明示opt-inを必須にする
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
-- [ ] ADB shell、USB Wi-Fi、SSHを実機検証する
+- [x] ADB列挙とshellを実機検証する
+- [ ] USB Wi-FiとSSHを実機検証する
 
 ## Image and hardware validation
 

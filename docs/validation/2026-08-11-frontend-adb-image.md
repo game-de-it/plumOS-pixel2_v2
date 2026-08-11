@@ -31,13 +31,30 @@ It is also captured automatically before and after service startup.
 - image: `output/image/pixel2/plumOS-Pixel2-0.1.0-dev.img`
 - image size: 2,147,483,648 bytes
 - image SHA-256:
-  `97c4f3309c015f1b7e37b2fd2c95a7e1d304a0e377126a0110d40e832054b621`
+  `2970250c3c2f6a47d0d2b944d3c3c2fb4977452fa2e71daa81a36a620094b672`
+
+## Physical Pixel2 result
+
+The first frontend image booted successfully and exposed an operational ADB
+shell. Live diagnostics confirmed the DSI mode is `480x640`, the USB role is
+`device`, the UDC is configured, and the controller is
+`gkd-pixel2-joypad` on `/dev/input/event4`.
+
+The initial frontend appeared sideways because the Pixel2 panel is mounted 90
+degrees relative to its DRM mode. The fbdev renderer now supports quarter-turn
+rotation, and the Pixel2 service selects `ccw`, yielding a logical `640x480`
+frontend. This orientation was confirmed correct on the physical device using
+the temporary ADB-deployed binary. The boot service now prioritizes the Pixel2
+joypad over the separate generic gpio-keys device.
+
+The corrected image was generated from implementation commit `f23dafd` and
+passed the complete host image verifier. Button mapping, audio, USB Wi-Fi, SSH
+and power behavior remain separate hardware gates.
 
 ## Hardware gate
 
-This result does not assert physical boot success. Flash the image to the test
-SD, cold boot the Pixel2 and verify that the frontend replaces the Pixel logo.
-Then connect USB and collect:
+For subsequent hardware passes, flash the image to the test SD, cold boot the
+Pixel2 and collect:
 
 ```sh
 adb devices -l
