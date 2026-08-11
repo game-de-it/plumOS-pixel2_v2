@@ -21,20 +21,18 @@ grep -q 'internal:network-information' \
 grep -q '"apps": \[\]' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
-grep -q '^input_a_btn = "0"$' \
+grep -q '^input_a_btn = "1"$' \
     "$ROOT_DIR/package/retroarch-pixel2/gkd-pixel2-joypad.cfg"
-grep -q '^input_b_btn = "1"$' \
+grep -q '^input_b_btn = "0"$' \
     "$ROOT_DIR/package/retroarch-pixel2/gkd-pixel2-joypad.cfg"
 grep -q 'SOURCE_COMMIT=69a4f0ea' "$ROOT_DIR/scripts/build-retroarch.sh"
 grep -q 'required_library in libpthread.so.0' \
     "$ROOT_DIR/scripts/build-retroarch.sh"
 grep -q 'emulator/lib/libpthread.so.0' \
     "$ROOT_DIR/scripts/verify-app-layer.sh"
-grep -q 'PLUMOS_INPUT_AB_LAYOUT=south-confirm' \
+grep -q 'PLUMOS_INPUT_AB_LAYOUT=east-confirm' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
-grep -q 'pixel2_uses_south_confirm' \
-    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
-grep -q '!pixel2_uses_south_confirm' \
+grep -q 'strcmp(ab_layout, "east-confirm")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'case BTN_TRIGGER_HAPPY1:' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"

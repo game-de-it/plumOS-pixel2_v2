@@ -28,6 +28,8 @@ grep -q 'PLUMOS_DEVICE_ID=pixel2' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'PLUMOS_FBDEV_ROTATION=ccw' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'PLUMOS_INPUT_AB_LAYOUT=east-confirm' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'pixel2_joypad' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'physical_yres' \
