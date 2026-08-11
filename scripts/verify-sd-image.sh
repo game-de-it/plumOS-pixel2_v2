@@ -47,9 +47,10 @@ e2fsck -fn "$WORK/plumos-sys.ext4" >/dev/null
 for file in Image SYSTEM rk3326s-gkd-pixel2.dtb plumos-image.manifest; do
     MTOOLS_SKIP_CHECK=1 mcopy -i "$WORK/boot.fat" "::/$file" "$WORK/$file"
 done
-cmp "$WORK/Image" "$ROOT_DIR/output/kernel/pixel2/Image"
+cmp "$WORK/Image" "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/Image"
 cmp "$WORK/rk3326s-gkd-pixel2.dtb" \
-    "$ROOT_DIR/output/kernel/pixel2/rk3326s-gkd-pixel2.dtb"
+    "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/rk3326s-gkd-pixel2.dtb"
+grep -q '^boot_substrate=stock-pixel2$' "$WORK/plumos-image.manifest"
 cmp "$WORK/SYSTEM" "$ROOT_DIR/output/system-rootfs/pixel2/payload/SYSTEM"
 "$ROOT_DIR/scripts/verify-system-rootfs.sh" "$WORK/SYSTEM"
 mkdir -p "$WORK/app-layer"

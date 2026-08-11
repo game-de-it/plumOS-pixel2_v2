@@ -3,16 +3,18 @@ set -euo pipefail
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 ROOTFS_DIR="${1:-}"
-KERNEL_OUT="$ROOT_DIR/output/kernel/pixel2"
-MODULES_SRC="$KERNEL_OUT/modules/lib/modules"
+STOCK_KERNEL_ROOT="$ROOT_DIR/artifacts/vendor/pixel2-stock"
+MODULES_SRC="$STOCK_KERNEL_ROOT/kernel/extracted/usr/lib/kernel-overlays/base/lib/modules"
 FIRMWARE_SRC="$ROOT_DIR/artifacts/vendor/pixel2-stock/kernel/extracted/usr/lib/kernel-overlays/base/lib/firmware"
 
 [ -d "$ROOTFS_DIR" ] || {
     printf 'usage: %s ROOTFS_DIR\n' "$0" >&2
     exit 2
 }
-[ -f "$KERNEL_OUT/Image" ] && [ -d "$MODULES_SRC" ] || {
-    printf 'error: Pixel2 kernel output missing; run ./scripts/build-kernel.sh first\n' >&2
+[ -f "$STOCK_KERNEL_ROOT/boot/Image" ] && \
+    [ -f "$STOCK_KERNEL_ROOT/boot/rk3326s-gkd-pixel2.dtb" ] && \
+    [ -d "$MODULES_SRC" ] || {
+    printf 'error: captured Pixel2 stock kernel artifacts missing; run ./scripts/capture-stock-boot-artifacts.sh first\n' >&2
     exit 2
 }
 [ -d "$FIRMWARE_SRC" ] || {
@@ -27,7 +29,7 @@ mapfile -t releases < <(find "$MODULES_SRC" -mindepth 1 -maxdepth 1 -type d -pri
 }
 release=${releases[0]}
 case "$release" in
-    *-plumos-pixel2) ;;
+    5.10.198) ;;
     *) printf 'error: unexpected kernel module ABI: %s\n' "$release" >&2; exit 2 ;;
 esac
 
@@ -36,8 +38,8 @@ mkdir -p "$ROOTFS_DIR/lib/modules" "$ROOTFS_DIR/lib/firmware" \
 cp -a "$MODULES_SRC/$release" "$ROOTFS_DIR/lib/modules/"
 
 # Minimal firmware set for the USB Wi-Fi families enabled by the Pixel2 kernel.
-# These files are captured independently from the stock kernel overlay; no stock
-# executable, service, configuration, or userspace library is copied.
+# These files are captured from the stock kernel overlay; no stock executable,
+# service, configuration, or userspace library is copied.
 while IFS= read -r relative; do
     [ -n "$relative" ] || continue
     [ -f "$FIRMWARE_SRC/$relative" ] || {
@@ -69,5 +71,5 @@ MANIFEST="$ROOTFS_DIR/usr/lib/plumos/kernel-runtime.sha256"
     find "lib/modules/$release" lib/firmware -type f -print0 | \
         LC_ALL=C sort -z | xargs -0 sha256sum
 ) >"$MANIFEST"
-printf 'kernel-runtime=result-ok release=%s firmware_source=stock-kernel-overlay\n' \
+printf 'kernel-runtime=result-ok release=%s firmware_source=stock-kernel-overlay boot_substrate=stock\n' \
     "$release"

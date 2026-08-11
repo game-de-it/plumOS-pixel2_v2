@@ -43,6 +43,9 @@ grep -q 'app-layer-verified' \
 grep -q 'ROOTFS_DIR/dev/pts' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'ROOTFS_DIR/mnt/plumos' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'mnt/plumos-user' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
+grep -q '5.10.198' "$ROOT_DIR/scripts/install-kernel-runtime.sh"
+grep -q 'stock-pixel2' "$ROOT_DIR/scripts/build-system-rootfs.sh"
+grep -q 'stock-pixel2' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
 
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli)' \
     "$ROOT_DIR/rootfs/pixel2" >/dev/null; then

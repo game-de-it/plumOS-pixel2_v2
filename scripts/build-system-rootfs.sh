@@ -92,7 +92,8 @@ cat >"$ROOTFS_DIR/usr/lib/plumos/system-manifest.json" <<EOF
   "version": "$VERSION",
   "runtime_abi": "plumos-pixel2-v1",
   "kernel_release": "$KERNEL_RELEASE",
-  "firmware_origin": "captured-stock-kernel-overlay",
+  "boot_substrate": "stock-pixel2",
+  "firmware_origin": "stock-kernel-overlay",
   "source_ref": "$SOURCE_REF",
   "source_date_epoch": $SOURCE_EPOCH,
   "rootfs": "squashfs"

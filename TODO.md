@@ -49,13 +49,18 @@
 - [x] SD先頭16 MiBのRockchip boot領域を管理者権限で読み取り採取する
 - [ ] ext4 `/storage` のfilesystem label、UUID、初回resize markerを確認する
 - [x] boot artifactのprovenance、hash、サイズをmanifest化する
-- [x] stock内蔵initramfsを最終imageで廃止するkernel所有方針を決定する
-- [x] Pixel2対応kernel/DTS/patchをpinned sourceからplumOSとしてbuildする
+- [x] stock内蔵initramfsをboot substrateとして許容し、`SYSTEM`内init以降をplumOS所有にする方針を決定する
+- [x] release imageをstock `Image`/stock DTB/stock kernel ABIへ戻す
+- [ ] stock initramfsの`SYSTEM` handoff contractを実機とhostで再確認する
+- [ ] Linux 6.12 plumOS-owned kernel経路をexperimental扱いへ隔離する
+- [ ] 充電中rebootがstock boot substrate + plumOS SYSTEMでOSへ戻ることを実機確認する
 
 ## plumOS System
 
 - [x] plumOS Pixel2 rootfsを再現可能に生成する
-- [x] plumOS initramfsでboot FATとSystemをmountし、initでstateとROMをmountする
+- [ ] stock initramfsからhandoffされるplumOS `SYSTEM`としてrootfsを生成する
+- [x] stock kernel 5.10.198 ABI向けmodule/firmware/runtime manifestへ切り替える
+- [x] initでstateとROMをmountする
 - [x] stock由来名称・unit・frontendがSystemへ混入しないgateを実装する
 - [x] Pixel2 kernel moduleと最小USB Wi-Fi firmwareをSystemへ統合する
 
@@ -65,7 +70,7 @@
 - [x] Pixel2 framebufferとgpio-key inputを自動選択してboot時にfrontendを起動する
 - [x] frontendとADBの診断logをSTATE partitionへ保存する
 - [x] 実機LCDでfrontend描画と90度回転を確認する
-- [ ] 実機でfrontendのbutton mappingを確認する
+- [x] 実機でfrontendのbutton mappingを確認する
 
 ## Connectivity
 

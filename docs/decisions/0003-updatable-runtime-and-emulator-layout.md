@@ -32,9 +32,10 @@ not the final update contract.
 ### Rockchip boot prefix and kernel
 
 The captured 16 MiB prefix remains an immutable, checksummed hardware input.
-`Image`, the Pixel2 DTB, and the embedded plumOS initramfs remain fixed release
-image inputs during the first update implementation. Updating them requires a
-complete SD image until a separately recoverable boot update contract exists.
+The stock `Image`, the Pixel2 DTB, and the stock initramfs embedded in that
+`Image` remain fixed release image inputs during the first update
+implementation. Updating them requires a complete SD image until a separately
+recoverable boot update contract exists.
 
 ### System A/B on PLUMOS_BOOT
 
@@ -51,12 +52,12 @@ p1 is normally mounted read-only at `/mnt/plumos-boot` and contains:
 /plumos-image.manifest
 ```
 
-The initramfs verifies the selected System image before mounting it read-only
-as `/`. The active System is never overwritten. A System update writes and
-fully reads back only the inactive slot, commits its manifest last, records a
-pending boot on p2, and reboots. Frontend renderer readiness promotes the
-pending slot; a second attempt without readiness rejects it and returns to the
-previous healthy slot.
+The stock initramfs mounts the selected-compatible `SYSTEM` SquashFS and
+hands off to the plumOS `/sbin/init` inside it. The active System is never
+overwritten. A System update writes and fully reads back only the inactive
+slot, commits its manifest last, records a pending boot on p2, and reboots.
+Frontend renderer readiness promotes the pending slot; a second attempt
+without readiness rejects it and returns to the previous healthy slot.
 
 The first development implementation uses SHA-256 integrity. A production
 update package additionally requires an Ed25519 signature verified by a public
@@ -110,11 +111,9 @@ During migration, `/state` binds to `/mnt/plumos/state` and `/roms` binds to
 ```text
 Rockchip prefix
   -> U-Boot loads p1 Image and DTB
-  -> embedded plumOS initramfs provisions or resumes the physical-card layout
-  -> mount p2 briefly to read active/pending/attempted System state
-  -> mount p1 read-only and verify the selected System slot
-  -> loop-mount the selected SquashFS read-only
-  -> switch_root
+  -> stock initramfs mounts p1 and p2 using the stock boot contract
+  -> stock initramfs loop-mounts the plumOS-compatible SYSTEM SquashFS
+  -> stock initramfs hands off to plumOS /sbin/init
   -> mount p2 and p3, recover interrupted Runtime updates
   -> establish content bindings and mutable directories
   -> start connectivity and hardware services
@@ -122,8 +121,9 @@ Rockchip prefix
   -> write renderer-ready and promote pending Runtime/System state
 ```
 
-If neither System slot verifies, initramfs must keep a console/ADB-capable
-recovery path and must not start a stock userspace.
+If System handoff fails during development, the stock initramfs recovery shell
+is acceptable as a boot-substrate diagnostic path. Release update logic must
+avoid starting a stock SYSTEM userspace.
 
 ## Build graph
 
@@ -132,7 +132,7 @@ revisions. Component outputs are assembled rather than copied from a live
 device:
 
 ```text
-kernel + initramfs
+stock boot artifacts
 System rootfs
 frontend component
 RetroArch component
@@ -183,13 +183,14 @@ never repository or release-image inputs.
 The reference designs demonstrate that a read-only A/B System, transactional
 ext4 runtime, host-visible FAT32 content area, component manifests, pinned core
 recipes, and a frontend-to-launcher lifecycle provide bounded updates and clear
-ownership. Pixel2 does not need a raw Android BOOT partition or a stock hook,
-because U-Boot already loads Pixel2 kernel files
-from p1 and plumOS owns first userspace.
+ownership. Pixel2 keeps the stock boot hook because the vendor kernel and
+initramfs preserve PMIC, charger and reboot behavior. plumOS owns the mounted
+System and runtime after the stock handoff.
 
 ## Release gates
 
-- reproducible kernel, System, app-layer and filesystem hashes;
+- reproducible System, app-layer and filesystem hashes;
+- exact stock `Image` and DTB verification;
 - exact Rockchip prefix verification;
 - System slot and runtime/component checksum verification;
 - no foreign distribution product identity in runtime artifacts;

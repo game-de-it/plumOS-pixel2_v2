@@ -28,7 +28,8 @@ fi
 ROOT_DIR=/work
 PREFIX="${PLUMOS_PIXEL2_BOOT_PREFIX:-/work/artifacts/vendor/pixel2-stock-source/rockchip-boot-prefix.bin}"
 PREFIX_MANIFEST="$ROOT_DIR/artifacts/manifests/pixel2-stock-prefix.manifest"
-KERNEL_DIR="$ROOT_DIR/output/kernel/pixel2"
+STOCK_BOOT_DIR="$ROOT_DIR/artifacts/vendor/pixel2-stock/boot"
+STOCK_BOOT_MANIFEST="$ROOT_DIR/artifacts/vendor/pixel2-stock/manifest.tsv"
 SYSTEM_DIR="$ROOT_DIR/output/system-rootfs/pixel2/payload"
 APP_DIR="$ROOT_DIR/output/app-layer/pixel2/plumos"
 OUT_DIR="$ROOT_DIR/output/image/pixel2"
@@ -57,11 +58,15 @@ actual_prefix_sha=$(sha256sum "$PREFIX" | awk '{print $1}')
     exit 2
 }
 for file in Image rk3326s-gkd-pixel2.dtb; do
-    [ -f "$KERNEL_DIR/$file" ] || {
-        printf 'error: kernel output missing; run ./scripts/build-kernel.sh first\n' >&2
+    [ -f "$STOCK_BOOT_DIR/$file" ] || {
+        printf 'error: stock boot artifact missing: %s\n' "$STOCK_BOOT_DIR/$file" >&2
         exit 2
     }
 done
+[ -f "$STOCK_BOOT_MANIFEST" ] || {
+    printf 'error: stock boot artifact manifest missing\n' >&2
+    exit 2
+}
 [ -f "$SYSTEM_DIR/SYSTEM" ] || {
     printf 'error: SYSTEM missing; run ./scripts/build-system-rootfs.sh first\n' >&2
     exit 2
@@ -137,11 +142,13 @@ for directory in roms bios Images Themes Screenshots Music updates imports expor
     MTOOLS_SKIP_CHECK=1 mmd -i "$WORK/plumos-user.fat" "::/$directory"
 done
 
-install -m 0644 "$KERNEL_DIR/Image" "$WORK/boot/Image"
-install -m 0644 "$KERNEL_DIR/rk3326s-gkd-pixel2.dtb" \
+install -m 0644 "$STOCK_BOOT_DIR/Image" "$WORK/boot/Image"
+install -m 0644 "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" \
     "$WORK/boot/rk3326s-gkd-pixel2.dtb"
 install -m 0644 "$SYSTEM_DIR/SYSTEM" "$WORK/boot/SYSTEM"
 prefix_sha=$actual_prefix_sha
+stock_image_sha=$(sha256sum "$STOCK_BOOT_DIR/Image" | awk '{print $1}')
+stock_dtb_sha=$(sha256sum "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" | awk '{print $1}')
 cat >"$WORK/boot/plumos-image.manifest" <<EOF
 format=plumos-pixel2-image-v1
 device=pixel2
@@ -150,6 +157,9 @@ version=$VERSION
 source_ref=$SOURCE_REF
 source_date_epoch=$SOURCE_EPOCH
 boot_prefix_sha256=$prefix_sha
+boot_substrate=stock-pixel2
+stock_image_sha256=$stock_image_sha
+stock_dtb_sha256=$stock_dtb_sha
 layout=boot-prefix-16MiB,boot-fat-256MiB,plumos-sys-ext4-512MiB,plumos-user-fat32-remainder
 runtime_abi=plumos-pixel2-app-layer-v1
 EOF

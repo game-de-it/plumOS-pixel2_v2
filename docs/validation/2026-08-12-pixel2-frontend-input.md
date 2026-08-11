@@ -4,89 +4,129 @@ Date: 2026-08-12
 Scope: Pixel2 face-button contract, frontend action mapping, live deployment and
 release-image validation
 
-## Root cause
+Note: this document records the live input repair performed during the
+Linux 6.12 plumOS-owned-kernel bring-up. Decision 0004 later switches release
+image generation back to the stock Pixel2 boot substrate. The physical button
+mapping remains valid for the Pixel2 frontend and emulator configuration.
 
-The stock DTB and the generated plumOS DTB used different Linux event codes for
-the two lower face buttons. The physical A switch is GPIO3 PD1 and must emit
-`BTN_EAST` (`0x131`); the physical B switch is GPIO3 PD2 and must emit
-`BTN_SOUTH` (`0x130`). The generated DTB had only these two codes reversed.
+## Physical contract
 
-The frontend already uses the Pixel2 Nintendo-style layout, where East is
-confirm/A and South is back/B. The incorrect DTB therefore inverted the two
-actions. X and Y have no TOP-screen navigation action, so testing all four face
-buttons on TOP made the controller appear non-functional even though evdev was
-delivering events.
+Two Pixel2 units were tested with the same SD card. The first unit produced
+ambiguous B-button evidence, so the second unit was used as the controlled
+hardware check. The ordered second-unit capture is the authoritative contract:
 
-The stock and corrected plumOS contracts are:
+1. physical A pressed three times
+2. physical B pressed three times
+3. physical B held for about three seconds
 
-| Physical control | GPIO | Linux event code | Frontend action |
-| --- | --- | --- | --- |
-| A | GPIO3 PD1 | `BTN_EAST` (`0x131`) | A / confirm |
-| B | GPIO3 PD2 | `BTN_SOUTH` (`0x130`) | B / back |
-| X | GPIO3 PA5 | `BTN_NORTH` (`0x133`) | X |
-| Y | GPIO3 PA6 | `BTN_WEST` (`0x134`) | Y |
-| Function | GPIO3 PC5 | `BTN_TRIGGER_HAPPY1` (`0x2c0`) | Function / screenshot |
+The resulting evdev and GPIO evidence was:
+
+| Physical control | GPIO | Linux event code | Frontend action | RetroArch joydev |
+| --- | --- | --- | --- | --- |
+| A | GPIO3 PD1 | `BTN_SOUTH` (`0x130`) | A / confirm | `input_a_btn = "0"` |
+| B | GPIO3 PD2 | `BTN_EAST` (`0x131`) | B / back | `input_b_btn = "1"` |
+| X | GPIO3 PA5 | `BTN_NORTH` (`0x133`) | X | `input_x_btn = "3"` |
+| Y | GPIO3 PA6 | `BTN_WEST` (`0x134`) | Y | `input_y_btn = "4"` |
+| Function | GPIO3 PC5 | `BTN_TRIGGER_HAPPY1` (`0x2c0`) | Function | not routed yet |
+
+The key ordered log was pulled to:
+
+`output/live/2026-08-12-input-map/unit2/input-map-unit2/ab-ordered-dump.log`
+
+with SHA-256:
+
+`9b798e28a6560d6c68a63531d83b03a0f9fbad2674df1608c469e3e5cda5e3b1`
+
+It records the A sequence as `code=304 action=A` and the B sequence as
+`code=305 action=B`. The paired GPIO sample was pulled to:
+
+`output/live/2026-08-12-input-map/unit2/input-map-unit2/ab-gpio-sample.log`
+
+with SHA-256:
+
+`6e245507456762568b8ef5d1b276826f11ca5b655056d688f6aea1f92a22297b`
+
+The paired IRQ counts moved from A=46/B=0 to A=83/B=17 during that ordered run.
+This proves both switches work on the second unit and that the latest
+east-confirm mapping was the wrong direction for Pixel2.
 
 ## Implementation
 
-- `4b9f66d` restores the stock A/B event-code contract during Pixel2 DTB
-  generation and makes the transform fail if the pinned input DTS changes
-  unexpectedly.
-- `330b6ca` adds the Pixel2 Function-key code to the frontend and records the
-  mapped action name in both the runtime input trace and `--dump-events` output.
-- `3cf4f90` fixes the app-layer assembler so a successful assembly containing
-  all mandatory components is always emitted as `complete: true`.
-- `672f70e` keeps legacy device names out of Pixel2 build/test source while
-  preserving the app-layer identity rejection gate.
+- `scripts/build-kernel.sh` keeps the pinned DTS GPIO/code pairs for A and B:
+  `button-a` stays on `RK_PD1`/`BTN_SOUTH` and `button-b` stays on
+  `RK_PD2`/`BTN_EAST`. The transform now only normalizes physical labels and
+  still fails if the pinned source contract changes unexpectedly.
+- `rootfs/pixel2/usr/lib/plumos/init.d/40-frontend` exports
+  `PLUMOS_INPUT_AB_LAYOUT=south-confirm`.
+- `vendor/plumos-frontend/src/plumos_controller_ui.c` forces Pixel2 to use
+  south-confirm mapping, while preserving `east-confirm` for non-Pixel2
+  callers that explicitly request it.
+- `package/retroarch-pixel2/gkd-pixel2-joypad.cfg` maps joydev button 0 to A
+  and joydev button 1 to B, matching the physical capture.
 
 ## Generated-artifact validation
 
-The corrected DTB was decompiled after the kernel build. Its live nodes match
-the table above. Kernel checksums passed for `Image`, DTB, kernel config and
-source manifest.
+The source-level checks cover the kernel DTS transform, frontend environment,
+Pixel2 input action mapping and RetroArch autoconfig:
 
-- corrected DTB SHA-256:
-  `56f0aa6fee9a7e5924716eb73c849834e143d6cd2b2141179e2d060112e0a268`
-- frontend SHA-256:
-  `028de93ed338f4a2d84e02e302990295ed236c85c7b3462c16ecf779005ce6da`
-- release image:
-  `output/image/pixel2/plumOS-Pixel2-0.1.0-dev.img`
-- release image SHA-256:
-  `574943ac8acbb6a6a2acc7c63c25a9f1422b528645bfd902f8c7eed05fb2fb13`
-- image source ref: `3cf4f90`
+```text
+tests/test-kernel-scripts.sh
+tests/test-app-layer-scripts.sh
+```
 
-The canonical `release-image` target rebuilt the frontend, RetroArch, QuickNES,
-complete app layer, SYSTEM and SD image. The image verifier re-extracted and
-verified the SYSTEM and app-layer payloads successfully.
+The corrected generated artifacts were:
 
-## Live Pixel2 deployment
+| Artifact | SHA-256 |
+| --- | --- |
+| `output/frontend/pixel2/plumos/bin/plumos-frontend-pixel2` | `0afdd7bbdf6a22f3f4c9331067681c94727d0a235dd9d82148d961bb1dd7dcba` |
+| `output/app-layer/pixel2/plumos/manifest.json` | `7376bffb8cb33d6c6ed49a9587963889c60d79ead87e5e19dbe574c7c87c18fb` |
+| `output/app-layer/pixel2/plumos/checksums.sha256` | `788eadc7a2ab2d00e922cbdebfeb54dd7b4134ec791c2694a0a557753c2656a4` |
+| `output/kernel/pixel2/rk3326s-gkd-pixel2.dtb` | `7496b63430ffaeafc4d5c093b7608ebe04b5126a5bc1e8e63977fc68b6d0ece1` |
 
-The corrected DTB was staged on STATE, copied to BOOT only after its hash was
-verified, and BOOT was returned to read-only mode. The previous DTB remains at:
+The complete app-layer was deployed to `/mnt/plumos` with `manifest.json`,
+component manifests and `checksums.sha256` in the same update unit. The device
+passed all four checksum gates before reboot:
 
-`/boot/rk3326s-gkd-pixel2.dtb.bak-4b9f66d`
+```text
+root_checksum=ok
+frontend_checksum=ok
+retroarch_checksum=ok
+cores_checksum=ok
+```
 
-After reboot, `/proc/device-tree/gkd-pixel2-joypad` reported the corrected event
-codes and GPIOs. ADB reconnected automatically, the frontend started from the
-new binary, and the app-layer root plus all three component checksum files
-passed. The live app-layer manifest is `complete: true` at source ref
-`3cf4f90`.
+The corrected DTB was staged through `/state/plumos/deploy-input-fix`, verified
+before copy, and installed to `/boot/rk3326s-gkd-pixel2.dtb`. The previous live
+DTB remains backed up at:
 
-Runtime input evidence is written to:
+`/boot/rk3326s-gkd-pixel2.dtb.bak-input-map-20260812`
 
-`/run/plumos/frontend-input.log`
+After reboot, `/proc/device-tree/gkd-pixel2-joypad` reported:
 
-Each event now includes `action=A`, `action=B`, `action=X`, `action=Y` or
-`action=FUNCTION`, so subsequent physical validation no longer requires
-inferring the frontend mapping from raw numeric codes.
+| Node | Label | Code | GPIO pin |
+| --- | --- | --- | --- |
+| `button-a` | `A` | `0x130` | GPIO3 PD1 |
+| `button-b` | `B` | `0x131` | GPIO3 PD2 |
+| `button-x` | `NORTH` | `0x133` | GPIO3 PA5 |
+| `button-y` | `WEST` | `0x134` | GPIO3 PA6 |
+
+The post-deploy ordered dump was pulled to:
+
+`output/live/2026-08-12-input-map/after-fix/input-map-after-fix/ab-dump.log`
+
+with SHA-256:
+
+`9457886eed8c6d1f5f0333c816d079ff464bda5800c3bebc18a08484756ca932`
+
+It records physical A as three `code=304 action=A` press/release pairs and
+physical B as three `code=305 action=B` press/release pairs.
 
 ## Remaining physical gate
 
-The following remains intentionally unchecked in `TODO.md` until observed on
-the physical unit:
+Raw frontend button mapping is now validated. The following behavior gates
+remain intentionally unchecked until observed on the physical unit:
 
-1. A opens the selected TOP, ROM or menu entry.
-2. B returns to the previous screen.
-3. START opens the Start menu and A confirms its entries.
+1. physical A opens the selected TOP, ROM or menu entry.
+2. physical B returns to the previous screen.
+3. START opens the Start menu and physical A confirms its entries.
 4. Function produces the expected frontend action.
 5. A/B/X/Y and the exit hotkey work inside RetroArch.

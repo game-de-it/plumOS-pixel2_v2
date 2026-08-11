@@ -1,8 +1,15 @@
 # 0002: plumOSがkernelとinitramfsを所有する
 
 日付: 2026-08-11
+Status: Superseded by 0004
 
 ## 決定
+
+この決定は0004により置き換えられた。Pixel2ではstockOSの
+kernel/initramfs/reboot/charger経路をboot substrateとして利用し、
+stock initramfsが`SYSTEM`へhandoffした後の`/sbin/init`以降をplumOSが所有する。
+
+以下は、完全なfirst-userspace所有を目指していた時点の履歴として残す。
 
 最終的なPixel2 imageでは、stock SDの`Image`をそのまま配布しない。
 plumOSのinitramfsを組み込んだPixel2対応kernelを再現可能にbuildし、PID 1
@@ -49,4 +56,3 @@ release image生成には以下を必須とする。
 3. plumOS initramfsを指定したkernel build
 4. boot後の`/proc/1/exe`がplumOS initである実機証明
 5. 成果物userspaceに旧distributionの名称、unit、設定がないこと
-
