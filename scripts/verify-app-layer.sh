@@ -7,6 +7,7 @@ for path in \
     manifest.json checksums.sha256 VERSION COMPAT_VENDOR RUNTIME_ABI \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
     bin/plumos-retroarch-launch bin/retroarch cores/quicknes_libretro.so \
+    bin/plumos-safe-shutdown \
     emulator/lib/libpthread.so.0 \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
     components/frontend/manifest.json components/retroarch/manifest.json \
@@ -20,6 +21,16 @@ done
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
+grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
+grep -q '"action": "internal:system-information"' \
+    "$ROOT/config/frontend/menus.json"
+grep -q '"action": "internal:network-information"' \
+    "$ROOT/config/frontend/menus.json"
+if grep -Eq 'plumos-(nextcommander|music-player|retroarch-menu|pyxel|portmaster)' \
+    "$ROOT/config/frontend/apps.json"; then
+    printf 'error: unavailable application exposed by Pixel2 frontend\n' >&2
+    exit 1
+fi
 if find "$ROOT" -type f \( -iname '*.nes' -o -iname '*.gb' -o -iname '*.gba' \
     -o -iname '*.sfc' -o -iname '*.smc' -o -iname '*.bin' -o -iname '*.cue' \) |
     grep -q .; then

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "device": "pixel2",
+  "menus": [
+    {
+      "id": "start",
+      "display_name": "START",
+      "entries": [
+        {
+          "id": "ui-settings",
+          "display_name": "UI Settings",
+          "kind": "internal",
+          "action": "internal:ui-settings"
+        },
+        {
+          "id": "system-information",
+          "display_name": "System Information",
+          "kind": "internal",
+          "action": "internal:system-information"
+        },
+        {
+          "id": "network-information",
+          "display_name": "Network Information",
+          "kind": "internal",
+          "action": "internal:network-information"
+        },
+        {
+          "id": "help",
+          "display_name": "HELP",
+          "kind": "internal",
+          "action": "internal:help"
+        },
+        {
+          "id": "reboot",
+          "display_name": "Reboot",
+          "kind": "system",
+          "action": "system:reboot",
+          "confirm": true
+        },
+        {
+          "id": "shutdown",
+          "display_name": "Shutdown",
+          "kind": "system",
+          "action": "system:shutdown",
+          "confirm": true
+        }
+      ]
+    }
+  ]
+}

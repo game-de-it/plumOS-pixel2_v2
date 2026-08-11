@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+bb=${PLUMOS_BUSYBOX:-/bin/busybox}
+action=
+dry_run=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --reboot) action=reboot ;;
+        --shutdown) action=shutdown ;;
+        --dry-run) dry_run=1 ;;
+        --no-hold-resume|--no-poweroff|--poweroff) ;;
+        --power-backend|--sleep-backend|--wakeup-sec)
+            [ "$#" -ge 2 ] || exit 2
+            shift
+            ;;
+        *) printf 'plumos-safe-shutdown: unsupported argument: %s\n' "$1" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+case "$action" in
+    reboot|shutdown) ;;
+    *) printf 'plumos-safe-shutdown: reboot or shutdown action required\n' >&2; exit 2 ;;
+esac
+
+printf 'power=result-requested device=pixel2 action=%s dry_run=%s\n' \
+    "$action" "$dry_run"
+"$bb" sync
+[ "$dry_run" -eq 0 ] || exit 0
+
+case "$action" in
+    reboot) exec "$bb" reboot -f ;;
+    shutdown) exec "$bb" poweroff -f ;;
+esac

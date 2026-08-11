@@ -14440,8 +14440,12 @@ static void handle_action(struct ui_state *ui, enum ui_action action) {
         open_settings_screen(ui, SETTINGS_CATEGORY_UI);
       } else if (strcmp(entry->action, "internal:system-settings") == 0) {
         open_settings_screen(ui, SETTINGS_CATEGORY_SYSTEM);
+      } else if (strcmp(entry->action, "internal:system-information") == 0) {
+        open_settings_screen(ui, SETTINGS_CATEGORY_SYSTEM_INFORMATION);
       } else if (strcmp(entry->action, "internal:network-settings") == 0) {
         open_settings_screen(ui, SETTINGS_CATEGORY_NETWORK);
+      } else if (strcmp(entry->action, "internal:network-information") == 0) {
+        open_settings_screen(ui, SETTINGS_CATEGORY_NETWORK_INFORMATION);
       } else if (strcmp(entry->action, "internal:performance-settings") == 0) {
         open_settings_screen(ui, SETTINGS_CATEGORY_PERFORMANCE);
       } else if (strcmp(entry->action, "internal:favorites") == 0) {

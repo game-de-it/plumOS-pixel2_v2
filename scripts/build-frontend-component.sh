@@ -25,6 +25,10 @@ mkdir -p "$BIN_DIR" "$LIB_DIR" "$COMPONENT_DIR" \
 cp -a "$ROOT_DIR/vendor/plumos-frontend/seed/." "$PLUMOS_DIR/"
 install -m 0644 "$ROOT_DIR/package/frontend-pixel2/systems.json" \
     "$PLUMOS_DIR/config/frontend/systems.json"
+install -m 0644 "$ROOT_DIR/package/frontend-pixel2/menus.json" \
+    "$PLUMOS_DIR/config/frontend/menus.json"
+install -m 0644 "$ROOT_DIR/package/frontend-pixel2/apps.json" \
+    "$PLUMOS_DIR/config/frontend/apps.json"
 install -m 0644 "$ROOT_DIR/vendor/plumos-frontend/LICENSE" \
     "$PLUMOS_DIR/licenses/plumos-frontend/LICENSE"
 install -m 0644 "$ROOT_DIR/vendor/plumos-frontend/SOURCE.manifest" \

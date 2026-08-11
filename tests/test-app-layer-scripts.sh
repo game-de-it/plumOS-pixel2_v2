@@ -9,10 +9,16 @@ for script in \
     scripts/build-libretro-cores.sh \
     scripts/build-app-layer.sh \
     scripts/verify-app-layer.sh \
-    package/app-layer-pixel2/bin/plumos-retroarch-launch; do
+    package/app-layer-pixel2/bin/plumos-retroarch-launch \
+    package/app-layer-pixel2/bin/plumos-safe-shutdown; do
     bash -n "$ROOT_DIR/$script"
 done
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+grep -q 'internal:system-information' \
+    "$ROOT_DIR/package/frontend-pixel2/menus.json"
+grep -q 'internal:network-information' \
+    "$ROOT_DIR/package/frontend-pixel2/menus.json"
+grep -q '"apps": \[\]' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'SOURCE_COMMIT=69a4f0ea' "$ROOT_DIR/scripts/build-retroarch.sh"
