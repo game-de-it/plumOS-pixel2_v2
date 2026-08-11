@@ -1,0 +1,8 @@
+.DS_Store
+.cache/
+artifacts/vendor/
+build/
+output/
+*.img
+*.img.xz
+

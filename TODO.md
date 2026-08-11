@@ -1,0 +1,30 @@
+# TODO
+
+## Boot artifact boundary
+
+- [x] stock SDのパーティション、kernel、DTB、initramfsを読み取り専用で解析する
+- [x] stock userspaceを廃止し、保持するboot artifactの境界を決定する
+- [ ] SD先頭16 MiBのRockchip boot領域を管理者権限で採取する
+- [ ] ext4 `/storage` のfilesystem label、UUID、初回resize markerを確認する
+- [ ] boot artifactのprovenance、hash、サイズをmanifest化する
+
+## plumOS System
+
+- [ ] plumOS Pixel2 rootfsを再現可能に生成する
+- [ ] plumOS initでboot FAT、System、state、ROM領域をmountする
+- [ ] stock由来名称・unit・frontendがSystemへ混入しないgateを実装する
+- [ ] Pixel2 kernel moduleとfirmwareをboot artifactとして分離する
+
+## Connectivity
+
+- [ ] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
+- [ ] USB Wi-Fi dongle用firmware/module検出とwpa_supplicant経路を実装する
+- [ ] ADB shell、USB Wi-Fi、SSHを実機検証する
+
+## Image and hardware validation
+
+- [ ] MBR、Rockchip boot領域、boot FAT、state ext4、ROMS FATを生成する
+- [ ] image内のpartition境界、hash、SquashFS内容をhost検証する
+- [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
+- [ ] app-layer manifest/checksumを実機deploy単位で検証する
+
