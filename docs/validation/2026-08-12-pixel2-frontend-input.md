@@ -56,6 +56,9 @@ east-confirm mapping was the wrong direction for Pixel2.
   `button-a` stays on `RK_PD1`/`BTN_SOUTH` and `button-b` stays on
   `RK_PD2`/`BTN_EAST`. The transform now only normalizes physical labels and
   still fails if the pinned source contract changes unexpectedly.
+- `rootfs/pixel2/usr/lib/plumos/init.d/40-frontend` now prefers the stock
+  Pixel2 joypad evdev names `pixel2_joypad` and `gamekiddy-joypad` before
+  falling back to generic `gpio-keys`.
 - `rootfs/pixel2/usr/lib/plumos/init.d/40-frontend` exports
   `PLUMOS_INPUT_AB_LAYOUT=south-confirm`.
 - `vendor/plumos-frontend/src/plumos_controller_ui.c` forces Pixel2 to use
@@ -119,6 +122,44 @@ with SHA-256:
 
 It records physical A as three `code=304 action=A` press/release pairs and
 physical B as three `code=305 action=B` press/release pairs.
+
+## Stock-substrate input event selection repair
+
+After the stock boot substrate migration and a power-management reboot cycle,
+the frontend started on the wrong evdev node:
+
+```text
+/mnt/plumos/bin/plumos-frontend-pixel2 --renderer fbdev --fb /dev/fb0 --event /dev/input/event1
+/dev/input/event1 gpio-keys
+/dev/input/event2 pixel2_joypad
+```
+
+This made the FE appear alive while physical game controls no longer operated.
+The root cause was that `40-frontend` matched `*gkd-pixel2*` and `*gamepad*`
+but did not match the stock kernel's actual joypad name, `pixel2_joypad`.
+
+The live FE was manually restarted on `/dev/input/event2` to restore operator
+control, then `SYSTEM` was regenerated from commit `9662680` and deployed to
+`/boot/SYSTEM`:
+
+```text
+format=plumos-pixel2-system-v1
+source_ref=9662680
+image_sha256=aefeb583398eb4ccdcb29db46df497560dafe6911af169661f8a57bdca67ea46
+```
+
+The previous live SYSTEM was retained as:
+
+```text
+/boot/SYSTEM.BAK-20260812-input-event
+```
+
+After reboot, the frontend selected the Pixel2 joypad on its own:
+
+```text
+/mnt/plumos/bin/plumos-frontend-pixel2 --renderer fbdev --fb /dev/fb0 --event /dev/input/event2
+frontend=result-starting renderer=fbdev input=/dev/input/event2 fb=/dev/fb0
+```
 
 ## Remaining physical gate
 
