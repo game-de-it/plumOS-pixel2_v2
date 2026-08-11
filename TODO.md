@@ -58,6 +58,7 @@
 - [x] 充電中rebootがstock boot substrate + plumOS SYSTEMでOSへ戻ることを実機確認する
 - [x] Pixel2のRK817 DEV_OFF経路で画面消灯することを実機確認する
 - [ ] FEメニュー経由のreboot/shutdownをapp-layer checksum込みで実機確認する
+  - 2026-08-12: `c875dd8` app-layerでFE経由rebootは実機確認済み。shutdownはFE経由dry-runとRK817 helper実動作を確認済み、FE経由actual poweroffのみ未実行。
 
 ## plumOS System
 
