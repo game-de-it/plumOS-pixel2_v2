@@ -14716,9 +14716,9 @@ static void handle_action(struct ui_state *ui, enum ui_action action) {
 static enum ui_action action_from_key_code(unsigned int code) {
   const char *ab_layout = getenv("PLUMOS_INPUT_AB_LAYOUT");
   const char *device_id = getenv("PLUMOS_DEVICE_ID");
-  int east_is_confirm =
-      (ab_layout && strcmp(ab_layout, "east-confirm") == 0) ||
-      (device_id && strcmp(device_id, "pixel2") == 0);
+  int pixel2_uses_south_confirm = device_id && strcmp(device_id, "pixel2") == 0;
+  int east_is_confirm = !pixel2_uses_south_confirm && ab_layout &&
+                        strcmp(ab_layout, "east-confirm") == 0;
 
   switch (code) {
   case KEY_UP:
@@ -15178,6 +15178,27 @@ static void trace_input_event(const struct input_event *ev, int power_only,
   fclose(f);
 }
 
+static void trace_dispatched_action(const struct ui_state *ui, enum ui_action action,
+                                    enum ui_screen screen_before) {
+  const char *path = getenv("PLUMOS_INPUT_TRACE_PATH");
+  FILE *f;
+
+  if (!ui || !path || !path[0] || action == ACTION_NONE) {
+    return;
+  }
+  f = fopen(path, "a");
+  if (!f) {
+    return;
+  }
+  fprintf(f,
+          "ms=%lld dispatch action=%s screen_before=%d screen_after=%d "
+          "top_cursor=%zu top_count=%zu rom_count=%zu status=%s\n",
+          current_time_ms(), ui_action_name(action), (int)screen_before,
+          (int)ui->screen, ui->top_cursor, ui->top_count, ui->rom_count,
+          ui->status);
+  fclose(f);
+}
+
 static void read_input_actions(struct ui_state *ui, int fd, int power_only,
                                enum ui_action *action) {
   struct input_event ev;
@@ -15587,7 +15608,9 @@ static int run_event_loop(struct ui_state *ui, const char *event_path) {
         }
       }
       if (action != ACTION_NONE) {
+        enum ui_screen screen_before = ui->screen;
         handle_action(ui, action);
+        trace_dispatched_action(ui, action, screen_before);
         if (action == ACTION_QUIT || ui->exit_requested) {
           break;
         }

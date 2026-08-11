@@ -74,7 +74,7 @@ start_frontend() {
     export PLUMOS_DRM_DEVICE=/dev/dri/card0
     export PLUMOS_FBDEV_ROTATION=ccw
     export PLUMOS_INPUT_EVENT="$input"
-    export PLUMOS_INPUT_AB_LAYOUT=east-confirm
+    export PLUMOS_INPUT_AB_LAYOUT=south-confirm
     export PLUMOS_BUSYBOX=/bin/busybox
     export PLUMOS_FRONTEND_MODE=manual
     export PLUMOS_INPUT_TRACE_PATH=/run/plumos/frontend-input.log
