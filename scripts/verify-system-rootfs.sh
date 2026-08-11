@@ -33,12 +33,31 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/sbin/adbd"
 test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
 test -x "$tmp/rootfs/lib/ld-linux-aarch64.so.1"
+test -f "$tmp/rootfs/usr/lib/plumos/kernel-runtime.sha256"
+release=$(find "$tmp/rootfs/lib/modules" -mindepth 1 -maxdepth 1 -type d \
+    -printf '%f\n')
+case "$release" in
+    *-plumos-pixel2) ;;
+    *) printf 'error: unexpected kernel module ABI: %s\n' "$release" >&2; exit 1 ;;
+esac
+test -f "$tmp/rootfs/lib/firmware/regulatory.db"
+test -f "$tmp/rootfs/lib/firmware/ath9k_htc/htc_9271-1.4.0.fw"
+test -f "$tmp/rootfs/lib/firmware/mt7601u.bin"
+test -f "$tmp/rootfs/lib/firmware/rtlwifi/rtl8192cufw.bin"
+(cd "$tmp/rootfs" && sha256sum -c usr/lib/plumos/kernel-runtime.sha256 >/dev/null)
 
 if [ "$(uname -m)" = aarch64 ]; then
     chroot "$tmp/rootfs" /usr/sbin/wpa_supplicant -v >/dev/null
     chroot "$tmp/rootfs" /usr/sbin/iw --version >/dev/null
     chroot "$tmp/rootfs" /usr/sbin/dropbear -V >/dev/null
     chroot "$tmp/rootfs" /usr/bin/kmod --version >/dev/null
+    first_module=$(find "$tmp/rootfs/lib/modules/$release" -name '*.ko' -print -quit)
+    test -n "$first_module"
+    case "$(chroot "$tmp/rootfs" /sbin/modinfo -F vermagic \
+        "${first_module#"$tmp/rootfs"}")" in
+        "$release "*) ;;
+        *) printf 'error: kernel module vermagic mismatch\n' >&2; exit 1 ;;
+    esac
     chroot "$tmp/rootfs" /lib/ld-linux-aarch64.so.1 \
         --library-path /usr/lib/plumos/adbd/lib:/lib/aarch64-linux-gnu \
         --list /usr/lib/plumos/adbd/adbd.bin >/dev/null

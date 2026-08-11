@@ -27,7 +27,10 @@ arm64 Docker toolchainを使ってplumOS所有のSquashFSを生成する。
 ```
 
 成果物は`output/system-rootfs/pixel2/payload/SYSTEM`に生成され、build中に
-再展開、主要binaryの実行、manifest、旧distribution名の不在を検証する。
+再展開、主要binaryの実行、kernel module ABI、firmware hash、manifest、
+旧distribution名の不在を検証する。先に`./scripts/build-kernel.sh`を実行し、
+stock kernel overlayを読み取り専用で採取しておく必要がある。stockからSYSTEMへ
+取り込むのは、USB Wi-Fi用firmwareだけであり、userspaceは一切取り込まない。
 
 ## Kernel
 

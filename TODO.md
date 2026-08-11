@@ -15,7 +15,7 @@
 - [x] plumOS Pixel2 rootfsを再現可能に生成する
 - [x] plumOS initramfsでboot FATとSystemをmountし、initでstateとROMをmountする
 - [x] stock由来名称・unit・frontendがSystemへ混入しないgateを実装する
-- [ ] Pixel2 kernel moduleとfirmwareをboot artifactとして分離する
+- [x] Pixel2 kernel moduleと最小USB Wi-Fi firmwareをSystemへ統合する
 
 ## Connectivity
 

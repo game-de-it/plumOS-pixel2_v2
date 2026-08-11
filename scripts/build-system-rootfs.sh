@@ -31,6 +31,7 @@ rm -rf "$OUT_DIR"
 mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR"
 cp -a "$ROOT_DIR/rootfs/pixel2/." "$ROOTFS_DIR/"
 "$ROOT_DIR/scripts/build-adbd-overlay.sh" --inside "$ROOTFS_DIR"
+"$ROOT_DIR/scripts/install-kernel-runtime.sh" "$ROOTFS_DIR"
 chmod 0755 "$ROOTFS_DIR/sbin/init" "$ROOTFS_DIR/usr/lib/plumos/init.d/"*
 chmod 0600 "$ROOTFS_DIR/etc/shadow"
 
@@ -64,6 +65,7 @@ install -D -m 0755 /lib/aarch64-linux-gnu/ld-linux-aarch64.so.1 \
 mkdir -p "$ROOTFS_DIR/sbin"
 ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/modprobe"
 ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/depmod"
+ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/modinfo"
 
 mkdir -p "$ROOTFS_DIR/usr/share/licenses/debian"
 for package in busybox-static kmod iproute2 iw wpasupplicant dropbear-bin; do
@@ -74,6 +76,8 @@ done
 sed -i "s/VERSION_ID=.*/VERSION_ID=\"$VERSION\"/" "$ROOTFS_DIR/etc/os-release"
 sed -i "s/PRETTY_NAME=.*/PRETTY_NAME=\"plumOS Pixel2 $VERSION\"/" \
     "$ROOTFS_DIR/etc/os-release"
+KERNEL_RELEASE=$(find "$ROOTFS_DIR/lib/modules" -mindepth 1 -maxdepth 1 \
+    -type d -printf '%f\n')
 cat >"$ROOTFS_DIR/usr/lib/plumos/system-manifest.json" <<EOF
 {
   "name": "plumOS Pixel2 System",
@@ -81,6 +85,8 @@ cat >"$ROOTFS_DIR/usr/lib/plumos/system-manifest.json" <<EOF
   "architecture": "aarch64",
   "version": "$VERSION",
   "runtime_abi": "plumos-pixel2-v1",
+  "kernel_release": "$KERNEL_RELEASE",
+  "firmware_origin": "captured-stock-kernel-overlay",
   "source_ref": "$SOURCE_REF",
   "source_date_epoch": $SOURCE_EPOCH,
   "rootfs": "squashfs"
