@@ -189,9 +189,14 @@ Active settings after restore:
 
 The current Pixel2 rootfs does not include `getevent` or `sendevent`, so event
 injection was not available from ADB. The daemon is running and has both input
-devices open; the remaining acceptance check is physical:
+devices open.
+
+Physical validation now confirmed by the user:
+
+- SELECT + volume up/down changes screen brightness.
+
+Remaining acceptance checks:
 
 - volume up/down changes logical volume;
-- SELECT + volume up/down changes brightness;
 - behavior continues while a frontend child or future standalone app owns the
   display.

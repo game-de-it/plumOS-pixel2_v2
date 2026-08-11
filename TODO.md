@@ -77,7 +77,7 @@
 - [x] 実機LCDでfrontend描画と90度回転を確認する
 - [x] 実機でfrontendのbutton mappingを確認する
 - [x] MF/V90S型のグローバル音量キー・SELECT+音量輝度サービスを実装し、自動起動を確認する
-  - 2026-08-12: `380a006` app-layer/SYSTEMでdaemon起動、`pixel2_joypad`/`gpio-keys` open、helper往復確認済み。物理ボタン最終確認は未実施。
+  - 2026-08-12: `380a006` app-layer/SYSTEMでdaemon起動、`pixel2_joypad`/`gpio-keys` open、helper往復確認済み。SELECT+音量による画面輝度変更は実機確認済み。音量の実音声確認はゲーム起動後に実施する。
 
 ## Connectivity
 
