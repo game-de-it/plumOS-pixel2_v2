@@ -19,7 +19,8 @@
 
 ## Connectivity
 
-- [ ] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
+- [x] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
+- [ ] release imageではADB認証または明示opt-inを必須にする
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [ ] ADB shell、USB Wi-Fi、SSHを実機検証する
 

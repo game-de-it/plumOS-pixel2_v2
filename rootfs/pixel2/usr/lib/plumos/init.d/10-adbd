@@ -1,0 +1,70 @@
+#!/bin/sh
+set -u
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH HOME=/root
+GADGET=/sys/kernel/config/usb_gadget/plumos_pixel2
+FFS=/dev/usb-ffs/adb
+PID=/run/plumos/adbd.pid
+LOG=/state/plumos/logs/adbd.log
+
+log() {
+    printf '%s service=adb %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
+}
+
+start_adbd() {
+    [ -x /usr/sbin/adbd ] || {
+        log 'result=failed reason=binary-missing'
+        return 1
+    }
+    [ -d /sys/kernel/config/usb_gadget ] || \
+        mount -t configfs configfs /sys/kernel/config
+    set -- /sys/class/udc/*
+    [ -e "$1" ] || {
+        log 'result=failed reason=udc-missing'
+        return 1
+    }
+    udc=${1##*/}
+
+    mkdir -p "$GADGET/strings/0x409" \
+        "$GADGET/configs/c.1/strings/0x409" \
+        "$GADGET/functions/ffs.adb" "$FFS"
+    printf '0x18d1\n' >"$GADGET/idVendor"
+    printf '0x4ee7\n' >"$GADGET/idProduct"
+    printf '0x0200\n' >"$GADGET/bcdUSB"
+    printf '0x0100\n' >"$GADGET/bcdDevice"
+    serial=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null | tr -d '-' | cut -c1-16)
+    printf 'plumos-pixel2-%s\n' "${serial:-unknown}" >"$GADGET/strings/0x409/serialnumber"
+    printf 'plumOS\n' >"$GADGET/strings/0x409/manufacturer"
+    printf 'plumOS Pixel2 ADB\n' >"$GADGET/strings/0x409/product"
+    printf 'ADB maintenance\n' >"$GADGET/configs/c.1/strings/0x409/configuration"
+    printf '120\n' >"$GADGET/configs/c.1/MaxPower"
+    [ -e "$GADGET/configs/c.1/ffs.adb" ] || \
+        ln -s "$GADGET/functions/ffs.adb" "$GADGET/configs/c.1/ffs.adb"
+    grep -q " $FFS functionfs " /proc/mounts 2>/dev/null || \
+        mount -t functionfs adb "$FFS"
+
+    /usr/sbin/adbd >>"$LOG" 2>&1 &
+    printf '%s\n' "$!" >"$PID"
+    elapsed=0
+    while [ "$elapsed" -lt 12 ]; do
+        [ -e "$FFS/ep1" ] && [ -e "$FFS/ep2" ] && break
+        kill -0 "$(cat "$PID")" 2>/dev/null || {
+            log 'result=failed reason=daemon-exited'
+            return 1
+        }
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    [ -e "$FFS/ep1" ] && [ -e "$FFS/ep2" ] || {
+        log 'result=failed reason=functionfs-timeout'
+        return 1
+    }
+    printf '%s\n' "$udc" >"$GADGET/UDC"
+    log "result=started udc=$udc auth=disabled-development"
+}
+
+case "${1:-}" in
+    start) start_adbd ;;
+    *) printf 'usage: %s start\n' "$0" >&2; exit 2 ;;
+esac

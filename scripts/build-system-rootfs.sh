@@ -30,6 +30,7 @@ esac
 rm -rf "$OUT_DIR"
 mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR"
 cp -a "$ROOT_DIR/rootfs/pixel2/." "$ROOTFS_DIR/"
+"$ROOT_DIR/scripts/build-adbd-overlay.sh" --inside "$ROOTFS_DIR"
 chmod 0755 "$ROOTFS_DIR/sbin/init" "$ROOTFS_DIR/usr/lib/plumos/init.d/"*
 chmod 0600 "$ROOTFS_DIR/etc/shadow"
 
@@ -50,7 +51,7 @@ copy_elf() {
 
 install -D -m 0755 /bin/busybox "$ROOTFS_DIR/bin/busybox"
 ln -s busybox "$ROOTFS_DIR/bin/sh"
-for applet in basename blkid cat chmod chown cttyhack date dirname grep \
+for applet in basename blkid cat chmod chown cttyhack cut date dirname grep \
     hostname ip kill ln logger ls mkdir mdev mount mountpoint mv rm sed \
     setsid sleep sync touch tr udhcpc umount; do
     ln -s /bin/busybox "$ROOTFS_DIR/bin/$applet"

@@ -4,8 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 for script in \
     "$ROOT_DIR/scripts/build-system-rootfs.sh" \
+    "$ROOT_DIR/scripts/build-adbd-overlay.sh" \
     "$ROOT_DIR/scripts/verify-system-rootfs.sh" \
     "$ROOT_DIR/rootfs/pixel2/sbin/init" \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh"; do
     bash -n "$script"
