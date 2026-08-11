@@ -1,0 +1,127 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+RUN_DIR="${PLUMOS_HARDWARE_KEYS_RUN_DIR:-$RUNTIME_ROOT/hardware-keys}"
+PID_FILE="$RUN_DIR/service.pid"
+LOG_FILE="$RUN_DIR/service.log"
+DAEMON="${PLUMOS_HARDWARE_KEYS_DAEMON:-$PLUMOS_ROOT/bin/plumos-hardware-keys}"
+
+read_pid() {
+  [ -r "$PID_FILE" ] || return 1
+  pid="$(sed -n '1p' "$PID_FILE" 2>/dev/null)"
+  case "$pid" in ""|*[!0-9]*) return 1 ;; esac
+  printf '%s\n' "$pid"
+}
+
+discover_pid() {
+  for proc in /proc/[0-9]*; do
+    [ -r "$proc/cmdline" ] || continue
+    executable="$(tr '\000' '\n' <"$proc/cmdline" 2>/dev/null | sed -n '1p')"
+    [ "$executable" = "$DAEMON" ] || continue
+    printf '%s\n' "${proc##*/}"
+    return 0
+  done
+  return 1
+}
+
+running_pid() {
+  pid="$(read_pid 2>/dev/null || true)"
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    printf '%s\n' "$pid"
+    return 0
+  fi
+  pid="$(discover_pid 2>/dev/null || true)"
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    mkdir -p "$RUN_DIR" 2>/dev/null || true
+    printf '%s\n' "$pid" >"$PID_FILE" 2>/dev/null || true
+    printf '%s\n' "$pid"
+    return 0
+  fi
+  return 1
+}
+
+is_running() {
+  running_pid >/dev/null 2>&1
+}
+
+start_service() {
+  volume_control="$PLUMOS_ROOT/bin/plumos-volume-control"
+  display_control="$PLUMOS_ROOT/bin/plumos-display-control"
+
+  if is_running; then
+    printf 'hardware_keys=running\npid=%s\n' "$(running_pid)"
+    return 0
+  fi
+  [ -x "$DAEMON" ] || {
+    printf 'plumos-hardware-keys-service: daemon missing: %s\n' "$DAEMON" >&2
+    return 1
+  }
+  mkdir -p "$RUN_DIR" || return 1
+  if [ -x "$volume_control" ]; then
+    PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT" \
+      "$volume_control" apply >/dev/null 2>&1 || {
+        printf 'plumos-hardware-keys-service: volume initialization failed\n' >&2
+        return 1
+      }
+  fi
+  if [ -x "$display_control" ]; then
+    PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT" \
+      "$display_control" apply >/dev/null 2>&1 || {
+        printf 'plumos-hardware-keys-service: display initialization failed\n' >&2
+        return 1
+      }
+  fi
+  rm -f "$PID_FILE"
+  PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT" \
+    "$DAEMON" >>"$LOG_FILE" 2>&1 </dev/null &
+  pid=$!
+  tmp="$PID_FILE.tmp.$$"
+  printf '%s\n' "$pid" >"$tmp" && mv -f "$tmp" "$PID_FILE"
+  if ! kill -0 "$pid" 2>/dev/null; then
+    rm -f "$PID_FILE"
+    printf 'plumos-hardware-keys-service: daemon failed to start\n' >&2
+    return 1
+  fi
+  printf 'hardware_keys=running\npid=%s\n' "$pid"
+}
+
+stop_service() {
+  if ! is_running; then
+    rm -f "$PID_FILE"
+    printf 'hardware_keys=stopped\n'
+    return 0
+  fi
+  pid="$(running_pid)"
+  kill -TERM "$pid" 2>/dev/null || true
+  wait_count=0
+  while kill -0 "$pid" 2>/dev/null && [ "$wait_count" -lt 5 ]; do
+    sleep 1
+    wait_count=$((wait_count + 1))
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    printf 'plumos-hardware-keys-service: pid %s did not stop\n' "$pid" >&2
+    return 1
+  fi
+  rm -f "$PID_FILE"
+  printf 'hardware_keys=stopped\n'
+}
+
+case "${1:-start}" in
+  start) start_service ;;
+  stop) stop_service ;;
+  restart) stop_service && start_service ;;
+  status)
+    if is_running; then
+      printf 'hardware_keys=running\npid=%s\n' "$(running_pid)"
+    else
+      printf 'hardware_keys=stopped\n'
+      exit 1
+    fi
+    ;;
+  *)
+    printf 'usage: %s [start|stop|restart|status]\n' "$0" >&2
+    exit 2
+    ;;
+esac

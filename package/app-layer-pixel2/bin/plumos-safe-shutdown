@@ -59,6 +59,9 @@ umount_if_mounted() {
 
 prepare_power_transition() {
     log "power=prepare-start action=$action"
+    if [ -x /mnt/plumos/bin/plumos-hardware-keys-service ]; then
+        /mnt/plumos/bin/plumos-hardware-keys-service stop >>"$log_file" 2>&1 || true
+    fi
     stop_pid_file /run/plumos/frontend.pid frontend
     umount_if_mounted /roms || true
     umount_if_mounted /mnt/plumos-user || true

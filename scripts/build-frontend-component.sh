@@ -55,6 +55,8 @@ gcc "${common[@]}" "$SOURCE_DIR/plumos_text_ui.c" \
     -o "$BIN_DIR/plumos-text-ui"
 gcc "${common[@]}" "$SOURCE_DIR/plumos_frontend.c" \
     -o "$BIN_DIR/plumos-frontend-diagnostics"
+gcc "${common[@]}" "$SOURCE_DIR/plumos_pixel2_hardware_keys.c" \
+    -o "$BIN_DIR/plumos-hardware-keys"
 strip "$BIN_DIR"/* 2>/dev/null || true
 chmod 0755 "$BIN_DIR"/*
 
@@ -79,6 +81,7 @@ cat >"$COMPONENT_DIR/manifest.json" <<EOF
   "source_date_epoch": $SOURCE_EPOCH,
   "renderer": "drm-fbdev-ccw",
   "input": "gkd-pixel2-joypad",
+  "hardware_key_daemon": "bin/plumos-hardware-keys",
   "resolver": "bin/plumos-text-ui",
   "catalog": "config/frontend/systems.json"
 }

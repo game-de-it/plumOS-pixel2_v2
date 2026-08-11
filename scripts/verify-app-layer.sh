@@ -8,6 +8,7 @@ for path in \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
     bin/plumos-retroarch-launch bin/retroarch cores/quicknes_libretro.so \
     bin/plumos-safe-shutdown bin/plumos-run-with-input-map \
+    bin/plumos-hardware-keys bin/plumos-hardware-keys-service \
     bin/plumos-display-control bin/plumos-volume-control \
     bin/plumos-network-control bin/plumos-network-services \
     emulator/lib/libpthread.so.0 \
@@ -52,6 +53,11 @@ fi
 if strings "$ROOT/bin/plumos-frontend-pixel2" "$ROOT/bin/plumos-text-ui" | \
     grep -Eiq "(^|[^[:alnum:]_])($foreign_models)([^[:alnum:]_]|$)"; then
     printf 'error: foreign device identity in Pixel2 frontend binaries\n' >&2
+    exit 1
+fi
+if strings "$ROOT/bin/plumos-hardware-keys" | \
+    grep -Eiq "(^|[^[:alnum:]_])($foreign_models)([^[:alnum:]_]|$)"; then
+    printf 'error: foreign device identity in Pixel2 hardware key daemon\n' >&2
     exit 1
 fi
 if find "$ROOT" -type f \( -iname '*.nes' -o -iname '*.gb' -o -iname '*.gba' \

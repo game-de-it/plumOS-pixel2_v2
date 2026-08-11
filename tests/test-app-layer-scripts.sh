@@ -12,6 +12,7 @@ for script in \
     package/app-layer-pixel2/bin/plumos-retroarch-launch \
     package/app-layer-pixel2/bin/plumos-safe-shutdown \
     package/app-layer-pixel2/bin/plumos-run-with-input-map \
+    package/app-layer-pixel2/bin/plumos-hardware-keys-service \
     package/app-layer-pixel2/bin/plumos-display-control \
     package/app-layer-pixel2/bin/plumos-volume-control \
     package/app-layer-pixel2/bin/plumos-network-control \
@@ -47,6 +48,18 @@ grep -q 'input-map.env' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-run-with-input-map"
 grep -q 'east-confirm' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'plumos-hardware-keys-service' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'plumos_pixel2_hardware_keys.c' \
+    "$ROOT_DIR/scripts/build-frontend-component.sh"
+grep -q 'pixel2_joypad' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'gpio-keys' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'KEY_VOLUMEUP' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'BTN_SELECT' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'strcmp(ab_layout, "east-confirm")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'case BTN_TRIGGER_HAPPY1:' \

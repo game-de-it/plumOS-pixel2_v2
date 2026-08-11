@@ -87,6 +87,13 @@ start_frontend() {
     export PLUMOS_RUNTIME_ROOT=/run/plumos
     export LD_LIBRARY_PATH="$ROOT/frontend/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
+    if [ -x "$ROOT/bin/plumos-hardware-keys-service" ]; then
+        PLUMOS_ROOT="$ROOT" PLUMOS_RUNTIME_ROOT=/run/plumos \
+            "$ROOT/bin/plumos-hardware-keys-service" start \
+            >>"$LOG" 2>&1 || \
+            printf 'frontend=warning hardware-keys-service-failed\n' >>"$LOG"
+    fi
+
     printf 'frontend=result-starting renderer=fbdev input=%s fb=/dev/fb0\n' \
         "$input" >>"$LOG"
     PLUMOS_ROOT="$ROOT" "$ROOT/bin/plumos-library-scan" --defer-thumbnails \
