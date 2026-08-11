@@ -19,6 +19,10 @@ bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 bash -n "$ROOT_DIR/rootfs/pixel2/usr/bin/plumos-diagnostics"
 grep -q 'PLUMOS_DEVICE_ID=pixel2' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'PLUMOS_FBDEV_ROTATION=ccw' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'physical_yres' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 
 ! grep -q '\$bb mountpoint' "$ROOT_DIR/rootfs/pixel2/sbin/init"

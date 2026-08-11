@@ -92,7 +92,9 @@ struct plumos_fbdev_renderer {
   unsigned char *shadow;
   size_t map_size;
   int bytes_per_pixel;
-  int rotation_180;
+  int rotation;
+  uint32_t physical_xres;
+  uint32_t physical_yres;
   long active_offset;
   long visible_offset;
   long frame_bytes;
@@ -337,6 +339,8 @@ static int plumos_fbdev_drm_init(struct plumos_fbdev_renderer *r,
   r->var.green.length = 8;
   r->var.blue.offset = 0;
   r->var.blue.length = 8;
+  r->physical_xres = r->var.xres;
+  r->physical_yres = r->var.yres;
   r->active_offset = 0;
   r->visible_offset = 0;
   r->double_buffer = 1;
@@ -438,9 +442,17 @@ static void plumos_fbdev_put_pixel(struct plumos_fbdev_renderer *r, int x, int y
       y >= (int)r->var.yres) {
     return;
   }
-  if (r->rotation_180) {
-    x = (int)r->var.xres - 1 - x;
-    y = (int)r->var.yres - 1 - y;
+  if (r->rotation == 1) {
+    int physical_x = (int)r->physical_xres - 1 - y;
+    y = x;
+    x = physical_x;
+  } else if (r->rotation == 2) {
+    x = (int)r->physical_xres - 1 - x;
+    y = (int)r->physical_yres - 1 - y;
+  } else if (r->rotation == 3) {
+    int physical_x = y;
+    y = (int)r->physical_yres - 1 - x;
+    x = physical_x;
   }
   if (r->shadow) {
     offset = (long)y * (long)r->fix.line_length +
@@ -499,13 +511,31 @@ static void plumos_fbdev_fill_rect(struct plumos_fbdev_renderer *r, int x, int y
   if (x >= x_end || y >= y_end) {
     return;
   }
-  if (r->rotation_180) {
-    int rotated_x = (int)r->var.xres - x_end;
-    int rotated_y = (int)r->var.yres - y_end;
+  if (r->rotation == 1) {
+    int rotated_x = (int)r->physical_xres - y_end;
+    int rotated_y = x;
+    int rotated_w = y_end - y;
+    int rotated_h = x_end - x;
+    x = rotated_x;
+    y = rotated_y;
+    x_end = x + rotated_w;
+    y_end = y + rotated_h;
+  } else if (r->rotation == 2) {
+    int rotated_x = (int)r->physical_xres - x_end;
+    int rotated_y = (int)r->physical_yres - y_end;
     x_end = rotated_x + (x_end - x);
     y_end = rotated_y + (y_end - y);
     x = rotated_x;
     y = rotated_y;
+  } else if (r->rotation == 3) {
+    int rotated_x = y;
+    int rotated_y = (int)r->physical_yres - x_end;
+    int rotated_w = y_end - y;
+    int rotated_h = x_end - x;
+    x = rotated_x;
+    y = rotated_y;
+    x_end = x + rotated_w;
+    y_end = y + rotated_h;
   }
   base = r->shadow ? r->shadow : r->mem + r->active_offset;
   for (yy = y; yy < y_end; yy++) {
@@ -3931,6 +3961,8 @@ static int plumos_fbdev_renderer_init(struct plumos_fbdev_renderer *r,
     r->fd = -1;
     return 0;
   }
+  r->physical_xres = r->var.xres;
+  r->physical_yres = r->var.yres;
   map_size = r->fix.smem_len ? (long)r->fix.smem_len
                              : (long)r->fix.line_length * (long)r->var.yres_virtual;
   r->frame_bytes = (long)r->fix.line_length * (long)r->var.yres;
@@ -3992,10 +4024,19 @@ static void plumos_fbdev_renderer_set_rotation(struct plumos_fbdev_renderer *r,
   if (!r) {
     return;
   }
-  r->rotation_180 = rotation &&
-                    (strcmp(rotation, "180") == 0 ||
-                     strcmp(rotation, "rotate180") == 0 ||
-                     strcmp(rotation, "inverted") == 0);
+  r->rotation = 0;
+  if (!rotation) {
+    return;
+  }
+  if (strcmp(rotation, "cw") == 0 || strcmp(rotation, "90") == 0) {
+    r->rotation = 1;
+  } else if (strcmp(rotation, "180") == 0 ||
+             strcmp(rotation, "rotate180") == 0 ||
+             strcmp(rotation, "inverted") == 0) {
+    r->rotation = 2;
+  } else if (strcmp(rotation, "ccw") == 0 || strcmp(rotation, "270") == 0) {
+    r->rotation = 3;
+  }
 }
 
 static int plumos_fbdev_render_lines(struct plumos_fbdev_renderer *r,
@@ -4007,6 +4048,10 @@ static int plumos_fbdev_render_lines(struct plumos_fbdev_renderer *r,
 
   if (!r || !r->mem) {
     return 0;
+  }
+  if (r->rotation == 1 || r->rotation == 3) {
+    r->var.xres = r->physical_yres;
+    r->var.yres = r->physical_xres;
   }
   plumos_fbdev_load_palette(r, &palette, lines, line_count);
   mode = plumos_fbdev_find_value(lines, line_count, "graphic_mode=");
@@ -4028,6 +4073,8 @@ static int plumos_fbdev_render_lines(struct plumos_fbdev_renderer *r,
   } else {
     ok = plumos_fbdev_render_generic(r, lines, line_count, &palette);
   }
+  r->var.xres = r->physical_xres;
+  r->var.yres = r->physical_yres;
   if (!r->shadow
 #ifdef PLUMOS_FBDEV_ENABLE_DRM
       && !r->drm_active

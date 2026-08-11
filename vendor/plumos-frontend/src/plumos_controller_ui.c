@@ -15694,7 +15694,7 @@ static void usage(const char *argv0) {
   printf("Usage:\n");
   printf("  %s [--all] [--refresh] [--once] [--timeout SEC] [--event PATH]\n", argv0);
   printf("     [--renderer text|mali|fbdev|mmf-gfx] [--fb PATH]\n");
-  printf("     [--fbdev-rotation none|180] [--mmf-gfx-rotation none|180]\n");
+  printf("     [--fbdev-rotation none|cw|ccw|180] [--mmf-gfx-rotation none|180]\n");
   printf("     [--egl-lib PATH] [--gles-lib PATH]\n");
   printf("     [--rotation auto|none|cw|ccw] [--font PATH]\n");
   printf("     [--tty-entry-scale 1|1.5|2]\n");
@@ -15711,7 +15711,7 @@ static void usage(const char *argv0) {
   printf("  PLUMOS_POWER_INPUT_EVENT  Default: auto-detect soc:gpio_keys\n");
   printf("  PLUMOS_RENDERER     text, mali, fbdev, or mmf-gfx. Default: text\n");
   printf("  PLUMOS_FB           Default for Mali renderer: /dev/fb0\n");
-  printf("  PLUMOS_FBDEV_ROTATION  none or 180. Default: none\n");
+  printf("  PLUMOS_FBDEV_ROTATION  none, cw, ccw or 180. Default: none\n");
   printf("  PLUMOS_MMF_GFX_ROTATION  none or 180. Default: PLUMOS_FBDEV_ROTATION\n");
   printf("  PLUMOS_EGL_LIB      Default for Mali renderer: /usr/lib/libEGL.so\n");
   printf("  PLUMOS_GLES_LIB     Default for Mali renderer: /usr/lib/libGLESv2.so\n");
@@ -15955,7 +15955,9 @@ int main(int argc, char **argv) {
       fb_path = argv[++i];
     } else if (strcmp(argv[i], "--fbdev-rotation") == 0 && i + 1 < argc) {
       const char *rotation = argv[++i];
-      if (strcmp(rotation, "none") != 0 && strcmp(rotation, "180") != 0 &&
+      if (strcmp(rotation, "none") != 0 && strcmp(rotation, "cw") != 0 &&
+          strcmp(rotation, "ccw") != 0 && strcmp(rotation, "90") != 0 &&
+          strcmp(rotation, "270") != 0 && strcmp(rotation, "180") != 0 &&
           strcmp(rotation, "rotate180") != 0 && strcmp(rotation, "inverted") != 0) {
         fprintf(stderr, "error: unknown fbdev rotation: %s\n", rotation);
         return 2;

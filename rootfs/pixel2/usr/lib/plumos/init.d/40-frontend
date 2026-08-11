@@ -12,7 +12,17 @@ find_input() {
         [ -r "$event/device/name" ] || continue
         name=$($bb cat "$event/device/name" 2>/dev/null || true)
         case "$name" in
-            *gkd-pixel2*|*gpio-keys*|*gamepad*)
+            *gkd-pixel2*|*gamepad*)
+                printf '/dev/input/%s\n' "${event##*/}"
+                return 0
+                ;;
+        esac
+    done
+    for event in /sys/class/input/event*; do
+        [ -r "$event/device/name" ] || continue
+        name=$($bb cat "$event/device/name" 2>/dev/null || true)
+        case "$name" in
+            *gpio-keys*)
                 printf '/dev/input/%s\n' "${event##*/}"
                 return 0
                 ;;
@@ -49,7 +59,7 @@ start_frontend() {
     export PLUMOS_RENDERER=fbdev
     export PLUMOS_FB=/dev/fb0
     export PLUMOS_DRM_DEVICE=/dev/dri/card0
-    export PLUMOS_FBDEV_ROTATION=none
+    export PLUMOS_FBDEV_ROTATION=ccw
     export PLUMOS_INPUT_EVENT="$input"
     export PLUMOS_BUSYBOX=/bin/busybox
     export PLUMOS_FRONTEND_MODE=manual
