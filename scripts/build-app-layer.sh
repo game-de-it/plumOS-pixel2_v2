@@ -42,8 +42,12 @@ printf '%s\n' "$VERSION" >"$PLUMOS_DIR/VERSION"
 printf 'pixel2-rockchip-r1\n' >"$PLUMOS_DIR/COMPAT_VENDOR"
 printf 'plumos-pixel2-app-layer-v1\n' >"$PLUMOS_DIR/RUNTIME_ABI"
 
-complete=false
-[ "$STRICT" -eq 0 ] || complete=true
+# All three components above are mandatory and checksum-verified before the
+# assembler reaches this point.  A successful Pixel2 app-layer assembly is
+# therefore complete regardless of whether the compatibility --strict flag was
+# supplied.  Emitting complete=false here made the default command create an
+# unusable tree and then fail its own verifier without a useful error.
+complete=true
 cat >"$PLUMOS_DIR/manifest.json" <<EOF
 {
   "name": "plumOS Pixel2 app layer",
