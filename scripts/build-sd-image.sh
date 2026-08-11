@@ -73,7 +73,7 @@ done
 "$ROOT_DIR/scripts/verify-app-layer.sh" "$APP_DIR"
 
 normalize_ext4_timestamps() {
-    local source_root=$1 image=$2 epoch=$3 commands path relative field
+    local source_root=$1 image=$2 epoch=$3 commands path relative field fake_time
     commands="$WORK/normalize-ext4.debugfs"
     : >"$commands"
     for path in '<2>' '<11>'; do
@@ -91,7 +91,8 @@ normalize_ext4_timestamps() {
                 "$relative" "$field" "$epoch" >>"$commands"
         done
     done < <(find "$source_root" -mindepth 1 -print0 | sort -z)
-    debugfs -w -f "$commands" "$image" >/dev/null 2>&1
+    fake_time=$(date -u -d "@$epoch" '+%Y-%m-%d %H:%M:%S')
+    faketime "$fake_time" debugfs -w -f "$commands" "$image" >/dev/null 2>&1
 }
 
 # Fixed 2 GiB layout, in 512-byte sectors.
