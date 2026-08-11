@@ -40,6 +40,7 @@ SOURCE_EPOCH="${SOURCE_DATE_EPOCH:-}"
 case "$SOURCE_EPOCH" in
     ''|*[!0-9]*) printf 'error: invalid SOURCE_DATE_EPOCH\n' >&2; exit 2 ;;
 esac
+export SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
 [ "$(stat -c '%s' "$PREFIX")" -eq 16777216 ] || {
     printf 'error: Rockchip boot prefix must be exactly 16 MiB\n' >&2
     exit 2
@@ -75,10 +76,10 @@ done
 TOTAL_SECTORS=4194304
 BOOT_START=32768
 BOOT_SECTORS=524288
-STATE_START=557056
-STATE_SECTORS=1048576
-ROMS_START=1605632
-ROMS_SECTORS=2588672
+SYS_START=557056
+SYS_SECTORS=1048576
+USER_START=1605632
+USER_SECTORS=2588672
 IMAGE="$OUT_DIR/plumOS-Pixel2-$VERSION.img"
 WORK="$(mktemp -d /tmp/plumos-pixel2-image.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
@@ -90,26 +91,26 @@ truncate -s "$((TOTAL_SECTORS * 512))" "$IMAGE"
 dd if="$PREFIX" of="$IMAGE" bs=1M count=16 conv=notrunc status=none
 parted -s "$IMAGE" unit s mklabel msdos \
     mkpart primary fat32 "${BOOT_START}s" "$((BOOT_START + BOOT_SECTORS - 1))s" \
-    mkpart primary ext4 "${STATE_START}s" "$((STATE_START + STATE_SECTORS - 1))s" \
-    mkpart primary fat32 "${ROMS_START}s" "$((ROMS_START + ROMS_SECTORS - 1))s" \
+    mkpart primary ext4 "${SYS_START}s" "$((SYS_START + SYS_SECTORS - 1))s" \
+    mkpart primary fat32 "${USER_START}s" "$((USER_START + USER_SECTORS - 1))s" \
     set 1 boot on 2> >(grep -v 'udevadm: not found' >&2)
 # Keep the partition table deterministic while leaving the Rockchip payload at
 # sectors 1..32767 untouched.
 printf '\x50\x4c\x55\x4d' | dd of="$IMAGE" bs=1 seek=440 conv=notrunc status=none
 
 truncate -s "$((BOOT_SECTORS * 512))" "$WORK/boot.fat"
-truncate -s "$((STATE_SECTORS * 512))" "$WORK/state.ext4"
-truncate -s "$((ROMS_SECTORS * 512))" "$WORK/roms.fat"
+truncate -s "$((SYS_SECTORS * 512))" "$WORK/plumos-sys.ext4"
+truncate -s "$((USER_SECTORS * 512))" "$WORK/plumos-user.fat"
 SOURCE_DATE_EPOCH="$SOURCE_EPOCH" mkfs.vfat --invariant -F 32 -n PLUMOS_BOOT \
     -i 504C554D "$WORK/boot.fat" >/dev/null
 E2FSPROGS_FAKE_TIME="$SOURCE_EPOCH" mkfs.ext4 -q -F -L PLUMOS_SYS \
     -U 504c554d-5354-4154-4500-000000000002 \
     -E lazy_itable_init=0,lazy_journal_init=0,hash_seed=504c554d-5354-4154-4500-000000000002 \
-    -d "$WORK/plumos-sys" "$WORK/state.ext4"
+    -d "$WORK/plumos-sys" "$WORK/plumos-sys.ext4"
 SOURCE_DATE_EPOCH="$SOURCE_EPOCH" mkfs.vfat --invariant -F 32 -n PLUMOS_USER \
-    -i 504C0003 "$WORK/roms.fat" >/dev/null
+    -i 504C0003 "$WORK/plumos-user.fat" >/dev/null
 for directory in roms bios Images Themes Screenshots Music updates imports exports plumos-logs; do
-    MTOOLS_SKIP_CHECK=1 mmd -i "$WORK/roms.fat" "::/$directory"
+    MTOOLS_SKIP_CHECK=1 mmd -i "$WORK/plumos-user.fat" "::/$directory"
 done
 
 install -m 0644 "$KERNEL_DIR/Image" "$WORK/boot/Image"
@@ -132,12 +133,12 @@ find "$WORK/boot" -exec touch -h -d "@$SOURCE_EPOCH" {} +
 MTOOLS_SKIP_CHECK=1 mcopy -m -o -i "$WORK/boot.fat" "$WORK/boot/"* ::/
 
 dd if="$WORK/boot.fat" of="$IMAGE" bs=512 seek="$BOOT_START" conv=notrunc status=none
-dd if="$WORK/state.ext4" of="$IMAGE" bs=512 seek="$STATE_START" conv=notrunc status=none
-dd if="$WORK/roms.fat" of="$IMAGE" bs=512 seek="$ROMS_START" conv=notrunc status=none
+dd if="$WORK/plumos-sys.ext4" of="$IMAGE" bs=512 seek="$SYS_START" conv=notrunc status=none
+dd if="$WORK/plumos-user.fat" of="$IMAGE" bs=512 seek="$USER_START" conv=notrunc status=none
 
 boot_fs_sha=$(sha256sum "$WORK/boot.fat" | awk '{print $1}')
-state_fs_sha=$(sha256sum "$WORK/state.ext4" | awk '{print $1}')
-roms_fs_sha=$(sha256sum "$WORK/roms.fat" | awk '{print $1}')
+sys_fs_sha=$(sha256sum "$WORK/plumos-sys.ext4" | awk '{print $1}')
+user_fs_sha=$(sha256sum "$WORK/plumos-user.fat" | awk '{print $1}')
 image_sha=$(sha256sum "$IMAGE" | awk '{print $1}')
 image_size=$(stat -c '%s' "$IMAGE")
 cat >"$OUT_DIR/image.manifest" <<EOF
@@ -147,8 +148,8 @@ image_size=$image_size
 image_sha256=$image_sha
 boot_prefix_sha256=$prefix_sha
 boot_filesystem_sha256=$boot_fs_sha
-state_filesystem_sha256=$state_fs_sha
-roms_filesystem_sha256=$roms_fs_sha
+sys_filesystem_sha256=$sys_fs_sha
+user_filesystem_sha256=$user_fs_sha
 source_ref=$SOURCE_REF
 source_date_epoch=$SOURCE_EPOCH
 EOF

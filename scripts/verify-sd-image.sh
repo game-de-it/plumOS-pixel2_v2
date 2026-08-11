@@ -37,13 +37,13 @@ dd if="$IMAGE" of="$WORK/image-prefix.bin" bs=512 skip=1 count=32767 status=none
 dd if="$PREFIX" of="$WORK/source-prefix.bin" bs=512 skip=1 count=32767 status=none
 cmp "$WORK/image-prefix.bin" "$WORK/source-prefix.bin"
 dd if="$IMAGE" of="$WORK/boot.fat" bs=512 skip=32768 count=524288 status=none
-dd if="$IMAGE" of="$WORK/state.ext4" bs=512 skip=557056 count=1048576 status=none
-dd if="$IMAGE" of="$WORK/roms.fat" bs=512 skip=1605632 count=2588672 status=none
+dd if="$IMAGE" of="$WORK/plumos-sys.ext4" bs=512 skip=557056 count=1048576 status=none
+dd if="$IMAGE" of="$WORK/plumos-user.fat" bs=512 skip=1605632 count=2588672 status=none
 fsck.vfat -n "$WORK/boot.fat" >/dev/null
-fsck.vfat -n "$WORK/roms.fat" >/dev/null
-e2fsck -fn "$WORK/state.ext4" >/dev/null
-[ "$(blkid -s LABEL -o value "$WORK/state.ext4")" = PLUMOS_SYS ]
-[ "$(blkid -s LABEL -o value "$WORK/roms.fat")" = PLUMOS_USER ]
+fsck.vfat -n "$WORK/plumos-user.fat" >/dev/null
+e2fsck -fn "$WORK/plumos-sys.ext4" >/dev/null
+[ "$(blkid -s LABEL -o value "$WORK/plumos-sys.ext4")" = PLUMOS_SYS ]
+[ "$(blkid -s LABEL -o value "$WORK/plumos-user.fat")" = PLUMOS_USER ]
 for file in Image SYSTEM rk3326s-gkd-pixel2.dtb plumos-image.manifest; do
     MTOOLS_SKIP_CHECK=1 mcopy -i "$WORK/boot.fat" "::/$file" "$WORK/$file"
 done
@@ -53,10 +53,10 @@ cmp "$WORK/rk3326s-gkd-pixel2.dtb" \
 cmp "$WORK/SYSTEM" "$ROOT_DIR/output/system-rootfs/pixel2/payload/SYSTEM"
 "$ROOT_DIR/scripts/verify-system-rootfs.sh" "$WORK/SYSTEM"
 mkdir -p "$WORK/app-layer"
-debugfs -R "rdump / $WORK/app-layer" "$WORK/state.ext4" >/dev/null 2>&1
+debugfs -R "rdump / $WORK/app-layer" "$WORK/plumos-sys.ext4" >/dev/null 2>&1
 "$ROOT_DIR/scripts/verify-app-layer.sh" "$WORK/app-layer"
 for directory in roms bios Images Themes Screenshots Music updates; do
-    MTOOLS_SKIP_CHECK=1 mdir -i "$WORK/roms.fat" "::/$directory" >/dev/null
+    MTOOLS_SKIP_CHECK=1 mdir -i "$WORK/plumos-user.fat" "::/$directory" >/dev/null
 done
 if strings "$WORK/Image" "$WORK/rk3326s-gkd-pixel2.dtb" \
     "$WORK/plumos-image.manifest" | grep -Eiq '(rocknix|emuelec|batocera|knulli)'; then
