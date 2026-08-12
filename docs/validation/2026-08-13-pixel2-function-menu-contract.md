@@ -82,3 +82,38 @@ launcher, emulator binary, Function mapping, component manifest/checksum, and
 root metadata file. Full on-device verification passed all 3470 root checksum
 entries. Physical Function-menu interaction in each runtime remains unchecked
 until observed by the operator.
+
+## PCSX menu input de-duplication
+
+The first physical PCSX menu test exposed a second issue after Function could
+open the menu: the PCSX process held `/dev/input/event2` twice. One descriptor
+came from the Pixel2 raw evdev driver and the other from SDL joystick probing.
+libpicofe merges menu state across registered devices, so the same physical
+press and release could enter its menu path twice.
+
+Commit `002e250` retains SDL video and keyboard event handling but disables SDL
+joystick probing for the Pixel2 build. The controller, D-pad, and Function menu
+now share one raw evdev source. The menu contract remains physical A/`BTN_EAST`
+for confirm, physical B/`BTN_SOUTH` for back, and the D-pad for navigation.
+`tests/test-pixel2-emulator-menu-contract.sh`, the app-layer script gate, both
+PCSX/libpicofe patch applicability checks, and a full four-standalone parallel
+build passed.
+
+The strict app-layer and signed delta reported:
+
+```text
+version=0.1.0-dev-002e250
+source_ref=002e250
+package=plumos-pixel2-runtime-0.1.0-dev-002e250.tar.gz
+package_sha256=2f72fd2774f65956b661d263dcae59e35dd36b9b4aa9adac7831b0d802ee1f93
+payload_files=12
+deleted_files=0
+```
+
+The device verified the signed package, base version, Pixel2 compatibility,
+ABI, and package readback hash before reboot. The transaction reached
+`healthy` after FE first render, removed `runtime-pending.json`, and matched the
+host PCSX binary SHA-256
+`143c9d97e627a622cb61bf925f94fd4e398a4343193fc2225ca0ad0356fcc44b`.
+All 3470 root app-layer checksum entries passed. Physical PCSX menu navigation,
+confirm, back, resume, and exit remain an operator gate.

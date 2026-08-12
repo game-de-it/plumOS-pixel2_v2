@@ -108,6 +108,7 @@
 - [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
 - [ ] RA/PicoArch/SAの物理Function menuを実機確認する
   - 2026-08-13: RA、PicoArch、PCSX-ReARMed、DraStic、PPSSPP、OpenBORのFunction menu契約を実装し、source contract testを追加。`e9c8f38`から全対象をbuildし、署名Runtimeを実機へ適用。health昇格、対象22 SHA一致、root checksum 3470件合格。各runtimeの物理menu/exit確認が必要。
+  - 2026-08-13: PCSX内蔵menuでevdevとSDL joystickが同じ`event2`を二重登録する状態を実機FDで確認。Pixel2のPCSXはraw evdevだけをcontroller入力元とする`002e250`へ修正し、全4 SAを並列build、署名Runtime `0.1.0-dev-002e250`を適用。health昇格、実機root checksum 3470件/失敗0。PCSX menuの十字/A決定/B戻るは物理再確認待ち。
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
 - [ ] `plumos_output`経由のaudio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
 - [ ] save/stateが再起動後も保持されることを実機確認する
