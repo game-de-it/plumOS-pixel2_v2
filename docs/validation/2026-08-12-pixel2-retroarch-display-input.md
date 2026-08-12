@@ -594,3 +594,86 @@ device:
 - FPS feels stable without switching NES to the `performance` CPU governor;
 - D-pad and ABXY remain correct after the audio-router launch path;
 - volume keys affect actual game volume.
+
+## Pixel2 volume gain and refresh control follow-up
+
+User report after the audio-router fix:
+
+- normal NES audio no longer skips;
+- NES horizontal scrolling is still not smooth enough;
+- volume buttons do not change perceived game volume.
+
+Sibling project checks:
+
+- MF kept RetroArch smooth on DRM with threaded video, VRR disabled, and the
+  duplicate-frame DRM guard.
+- V90S previously used a `video_refresh_rate` launch/config knob while testing
+  panel cadence mismatches.
+- V90S volume work applied runtime software gain for routes where a hardware
+  mixer control was insufficient or unavailable.
+
+Pixel2 already carries the DRM duplicate-frame, nearest-neighbor scaling,
+software rotation, and page-flip pacing patches. The measured Pixel2 VOP
+interrupt cadence during an active NES session was about 60.2 Hz over 10
+seconds, so the default app-layer now exposes a refresh-rate override without
+changing the default away from 60 Hz:
+
+```text
+video_refresh_rate = "60.000000"
+vrr_runloop_enable = "false"
+```
+
+Commit `c8150cc` also makes the Pixel2 audio router read
+`/run/plumos/volume/current` on every transfer and apply software gain for the
+internal RK817 route, not only for USB/mono conversion routes. This mirrors the
+V90S direction while keeping Pixel2's current `pixel2-state-only` control
+backend.
+
+Host validation:
+
+```text
+sh -n package/app-layer-pixel2/bin/plumos-retroarch-launch
+sh -n package/app-layer-pixel2/bin/plumos-volume-control
+sh -n package/app-layer-pixel2/bin/plumos-hardware-keys-service
+bash tests/test-app-layer-scripts.sh
+git diff --check
+./scripts/docker-build.sh audio-router
+./scripts/docker-build.sh retroarch
+./scripts/docker-build.sh app-layer --strict
+```
+
+Live deploy validation:
+
+```text
+stage_verify=ok
+deployed_verify=ok
+manifest.json:  "source_ref": "c8150cc"
+components/audio-router/manifest.json:  "source_ref": "c8150cc"
+components/retroarch/manifest.json:  "source_ref": "c8150cc"
+```
+
+Runtime check after direct NES launch:
+
+```text
+audio_device = "plumos_output"
+audio_latency = "96"
+video_rotation = "3"
+video_refresh_rate = "60.000000"
+vrr_runloop_enable = "false"
+aspect_ratio_index = "0"
+video_aspect_ratio = "1.333333"
+video_threaded = "true"
+/proc/asound/card0/pcm0p/sub0/status = RUNNING owner_pid=<retroarch>
+/run/plumos/volume/current = 8
+plumos-hotplug: route=rk817_stereo card=0 pcm=hw
+```
+
+Physical result:
+
+- volume up/down changes perceived NES game volume while RetroArch is running.
+
+Next physical check:
+
+- confirm whether scrolling is still uneven at the default 60.000000 Hz;
+- if scrolling is still uneven, relaunch with
+  `PLUMOS_RETROARCH_VIDEO_REFRESH_RATE=60.200000` and compare.

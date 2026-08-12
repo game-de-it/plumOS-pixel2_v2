@@ -42,7 +42,11 @@ The hardware-key daemon is based on the MF/V90S service contract:
 - the final value is persisted after idle.
 
 Pixel2 volume is currently `pixel2-state-only` because the RK817 mixer command
-backend is not finalized. Brightness uses the kernel PWM backlight sysfs path:
+backend is not finalized. The runtime volume value is applied to emulator audio
+by the Pixel2 `plumos_output` ALSA router as software gain for the RK817 output,
+so global volume keys affect RetroArch/libretro playback without depending on a
+device-specific mixer control. Brightness uses the kernel PWM backlight sysfs
+path:
 
 ```text
 /sys/class/backlight/backlight/brightness
@@ -55,9 +59,15 @@ The FE uses fbdev on `/dev/fb0` with `PLUMOS_FBDEV_ROTATION=ccw`. Brightness is
 
 ## Audio
 
-The RK817 ALSA card is visible as `rockchiprk817`, but the final plumOS audio
-router and mixer control are still pending. Until that lands, runtime volume
-state is tracked so FE and future standalone launchers can use the same API.
+The RK817 ALSA card is visible as `rockchiprk817`. RetroArch/libretro launches
+use the Pixel2 `plumos_output` ALSA router, which opens the physical RK817 PCM
+through the generated app-layer ALSA config, mirrors V90S-style immediate
+runtime volume reads, and applies software gain when `/run/plumos/volume/current`
+is below the maximum logical level.
+
+Hardware mixer control remains a future enhancement for non-router clients, but
+the plumOS-managed emulator path should use the router so volume keys work
+during gameplay.
 
 ## Power
 

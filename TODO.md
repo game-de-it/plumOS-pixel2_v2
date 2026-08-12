@@ -79,8 +79,9 @@
 - [x] frontendとADBの診断logをSTATE partitionへ保存する
 - [x] 実機LCDでfrontend描画と90度回転を確認する
 - [x] 実機でfrontendのbutton mappingを確認する
-- [x] MF/V90S型のグローバル音量キー・SELECT+音量輝度サービスを実装し、自動起動を確認する
+- [x] MF/V90S型のグローバル音量キー・SELECT+音量輝度サービスを実装し、自動起動と実ゲーム音量変化を確認する
   - 2026-08-12: `380a006` app-layer/SYSTEMでdaemon起動、`pixel2_joypad`/`gpio-keys` open、helper往復確認済み。SELECT+音量による画面輝度変更は実機確認済み。音量の実音声確認はゲーム起動後に実施する。
+  - 2026-08-12: `c8150cc` app-layerでPixel2 audio-routerがRK817内部ルートにもruntime software gainを適用するようにした。NES起動中に音量ボタンで実音量が変化することを確認済み。
 
 ## Connectivity
 
