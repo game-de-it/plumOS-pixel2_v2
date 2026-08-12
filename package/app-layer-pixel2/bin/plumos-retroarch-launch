@@ -148,6 +148,8 @@ fi
     printf 'audio_latency = "%s"\n' "$audio_latency"
     printf 'video_driver = "drm"\n'
     printf 'video_rotation = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}"
+    printf 'video_refresh_rate = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_REFRESH_RATE:-60.000000}"
+    printf 'vrr_runloop_enable = "%s"\n' "${PLUMOS_RETROARCH_VRR_RUNLOOP_ENABLE:-false}"
     printf 'video_force_aspect = "true"\n'
     printf 'video_aspect_ratio_auto = "false"\n'
     printf 'aspect_ratio_index = "0"\n'

@@ -18,7 +18,7 @@
 #define ROUTE_PROBE_INTERVAL 32
 #define VOLUME_MAX 20
 #define VOLUME_DEFAULT 8
-#define VOLUME_PROBE_INTERVAL 4
+#define VOLUME_PROBE_INTERVAL 0
 #define INTERNAL_CARD_ID "rockchiprk817"
 
 typedef struct {
@@ -681,7 +681,7 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
 
     output = input;
     if (io->channels == 1 || io->format != SND_PCM_FORMAT_S16_LE ||
-        (pcm->physical_is_usb && pcm->volume_level < VOLUME_MAX)) {
+        pcm->volume_level < VOLUME_MAX) {
         err = ensure_output_buffer(pcm, size);
         if (err < 0)
             return err;
@@ -689,10 +689,8 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
             int16_t left;
             int16_t right;
             read_input_frame(io, input, frame, &left, &right);
-            if (pcm->physical_is_usb) {
-                left = apply_software_volume(left, pcm->volume_level);
-                right = apply_software_volume(right, pcm->volume_level);
-            }
+            left = apply_software_volume(left, pcm->volume_level);
+            right = apply_software_volume(right, pcm->volume_level);
             pcm->output_buffer[frame * 2] = left;
             pcm->output_buffer[frame * 2 + 1] = right;
         }
@@ -704,8 +702,7 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
         if (switch_route(pcm, 1) == 0) {
             if (io->channels == 1 ||
                 io->format != SND_PCM_FORMAT_S16_LE ||
-                (pcm->physical_is_usb &&
-                 pcm->volume_level < VOLUME_MAX)) {
+                pcm->volume_level < VOLUME_MAX) {
                 err = ensure_output_buffer(pcm, size);
                 if (err < 0)
                     return err;
@@ -713,12 +710,8 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
                     int16_t left;
                     int16_t right;
                     read_input_frame(io, input, frame, &left, &right);
-                    if (pcm->physical_is_usb) {
-                        left = apply_software_volume(
-                            left, pcm->volume_level);
-                        right = apply_software_volume(
-                            right, pcm->volume_level);
-                    }
+                    left = apply_software_volume(left, pcm->volume_level);
+                    right = apply_software_volume(right, pcm->volume_level);
                     pcm->output_buffer[frame * 2] = left;
                     pcm->output_buffer[frame * 2 + 1] = right;
                 }
