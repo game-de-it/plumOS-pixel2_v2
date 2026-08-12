@@ -529,3 +529,68 @@ router: logical delay is derived from physical ring occupancy via
 The mutable user RetroArch config is not overwritten; these settings are
 appended at launch time and are also present in factory defaults for newly
 provisioned configs.
+
+## Audio Router Live Deployment
+
+Commits:
+
+```text
+21cf972 fix: tune Pixel2 RetroArch frame pacing
+1f20a70 feat: add Pixel2 audio router
+69a47a7 fix: use Pixel2 ALSA base for audio router
+99fe4e7 fix: avoid ALSA shorthand in Pixel2 router
+aabb19f fix: enable Pixel2 RetroArch audio state routing
+```
+
+Host validation:
+
+```text
+app_layer_scripts=result-ok
+audio_router=result-ok output=/work/output/audio-router/pixel2/plumos
+app_layer_verify=result-ok root=/work/output/app-layer/pixel2/plumos
+app_layer=result-ok strict=1 output=/work/output/app-layer/pixel2/plumos
+```
+
+Live deployment:
+
+```text
+stage_verify=ok
+deployed_verify=ok
+/mnt/plumos/manifest.json:  "source_ref": "aabb19f",
+/mnt/plumos/components/audio-router/manifest.json:  "source_ref": "99fe4e7",
+/mnt/plumos/components/retroarch/manifest.json:  "source_ref": "1f20a70",
+```
+
+Runtime route after direct NES launch:
+
+```text
+audio_device = "plumos_output"
+audio_latency = "96"
+video_threaded = "true"
+video_rotation = "3"
+cpu governor = ondemand
+/proc/asound/card0/pcm0p/sub0/status = RUNNING owner_pid=<retroarch>
+plumos-hotplug: route=rk817_stereo card=0 pcm=hw
+```
+
+The router initially failed on Pixel2 because `/usr/share/alsa/alsa.conf` is
+not provided by the current rootfs. The helper now uses the app-layer
+`factory-defaults/alsa/alsa.conf` as its base. A second failure came from ALSA
+`hw:0,0` / `plughw:0,0` shorthand names that are normally defined by the full
+system ALSA config. Pixel2 now generates explicit `plumos_hw_cardN` and
+`plumos_plughw_cardN` PCMs and the ioplug opens those names instead.
+
+RetroArch exports `PLUMOS_AUDIO_FAST_FORWARD_DROP=1` and a per-launch
+`PLUMOS_AUDIO_FAST_FORWARD_STATE` path, allowing the patched ALSA driver and
+the router to keep the direct hardware route during normal play and drop only
+excess fast-forward audio.
+
+## Next Physical Check
+
+The game is currently running through the Pixel2 audio router. Confirm on the
+device:
+
+- audio no longer skips during normal NES play;
+- FPS feels stable without switching NES to the `performance` CPU governor;
+- D-pad and ABXY remain correct after the audio-router launch path;
+- volume keys affect actual game volume.
