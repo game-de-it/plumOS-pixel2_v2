@@ -20,6 +20,7 @@ physical controls.
 - [Power management](../validation/2026-08-12-pixel2-power-management.md)
 - [START menu](../validation/2026-08-12-pixel2-start-menu.md)
 - [Implementation audit](../validation/2026-08-13-pixel2-implementation-audit.md)
+- [User BIOS staging and device placement](../validation/2026-08-13-pixel2-user-bios.md)
 
 ## Release Gate Direction
 

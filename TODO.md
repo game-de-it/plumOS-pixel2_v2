@@ -111,7 +111,8 @@
 - [ ] enabled systemのBIOS/firmware inventoryを完備する
   - [x] 有効routeのlibretro `.info`とstandalone要求からPixel2 BIOS staging/manifestを生成する
   - [ ] ROMセットに無い必須firmwareを補完し、missing requiredを0件にする
-  - [ ] stagingを実機user BIOS領域へSHA一致で配置し、各coreから検出を確認する
+  - [x] ROMセットに存在する340 firmware fileを実機`/mnt/plumos-user/bios`へmerge-only配置し、実機SHA-256を340/340一致で確認する
+  - [ ] enabled systemごとにBIOS検出と代表content起動を実機確認する
 - [ ] enabled 88 systemのcontent policyを確定する
   - [ ] arcade ROM set policy: arcade、cps1、cps2、cps3、fbneo、neogeo
   - [ ] disk image policy: amiga、atari800、atarist、c64、cpc、pc88、pc98、sharpx1、thomson、vic20、x68000、zx81、zxspectrum
