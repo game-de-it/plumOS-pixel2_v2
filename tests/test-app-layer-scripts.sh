@@ -21,6 +21,9 @@ for script in \
     bash -n "$ROOT_DIR/$script"
 done
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+grep -q 'retroarch:gambatte' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+grep -q 'retroarch:pcsx_rearmed' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+grep -q 'picoarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'internal:system-settings' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
 grep -q 'internal:network-settings' \
@@ -157,7 +160,12 @@ grep -q 'rk817-dev-off' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'i2cset -f -y 0 0x20 0xf4' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
-grep -q 'SOURCE_COMMIT=058d6651' "$ROOT_DIR/scripts/build-libretro-cores.sh"
+grep -q 'docker/pixel2-tools/libretro-core-recipes.tsv' "$ROOT_DIR/scripts/build-libretro-cores.sh"
+grep -q 'quicknes|A|https://github.com/libretro/QuickNES_Core.git|058d6651' \
+    "$ROOT_DIR/docker/pixel2-tools/libretro-core-recipes.tsv"
+grep -q 'pcsx_rearmed|A|https://github.com/libretro/pcsx_rearmed.git|d26eaee5' \
+    "$ROOT_DIR/docker/pixel2-tools/libretro-core-recipes.tsv"
+grep -q 'component: "libretro-cores"' "$ROOT_DIR/scripts/build-libretro-cores.sh"
 grep -q '^complete=true$' "$ROOT_DIR/scripts/build-app-layer.sh"
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
     "$ROOT_DIR/package/frontend-pixel2" \

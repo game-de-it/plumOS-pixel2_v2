@@ -1,0 +1,62 @@
+--- a/src/LIBRETRO/libretro.c
++++ b/src/LIBRETRO/libretro.c
+@@ -423,6 +423,20 @@ static void init_variables(void)
+    else
+       use_pcg = FALSE;
+ 
++   var.key = "q88_monitor_type";
++
++   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
++      monitor_analog = (!strcmp(var.value, "digital")) ? FALSE : TRUE;
++   else
++      monitor_analog = TRUE;
++
++   var.key = "q88_monitor_sync";
++
++   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
++      monitor_15k = (!strcmp(var.value, "15k")) ? 0x02 : 0x00;
++   else
++      monitor_15k = 0x00;
++
+    var.key = "q88_screen_size";
+ 
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+--- a/src/LIBRETRO/libretro_core_options.h
++++ b/src/LIBRETRO/libretro_core_options.h
+@@ -155,6 +155,36 @@ struct retro_core_option_v2_definition option_defs_us[] = {
+       "disabled"
+    },
+ 
++   {
++      "q88_monitor_type",
++      "Monitor type",
++      NULL,
++      "Recommended: Analog. Selects the PC-88 monitor color response.",
++      NULL,
++      NULL,
++      {
++         { "analog",  "Analog" },
++         { "digital", "Digital" },
++         { NULL, NULL }
++      },
++      "analog"
++   },
++
++   {
++      "q88_monitor_sync",
++      "Monitor sync",
++      NULL,
++      "Recommended: 24k. Some software may read the monitor type and adjust output.",
++      NULL,
++      NULL,
++      {
++         { "24k", "24 kHz" },
++         { "15k", "15 kHz" },
++         { NULL, NULL }
++      },
++      "24k"
++   },
++
+    {
+       "q88_save_to_disk_image", 
+       "Save to disk image",

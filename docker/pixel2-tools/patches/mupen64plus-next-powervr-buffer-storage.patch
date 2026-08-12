@@ -1,0 +1,16 @@
+diff --git a/GLideN64/src/Graphics/OpenGLContext/opengl_GLInfo.cpp b/GLideN64/src/Graphics/OpenGLContext/opengl_GLInfo.cpp
+index ccb2783..b5245cb 100644
+--- a/GLideN64/src/Graphics/OpenGLContext/opengl_GLInfo.cpp
++++ b/GLideN64/src/Graphics/OpenGLContext/opengl_GLInfo.cpp
+@@ -137,2 +137,9 @@ void GLInfo::init() {
+-	bufferStorage = (!isGLESX && (numericVersion >= 44)) || Utils::isExtensionSupported(*this, "GL_ARB_buffer_storage") ||
+-			Utils::isExtensionSupported(*this, "GL_EXT_buffer_storage");
++	bufferStorage = (!isGLESX && (numericVersion >= 44)) || Utils::isExtensionSupported(*this, "GL_ARB_buffer_storage") ||
++			Utils::isExtensionSupported(*this, "GL_EXT_buffer_storage");
++
++	// Some handheld GLES stacks advertise GL_EXT_buffer_storage but return null
++	// for the persistent glMapBufferRange used by BufferedDrawer.
++	if (renderer == Renderer::PowerVR && bufferStorage) {
++		LOG(LOG_WARNING, "Disabling buffer storage on PowerVR");
++		bufferStorage = false;
++	}

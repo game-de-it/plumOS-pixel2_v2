@@ -1,0 +1,17 @@
+diff --git a/src/libretro_bios.cpp b/src/libretro_bios.cpp
+index 4c9341a..baaa3ca 100644
+--- a/src/libretro_bios.cpp
++++ b/src/libretro_bios.cpp
+@@ -125 +125,11 @@ bool Libretro::Bios::load()
+-    neocd->biosType = globals.biosList[globals.biosIndex].type.first;
++    const ::Bios::Type selectedType = globals.biosList[globals.biosIndex].type;
++    neocd->biosType = selectedType.first;
++
++    // Some plumOS handheld targets stall at TRACK 00 when UniBIOS 3.3 uses the CDZ drive path.
++    // Keep the CDZ BIOS patches below, but use the verified top-loader tray
++    // polarity and 75 Hz CD-ROM timer for this BIOS at runtime.
++    if ((selectedType.first == ::Bios::CDZ) &&
++        (selectedType.second == ::Bios::Universe33))
++    {
++        neocd->biosType = ::Bios::TopLoader;
++    }

@@ -1,0 +1,37 @@
+diff --git a/backends/platform/libretro/src/libretro-core.cpp b/backends/platform/libretro/src/libretro-core.cpp
+index 2a59b2a8553..32d8e12867b 100644
+--- a/backends/platform/libretro/src/libretro-core.cpp
++++ b/backends/platform/libretro/src/libretro-core.cpp
+@@ -192 +192 @@ static void log_scummvm_exit_code(void) {
+-static void audio_buffer_init(uint16 sample_rate, uint16 frame_rate) {
++static void audio_buffer_init(uint16 sample_rate, float frame_rate) {
+@@ -194 +194 @@ static void audio_buffer_init(uint16 sample_rate, uint16 frame_rate) {
+-	audio_samples_per_frame   = (float)sample_rate / (float)frame_rate;
++	audio_samples_per_frame   = (float)sample_rate / frame_rate;
+@@ -207,0 +208 @@ static void audio_run(void) {
++	uint32 samples_remaining;
+@@ -235 +236 @@ static void audio_run(void) {
+-	else {
++	else
+@@ -237,2 +237,0 @@ static void audio_run(void) {
+-		return;
+-	}
+@@ -240 +239,5 @@ static void audio_run(void) {
+-	/* Workaround for a RetroArch audio driver
++	/* MixerImpl clears the complete requested buffer before mixing. Submit the
++	 * full frame-sized buffer, including its zero-filled tail or a completely
++	 * silent buffer, so the frontend receives a continuous sample clock.
++	 *
++	 * Work around a RetroArch audio driver
+@@ -245,2 +248,3 @@ static void audio_run(void) {
+-	while (samples_produced > 0) {
+-		uint32 samples_to_write = (samples_produced > AUDIO_BATCH_FRAMES_MAX) ? AUDIO_BATCH_FRAMES_MAX : samples_produced;
++	samples_remaining = samples_to_read;
++	while (samples_remaining > 0) {
++		uint32 samples_to_write = (samples_remaining > AUDIO_BATCH_FRAMES_MAX) ? AUDIO_BATCH_FRAMES_MAX : samples_remaining;
+@@ -250 +254 @@ static void audio_run(void) {
+-		samples_produced -= samples_to_write;
++		samples_remaining -= samples_to_write;
+@@ -536 +540 @@ static void update_variables(void) {
+-		audio_buffer_init(sample_rate, (uint16) frame_rate);
++		audio_buffer_init(sample_rate, frame_rate);

@@ -1,0 +1,38 @@
+diff --git a/platform/libretro/libretro.cpp b/platform/libretro/libretro.cpp
+index 9bfde40..1aa6d5c 100644
+--- a/platform/libretro/libretro.cpp
++++ b/platform/libretro/libretro.cpp
+@@ -1,6 +1,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <array>
++#include <vector>
+ 
+ #include "libretro.h"
+ #include "libretro_core_options.h"
+@@ -37,6 +38,7 @@ Vm* _vm;
+ PicoRam* _memory;
+ Audio* _audio;
+ Host* _host;
++static std::vector<unsigned char> contentBuffer;
+ 
+ double prev_frame_time = 0;
+ double frame_time = 0;
+@@ -630,7 +632,8 @@ EXPORT bool retro_load_game(struct retro_game_info const *info)
+ 
+     if (info->size > 0) {
+         const unsigned char* data = reinterpret_cast<const unsigned char*>(info->data);
+-        _vm->QueueCartChange(data, info->size);
++        contentBuffer.assign(data, data + info->size);
++        _vm->QueueCartChange(contentBuffer.data(), contentBuffer.size());
+         
+     }
+     else {
+@@ -648,6 +651,7 @@ EXPORT bool retro_load_game_special(unsigned game_type,
+ EXPORT void retro_unload_game()
+ {
+     _vm->CloseCart();
++    contentBuffer.clear();
+ }
+ 
+ EXPORT unsigned retro_get_region()

@@ -1,0 +1,22 @@
+From 441423afaf8d0c9c2efd4c579e40cac0931fdb74 Mon Sep 17 00:00:00 2001
+From: Romain Tisserand <romain.tisserand@gmail.com>
+Date: Sat, 3 Jun 2023 17:57:48 +0200
+Subject: [PATCH] Fixup arm64 dynarec wrong register used (breaks on GCC 12+)
+
+Backported to the plumOS-pinned YabaSanshiro 2.10.4 source.
+---
+ yabause/src/sh2_dynarec_devmiyax/dynalib_arm64.s | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/yabause/src/sh2_dynarec_devmiyax/dynalib_arm64.s b/yabause/src/sh2_dynarec_devmiyax/dynalib_arm64.s
+index 81518d5c3..4e89e7190 100644
+--- a/yabause/src/sh2_dynarec_devmiyax/dynalib_arm64.s
++++ b/yabause/src/sh2_dynarec_devmiyax/dynalib_arm64.s
+@@ -773 +773 @@ mov  w0, #0  // m
+-mov  w4, #0  // n
++mov  w22, #0  // n
+@@ -777 +777 @@ sxtb w0, w0
+-str  w0, [x19, x4]
++str  w0, [x19, x22]
+--
+2.39.5

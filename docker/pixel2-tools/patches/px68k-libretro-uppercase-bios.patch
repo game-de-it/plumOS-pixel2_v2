@@ -1,0 +1,27 @@
+diff --git a/libretro.c b/libretro.c
+index 4d4e87c..d63e6dc 100644
+--- a/libretro.c
++++ b/libretro.c
+@@ -819,8 +819,13 @@ static int WinX68k_LoadROMs(void)
+ {
+ 	static const char *BIOSFILE[] = {
+-		"iplrom.dat", "iplrom30.dat", "iplromco.dat", "iplromxv.dat"
++		"iplrom.dat", "IPLROM.DAT",
++		"iplrom30.dat", "IPLROM30.DAT",
++		"iplromco.dat", "Iplromco.dat",
++		"iplromxv.dat", "IPLROMXV.DAT"
+ 	};
+-	static const char FONTFILE[] = "cgrom.dat";
++	static const char *FONTFILE[] = {
++		"cgrom.dat", "CGROM.DAT"
++	};
+ 	static const char FONTFILETMP[] = "cgrom.tmp";
+ 	void *fp;
+ 	int i;
+@@ -851,4 +856,5 @@ static int WinX68k_LoadROMs(void)
+-	fp = file_open_c((char *)FONTFILE);
++	for (fp = 0, i = 0; fp == 0 && i < NELEMENTS(FONTFILE); ++i)
++		fp = file_open_c((char *)FONTFILE[i]);
+ 	if (fp == 0) {
+ 		/* cgrom.tmp present? */
+ 		fp = file_open_c((char *)FONTFILETMP);

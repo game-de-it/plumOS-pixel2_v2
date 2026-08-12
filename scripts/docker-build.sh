@@ -27,7 +27,7 @@ if [ "${1:-}" = --inside ]; then
         release-image)
             ./scripts/build-frontend-component.sh --inside
             ./scripts/build-retroarch.sh --inside
-            ./scripts/build-libretro-cores.sh --inside --filter quicknes
+            ./scripts/build-libretro-cores.sh --inside --filter all
             ./scripts/build-audio-router-pixel2.sh
             ./scripts/build-app-layer.sh --inside --strict
             ./scripts/build-system-rootfs.sh --inside

@@ -1,0 +1,62 @@
+--- a/libretro/core-mapper.c
++++ b/libretro/core-mapper.c
+@@ -137,17 +137,28 @@
+ 
+ extern int UI_is_active;
+ extern int CURRENT_TV;
++extern size_t retro_audio_batch(const short signed int *data, size_t frames);
+ 
+ void retro_sound_update(void)
+-{	
+-   int x,stop=CURRENT_TV==312?885:742;//FIXME: 882/735?
++{
++   static double sample_accumulator = 0.0;
++   const double fps = (CURRENT_TV == 312) ? 49.8607597 : 59.9227434;
++   const double exact = 44100.0 / fps;
++   int frames;
+ 
+    if (! UI_is_active)
+    {
+-      Sound_Callback(SNDBUF, 1024*2*2);
+-      for(x=0;x<stop*2;x+=2)
+-         retro_audio_cb(SNDBUF[x],SNDBUF[x+2]);
++      sample_accumulator += exact;
++      frames = (int)sample_accumulator;
++      sample_accumulator -= frames;
++
++      if (frames <= 0)
++         return;
++      if (frames > 1024)
++         frames = 1024;
+ 
++      Sound_Callback((unsigned char *)SNDBUF, (unsigned)frames * 2 * sizeof(SNDBUF[0]));
++      retro_audio_batch(SNDBUF, (size_t)frames);
+    }
+ }
+ 
+--- a/libretro/libretro-core.c
++++ b/libretro/libretro-core.c
+@@ -670,7 +670,23 @@
+ {
+     audio_cb(l, r);
+ }
++
++size_t retro_audio_batch(const short signed int *data, size_t frames)
++{
++    size_t i;
++
++    if (audio_batch_cb)
++        return audio_batch_cb(data, frames);
+ 
++    if (audio_cb) {
++        for (i = 0; i < frames; i++)
++            audio_cb(data[i * 2], data[i * 2 + 1]);
++        return frames;
++    }
++
++    return 0;
++}
++
+ /* Forward declarations */
+ void retro_sound_update(void);
+ void Retro_PollEvent(void);

@@ -1,0 +1,67 @@
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -311,5 +311,47 @@ static int menukey=0;
+ static int menu_active=0;
+ 
++static int plumos_joypad_key_state(unsigned key)
++{
++   switch (key) {
++   case RETROK_UP:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
++   case RETROK_DOWN:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
++   case RETROK_LEFT:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
++   case RETROK_RIGHT:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
++   case RETROK_SPACE:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
++   case RETROK_LCTRL:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
++   case RETROK_LSHIFT:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
++   case RETROK_LALT:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
++   case RETROK_RETURN:
++   case RETROK_KP_ENTER:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
++   case RETROK_ESCAPE:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
++   case RETROK_TAB:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
++   case RETROK_BACKSPACE:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
++   case RETROK_e:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
++   case RETROK_t:
++      return input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
++   default:
++      return 0;
++   }
++}
++
++static int plumos_key_state(unsigned key)
++{
++   return input_cb(0, RETRO_DEVICE_KEYBOARD, 0, key) || plumos_joypad_key_state(key);
++}
++
+ void updateInput(){
+ 
+    static int mposx=LR_SCREENWIDTH/2,mposy=LR_SCREENHEIGHT/2;
+@@ -323,14 +362,14 @@ void updateInput(){
+ 
+    uint32_t i;
+    for (i=0; i < keys_needed; i++)
+-      if (input_cb(0, RETRO_DEVICE_KEYBOARD, 0, keys_to_poll[i])){
++      if (plumos_key_state(keys_to_poll[i])){
+          send_libretro_key_down(keys_to_poll[i]);
+       }
+       else {
+          send_libretro_key_up(keys_to_poll[i]);
+       }
+ 
+-   if ((input_cb(0, RETRO_DEVICE_KEYBOARD, 0, RETROK_F11) || 
++   if ((plumos_key_state(RETROK_F11) ||
+             input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2)) && menukey==0){
+ 
+       menukey=1; 

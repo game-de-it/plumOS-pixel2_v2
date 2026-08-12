@@ -31,6 +31,8 @@ done
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
+grep -q '"retroarch:gambatte"' "$ROOT/config/frontend/systems.json"
+grep -q '"retroarch:pcsx_rearmed"' "$ROOT/config/frontend/systems.json"
 grep -q '^input_device = "pixel2_joypad"$' \
     "$ROOT/factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg"
 grep -q '^input_joypad_driver = "udev"$' \
@@ -118,6 +120,46 @@ if grep -R -a -E -i -n 'rocknix|emuelec|batocera|knulli|stockos' \
 fi
 file "$ROOT/bin/retroarch" "$ROOT/cores/quicknes_libretro.so" |
     grep -q 'ARM aarch64'
+python3 - "$ROOT" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+systems = json.loads((root / "config/frontend/systems.json").read_text())["systems"]
+manifest = json.loads((root / "components/libretro-cores/manifest.json").read_text())
+cores = {entry["id"] for entry in manifest["cores"]}
+aliases = {
+    "beetle_saturn": "mednafen_saturn",
+    "mednafen_saturn": "beetle_saturn",
+    "beetle_lynx": "mednafen_lynx",
+    "beetle_ngp": "mednafen_ngp",
+    "beetle_pce_fast": "mednafen_pce_fast",
+    "beetle_supergrafx": "mednafen_supergrafx",
+    "beetle_vb": "mednafen_vb",
+    "beetle_wswan": "mednafen_wswan",
+    "dosbox_pure_0.9.7": "dosbox_pure",
+    "km_puae_xtreme_amped": "puae",
+    "uae4arm": "puae2021",
+}
+missing = []
+for system in systems:
+    if system.get("enabled") is False:
+        continue
+    for profile in system.get("launch_profiles", []):
+        if not profile.startswith("retroarch:"):
+            continue
+        core = profile.split(":", 1)[1]
+        binary = root / "cores" / f"{core}_libretro.so"
+        if core in cores and binary.exists():
+            continue
+        alias = aliases.get(core)
+        if alias and alias in cores and (root / "cores" / f"{core}_libretro.so").exists():
+            continue
+        missing.append(profile)
+if missing:
+    raise SystemExit("missing retroarch profile cores: " + ", ".join(missing))
+PY
 if [ "$(uname -m)" = aarch64 ]; then
     LD_LIBRARY_PATH="$ROOT/emulator/lib:$ROOT/frontend/lib" \
         "$ROOT/bin/retroarch" --version | grep -q '^Version: 1\.22\.2'

@@ -1,0 +1,121 @@
+diff --git a/yabause/src/vdp1.c b/yabause/src/vdp1.c
+index c7ca45a5c..45ebd5797 100644
+--- a/yabause/src/vdp1.c
++++ b/yabause/src/vdp1.c
+@@ -125,7 +125,7 @@ u8 FASTCALL Vdp1FrameBufferReadByte(u32 addr) {
+ 
+ u16 FASTCALL Vdp1FrameBufferReadWord(u32 addr) {
+    addr &= 0x3FFFF;
+-   if (VIDCore->Vdp1ReadFrameBuffer && addr < 0x30000 ){
++   if (VIDCore->Vdp1ReadFrameBuffer && addr < 0x40000 ){
+      u16 val;
+      VdpLockVram();
+      VIDCore->Vdp1ReadFrameBuffer(1, addr, &val);
+@@ -139,7 +139,7 @@ u16 FASTCALL Vdp1FrameBufferReadWord(u32 addr) {
+ 
+ u32 FASTCALL Vdp1FrameBufferReadLong(u32 addr) {
+    addr &= 0x3FFFF;
+-   if (VIDCore->Vdp1ReadFrameBuffer && addr < 0x30000 ){
++   if (VIDCore->Vdp1ReadFrameBuffer && addr < 0x40000 ){
+      u32 val;
+      VdpLockVram();
+      VIDCore->Vdp1ReadFrameBuffer(2, addr, &val);
+diff --git a/yabause/src/ygles.c b/yabause/src/ygles.c
+index 01da6a685..1e9db713a 100644
+--- a/yabause/src/ygles.c
++++ b/yabause/src/ygles.c
+@@ -817,6 +817,19 @@ int YglDumpFrameBuffer(const char * filename, int width, int height, char * buf
+   return 0;
+ }
+ 
++static u16 VIDOGLVdp1ColorRGBA8To16(const u8 *pixel) {
++  u32 color = (u32)pixel[0] | ((u32)pixel[1] << 8) |
++    ((u32)pixel[2] << 16) | ((u32)pixel[3] << 24);
++  if ((color & 0x80000000) == 0) {
++    return 0x0000;
++  }
++  if ((color & 0x40000000) == 0) {
++    return 0x8000 | ((color >> 3) & 0x001F) |
++      ((color >> 6) & 0x03E0) | ((color >> 9) & 0x7C00);
++  }
++  return color & 0x7FFF;
++}
++
+ void VIDOGLVdp1WriteFrameBuffer(u32 type, u32 addr, u32 val ) {
+   switch (type)
+   {
+@@ -897,7 +910,7 @@ void VIDOGLVdp1ReadFrameBuffer(u32 type, u32 addr, void * out) {
+ 
+   const int Line = y;
+   const int Pix = x;
+-  if (_Ygl->cpu_framebuffer_write[_Ygl->drawframe] || (Pix > Vdp1Regs->systemclipX2 || Line >= Vdp1Regs->systemclipY2)){
++  if (_Ygl->cpu_framebuffer_write[_Ygl->drawframe] || (Pix >= _Ygl->rwidth || Line >= _Ygl->rheight)){
+     switch (type)
+     {
+     case 0:
+@@ -985,6 +998,8 @@ void VIDOGLVdp1ReadFrameBuffer(u32 type, u32 addr, void * out) {
+     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _Ygl->smallfbo);
+     glBlitFramebuffer(0, 0, GlWidth, GlHeight, 0, 0, _Ygl->rwidth, _Ygl->rheight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+ #else
++    int params[4];
++    glGetIntegerv(GL_VIEWPORT, params);
+     glViewport(0, 0, _Ygl->rwidth, _Ygl->rheight);
+     glScissor(0, 0, _Ygl->rwidth, _Ygl->rheight);
+     glDisable(GL_SCISSOR_TEST);
+@@ -994,9 +1009,10 @@ void VIDOGLVdp1ReadFrameBuffer(u32 type, u32 addr, void * out) {
+     FrameProfileAdd("ReadFrameBuffer unlock");
+     glBindFramebuffer(GL_FRAMEBUFFER, _Ygl->smallfbo);
+     glBindBuffer(GL_PIXEL_PACK_BUFFER, _Ygl->vdp1pixelBufferID);
+-    glReadPixels(0, _Ygl->rheight-Vdp1Regs->systemclipY2, _Ygl->rwidth, Vdp1Regs->systemclipY2, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+-    _Ygl->pFrameBuffer = (unsigned int *)glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, _Ygl->rwidth *  Vdp1Regs->systemclipY2 * 4, GL_MAP_READ_BIT);
++    glReadPixels(0, 0, _Ygl->rwidth, _Ygl->rheight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
++    _Ygl->pFrameBuffer = (unsigned int *)glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, _Ygl->rwidth * _Ygl->rheight * 4, GL_MAP_READ_BIT);
+     glBindFramebuffer(GL_FRAMEBUFFER,_Ygl->default_fbo);
++    glViewport(params[0], params[1], params[2], params[3]);
+ 
+     if (_Ygl->pFrameBuffer==NULL){
+       switch (type) {
+@@ -1013,29 +1029,22 @@ void VIDOGLVdp1ReadFrameBuffer(u32 type, u32 addr, void * out) {
+     FrameProfileAdd("ReadFrameBuffer end");
+   }
+ 
+-  int index = (Vdp1Regs->systemclipY2-1-Line) *(_Ygl->rwidth * 4) + Pix * 4;
++  int index = (_Ygl->rheight-1-Line) * (_Ygl->rwidth * 4) + Pix * 4;
+  
+   // 16bit mode
+   if ((Vdp2Regs->SPCTL & 0xF) < 8) {
+     // ToDo: index color mode
+     switch (type) {
+     case 1: {
+-      u8 r = *((u8*)(_Ygl->pFrameBuffer) + index);
+-      u8 g = *((u8*)(_Ygl->pFrameBuffer) + index + 1);
+-      u8 b = *((u8*)(_Ygl->pFrameBuffer) + index + 2);
+-      *(u16*)out = ((r >> 3) & 0x1f) | (((g >> 3) & 0x1f) << 5) | (((b >> 3) & 0x1F) << 10) | 0x8000;
++      const u8 *pixel = (u8*)_Ygl->pFrameBuffer + index;
++      *(u16*)out = VIDOGLVdp1ColorRGBA8To16(pixel);
+     }
+             break;
+     case 2: {
+-      u32 r = *((u8*)(_Ygl->pFrameBuffer) + index);
+-      u32 g = *((u8*)(_Ygl->pFrameBuffer) + index + 1);
+-      u32 b = *((u8*)(_Ygl->pFrameBuffer) + index + 2);
+-      u32 r2 = *((u8*)(_Ygl->pFrameBuffer) + index + 4);
+-      u32 g2 = *((u8*)(_Ygl->pFrameBuffer) + index + 5);
+-      u32 b2 = *((u8*)(_Ygl->pFrameBuffer) + index + 6);
+-      /*  BBBBBGGGGGRRRRR */
+-      *(u32*)out = (((r2 >> 3) & 0x1f) | (((g2 >> 3) & 0x1f) << 5) | (((b2 >> 3) & 0x1F) << 10) | 0x8000) |
+-        ((((r >> 3) & 0x1f) | (((g >> 3) & 0x1f) << 5) | (((b >> 3) & 0x1F) << 10) | 0x8000) << 16);
++      const u8 *pixel = (u8*)_Ygl->pFrameBuffer + index;
++      const u8 *pixel2 = pixel + 4;
++      *(u32*)out = VIDOGLVdp1ColorRGBA8To16(pixel2) |
++        ((u32)VIDOGLVdp1ColorRGBA8To16(pixel) << 16);
+     }
+             break;
+     }
+@@ -4661,6 +4670,3 @@ void YglSetPerlineBuf(YglPerLineInfo * perline, u32 * pbuf, int linecount, int d
+   glBindTexture(GL_TEXTURE_2D, 0);
+   return;
+ }
+-
+-
+-

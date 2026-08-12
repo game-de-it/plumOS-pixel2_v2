@@ -51,6 +51,10 @@ printf 'plumos-pixel2-app-layer-v1\n' >"$PLUMOS_DIR/RUNTIME_ABI"
 # supplied.  Emitting complete=false here made the default command create an
 # unusable tree and then fail its own verifier without a useful error.
 complete=true
+launch_profiles_json="$(
+    jq -c '[.systems[] | select(.enabled != false) | .launch_profiles[]?] | unique' \
+        "$PLUMOS_DIR/config/frontend/systems.json"
+)"
 cat >"$PLUMOS_DIR/manifest.json" <<EOF
 {
   "name": "plumOS Pixel2 app layer",
@@ -63,7 +67,7 @@ cat >"$PLUMOS_DIR/manifest.json" <<EOF
   "source_date_epoch": $SOURCE_EPOCH,
   "complete": $complete,
   "components": ["frontend", "retroarch", "libretro-cores", "audio-router"],
-  "launch_profiles": ["retroarch:quicknes"],
+  "launch_profiles": $launch_profiles_json,
   "missing_components": []
 }
 EOF
