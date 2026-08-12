@@ -329,6 +329,51 @@ record for `pixel2_joypad`, and `plumos-retroarch-launch` runs it before
 starting RetroArch. This keeps the shared udev button/axis map while preserving
 the minimal mdev-based System.
 
+Commit:
+
+```text
+8b8da8d fix: seed Pixel2 udev joystick properties
+```
+
+Host validation:
+
+```text
+app_layer_scripts=result-ok
+app_layer_verify=result-ok root=/work/output/app-layer/pixel2/plumos
+app_layer=result-ok strict=1 output=/work/output/app-layer/pixel2/plumos
+```
+
+Live deployment was staged on the Pixel2 from:
+
+```text
+output/live/2026-08-12-udev-db-shim-8b8da8d/app-layer-8b8da8d.tar.gz
+sha256 = 240fd4c27b59ef78f16f0b27766d414f11c46648db04df996875ccf3f950d31c
+```
+
+The staged tree and live `/mnt/plumos` tree passed checksum verification:
+
+```text
+stage_verify=ok
+deployed_verify=ok
+/mnt/plumos/manifest.json:  "source_ref": "8b8da8d",
+/mnt/plumos/components/retroarch/manifest.json:  "source_ref": "de7b3de",
+```
+
+The helper created the expected live database entry:
+
+```text
+udev_input_db=result-ok event=event2 name=pixel2_joypad data=/run/udev/data/c13:66
+E:ID_INPUT=1
+E:ID_INPUT_JOYSTICK=1
+E:ID_BUS=platform
+E:ID_INPUT_KEY=1
+E:NAME=pixel2_joypad
+```
+
+NES was relaunched through `plumos-retroarch-launch`; the runtime append still
+uses `input_joypad_driver = "udev"` and the launcher log records
+`udev_input_db=result-ok`.
+
 ## Host Validation
 
 ```text
