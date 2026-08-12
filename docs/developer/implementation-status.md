@@ -59,7 +59,7 @@ Device verifiedを意味しない。
 | 項目 | 現状 | 必要な実装 |
 | --- | --- | --- |
 | System Update | manual overwriteの案内だけ | signed Runtime/System updater、進捗、失敗表示、safe reboot、rollback |
-| Storage Check | `/mnt/plumos-user`に対する同梱`fsck.fat -n`、45秒上限、status/logを実装 | 実機clean/dirty検証 |
+| Storage Check | `/mnt/plumos-user`に対する同梱`fsck.fat -n`、45秒上限、status/logを実装。RW mount中は誤警告せず判定保留 | RO状態での実機clean/dirty検証 |
 | Factory Reset | `factory-defaults/{ra,pico,sa}`とbackup/atomic restore/dry-runを実装 | 実機対象別restoreと再起動後確認 |
 | Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
 | ADB release policy | development imageは認証無効 | 認証または明示opt-in、boot時設定反映、recovery手順 |

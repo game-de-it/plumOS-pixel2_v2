@@ -33,7 +33,7 @@ grep -q 'internal:network-settings' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
 grep -q 'menu:apps' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
-grep -q '"apps": \[\]' "$ROOT_DIR/package/frontend-pixel2/apps.json"
+grep -q '"id": "pyxel_setup"' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'video_force_aspect = "true"' \

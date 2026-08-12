@@ -16,7 +16,7 @@
   - [x] `plumos-time-sync`とRK817 RTC/timezone/manual-time contractを実装する
     - 2026-08-13: RK817 `/dev/rtc0`へのUTC保存、8秒上限のRFC868同期、automatic/manual time、status/logをfrontend componentへ統合。実機RTC read/writeと再起動後保持は未検証。
   - [x] `plumos-storage-health`のbounded read-only FAT32検査を実装する
-    - 2026-08-13: Pixel2 user volume `/mnt/plumos-user`を対象に、同梱`fsck.fat -n`、45秒上限、dirty bit/status/logを実装。実機clean/dirty判定は未検証。
+    - 2026-08-13: Pixel2 user volume `/mnt/plumos-user`を対象に、同梱`fsck.fat -n`、45秒上限、dirty bit/status/logを実装。RW mount中はLinuxがclean-shutdown bitをclearするため`mounted-rw`（判定保留）とし、誤ってrepair警告を出さない。RO状態での実機clean/dirty判定は未検証。
   - [x] `factory-defaults/{ra,pico,sa}` ABIと`plumos-factory-reset`を実装する
     - 2026-08-13: app-layer assemblerがRA/PicoArch/PPSSPP/DraSticのmutable path用overlayを生成し、対象別backup/atomic restore/dry-run helperを同梱。実機復元は未検証。
   - [ ] signed update backend完成までSystem Updateをplaceholderではない開発状態表示・実装gateへ接続する

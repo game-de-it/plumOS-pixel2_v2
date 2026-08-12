@@ -3425,6 +3425,9 @@ static void load_storage_health_status(struct ui_state *ui) {
   } else if (strcmp(result, "inconsistent") == 0) {
     copy_string(ui->device.storage_health, sizeof(ui->device.storage_health),
                 "Errors - repair required");
+  } else if (strcmp(result, "mounted-rw") == 0) {
+    copy_string(ui->device.storage_health, sizeof(ui->device.storage_health),
+                "Mounted RW - check after safe eject");
   } else {
     snprintf(ui->device.storage_health, sizeof(ui->device.storage_health),
              "%.48s (%.60s)", result, last_check);

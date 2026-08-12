@@ -22,7 +22,7 @@
 | Function | Contract |
 | --- | --- |
 | Time | `/dev/rtc0` (`rk808-rtc`/RK817), RTC stored in UTC, network call bounded to 8 seconds |
-| Storage | `/mnt/plumos-user` (`/dev/mmcblk0p3`, FAT32), `fsck.fat -n`, maximum 45 seconds |
+| Storage | `/mnt/plumos-user` (`/dev/mmcblk0p3`, FAT32), `fsck.fat -n`, maximum 45 seconds; a live RW mount is reported as inconclusive because Linux clears the FAT clean-shutdown bit while mounted |
 | Factory Reset | defaults contain paths relative to `/mnt/plumos`; existing settings are backed up before atomic replacement |
 | Audio Output | RK817 speaker route only; no false Speaker/Headphone selector |
 | Lid | Pixel2 has no lid switch; no Lid Suspend selector |
@@ -32,6 +32,6 @@
 
 - RTC store/read and persistence across reboot;
 - automatic time with working USB network and bounded failure without network;
-- clean and deliberately dirty FAT32 status behavior;
+- RO-mounted clean and deliberately dirty FAT32 status behavior; RW-mounted media must remain inconclusive rather than produce a false repair warning;
 - RA, PicoArch, PPSSPP, and DraStic reset backup/restore;
 - START menu rendering and navigation after live deployment.

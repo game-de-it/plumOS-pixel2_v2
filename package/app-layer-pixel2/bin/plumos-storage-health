@@ -94,6 +94,13 @@ run_check() {
   if "$BB" grep -qi 'Dirty bit is set' "$CHECK_OUTPUT" 2>/dev/null; then dirty=true; fi
   if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ] || [ "$rc" -eq 143 ]; then
     if [ "$dirty" = true ]; then result=dirty; repair=true; else result=timeout; repair=unknown; fi
+  elif [ "$mode" = rw ]; then
+    # Linux clears the FAT clean-shutdown bit while the filesystem is mounted
+    # read-write.  dosfsck consequently reports a dirty bit even on a healthy
+    # live Pixel2 user volume.  Preserve the bounded read-only scan and its log,
+    # but do not turn that expected live-mount state into a repair warning.
+    result=mounted-rw
+    repair=unknown
   elif [ "$dirty" = true ]; then result=dirty; repair=true
   elif [ "$rc" -eq 0 ]; then result=clean; repair=false
   else result=inconsistent; repair=true
