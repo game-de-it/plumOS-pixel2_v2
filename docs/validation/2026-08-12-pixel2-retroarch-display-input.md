@@ -399,6 +399,31 @@ The direct `player1_*_axis` entries target RetroPad D-pad state. The left-stick
 entries plus `analog_dpad_mode=1` provide a second path for cores/input layers
 that map analog-left to digital D-pad.
 
+## Follow-up D-pad key binding
+
+Physical testing still reported no D-pad movement after the axis fallback. A
+raw `/dev/input/event2` capture was taken while pressing left, right, up, and
+down. It showed that physical D-pad presses are evdev keys, not ABS events:
+
+```text
+EV_KEY code=0x222 value=1/0  # BTN_DPAD_LEFT  = 546
+EV_KEY code=0x223 value=1/0  # BTN_DPAD_RIGHT = 547
+EV_KEY code=0x220 value=1/0  # BTN_DPAD_UP    = 544
+EV_KEY code=0x221 value=1/0  # BTN_DPAD_DOWN  = 545
+```
+
+RetroArch's udev button scan order therefore assigns:
+
+```text
+input_up_btn = "10"
+input_down_btn = "11"
+input_left_btn = "12"
+input_right_btn = "13"
+```
+
+The launcher now also appends the same `input_player1_*_btn` entries and
+disables `input_player1_analog_dpad_mode`.
+
 ## Host Validation
 
 ```text

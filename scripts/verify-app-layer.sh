@@ -39,8 +39,10 @@ grep -q '^video_force_aspect = "true"$' \
 grep -q '^aspect_ratio_index = "0"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^input_player1_analog_dpad_mode = "1"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg" && exit 1
+grep -q '^input_player1_analog_dpad_mode = "0"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
-grep -q '^input_player1_down_axis = "+1"$' \
+grep -q '^input_player1_down_btn = "11"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^config_save_on_exit = "false"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
@@ -52,7 +54,8 @@ grep -q '^PLUMOS_INPUT_B_CODE=304$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_A_UDEV_BTN=1$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_UDEV_BTN=0$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_DOWN_UDEV_AXIS=+1$' "$ROOT/config/system/input-map.env"
-grep -q '^PLUMOS_INPUT_ANALOG_DPAD_MODE=left-stick$' "$ROOT/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_DOWN_UDEV_BTN=11$' "$ROOT/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_ANALOG_DPAD_MODE=none$' "$ROOT/config/system/input-map.env"
 grep -q '"ab_layout": "east-confirm"' "$ROOT/config/system/input-map.json"
 grep -q '"udev": {' "$ROOT/config/system/input-map.json"
 grep -q '"action": "internal:system-settings"' \

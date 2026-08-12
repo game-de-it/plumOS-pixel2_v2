@@ -21,11 +21,10 @@ Known face-button contract:
 
 `PLUMOS_INPUT_AB_LAYOUT=east-confirm` makes the physical A button confirm in
 the FE while keeping RetroArch and standalone launchers on the shared contract.
-The D-pad is exposed as `ABS_X`/`ABS_Y` and is recorded in the contract as
-udev axes (`left=-0`, `right=+0`, `up=-1`, `down=+1`), not button numbers.
-RetroArch also sets `input_player1_analog_dpad_mode = "1"` and binds those
-same ABS axes to the left-stick directions, so cores that read analog-to-digital
-D-pad state receive the same physical D-pad.
+The D-pad is exposed as evdev keys (`BTN_DPAD_UP/DOWN/LEFT/RIGHT`) and maps to
+RetroArch udev buttons 10/11/12/13. The kernel capabilities also advertise
+`ABS_X`/`ABS_Y`, but physical D-pad presses were validated as `EV_KEY` events,
+so RetroArch disables analog-to-digital D-pad mode for Pixel2.
 
 Pixel2 uses busybox `mdev`, not a full udev daemon. Runtime launchers that rely
 on libudev joystick discovery should run `plumos-ensure-udev-input-db` before

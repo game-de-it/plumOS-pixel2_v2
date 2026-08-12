@@ -36,9 +36,9 @@ grep -q 'aspect_ratio_index = "0"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'input_joypad_driver = "udev"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
-grep -q 'input_player1_analog_dpad_mode = "1"' \
+grep -q 'input_player1_analog_dpad_mode = "0"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
-grep -q 'input_player1_down_axis = "+1"' \
+grep -q 'input_player1_down_btn = "11"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q '^input_a_btn = "1"$' \
     "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
@@ -47,6 +47,8 @@ grep -q '^input_b_btn = "0"$' \
 grep -q '^input_start_btn = "9"$' \
     "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
 grep -q '^input_down_axis = "+1"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
+grep -q '^input_down_btn = "11"$' \
     "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
 grep -q '^input_l_y_plus_axis = "+1"$' \
     "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
@@ -71,7 +73,9 @@ grep -q '^PLUMOS_INPUT_B_UDEV_BTN=0$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_DOWN_UDEV_AXIS=+1$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
-grep -q '^PLUMOS_INPUT_ANALOG_DPAD_MODE=left-stick$' \
+grep -q '^PLUMOS_INPUT_DOWN_UDEV_BTN=11$' \
+    "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_ANALOG_DPAD_MODE=none$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q 'input-map.env' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"

@@ -23,7 +23,11 @@
       "r2": 7,
       "select": 8,
       "start": 9,
-      "function": 10
+      "up": 10,
+      "down": 11,
+      "left": 12,
+      "right": 13,
+      "function": 14
     },
     "axes": {
       "left": "-0",
@@ -31,6 +35,6 @@
       "up": "-1",
       "down": "+1"
     },
-    "analog_dpad_mode": "left-stick"
+    "analog_dpad_mode": "none"
   }
 }
