@@ -11,7 +11,7 @@ The Pixel2 frontend reads:
 /mnt/plumos/state/frontend/library-index.json
 ```
 
-The START menu follows the MF/V90S top-level contract:
+The START menu follows the shared plumOS handheld top-level contract:
 
 1. UI Settings
 2. System Settings
@@ -26,10 +26,10 @@ launchers that are not present in the Pixel2 app-layer.
 
 ## Launch Profile Contract
 
-The current implemented launch route is:
+The implemented libretro launch route family is:
 
 ```text
-retroarch:quicknes
+retroarch:<core-id>
 ```
 
 The FE catalog must only expose systems whose runtime/core exists in the
@@ -38,8 +38,14 @@ device launch-plan verifier.
 
 ## RetroArch
 
-RetroArch and QuickNES are packaged for AArch64. Factory defaults include the
-Pixel2 joypad autoconfig and the current display/aspect contract.
+RetroArch and the Pixel2 standard libretro set are packaged for AArch64.
+`./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1`
+builds 41 catalog cores and emits the `libretro-cores` component manifest and
+checksums. The FE system catalog is generated around those managed launch
+profiles rather than a single QuickNES-only route.
+
+Factory defaults include the Pixel2 joypad autoconfig and the current
+display/aspect contract.
 
 Pixel2's stock kernel exposes the LCD as a native `480x640` DRM mode, while
 plumOS presents the frontend and emulators as a logical `640x480` landscape
@@ -61,7 +67,6 @@ captured and validated on the real device.
 
 ## Pending Emulator Work
 
-The MF/V90S developer guides include full baseline libretro cores, PicoArch,
-standalone emulators, Pyxel, PortMaster, File Manager, and Music Player. These
-are not yet Pixel2 runtime guarantees. Add them only when each component is
-built, routed, checksummed, and physically validated on Pixel2.
+PicoArch, standalone emulators, Pyxel, PortMaster, File Manager, and Music
+Player are not yet Pixel2 runtime guarantees. Add them only when each component
+is built, routed, checksummed, and physically validated on Pixel2.

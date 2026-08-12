@@ -16,8 +16,9 @@
 - [x] Pixel2向けALSA `plumos_output` audio-router componentを実装する
 - [x] strict app-layer assemblerとmanaged/mutable path gateを実装する
 - [x] app-layerをseedしたext4 filesystemをSD image buildへ統合する
-- [ ] canonical libretro core recipe catalogとfilter buildを実装する
-- [ ] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
+- [x] canonical libretro core recipe catalogとfilter buildを実装する
+- [x] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
+  - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
 - [ ] PicoArchとstandalone emulator componentを段階的に統合する
 
 ## Frontend game lifecycle

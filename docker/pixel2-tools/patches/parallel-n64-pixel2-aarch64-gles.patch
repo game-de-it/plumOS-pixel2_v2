@@ -10,7 +10,7 @@ index 3269005..a21c68a 100644
 +   override platform += unix
  endif
 @@ -169,3 +171,13 @@
-+   # plumOS uses this Allwinner H5-compatible target for A133-class devices.
++   # plumOS Pixel2 uses this AArch64 GLES target for legacy Parallel-N64 builds.
 +   ifneq (,$(findstring h5,$(platform)))
 +      GLES = 1
 +      GL_LIB := -lGLESv2

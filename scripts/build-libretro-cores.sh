@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+[ -n "${SOURCE_DATE_EPOCH:-}" ] || unset SOURCE_DATE_EPOCH
+
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 DEFAULT_ROOT_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 ROOT_DIR="${ROOT_DIR:-$DEFAULT_ROOT_DIR}"
+if [ "${1:-}" = --inside ]; then
+  shift
+fi
 OUT_DIR_EXPLICIT=0
 if [ "${PLUMOS_PIXEL2_CORES_OUT+x}" = x ]; then
   OUT_DIR_EXPLICIT=1
@@ -581,16 +586,16 @@ patch_core_source() {
       fi
       ;;
     parallel_n64)
-      if [ -f "$patch_dir/parallel-n64-knulli-a133.patch" ]; then
-        if patch --dry-run -d "$src" -p1 < "$patch_dir/parallel-n64-knulli-a133.patch" >/dev/null 2>> "$log"; then
-          patch -d "$src" -p1 < "$patch_dir/parallel-n64-knulli-a133.patch" >> "$log" 2>&1
-          printf '\n[plumOS] patched Parallel-N64 with the A133/H5 AArch64 GLES target\n' >> "$log"
+      if [ -f "$patch_dir/parallel-n64-pixel2-aarch64-gles.patch" ]; then
+        if patch --dry-run -d "$src" -p1 < "$patch_dir/parallel-n64-pixel2-aarch64-gles.patch" >/dev/null 2>> "$log"; then
+          patch -d "$src" -p1 < "$patch_dir/parallel-n64-pixel2-aarch64-gles.patch" >> "$log" 2>&1
+          printf '\n[plumOS] patched Parallel-N64 with the Pixel2 AArch64 GLES target\n' >> "$log"
         else
-          printf '\n[plumOS] required Parallel-N64 A133/H5 patch does not apply\n' >> "$log"
+          printf '\n[plumOS] required Parallel-N64 Pixel2 GLES patch does not apply\n' >> "$log"
           return 1
         fi
       else
-        printf '\n[plumOS] missing required Parallel-N64 A133/H5 patch\n' >> "$log"
+        printf '\n[plumOS] missing required Parallel-N64 Pixel2 GLES patch\n' >> "$log"
         return 1
       fi
       while IFS= read -r lua_makefile; do
@@ -1288,9 +1293,7 @@ while IFS='|' read -r id class repo ref subdir makefile make_args; do
   else
     build_one_core "$id" "$class" "$repo" "$ref" "$subdir" "$makefile" "$make_args"
   fi
-done <<EOF_CORES
-$(core_table)
-EOF_CORES
+done < <(core_table)
 
 if [ -f "$OUT_DIR/cores/easyrpg_libretro.so" ]; then
   easyrpg_core="$OUT_DIR/cores/easyrpg_libretro.so"
