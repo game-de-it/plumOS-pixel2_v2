@@ -106,6 +106,16 @@ case "$id" in
     if ! pidof PPSSPPSDL >/dev/null 2>&1; then
       rm -f /dev/shm/PPSSPP_ID /run/shm/PPSSPP_ID 2>/dev/null || true
     fi
+    ppsspp_controls="${ppsspp_config_dir}/controls.ini"
+    if [ -f "$ppsspp_controls" ] &&
+       ! grep -Eq '^Pause[[:space:]]*=.*(^|,)10-4(,|$)' "$ppsspp_controls"; then
+      ppsspp_pause="$(grep '^Pause[[:space:]]*=' "$ppsspp_controls" 2>/dev/null | head -n 1 || true)"
+      if [ -n "$ppsspp_pause" ]; then
+        ppsspp_controls_tmp="${ppsspp_controls}.tmp.$$"
+        sed '/^Pause[[:space:]]*=/ s/$/,10-4/' "$ppsspp_controls" >"$ppsspp_controls_tmp" &&
+          mv -f "$ppsspp_controls_tmp" "$ppsspp_controls"
+      fi
+    fi
     set -- --fullscreen --graphics=gles2.0 "$@"
     ;;
   flycast)
@@ -278,6 +288,14 @@ if [ "$id" = drastic ]; then
     [ -e "$work/config/$config_name" ] ||
       cp -p "$factory_config" "$work/config/$config_name"
   done
+  drastic_config="$work/config/drastic.cfg"
+  if [ -f "$drastic_config" ] &&
+     grep -Fqx 'controls_b[CONTROL_INDEX_MENU] = 1154' "$drastic_config"; then
+    drastic_config_tmp="${drastic_config}.tmp.$$"
+    sed 's/^controls_b\[CONTROL_INDEX_MENU\] = 1154$/controls_b[CONTROL_INDEX_MENU] = 1032/' \
+      "$drastic_config" >"$drastic_config_tmp" &&
+      mv -f "$drastic_config_tmp" "$drastic_config"
+  fi
   bios_root="${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"
   for bios_source_dir in "$bios_root/drastic" "$bios_root/nds" "$bios_root"; do
     [ -d "$bios_source_dir" ] || continue

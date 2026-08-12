@@ -171,6 +171,7 @@ fi
     printf 'input_player1_l_y_minus_axis = "-1"\n'
     printf 'input_player1_l_y_plus_axis = "+1"\n'
     printf 'input_player1_analog_dpad_mode = "0"\n'
+    printf 'input_menu_toggle_btn = "%s"\n' "${PLUMOS_INPUT_FUNCTION_UDEV_BTN:-14}"
     printf 'config_save_on_exit = "false"\n'
     printf 'savefile_directory = "%s"\n' "$root/saves/$system_id"
     printf 'savestate_directory = "%s"\n' "$root/states/$system_id"

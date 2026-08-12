@@ -81,6 +81,8 @@ grep -q '^PLUMOS_INPUT_A_CODE=305$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_CODE=304$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_FUNCTION_CODE=704$' \
+    "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_A_UDEV_BTN=1$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_UDEV_BTN=0$' \

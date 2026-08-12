@@ -70,7 +70,11 @@ the native portrait panel into the logical `640x480` landscape surface.
 RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the
 D-pad as `ABS_X`/`ABS_Y` axes and the remaining controls as evdev keys on
 `pixel2_joypad`; the generated autoconfig therefore binds D-pad directions with
-axis entries and binds `BTN_SELECT`/`BTN_START` as hotkey/exit. Do not use a
+axis entries. Persistent config keeps SELECT+START as the explicit exit chord,
+while the controller autoconfig binds raw `BTN_TRIGGER_HAPPY1` through compact
+udev index 14 directly to `input_menu_toggle_btn`. The autoconfig intentionally
+does not carry `input_enable_hotkey_btn`: the dedicated Function menu must not
+be gated by SELECT. Do not use a
 `linuxraw` Pixel2 default unless `/dev/input/js0` button numbering has been
 captured and validated on the real device.
 
@@ -78,7 +82,9 @@ captured and validated on the real device.
 
 PicoArch is packaged as a Pixel2 app-layer component. It reuses the generated
 libretro core set through the shared `/mnt/plumos/cores/*_libretro.so` route
-and uses the Pixel2 ALSA `plumos_output` path.
+and uses the Pixel2 ALSA `plumos_output` path. Its libpicofe evdev map binds
+`BTN_TRIGGER_HAPPY1` to `EACTION_MENU`/`PBTN_MENU`; `BTN_MODE` is not the
+Pixel2 Function key.
 
 Standalone has a Pixel2 launcher component and route manifest. OpenBOR,
 DraStic, and PPSSPP are packaged binaries in the current Pixel2 app-layer.
@@ -110,10 +116,11 @@ the SDL surface is presented directly to `/dev/fb0` as a logical 640x480 frame,
 counter-clockwise rotated onto the physical 480x640 framebuffer and scaled to
 4:3.
 
-The PCSX input contract follows Pixel2's captured SDL order: physical B/A/X/Y
-are buttons 0/1/2/3, L/R/L2/R2 are 4/5/6/7, SELECT/START are 8/9, and FUNCTION
-is button 10. D-pad directions are SDL hat events. In the emulator menu,
-physical A confirms and B returns. Audio is required to open the plumOS ALSA
+PCSX gameplay and menu input use libpicofe evdev so the captured raw contract
+is authoritative: D-pad is `ABS_X`/`ABS_Y`, physical A/B are
+`BTN_EAST`/`BTN_SOUTH`, and Function is `BTN_TRIGGER_HAPPY1`. SDL remains a
+fallback, but menu entry no longer depends on a guessed SDL button number. In
+the emulator menu, physical A confirms and B returns. Audio is required to open the plumOS ALSA
 route and is resampled from the PSX 44.1 kHz stream to the RK817 route's 48 kHz
 contract. The launcher seeds `~/.pcsx/pcsx.cfg`, preserves user changes and
 save data, and imports user-provided `scph*.bin` files from the Pixel2 BIOS
@@ -123,6 +130,25 @@ The host build and dependency gates are complete. Physical Pixel2 launch,
 rotation/aspect, D-pad/ABXY/START/SELECT/shoulders/FUNCTION, sound, save, menu
 exit, and frontend reacquisition remain required before this alternate profile
 is release-proven.
+
+## Function menu contract
+
+Every implemented emulator family must expose its native menu on the physical
+Function button. The Pixel2 source contract is raw evdev code 704
+(`BTN_TRIGGER_HAPPY1`); framework-specific indices are derived from that
+captured value, not copied from another device.
+
+- RetroArch: compact udev button 14 -> `input_menu_toggle_btn`.
+- PicoArch and PCSX-ReARMed: direct libpicofe evdev menu action.
+- DraStic: SDL joystick button 8 -> `1024 + 8 = 1032`; the launcher migrates
+  only the known stale value 1154.
+- PPSSPP: SDL Guide -> Android-style Back/Pause code `10-4`; the launcher adds
+  that code to an existing Pause list without replacing user bindings.
+- OpenBOR: SDL button 10 -> its Escape/menu action; D-pad remains the first
+  four axis-derived OpenBOR joystick inputs.
+
+`tests/test-pixel2-emulator-menu-contract.sh` prevents any of these mappings
+from silently disappearing or reverting to `BTN_MODE`.
 
 Do not expose a Nintendo DS libretro DeSmuME route on Pixel2 unless a real
 Pixel2 build-system component exists. The current DS route is

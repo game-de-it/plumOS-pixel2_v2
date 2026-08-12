@@ -1,0 +1,57 @@
+diff --git a/frontend/plat_sdl.c b/frontend/plat_sdl.c
+index b0acb113..74002587 100644
+--- a/frontend/plat_sdl.c
++++ b/frontend/plat_sdl.c
+@@ -31,0 +32,2 @@
++#include <linux/input.h>
++#include "libpicofe/linux/in_evdev.h"
+@@ -36,0 +39,42 @@
++#ifdef PLUMOS_PIXEL2
++static const struct in_default_bind in_pixel2_evdev_defbinds[] = {
++  { KEY_UP,             IN_BINDTYPE_PLAYER12, DKEY_UP },
++  { KEY_DOWN,           IN_BINDTYPE_PLAYER12, DKEY_DOWN },
++  { KEY_LEFT,           IN_BINDTYPE_PLAYER12, DKEY_LEFT },
++  { KEY_RIGHT,          IN_BINDTYPE_PLAYER12, DKEY_RIGHT },
++  { BTN_SOUTH,          IN_BINDTYPE_PLAYER12, DKEY_CIRCLE },
++  { BTN_EAST,           IN_BINDTYPE_PLAYER12, DKEY_CROSS },
++  { BTN_NORTH,          IN_BINDTYPE_PLAYER12, DKEY_TRIANGLE },
++  { BTN_WEST,           IN_BINDTYPE_PLAYER12, DKEY_SQUARE },
++  { BTN_TL,             IN_BINDTYPE_PLAYER12, DKEY_L1 },
++  { BTN_TR,             IN_BINDTYPE_PLAYER12, DKEY_R1 },
++  { BTN_TL2,            IN_BINDTYPE_PLAYER12, DKEY_L2 },
++  { BTN_TR2,            IN_BINDTYPE_PLAYER12, DKEY_R2 },
++  { BTN_SELECT,         IN_BINDTYPE_PLAYER12, DKEY_SELECT },
++  { BTN_START,          IN_BINDTYPE_PLAYER12, DKEY_START },
++  { BTN_TRIGGER_HAPPY1, IN_BINDTYPE_EMU, SACTION_ENTER_MENU },
++  { 0, 0, 0 }
++};
++
++static const struct menu_keymap in_pixel2_evdev_key_map[] = {
++  { KEY_UP,             PBTN_UP },
++  { KEY_DOWN,           PBTN_DOWN },
++  { KEY_LEFT,           PBTN_LEFT },
++  { KEY_RIGHT,          PBTN_RIGHT },
++  { BTN_EAST,           PBTN_MOK },
++  { BTN_SOUTH,          PBTN_MBACK },
++  { BTN_WEST,           PBTN_MA2 },
++  { BTN_NORTH,          PBTN_MA3 },
++  { BTN_TL,             PBTN_L },
++  { BTN_TR,             PBTN_R },
++  { BTN_TRIGGER_HAPPY1, PBTN_MENU },
++};
++
++static const struct in_pdata in_pixel2_evdev_platform_data = {
++  .defbinds  = in_pixel2_evdev_defbinds,
++  .key_map   = in_pixel2_evdev_key_map,
++  .kmap_size = sizeof(in_pixel2_evdev_key_map) /
++               sizeof(in_pixel2_evdev_key_map[0]),
++};
++#endif
++
+@@ -278,0 +323,6 @@ void plat_init(void)
++#ifdef PLUMOS_PIXEL2
++  if (in_evdev_init(&in_pixel2_evdev_platform_data) != 0) {
++    fprintf(stderr, "Pixel2 PCSX evdev input initialization failed\n");
++    exit(1);
++  }
++#endif

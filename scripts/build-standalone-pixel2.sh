@@ -37,6 +37,7 @@ PCSX_SDL12_REPO="${PLUMOS_PIXEL2_PCSX_SDL12_REPO:-https://github.com/libsdl-org/
 PCSX_SDL12_REF="${PLUMOS_PIXEL2_PCSX_SDL12_REF:-fc2ec0c128197f1f5050e48359bc41e618f3abfb}"
 PCSX_INPUT_AUDIO_PATCH="$PATCH_DIR/pcsx_rearmed/pcsx-rearmed-r26l-pixel2-input-audio.patch"
 PCSX_PLATFORM_PATCH="$PATCH_DIR/pcsx_rearmed/pcsx-rearmed-r26l-pixel2-platform.patch"
+PCSX_EVDEV_MENU_PATCH="$PATCH_DIR/pcsx_rearmed/pcsx-rearmed-r26l-pixel2-evdev-menu.patch"
 PCSX_PICOFE_PATCH="$PATCH_DIR/pcsx_rearmed/libpicofe-r26l-pixel2-input.patch"
 PCSX_FBDEV_HEADER="$ROOT_DIR/package/standalone-pixel2/src/pcsx-pixel2-fbdev.h"
 PPSSPP_REPO="${PLUMOS_PIXEL2_PPSSPP_REPO:-https://github.com/hrydgard/ppsspp.git}"
@@ -205,6 +206,7 @@ build_pcsx_rearmed() {
   for input in \
     "$PCSX_INPUT_AUDIO_PATCH" \
     "$PCSX_PLATFORM_PATCH" \
+    "$PCSX_EVDEV_MENU_PATCH" \
     "$PCSX_PICOFE_PATCH" \
     "$PCSX_FBDEV_HEADER"; do
     [ -s "$input" ] || {
@@ -239,6 +241,9 @@ build_pcsx_rearmed() {
   git -C "$src" apply --check "$PCSX_PLATFORM_PATCH" \
     >>"$PCSX_LOG" 2>&1
   git -C "$src" apply "$PCSX_PLATFORM_PATCH" >>"$PCSX_LOG" 2>&1
+  git -C "$src" apply --check "$PCSX_EVDEV_MENU_PATCH" \
+    >>"$PCSX_LOG" 2>&1
+  git -C "$src" apply "$PCSX_EVDEV_MENU_PATCH" >>"$PCSX_LOG" 2>&1
   git -C "$src/frontend/libpicofe" apply --check "$PCSX_PICOFE_PATCH" \
     >>"$PCSX_LOG" 2>&1
   git -C "$src/frontend/libpicofe" apply "$PCSX_PICOFE_PATCH" \
@@ -340,6 +345,7 @@ build_pcsx_rearmed() {
   sdl_sha256=$(sha256_file "$PCSX_DST/lib/libSDL-1.2.so.0")
   input_audio_sha256=$(sha256_file "$PCSX_INPUT_AUDIO_PATCH")
   platform_sha256=$(sha256_file "$PCSX_PLATFORM_PATCH")
+  evdev_menu_sha256=$(sha256_file "$PCSX_EVDEV_MENU_PATCH")
   picofe_sha256=$(sha256_file "$PCSX_PICOFE_PATCH")
   fbdev_sha256=$(sha256_file "$PCSX_FBDEV_HEADER")
   cat >"$PCSX_DST/build-manifest.json" <<EOF
@@ -363,13 +369,14 @@ build_pcsx_rearmed() {
   "patches": {
     "input_audio": "$input_audio_sha256",
     "platform": "$platform_sha256",
+    "evdev_menu": "$evdev_menu_sha256",
     "libpicofe_input": "$picofe_sha256",
     "fbdev_presenter": "$fbdev_sha256"
   },
   "renderer": "builtin-neon-threaded-pixel2-fbdev-ccw",
   "display": "640x480-logical-on-480x640-physical",
   "audio": "alsa-plumos-output-44100-to-48000",
-  "input": "pixel2-sdl-buttons-and-hat",
+  "input": "pixel2-evdev-function-menu-and-sdl-fallback",
   "factory_config": "factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
 }
 EOF
@@ -451,6 +458,17 @@ build_drastic() {
     "$DRASTIC_RELEASE_DIR/drastic/" "$DRASTIC_DST/"
   rsync -a --exclude='launch.sh' \
     "$DRASTIC_SOURCE_DIR/assets/gkd_pixel2/" "$DRASTIC_DST/"
+  if grep -Fqx 'controls_b[CONTROL_INDEX_MENU] = 1154' \
+      "$DRASTIC_DST/config/drastic.cfg"; then
+    sed -i \
+      's/^controls_b\[CONTROL_INDEX_MENU\] = 1154$/controls_b[CONTROL_INDEX_MENU] = 1032/' \
+      "$DRASTIC_DST/config/drastic.cfg"
+  fi
+  grep -Fqx 'controls_b[CONTROL_INDEX_MENU] = 1032' \
+    "$DRASTIC_DST/config/drastic.cfg" || {
+    printf 'error: DraStic Pixel2 FUNCTION menu binding is missing\n' >&2
+    return 1
+  }
   install -m 0755 "$DRASTIC_RELEASE_DIR/drastic/drastic" \
     "$DRASTIC_DST/bin/drastic"
   install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libcommon.so" \
