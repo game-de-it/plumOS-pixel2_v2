@@ -26,7 +26,7 @@
   - [x] FTP/SFTP/SambaをPixel2 service capabilityと一致させる
     - Pixel2 imageが所有するSSH/ADBだけを表示する。未搭載daemonを機能するtoggleとして公開しない。
   - [x] ADBを明示opt-inにし、UI設定・boot・recoveryを一貫させる
-    - 2026-08-13: release defaultはOFF、`adb_enabled=1`またはFAT32 rootの`plumos-enable-adb`だけがFunctionFS gadgetを起動する。FE toggleは再起動後に反映し、OFF時はrecovery markerも除去。現行実機は接続維持のため`adb_enabled=1`を明示保存済み。新SYSTEMでのcold boot ON/OFF/recovery marker検証は未完了。
+    - 2026-08-13: release defaultはOFF、`adb_enabled=1`またはFAT32 rootの`plumos-enable-adb`だけがFunctionFS gadgetを起動する。FE toggleは再起動後に反映し、OFF時はrecovery markerも除去。`adb_enabled=1`を保持したSystem A/B cold bootでFunctionFS configured、ADB shell復帰を実機確認。default OFF/recovery markerの実機検証は未完了。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
@@ -113,9 +113,9 @@
 - [ ] first bootでp2を8192 MiBへ拡張しp3 `PLUMOS_USER`を作る
 - [ ] provisioningを中断・再開可能かつ既存p3非破壊にする
 - [x] stock initramfs固定handoffの内側へSystem A/B選択、SHA-256検証、rollbackを実装する
-  - 2026-08-13: stockが固定で開く`/SYSTEM`を小さなPixel2 dispatcherとし、FAT32で名前衝突しない`/system-slots/system-{a,b}.squashfs`を選択する。pendingは一度だけ試し、次bootまでFE health promotionがなければactiveへrollback。host state-machine testと4 GiB image再抽出検証は完了、実機cold boot/rollbackは未検証。
+  - 2026-08-13: stockが固定で開く`/SYSTEM`を小さなPixel2 dispatcherとし、FAT32で名前衝突しない`/system-slots/system-{a,b}.squashfs`を選択する。pendingは一度だけ試し、次bootまでFE health promotionがなければactiveへrollback。`5932ef9`でslot A cold boot、stock mount継承、旧root detach、FE/ADB起動を実機確認。inactive pending boot/promotion/rollbackは未検証。
 - [x] frontend renderer-readyによるSystem health promotionを実装する
-  - 2026-08-13: FE自身が初回描画成功後に作る`/tmp/plumos-fe-ready`だけをproofとし、dispatcherが記録した`system-booted`とpending slotが一致する場合だけactiveへatomic promotionする。timeout/mismatch時はpendingを保持して次boot rollbackへ渡す。Runtime promotionはtransactional updaterと同時に実装する。
+  - 2026-08-13: FE自身が初回描画成功後に作る`/tmp/plumos-fe-ready`だけをproofとし、dispatcherが記録した`system-booted`とpending slotが一致する場合だけactiveへatomic promotionする。実機でFE proofを確認。initial baseline active確定とinactive pending promotionは次の実機gate。Runtime promotionはtransactional updaterと同時に実装する。
 - [ ] journaled Runtime updaterと1世代rollbackを実装する
 - [ ] inactive-slot System updaterとreadback検証を実装する
 - [ ] Ed25519署名package builder/verifierと公開鍵を実装する
@@ -163,7 +163,7 @@
 ## Connectivity
 
 - [x] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
-- [ ] release imageではADB認証または明示opt-inを必須にする
+- [x] release imageではADB認証または明示opt-inを必須にする
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [x] ADB列挙とshellを実機検証する
 - [ ] USB Wi-FiとSSHを実機検証する
@@ -174,7 +174,8 @@
 - [x] image内のpartition境界、hash、SquashFS内容をhost検証する
 - [x] 同一source refから生成したSD imageのSHA-256再現性をhost検証する
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
-- [ ] app-layer manifest/checksumを実機deploy単位で検証する
+- [x] app-layer manifest/checksumを実機deploy単位で検証する
+  - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。
 - [ ] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
   - 2026-08-12: PPSSPP統合後のhost route validationは代表ROMがある29 system中29 routeが`ok`、pending binaryは0。実機での全system起動・終了は未実施。
   - 2026-08-13: Pyxel統合後のhost route validationは代表ROMがある30 system中30 routeが`ok`、pending binaryは0。Pyxelを含む全systemの実機起動・終了は未実施。

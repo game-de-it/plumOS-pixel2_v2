@@ -103,6 +103,33 @@ remaining mounts. The corrected dispatcher directly and mandatorily moves
 `sys, flash, storage, dev, proc` in that order and has no old-root `/dev` or
 `/proc` dependency after the final two moves.
 
+## Physical slot-A boot
+
+Clean commit `5932ef9` completed the mandatory mount transfer. The physical
+Pixel2 rebooted, FE drew its initial screen, and ADB enumerated in about ten
+seconds. Live evidence:
+
+```text
+System source_ref=5932ef9
+system-booted=a
+FE ready pid=749 screen=0
+ADB state=running opted_in=1 udc_state=configured
+old_root=detached
+```
+
+Mountinfo showed stock-provided `/flash` and `/storage` directly below the
+slot-A root, with `/boot`, `/mnt/plumos`, `/state`, `/mnt/plumos-user`, and
+`/roms` established normally. The persistent dispatcher log reached
+`pivot-complete`, followed by both init detach markers. The boot dispatcher
+and both slot image hashes matched the host build. The app-layer verification
+covered 3450 managed entries with no failure, and FE logged
+`app-layer-verified` before starting.
+
+The initial image has no pending generation, so update health correctly logged
+`no-pending-system`; it did not yet materialize `system-active=a`. Baseline
+health initialization and a real inactive-slot pending promotion remain the
+next A/B gates.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:
