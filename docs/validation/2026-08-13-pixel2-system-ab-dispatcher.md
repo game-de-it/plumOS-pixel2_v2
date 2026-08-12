@@ -48,6 +48,14 @@ Both slot manifests report `source_ref=933ca32`; their external SHA-256 files
 match the complete slot images. `PLUMOS_BOOT` and `PLUMOS_USER` were unmounted
 and `/dev/disk4` was ejected successfully. Physical boot remains the next gate.
 
+The `933ca32` image again remained at the IUX logo. Static review found that
+the dispatcher moved `/proc` before consulting `/proc/mounts` for `/sys`,
+`/flash`, and `/storage`; those later mount checks therefore lost their source
+of truth. The corrected order is `dev, sys, flash, storage, proc`. The
+dispatcher now synchronously records every mount, slot, and pivot stage to
+`/storage/plumos/logs/system-dispatcher.log`, allowing the precise stop point
+to be recovered from ext4 even when ADB never starts.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:

@@ -10,6 +10,13 @@ export PATH
 log() {
     printf 'plumos-dispatcher=%s\n' "$*" >/dev/console 2>/dev/null || true
     printf 'plumos-dispatcher=%s\n' "$*" >/dev/kmsg 2>/dev/null || true
+    for log_root in /storage /newroot/storage; do
+        [ -d "$log_root" ] || continue
+        $bb mkdir -p "$log_root/plumos/logs" 2>/dev/null || true
+        printf 'plumos-dispatcher=%s\n' "$*" \
+            >>"$log_root/plumos/logs/system-dispatcher.log" 2>/dev/null || true
+    done
+    $bb sync
 }
 
 mounted() {
@@ -36,6 +43,7 @@ if [ "${PLUMOS_DISPATCHER_TEST:-0}" != 1 ]; then
             exec $bb sh
         }
     fi
+    log 'stage=mounts-ready'
 fi
 
 state=${PLUMOS_DISPATCHER_STATE_ROOT:-/storage/update-state}
@@ -126,14 +134,24 @@ $bb mount -t squashfs -o loop,ro "$system/system-$selected.squashfs" /newroot ||
     log "result=failed reason=slot-mount slot=$selected"
     exec $bb sh
 }
+log "stage=slot-mounted slot=$selected"
 
-for mountpoint in dev proc sys flash storage; do
+# /proc/mounts is the source of truth for mounted(). Move proc last so every
+# preceding mount remains observable while it is transferred to the slot root.
+for mountpoint in dev sys flash storage proc; do
     $bb mkdir -p "/newroot/$mountpoint"
     if mounted "/$mountpoint"; then
         $bb mount --move "/$mountpoint" "/newroot/$mountpoint" || {
             log "result=failed reason=move-mount mount=$mountpoint"
             exec $bb sh
         }
+        if [ "$mountpoint" = storage ]; then
+            printf 'plumos-dispatcher=stage=mount-moved mount=storage\n' \
+                >>/newroot/storage/plumos/logs/system-dispatcher.log 2>/dev/null || true
+            $bb sync
+        else
+            log "stage=mount-moved mount=$mountpoint"
+        fi
     fi
 done
 
@@ -143,9 +161,15 @@ cd /newroot || {
     log 'result=failed reason=newroot-chdir'
     exec $bb sh
 }
+printf 'plumos-dispatcher=stage=pivot-start\n' \
+    >>storage/plumos/logs/system-dispatcher.log 2>/dev/null || true
+$bb sync
 $bb pivot_root . .plumos-dispatcher-old || {
     log 'result=failed reason=pivot-root'
     exec $bb sh
 }
 cd /
+printf 'plumos-dispatcher=stage=pivot-complete\n' \
+    >>/storage/plumos/logs/system-dispatcher.log 2>/dev/null || true
+$bb sync
 exec /sbin/init

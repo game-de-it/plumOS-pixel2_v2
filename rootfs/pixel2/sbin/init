@@ -10,8 +10,13 @@ is_mounted() {
 }
 
 if is_mounted /.plumos-dispatcher-old; then
+    printf 'plumos-init=dispatcher-detach-start\n' \
+        >>/storage/plumos/logs/system-dispatcher.log 2>/dev/null || true
     $bb umount /.plumos-dispatcher-old 2>/dev/null || \
         $bb umount -l /.plumos-dispatcher-old 2>/dev/null || true
+    printf 'plumos-init=dispatcher-detach-complete\n' \
+        >>/storage/plumos/logs/system-dispatcher.log 2>/dev/null || true
+    $bb sync
 fi
 
 is_mounted /proc || $bb mount -t proc proc /proc
