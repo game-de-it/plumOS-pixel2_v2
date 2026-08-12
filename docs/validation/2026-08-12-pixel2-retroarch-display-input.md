@@ -235,6 +235,72 @@ aspect_ratio_index = "0"
 video_aspect_ratio = "1.333333"
 ```
 
+Commit:
+
+```text
+de7b3de fix: use Pixel2 udev input for RetroArch
+```
+
+Host validation:
+
+```text
+app_layer_scripts=result-ok
+system_rootfs_scripts=result-ok
+retroarch_component=result-ok output=/work/output/retroarch/pixel2/plumos
+app_layer_verify=result-ok root=/work/output/app-layer/pixel2/plumos
+app_layer=result-ok strict=1 output=/work/output/app-layer/pixel2/plumos
+```
+
+Generated and deployed manifests recorded:
+
+```text
+source_ref = de7b3de
+```
+
+Live deployment was staged on the Pixel2 from:
+
+```text
+output/live/2026-08-12-retroarch-udev-aspect-de7b3de/app-layer-de7b3de.tar.gz
+sha256 = 14f1b7a9f0552935a809373f972b755277a850aa61dfe3d9921e434715876e1c
+```
+
+The staged tree and the live `/mnt/plumos` tree both passed checksum
+verification after deployment:
+
+```text
+stage_verify=ok
+deployed_verify=ok
+/mnt/plumos/manifest.json:  "source_ref": "de7b3de",
+/mnt/plumos/components/retroarch/manifest.json:  "source_ref": "de7b3de",
+stale_linuxraw=removed
+```
+
+The previous `factory-defaults/retroarch/autoconfig/linuxraw/pixel2_joypad.cfg`
+was removed from the live app-layer so stale js0-style bindings cannot be
+selected later.
+
+Direct NES launch after deployment created this runtime append:
+
+```text
+video_driver = "drm"
+video_rotation = "3"
+video_force_aspect = "true"
+video_aspect_ratio_auto = "false"
+aspect_ratio_index = "0"
+video_aspect_ratio = "1.333333"
+input_driver = "udev"
+input_joypad_driver = "udev"
+joypad_autoconfig_dir = "/mnt/plumos/factory-defaults/retroarch/autoconfig"
+config_save_on_exit = "false"
+```
+
+Physical confirmation still required:
+
+- NES image has the correct orientation and 4:3 aspect on the LCD;
+- D-pad no longer triggers START;
+- physical B no longer triggers RetroPad A;
+- A/B/X/Y, START/SELECT, shoulders, and hotkey exit work.
+
 ## Host Validation
 
 ```text
