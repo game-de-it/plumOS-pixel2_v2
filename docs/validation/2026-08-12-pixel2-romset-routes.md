@@ -7,8 +7,8 @@ App root: `output/app-layer/pixel2/plumos`
 
 - enabled systems: 87
 - systems with representative ROM: 29
-- route OK: 27
-- standalone pending binary: 2
+- route OK: 28
+- standalone pending binary: 1
 - systems without matching ROM: 58
 - unmapped ROM directories: 01, 3ds, ATARI, _etc, ports, pyxel
 
@@ -29,7 +29,7 @@ App root: `output/app-layer/pixel2/plumos`
 | psx | `psx/ART_TRUCK_BATTLE_BAKUSOU_DEKOTORA_DENSETSU.img` | `retroarch:pcsx_rearmed` | ok | `cores/pcsx_rearmed_libretro.so` |
 | psp | `psp/Star Soldier (Japan)/Star Soldier (Japan).iso` | `standalone:ppsspp` | pending-binary | `ppsspp` |
 | n64 | `n64/AeroGauge [V1.1].z64` | `retroarch:parallel_n64` | ok | `cores/parallel_n64_libretro.so` |
-| nds | `nds/99のなみだ バンダイナムコゲームス.nds` | `standalone:drastic` | pending-binary | `drastic` |
+| nds | `nds/99のなみだ バンダイナムコゲームス.nds` | `standalone:drastic` | ok | `drastic` |
 | dreamcast | `dreamcast/Crazy Taxi (Japan).chd` | `retroarch:flycast_xtreme` | ok | `cores/flycast_xtreme_libretro.so` |
 | saturn | `saturn/BLACK_MATRIX.BIN` | `retroarch:yabasanshiro` | ok | `cores/yabasanshiro_libretro.so` |
 | ngpc | `ngpc/Bakumatsu Rouman Tokubetsu Hen - Gekka no Kenshi - Tsuki ni Saku Hana, Chiri Yuku Hana (Japan).ngc` | `retroarch:mednafen_ngp` | ok | `cores/mednafen_ngp_libretro.so` |

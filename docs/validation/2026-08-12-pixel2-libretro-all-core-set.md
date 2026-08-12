@@ -14,6 +14,13 @@ Host command:
 ./scripts/docker-build.sh cores --filter all --jobs 4 --fail-on-error 1
 ```
 
+Preferred parallel rebuild command:
+
+```sh
+./scripts/docker-build.sh core-catalog --filter all --concurrency 4 --fresh
+./scripts/docker-build.sh core-catalog --filter all --concurrency 4
+```
+
 Result:
 
 ```text
@@ -21,6 +28,7 @@ created: /work/output/libretro-cores/pixel2/plumos
 built: 114
 failed: 0
 skipped: 0
+catalog_result pass=114 fail=0 output=/work/output/libretro-cores/pixel2
 ```
 
 Component checks:
@@ -52,6 +60,11 @@ Notes:
 - `ecwolf` needs a targeted submodule update. Its legacy SDL submodules point
   at unavailable upstream hosts, while the libretro target only needs
   `src/libretro/libretro-common`.
+- The parallel catalog aggregates only canonical recipe entries into
+  `components/libretro-cores/manifest.json`; compatibility aliases remain
+  packaged and checksummed but are not counted as extra built cores.
+- DeSmuME is not part of the Pixel2 plumOS build-system catalog and must not
+  appear as a generated route or packaged core.
 
 Device validation:
 

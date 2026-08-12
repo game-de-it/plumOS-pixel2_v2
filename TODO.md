@@ -21,6 +21,7 @@
   - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
 - [x] canonical all-core libretro buildを完走させる
   - 2026-08-12: `./scripts/docker-build.sh cores --filter all --jobs 4 --fail-on-error 1` で114 coreがbuild成功、component manifest/checksumを生成。
+  - 2026-08-12: MF/V90S同様に並列catalog wrapper `./scripts/docker-build.sh core-catalog --filter all --concurrency 4` を追加し、114 coreをper-core cache付きでaggregate。`built=114`、`failed=0`、DeSmuME系の混入なしを確認。
 - [x] PicoArch componentをPixel2 build/app-layerへ統合する
   - 2026-08-12: `./scripts/docker-build.sh picoarch` でPixel2 PicoArch/SDL12 compatをbuildし、component manifest/checksumを生成。
 - [x] standalone launcher componentをPixel2 build/app-layerへ統合する
@@ -28,6 +29,8 @@
 - [ ] standalone emulator binaryをPixel2向けに順次build・実機検証する
   - 2026-08-12: OpenBOR standaloneをPixel2向けにsource buildし、`standalone/openbor/bin/OpenBOR`、runtime deps、license、component checksumへ統合。ROM set route validationでopenborは`ok`へ移行。実機起動・入力・画面向き・終了hotkeyは未検証。
   - 2026-08-12: Saturnは実装済み`retroarch:yabasanshiro`をdefault routeにし、FEから未実装standaloneを選ばない構成へ変更。standalone YabaSanshiro binary自体は未実装のまま別途検証対象。
+  - 2026-08-12: Nintendo DSはPixel2向けDraStic standaloneを追加。armhf DraStic core、source-built Pixel2 integration library、package-local armhf runtime、armhf ALSA `plumos_output` pluginをapp-layerへ統合し、FE routeを`standalone:drastic`へ固定。DraStic BIOSは配布物へ含めず、実機では`/mnt/plumos-user/bios/drastic`、`/mnt/plumos-user/bios/nds`、`/mnt/plumos-user/bios`からmutable workdirへ取り込む。
+  - [ ] PSP `standalone:ppsspp`をMF/V90S同様にpinned source build、factory `ppsspp.ini`/`controls.ini`、manifest/checksum付きでPixel2へ移植する。2026-08-12時点のROM set route validationで残るpendingはPSPのみ。
 - [x] Docker runtime復旧後、clean commitからPicoArch/standalone統合済みapp-layerでSD imageを再生成する
   - 2026-08-12: 4 GiB seed layout（p1=512 MiB, p2=2048 MiB, p3=remainder）でdirty-tree生成は完了し、host checksum/MBR/hdiutil partition recognitionは確認済みだったが、Docker Desktopがcontainer metadata I/O error後にAPI socketを失ったため、clean commit source_refでの再生成が必要になった。
   - 2026-08-12: Docker Desktopをforce stop/startで復旧し、clean commit `631c30b` から `./scripts/docker-build.sh sd-image` を再実行。`verify-sd-image.sh` のSYSTEM/app-layer/filesystem検証まで `sd_image=result-ok`、host checksumもOK。
@@ -111,4 +114,5 @@
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [ ] app-layer manifest/checksumを実機deploy単位で検証する
 - [ ] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
+  - 2026-08-12: DraStic統合後のhost route validationは29 system中28 routeが`ok`。残pendingはPSP `standalone:ppsspp`のみ。実機での全system起動・終了は未実施。
 - [ ] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する

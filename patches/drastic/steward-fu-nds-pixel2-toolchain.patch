@@ -1,0 +1,129 @@
+diff --git a/Makefile.base b/Makefile.base
+index 0bfb270..ce2550e 100644
+--- a/Makefile.base
++++ b/Makefile.base
+@@ -1,6 +1,8 @@
+ ifeq ($(NDS_GCC),1)
+ export CROSS=arm-linux-gnueabihf-
+-export PATH=/opt/mini/bin:$(shell echo $$PATH)
++export PATH=$(TOOLCHAIN_BIN):$(shell echo $$PATH)
++export NDS_INCLUDE_ROOT
++export NDS_LIBRARY_ROOT
+ endif
+ 
+ export CC=${CROSS}gcc
+@@ -11,12 +13,23 @@ export CXX=${CROSS}g++
+ export HOST=arm-linux
+ 
+ SDL2_CFG += --enable-video
++SDL2_CFG += --enable-alsa
+ SDL2_CFG += --disable-video-x11
+ SDL2_CFG += --disable-video-vulkan
+ SDL2_CFG += --disable-video-opengl
+ SDL2_CFG += --disable-video-opengles
+ SDL2_CFG += --disable-video-opengles2
+ SDL2_CFG += --disable-hidapi-joystick
++SDL2_CFG += --disable-pulseaudio
++SDL2_CFG += --disable-jack
++SDL2_CFG += --disable-sndio
++SDL2_CFG += --disable-libsamplerate
++SDL2_CFG += --disable-esd
++SDL2_CFG += --disable-arts
++SDL2_CFG += --disable-nas
++SDL2_CFG += --disable-pipewire
++SDL2_CFG += --disable-ibus
++SDL2_CFG += --disable-fcitx
+ 
+ REL_VER = $(shell git rev-parse HEAD | cut -c 1-8)
+ CFLAGS   += -DREL_VER=0x$(REL_VER)
+diff --git a/Makefile.gkd_pixel2 b/Makefile.gkd_pixel2
+index 5b75353..612f556 100644
+--- a/Makefile.gkd_pixel2
++++ b/Makefile.gkd_pixel2
+@@ -1,7 +1,7 @@
+ export MOD=gkd_pixel2
+ export NDS_GCC=1
+ export NDS_ALSA=0
+-export NDS_RUNNER=1
++export NDS_RUNNER=0
+ 
+ CFLAGS += -O3
+ CFLAGS += -DGKD_PIXEL2
+diff --git a/sdl2/configure.ac b/sdl2/configure.ac
+index 7c6844a..55250e5 100644
+--- a/sdl2/configure.ac
++++ b/sdl2/configure.ac
+@@ -2412,13 +2412,16 @@ CheckNDSVideo()
+         EXTRA_CFLAGS="$EXTRA_CFLAGS -I../detour"
+         EXTRA_CFLAGS="$EXTRA_CFLAGS -I../common"
+         EXTRA_CFLAGS="$EXTRA_CFLAGS -I../inc/sdl2"
+-        EXTRA_CFLAGS="$EXTRA_CFLAGS -I/opt/mini/arm-buildroot-linux-gnueabihf/sysroot/usr/include/SDL2"
++        EXTRA_CFLAGS="$EXTRA_CFLAGS -I$NDS_INCLUDE_ROOT/SDL2"
+ 
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lEGL"
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lGLESv2"
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lSDL2_image"
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lSDL2_ttf"
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lrt"
++        if test "x$NDS_LIBRARY_ROOT" != x; then
++            EXTRA_LDFLAGS="$EXTRA_LDFLAGS -L$NDS_LIBRARY_ROOT"
++        fi
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -ljson-c"
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -L../detour"
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -ldtr"
+@@ -2443,7 +2446,7 @@ CheckNDSVideo()
+ 
+     if test x$MOD = xmiyoo_flip; then
+         EXTRA_CFLAGS="$EXTRA_CFLAGS -DMIYOO_FLIP"
+-        EXTRA_CFLAGS="$EXTRA_CFLAGS -I/opt/mini/arm-buildroot-linux-gnueabihf/sysroot/usr/include/libdrm"
++        EXTRA_CFLAGS="$EXTRA_CFLAGS -I$NDS_INCLUDE_ROOT/libdrm"
+ 
+         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -ldrm -lgbm"
+ 
+diff --git a/sdl2/src/video/nds/nds_debug_compat.c b/sdl2/src/video/nds/nds_debug_compat.c
+new file mode 100644
+index 0000000..ab550ec
+--- /dev/null
++++ b/sdl2/src/video/nds/nds_debug_compat.c
+@@ -0,0 +1,41 @@
++// SPDX-License-Identifier: LGPL-2.1
++// Minimal plumOS Pixel2 shim for DraStic's SDL2 NDS video backend.
++
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "common.h"
++
++int nds_debug_level = FATAL_LEVEL;
++
++int update_debug_level(int new_level)
++{
++    const char *level;
++
++    if (new_level >= FATAL_LEVEL && new_level <= TRACE_LEVEL) {
++        nds_debug_level = new_level;
++        return 0;
++    }
++
++    level = getenv("NDS_DEBUG_LEVEL");
++    if (!level) {
++        nds_debug_level = FATAL_LEVEL;
++        return 0;
++    }
++
++    if (!strcmp(level, "TRACE")) {
++        nds_debug_level = TRACE_LEVEL;
++    }
++    else if (!strcmp(level, "DEBUG")) {
++        nds_debug_level = DEBUG_LEVEL;
++    }
++    else if (!strcmp(level, "FATAL")) {
++        nds_debug_level = FATAL_LEVEL;
++    }
++    else {
++        nds_debug_level = ERROR_LEVEL;
++    }
++
++    return 0;
++}

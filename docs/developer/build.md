@@ -16,6 +16,7 @@ stay out of git.
 ./scripts/docker-build.sh frontend
 ./scripts/docker-build.sh retroarch
 ./scripts/docker-build.sh cores --filter all
+./scripts/docker-build.sh core-catalog --filter all --concurrency 4
 ./scripts/docker-build.sh picoarch
 ./scripts/docker-build.sh standalone
 ./scripts/docker-build.sh app-layer --strict
@@ -44,6 +45,18 @@ The app-layer root is `output/app-layer/pixel2/plumos`. It must contain:
   canonical libretro cores.
 
 Strict assembly must emit `complete=true` and `missing_components=[]`.
+
+For full libretro coverage, prefer `core-catalog` over one monolithic `cores`
+build. It follows the same plumOS family design intent as MF/V90S: build each
+catalog core as an independent work unit, reuse validated per-core outputs, and
+aggregate a single `libretro-cores` component manifest/checksum tree for the
+Pixel2 app-layer.
+
+`standalone --filter <id>` is useful for quick emulator iteration, but it
+intentionally emits a filtered standalone component. Before assembling the final
+app-layer or SD image, rebuild `./scripts/docker-build.sh standalone` without a
+filter so built standalone binaries such as OpenBOR and DraStic are present
+together.
 
 ## SYSTEM
 

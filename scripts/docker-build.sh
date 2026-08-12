@@ -8,7 +8,7 @@ usage() {
     printf '%s\n' \
         'Usage: scripts/docker-build.sh TARGET [ARGS...]' \
         '' \
-        'Targets: image frontend retroarch cores picoarch standalone audio-router app-layer system-rootfs sd-image release-image'
+        'Targets: image frontend retroarch cores core-catalog picoarch standalone audio-router app-layer system-rootfs sd-image release-image'
 }
 
 if [ "${1:-}" = --inside ]; then
@@ -20,6 +20,7 @@ if [ "${1:-}" = --inside ]; then
         frontend) exec ./scripts/build-frontend-component.sh --inside "$@" ;;
         retroarch) exec ./scripts/build-retroarch.sh --inside "$@" ;;
         cores) exec ./scripts/build-libretro-cores.sh --inside "$@" ;;
+        core-catalog) exec ./scripts/build-libretro-core-catalog-pixel2.sh "$@" ;;
         picoarch) exec ./scripts/build-picoarch-pixel2.sh --inside "$@" ;;
         standalone) exec ./scripts/build-standalone-pixel2.sh --inside "$@" ;;
         audio-router) exec ./scripts/build-audio-router-pixel2.sh "$@" ;;
@@ -29,7 +30,7 @@ if [ "${1:-}" = --inside ]; then
         release-image)
             ./scripts/build-frontend-component.sh --inside
             ./scripts/build-retroarch.sh --inside
-            ./scripts/build-libretro-cores.sh --inside --filter all
+            ./scripts/build-libretro-core-catalog-pixel2.sh --filter all
             ./scripts/build-picoarch-pixel2.sh --inside
             ./scripts/build-standalone-pixel2.sh --inside
             ./scripts/build-audio-router-pixel2.sh

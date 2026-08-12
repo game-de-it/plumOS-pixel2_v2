@@ -6,8 +6,10 @@ PLUMOS_RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
 PLUMOS_USER_ROOT="${PLUMOS_USER_ROOT:-/mnt/plumos-user}"
 EMU_ROOT="${PLUMOS_ROOT}/standalone"
 LOG_ROOT="${PLUMOS_ROOT}/logs/standalone"
+BB="${PLUMOS_BUSYBOX:-/bin/busybox}"
 id=${1:-}
 [ "$#" -gt 0 ] && shift
+[ -x "$BB" ] || BB=busybox
 
 fail() {
   mkdir -p "$LOG_ROOT"
@@ -106,6 +108,9 @@ case "$id" in
   drastic)
     exe="${EMU_ROOT}/drastic/bin/drastic"
     workdir="${EMU_ROOT}/drastic"
+    drastic_content=${1:-}
+    [ -n "$drastic_content" ] || fail "missing Nintendo DS content path" 2
+    [ -f "$drastic_content" ] || fail "missing Nintendo DS content: $drastic_content" 2
     ;;
   scummvm)
     exe="${EMU_ROOT}/scummvm/bin/scummvm"
@@ -159,6 +164,121 @@ case "$id" in
     ;;
   *) fail "unknown standalone emulator: $id" 2 ;;
 esac
+
+if [ "$id" = drastic ]; then
+  runtime="$workdir"
+  loader="$runtime/runtime/ld-linux-armhf.so.3"
+  compat="$runtime/lib/libdrastic_mmap_compat.so"
+  log="$LOG_ROOT/drastic.log"
+  drastic_mounts=""
+  setarch_bin=""
+  setarch_mode=""
+
+  [ -x "$loader" ] && [ -x "$exe" ] &&
+    [ -f "$runtime/lib/libSDL2-2.0.so.0" ] &&
+    [ -f "$compat" ] || {
+    fail "DraStic runtime is missing" 127
+  }
+  [ -c /dev/dri/card0 ] || fail "DraStic DRM device is unavailable" 1
+  [ -c /dev/input/event2 ] || fail "DraStic Pixel2 input device is unavailable" 1
+
+  for candidate in "$BB" /bin/busybox busybox; do
+    command -v "$candidate" >/dev/null 2>&1 || [ -x "$candidate" ] || continue
+    if "$candidate" --list 2>/dev/null | grep -qx setarch; then
+      setarch_bin="$candidate"
+      setarch_mode=busybox
+      break
+    fi
+  done
+  if [ -z "$setarch_bin" ] && command -v setarch >/dev/null 2>&1; then
+    setarch_bin=$(command -v setarch)
+    setarch_mode=util-linux
+  fi
+  [ -n "$setarch_bin" ] || fail "setarch is missing for 32-bit DraStic" 127
+
+  work="${HOME}/work"
+  mkdir -p \
+    "$work/backup" \
+    "$work/config" \
+    "$work/input_record" \
+    "$work/profiles" \
+    "$work/savestates" \
+    "$work/system" \
+    "$work/unzip_cache"
+  for mutable_dir in backup config input_record profiles savestates system unzip_cache; do
+    mkdir -p "$runtime/$mutable_dir"
+  done
+  for factory_config in "$runtime"/config/*; do
+    [ -f "$factory_config" ] || continue
+    config_name=${factory_config##*/}
+    [ -e "$work/config/$config_name" ] ||
+      cp -p "$factory_config" "$work/config/$config_name"
+  done
+  bios_root="${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"
+  for bios_source_dir in "$bios_root/drastic" "$bios_root/nds" "$bios_root"; do
+    [ -d "$bios_source_dir" ] || continue
+    for user_bios in "$bios_source_dir"/drastic_bios_*.bin; do
+      [ -f "$user_bios" ] || continue
+      bios_name=${user_bios##*/}
+      [ -e "$work/system/$bios_name" ] ||
+        cp -p "$user_bios" "$work/system/$bios_name"
+    done
+  done
+
+  restore_drastic_runtime() {
+    rc=$?
+    for mount_target in $drastic_mounts; do
+      umount "$mount_target" >/dev/null 2>&1 || true
+    done
+    exit "$rc"
+  }
+  trap restore_drastic_runtime EXIT INT TERM HUP
+
+  for mutable_dir in backup config input_record profiles savestates system unzip_cache; do
+    mount --bind "$work/$mutable_dir" "$runtime/$mutable_dir" ||
+      fail "failed to bind DraStic mutable directory: $mutable_dir" 1
+    drastic_mounts="$runtime/$mutable_dir $drastic_mounts"
+  done
+
+  if [ -x "$PLUMOS_ROOT/bin/plumos-volume-control" ]; then
+    "$PLUMOS_ROOT/bin/plumos-volume-control" apply >>"$log" 2>&1 || true
+  fi
+
+  PID_ROOT="${PLUMOS_RUNTIME_ROOT}/standalone"
+  pid_file="${PID_ROOT}/${id}.pid"
+  exe_file="${PID_ROOT}/${id}.exe"
+  mkdir -p "$PID_ROOT"
+  rm -f "$pid_file" "$exe_file"
+  printf 'id=%s exe=%s args=%s runtime=armhf-gkd-pixel2\n' \
+    "$id" "$exe" "$drastic_content" >>"$LOG_ROOT/launcher.log"
+  (
+    cd "$runtime" || exit 127
+    export SDL_VIDEODRIVER=NDS
+    export SDL_AUDIODRIVER=alsa
+    export ALSA_PLUGIN_DIR="${PLUMOS_ROOT}/lib/alsa-lib-armhf"
+    export AUDIODEV=plumos_output
+    export NDS_DEBUG_LEVEL="${NDS_DEBUG_LEVEL:-INFO}"
+    if [ "$setarch_mode" = busybox ]; then
+      exec "$setarch_bin" setarch linux32 -R \
+        "$loader" \
+        --preload "$compat" \
+        --library-path "$runtime/lib:$runtime/runtime/lib32" \
+        "$exe" "$drastic_content"
+    fi
+    exec "$setarch_bin" linux32 -R \
+      "$loader" \
+      --preload "$compat" \
+      --library-path "$runtime/lib:$runtime/runtime/lib32" \
+      "$exe" "$drastic_content"
+  ) >>"$log" 2>&1 &
+  pid=$!
+  printf '%s\n' "$pid" >"$pid_file"
+  printf '%s\n' "$exe" >"$exe_file"
+  wait "$pid"
+  rc=$?
+  printf 'id=%s exit=%s\n' "$id" "$rc" >>"$LOG_ROOT/launcher.log"
+  exit "$rc"
+fi
 
 [ -x "$exe" ] || fail "missing standalone emulator binary: $exe" 127
 

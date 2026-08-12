@@ -18,9 +18,18 @@ LOG_DIR="$OUT_ROOT/logs"
 PATCH_DIR="$ROOT_DIR/patches"
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
 STRIP="${STRIP:-strip}"
+ARMHF_STRIP="${PLUMOS_PIXEL2_ARMHF_STRIP:-arm-linux-gnueabihf-strip}"
 FILTER=all
 OPENBOR_REPO="${PLUMOS_PIXEL2_OPENBOR_REPO:-https://github.com/DCurrent/openbor.git}"
 OPENBOR_REF="${PLUMOS_PIXEL2_OPENBOR_REF:-494708eb34e71d1afda237873907701c4ec3a569}"
+DRASTIC_REPO="${PLUMOS_PIXEL2_DRASTIC_REPO:-https://github.com/steward-fu/nds.git}"
+DRASTIC_REF="${PLUMOS_PIXEL2_DRASTIC_REF:-b88e6b75963106c0bd54dfe112f860c6bdbfe593}"
+DRASTIC_TAG="${PLUMOS_PIXEL2_DRASTIC_TAG:-final-china-devices}"
+DRASTIC_RELEASE_URL="${PLUMOS_PIXEL2_DRASTIC_RELEASE_URL:-https://github.com/steward-fu/nds/releases/download/final-china-devices/drastic_miyoo-flip_20251104.zip}"
+DRASTIC_RELEASE_SHA256="${PLUMOS_PIXEL2_DRASTIC_RELEASE_SHA256:-9e4ed98047dea0f014daea7c3530793f92f19d60073fceb9fd2a040696f66491}"
+DRASTIC_ARCHIVE="${PLUMOS_PIXEL2_DRASTIC_ARCHIVE:-$ROOT_DIR/output/downloads/drastic_miyoo-flip_20251104.zip}"
+DRASTIC_PATCH="$PATCH_DIR/drastic/steward-fu-nds-pixel2-toolchain.patch"
+DRASTIC_MMAP_COMPAT="$ROOT_DIR/package/standalone-pixel2/src/drastic-mmap-compat.c"
 COMMON_CFLAGS="${PLUMOS_PIXEL2_STANDALONE_CFLAGS:--O2 -pipe -march=armv8-a+crc -mtune=cortex-a35 -fomit-frame-pointer -fcommon}"
 
 while [ "$#" -gt 0 ]; do
@@ -42,6 +51,28 @@ selected() {
   esac
 }
 
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    printf 'error: required command is missing: %s\n' "$1" >&2
+    exit 1
+  }
+}
+
+sha256_file() {
+  sha256sum "$1" | awk '{ print $1 }'
+}
+
+verify_sha256() {
+  expected=$1
+  path=$2
+  actual=$(sha256_file "$path")
+  [ "$actual" = "$expected" ] || {
+    printf 'error: unexpected SHA-256 for %s\nexpected: %s\nactual:   %s\n' \
+      "$path" "$expected" "$actual" >&2
+    exit 1
+  }
+}
+
 clone_checkout() {
   id=$1
   repo=$2
@@ -61,6 +92,32 @@ clone_checkout() {
   git -C "$dst" reset --hard FETCH_HEAD >>"$log" 2>&1 || return 1
   git -C "$dst" clean -fdx >>"$log" 2>&1 || return 1
   printf '%s\n' "$dst"
+}
+
+copy_overlay_file() {
+  name=$1
+  destination=$2
+  source=$(find "$DRASTIC_OVERLAY_DIR" -type f -name "$name" -print -quit 2>/dev/null)
+  [ -n "$source" ] || {
+    printf 'error: private DraStic runtime file is missing: %s\n' "$name" >&2
+    exit 1
+  }
+  install -m 0755 "$source" "$destination"
+}
+
+extract_zip() {
+  archive=$1
+  destination=$2
+  python3 - "$archive" "$destination" <<'PY'
+from pathlib import Path
+import sys
+import zipfile
+
+archive = Path(sys.argv[1])
+destination = Path(sys.argv[2])
+with zipfile.ZipFile(archive) as handle:
+    handle.extractall(destination)
+PY
 }
 
 copy_runtime_deps() {
@@ -118,6 +175,166 @@ build_openbor() {
   copy_runtime_deps "$PLUMOS_DIR/standalone/openbor/bin/OpenBOR"
 }
 
+build_drastic() {
+  selected drastic || return 0
+  for command in curl debugfs git make python3 sha256sum; do
+    require_command "$command"
+  done
+  require_command arm-linux-gnueabihf-gcc
+
+  DRASTIC_BUILD_DIR="$BUILD_ROOT/drastic"
+  DRASTIC_SOURCE_DIR="$DRASTIC_BUILD_DIR/source"
+  DRASTIC_RELEASE_DIR="$DRASTIC_BUILD_DIR/release"
+  DRASTIC_OVERLAY_DIR="$DRASTIC_BUILD_DIR/overlay"
+  DRASTIC_LOG="$LOG_DIR/drastic.log"
+  DRASTIC_DST="$PLUMOS_DIR/standalone/drastic"
+  mkdir -p "$LOG_DIR" "$ROOT_DIR/output/downloads" "$PLUMOS_DIR/licenses"
+  : >"$DRASTIC_LOG"
+
+  if [ ! -f "$DRASTIC_ARCHIVE" ]; then
+    curl -L --fail --retry 3 --output "$DRASTIC_ARCHIVE" \
+      "$DRASTIC_RELEASE_URL" >>"$DRASTIC_LOG" 2>&1
+  fi
+  verify_sha256 "$DRASTIC_RELEASE_SHA256" "$DRASTIC_ARCHIVE"
+
+  rm -rf "$DRASTIC_RELEASE_DIR"
+  mkdir -p "$DRASTIC_RELEASE_DIR"
+  extract_zip "$DRASTIC_ARCHIVE" "$DRASTIC_RELEASE_DIR"
+  [ -x "$DRASTIC_RELEASE_DIR/drastic/drastic" ] || {
+    printf 'error: release archive does not contain the ARM32 DraStic core\n' >&2
+    return 1
+  }
+  ln -sf libSDL2_image-2.0.so.0 \
+    "$DRASTIC_RELEASE_DIR/drastic/lib/libSDL2_image.so"
+  ln -sf libSDL2_ttf-2.0.so.0 \
+    "$DRASTIC_RELEASE_DIR/drastic/lib/libSDL2_ttf.so"
+
+  rm -rf "$DRASTIC_SOURCE_DIR"
+  git clone --filter=blob:none --no-checkout --depth 1 \
+    --branch "$DRASTIC_TAG" "$DRASTIC_REPO" "$DRASTIC_SOURCE_DIR" \
+    >>"$DRASTIC_LOG" 2>&1
+  git -C "$DRASTIC_SOURCE_DIR" sparse-checkout init --no-cone \
+    >>"$DRASTIC_LOG" 2>&1
+  git -C "$DRASTIC_SOURCE_DIR" sparse-checkout set \
+    Makefile.base \
+    Makefile.gkd_pixel2 \
+    LICENSE \
+    alsa \
+    assets/gkd_pixel2 \
+    common \
+    detour \
+    drastic \
+    inc \
+    runner \
+    sdl2 >>"$DRASTIC_LOG" 2>&1
+  git -C "$DRASTIC_SOURCE_DIR" checkout "$DRASTIC_REF" \
+    >>"$DRASTIC_LOG" 2>&1
+  git -C "$DRASTIC_SOURCE_DIR" apply "$DRASTIC_PATCH" \
+    >>"$DRASTIC_LOG" 2>&1
+  make -C "$DRASTIC_SOURCE_DIR" -f Makefile.gkd_pixel2 -j"$JOBS" \
+    TOOLCHAIN_BIN="$(dirname "$(command -v arm-linux-gnueabihf-gcc)")" \
+    NDS_INCLUDE_ROOT=/usr/include \
+    NDS_LIBRARY_ROOT="$DRASTIC_RELEASE_DIR/drastic/lib" >>"$DRASTIC_LOG" 2>&1
+
+  rm -rf "$DRASTIC_DST"
+  mkdir -p "$DRASTIC_DST/bin" "$DRASTIC_DST/lib" "$DRASTIC_DST/runtime/lib32"
+  rsync -a \
+    --exclude='._*' \
+    --exclude='drastic' \
+    --exclude='drastic64' \
+    --exclude='launch.sh' \
+    --exclude='overlayfs.img' \
+    --exclude='system/drastic_bios_*.bin' \
+    --exclude='lib/libcommon.so' \
+    --exclude='lib/libdtr.so' \
+    --exclude='lib/libSDL2-2.0.so.0' \
+    "$DRASTIC_RELEASE_DIR/drastic/" "$DRASTIC_DST/"
+  rsync -a --exclude='launch.sh' \
+    "$DRASTIC_SOURCE_DIR/assets/gkd_pixel2/" "$DRASTIC_DST/"
+  install -m 0755 "$DRASTIC_RELEASE_DIR/drastic/drastic" \
+    "$DRASTIC_DST/bin/drastic"
+  install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libcommon.so" \
+    "$DRASTIC_DST/lib/libcommon.so"
+  install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libdtr.so" \
+    "$DRASTIC_DST/lib/libdtr.so"
+  install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libSDL2-2.0.so.0" \
+    "$DRASTIC_DST/lib/libSDL2-2.0.so.0"
+  "$ARMHF_STRIP" --strip-unneeded \
+    "$DRASTIC_DST/lib/libcommon.so" \
+    "$DRASTIC_DST/lib/libdtr.so" \
+    "$DRASTIC_DST/lib/libSDL2-2.0.so.0" >/dev/null 2>&1 || true
+
+  rm -rf "$DRASTIC_OVERLAY_DIR"
+  mkdir -p "$DRASTIC_OVERLAY_DIR"
+  if ! debugfs -R "rdump / $DRASTIC_OVERLAY_DIR" \
+      "$DRASTIC_RELEASE_DIR/drastic/overlayfs.img" >>"$DRASTIC_LOG" 2>&1; then
+    printf 'warning: debugfs returned non-zero after DraStic overlay extraction; validating extracted files\n' \
+      >>"$DRASTIC_LOG"
+  fi
+  copy_overlay_file ld-linux-armhf.so.3 \
+    "$DRASTIC_DST/runtime/ld-linux-armhf.so.3"
+  for library in \
+    libEGL.so.1 \
+    libGLESv2.so.2 \
+    libasound.so.2 \
+    libc.so.6 \
+    libdl.so.2 \
+    libdrm.so.2 \
+    libfreetype.so.6 \
+    libgbm.so.1 \
+    libgcc_s.so.1 \
+    libm.so.6 \
+    libmali.so.1 \
+    libmali_hook.so.1 \
+    libpthread.so.0 \
+    librt.so.1 \
+    libstdc++.so.6; do
+    copy_overlay_file "$library" "$DRASTIC_DST/runtime/lib32/$library"
+  done
+
+  arm-linux-gnueabihf-gcc -Os -fPIC -shared \
+    -Wl,-soname,libdrastic_mmap_compat.so \
+    -o "$DRASTIC_DST/lib/libdrastic_mmap_compat.so" "$DRASTIC_MMAP_COMPAT" \
+    >>"$DRASTIC_LOG" 2>&1
+  "$ARMHF_STRIP" --strip-unneeded \
+    "$DRASTIC_DST/lib/libdrastic_mmap_compat.so" >/dev/null 2>&1 || true
+
+  install -m 0644 "$DRASTIC_SOURCE_DIR/LICENSE" \
+    "$PLUMOS_DIR/licenses/steward-fu-nds-LGPL-2.1"
+  install -m 0644 "$DRASTIC_RELEASE_DIR/drastic/readme.txt" \
+    "$PLUMOS_DIR/licenses/drastic-upstream-release-readme.txt"
+
+  core_sha256=$(sha256_file "$DRASTIC_DST/bin/drastic")
+  common_sha256=$(sha256_file "$DRASTIC_DST/lib/libcommon.so")
+  detour_sha256=$(sha256_file "$DRASTIC_DST/lib/libdtr.so")
+  sdl2_sha256=$(sha256_file "$DRASTIC_DST/lib/libSDL2-2.0.so.0")
+  compat_sha256=$(sha256_file "$DRASTIC_DST/lib/libdrastic_mmap_compat.so")
+  cat >"$DRASTIC_DST/build-manifest.json" <<EOF
+{
+  "device": "pixel2",
+  "upstream": "steward-fu/nds",
+  "source_ref": "$DRASTIC_REF",
+  "release_asset": "drastic_miyoo-flip_20251104.zip",
+  "release_sha256": "$DRASTIC_RELEASE_SHA256",
+  "closed_core": {
+    "path": "bin/drastic",
+    "sha256": "$core_sha256",
+    "built_from_source": false
+  },
+  "source_built_integration": {
+    "target": "gkd_pixel2",
+    "libcommon.so": "$common_sha256",
+    "libdtr.so": "$detour_sha256",
+    "libSDL2-2.0.so.0": "$sdl2_sha256",
+    "libdrastic_mmap_compat.so": "$compat_sha256"
+  },
+  "runtime_contract": "package-local-armhf-gkd-pixel2",
+  "global_usr_overlay": false,
+  "process_aslr": "disabled-only-for-drastic"
+}
+EOF
+}
+
 rm -rf "$OUT_ROOT"
 mkdir -p "$PLUMOS_DIR" "$COMPONENT_DIR" "$PLUMOS_DIR/licenses" \
   "$PLUMOS_DIR/config/standalone" "$PLUMOS_DIR/standalone" \
@@ -128,14 +345,14 @@ chmod 0755 "$PLUMOS_DIR/bin/plumos-standalone-launch" \
 : >"$PLUMOS_DIR/config/standalone/soname-links.tsv"
 
 OPENBOR_STATUS=pending-binary
+DRASTIC_STATUS=pending-binary
 if selected openbor; then
-  if build_openbor; then
-    OPENBOR_STATUS=built
-  else
-    printf 'error: OpenBOR standalone build failed; see %s\n' \
-      "$LOG_DIR/openbor.log" >&2
-    exit 1
-  fi
+  build_openbor
+  OPENBOR_STATUS=built
+fi
+if selected drastic; then
+  build_drastic
+  DRASTIC_STATUS=built
 fi
 
 cat > "$COMPONENT_DIR/manifest.json" <<'EOF'
@@ -149,7 +366,11 @@ cat > "$COMPONENT_DIR/manifest.json" <<'EOF'
   "emulators": [
     {"id": "pcsx_rearmed", "status": "pending-binary"},
     {"id": "ppsspp", "status": "pending-binary"},
-    {"id": "drastic", "status": "pending-binary"},
+EOF
+cat >> "$COMPONENT_DIR/manifest.json" <<EOF
+    {"id": "drastic", "status": "$DRASTIC_STATUS"},
+EOF
+cat >> "$COMPONENT_DIR/manifest.json" <<'EOF'
     {"id": "yabasanshiro", "status": "pending-binary"},
 EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<EOF

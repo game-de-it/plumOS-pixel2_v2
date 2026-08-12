@@ -45,8 +45,11 @@ RetroArch and the Pixel2 libretro sets are packaged for AArch64.
 builds 41 catalog cores and emits the `libretro-cores` component manifest and
 checksums. `./scripts/docker-build.sh cores --filter all --jobs 4
 --fail-on-error 1` builds the full 114-core catalog used for full-system route
-coverage. The FE system catalog is generated around those managed launch
-profiles rather than a single QuickNES-only route.
+coverage. `./scripts/docker-build.sh core-catalog --filter all --concurrency 4`
+is the preferred full rebuild path because it runs independent per-core workers
+and then aggregates the canonical Pixel2 component. The FE system catalog is
+generated around those managed launch profiles rather than a single
+QuickNES-only route.
 
 Factory defaults include the Pixel2 joypad autoconfig and the current
 display/aspect contract.
@@ -75,9 +78,23 @@ PicoArch is packaged as a Pixel2 app-layer component. It reuses the generated
 libretro core set through the shared `/mnt/plumos/cores/*_libretro.so` route
 and uses the Pixel2 ALSA `plumos_output` path.
 
-Standalone has a Pixel2 launcher component and route manifest. Individual
-standalone emulator binaries are intentionally marked `pending-binary` until
-each binary is built, packaged, and physically validated on Pixel2.
+Standalone has a Pixel2 launcher component and route manifest. OpenBOR and
+DraStic are packaged binaries in the current Pixel2 app-layer. DraStic uses the
+steward-fu/nds Pixel2 integration layer with the closed armhf DraStic runtime,
+package-local armhf libraries, and an armhf ALSA plugin for `plumos_output`.
+DraStic BIOS files are never packaged; the launcher copies user-provided
+`drastic_bios_*.bin` files from `/mnt/plumos-user/bios/drastic`,
+`/mnt/plumos-user/bios/nds`, or `/mnt/plumos-user/bios` into the mutable
+per-user DraStic work directory.
+
+Do not expose a Nintendo DS libretro DeSmuME route on Pixel2 unless a real
+Pixel2 build-system component exists. The current DS route is
+`standalone:drastic`.
+
+Remaining standalone emulator binaries are intentionally marked
+`pending-binary` until each binary is built, packaged, and physically validated
+on Pixel2. PPSSPP should follow the MF/V90S pinned-source build and factory
+configuration ownership model rather than importing an opaque generated output.
 
 Pyxel, PortMaster, File Manager, and Music Player are not yet Pixel2 runtime
 guarantees. Add them only when each component is built, routed, checksummed, and
