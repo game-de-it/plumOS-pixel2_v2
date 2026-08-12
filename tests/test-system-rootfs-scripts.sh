@@ -71,6 +71,7 @@ grep -q 'system-pending-attempted' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
 grep -q 'system_rolled_back' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
 grep -q 'PLUMOS_DISPATCHER_TEST' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
 grep -q 'fixed-dispatcher,system-a,system-b' "$ROOT_DIR/scripts/build-sd-image.sh"
+grep -q 'DISPATCHER_DIR/usr/lib/systemd' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli)' \
     "$ROOT_DIR/rootfs/pixel2" >/dev/null; then

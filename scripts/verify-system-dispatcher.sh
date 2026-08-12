@@ -21,12 +21,14 @@ unsquashfs -d "$tmp/rootfs" "$IMAGE" >/dev/null
 test -x "$tmp/rootfs/init"
 test -x "$tmp/rootfs/bin/busybox"
 test -L "$tmp/rootfs/bin/sh"
+test "$(readlink "$tmp/rootfs/sbin/init")" = /init
+test "$(readlink "$tmp/rootfs/usr/lib/systemd/systemd")" = /init
 grep -q '/flash/system-slots' "$tmp/rootfs/init"
 grep -q 'system-pending-attempted' "$tmp/rootfs/init"
 grep -q 'system_rolled_back' "$tmp/rootfs/init"
 grep -q 'sha256sum' "$tmp/rootfs/init"
 grep -q 'switch_root /newroot /sbin/init' "$tmp/rootfs/init"
-if LC_ALL=C grep -R -a -E -i -n '(rocknix|emuelec|batocera|knulli|miyoo|v90s)' \
+if LC_ALL=C grep -r -a -E -i -n '(rocknix|emuelec|batocera|knulli|miyoo|v90s)' \
     "$tmp/rootfs" >/dev/null; then
     printf 'error: foreign device or distribution identity in dispatcher\n' >&2
     exit 1

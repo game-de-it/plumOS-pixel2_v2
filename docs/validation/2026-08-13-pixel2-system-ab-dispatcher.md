@@ -14,6 +14,13 @@ BusyBox dispatcher owned by plumOS. It verifies and mounts one of:
 The slot directory deliberately is not named `/System`: FAT32 is
 case-insensitive, so `/SYSTEM` and `/System/` cannot coexist.
 
+The dispatcher exposes `/usr/lib/systemd/systemd -> /init` because that is the
+fixed executable selected by the retained stock initramfs. It also exposes
+`/sbin/init -> /init` for direct recovery invocation. A first live deployment
+without those compatibility entrypoints stopped before ADB enumeration; the
+omission was reproduced by inspecting the proven stock handoff shim and added
+to the dispatcher verification gate.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:

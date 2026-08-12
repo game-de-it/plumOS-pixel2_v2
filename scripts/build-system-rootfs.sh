@@ -30,6 +30,7 @@ esac
 
 rm -rf "$OUT_DIR"
 mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR/system-slots" "$DISPATCHER_DIR/bin" \
+    "$DISPATCHER_DIR/sbin" "$DISPATCHER_DIR/usr/lib/systemd" \
     "$ROOTFS_DIR/dev/pts" "$ROOTFS_DIR/proc" "$ROOTFS_DIR/sys" \
     "$ROOTFS_DIR/run" "$ROOTFS_DIR/tmp" "$ROOTFS_DIR/boot" \
     "$ROOTFS_DIR/flash" "$ROOTFS_DIR/storage" \
@@ -131,6 +132,8 @@ printf '%s  system-b.squashfs\n' "$sha" >"$PAYLOAD_DIR/system-slots/system-b.sha
 install -m 0755 "$ROOT_DIR/rootfs/pixel2-dispatcher/init" "$DISPATCHER_DIR/init"
 install -m 0755 /bin/busybox "$DISPATCHER_DIR/bin/busybox"
 ln -s busybox "$DISPATCHER_DIR/bin/sh"
+ln -s /init "$DISPATCHER_DIR/sbin/init"
+ln -s /init "$DISPATCHER_DIR/usr/lib/systemd/systemd"
 find "$DISPATCHER_DIR" -exec touch -h -d "@$SOURCE_EPOCH" {} +
 env -u SOURCE_DATE_EPOCH mksquashfs "$DISPATCHER_DIR" "$PAYLOAD_DIR/SYSTEM" \
     -noappend -all-root -no-xattrs -comp xz -mkfs-time "$SOURCE_EPOCH" \
