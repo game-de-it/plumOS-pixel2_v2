@@ -12028,8 +12028,46 @@ static int run_power_action(struct ui_state *ui, const char *action, int powerof
 }
 
 static int request_latest_system_update(struct ui_state *ui) {
-  set_status(ui, "Manual update: overwrite plumOS files on the SD card");
-  return 1;
+  char log_dir[PATH_MAX];
+  char log_path[PATH_MAX];
+  char cmd[UI_COMMAND_MAX];
+  size_t pos = 0;
+  int rc;
+
+  if (!file_exists("/usr/sbin/plumos-system-update")) {
+    set_status(ui, "System Update helper missing");
+    return 0;
+  }
+  if (!join_path(log_dir, sizeof(log_dir), ui->plumos_root, "logs") ||
+      !join_path(log_path, sizeof(log_path), log_dir,
+                 "frontend-system-update.log")) {
+    set_status(ui, "System Update log path too long");
+    return 0;
+  }
+  set_status(ui, "Verifying latest update package...");
+  render_ui(ui);
+  cmd[0] = '\0';
+  if (!append_string(cmd, sizeof(cmd), &pos, "mkdir -p ") ||
+      !append_shell_quoted(cmd, sizeof(cmd), &pos, log_dir) ||
+      !append_string(cmd, sizeof(cmd), &pos, "; PLUMOS_ROOT=") ||
+      !append_shell_quoted(cmd, sizeof(cmd), &pos, ui->plumos_root) ||
+      !append_string(cmd, sizeof(cmd), &pos,
+                     " PLUMOS_USERDATA_ROOT=/mnt/plumos-user"
+                     " PLUMOS_BOOT_ROOT=/flash"
+                     " /usr/sbin/plumos-system-update request-latest >") ||
+      !append_shell_quoted(cmd, sizeof(cmd), &pos, log_path) ||
+      !append_string(cmd, sizeof(cmd), &pos, " 2>&1")) {
+    set_status(ui, "System Update command too long");
+    return 0;
+  }
+  rc = run_runtime_shell_command(cmd);
+  if (!system_command_succeeded(rc)) {
+    set_status(ui, "No compatible update; see frontend-system-update.log");
+    return 0;
+  }
+  set_status(ui, "Update ready; restarting safely");
+  render_ui(ui);
+  return run_power_action(ui, "reboot", 0);
 }
 
 static int run_storage_health_check(struct ui_state *ui) {

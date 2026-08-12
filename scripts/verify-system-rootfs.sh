@@ -45,6 +45,16 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/40-frontend"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/50-update-health"
 grep -q 'system-booted' "$tmp/rootfs/usr/lib/plumos/init.d/50-update-health"
 grep -q 'frontend-ready-timeout' "$tmp/rootfs/usr/lib/plumos/init.d/50-update-health"
+test -x "$tmp/rootfs/usr/sbin/plumos-system-update"
+test -x "$tmp/rootfs/usr/bin/python3"
+test -x "$tmp/rootfs/usr/bin/openssl"
+test -L "$tmp/rootfs/usr/bin/env"
+test -f "$tmp/rootfs/etc/plumos-update-public.pem"
+grep -q '^plumos-pixel2-v1$' "$tmp/rootfs/etc/plumos-system-abi"
+grep -q '^DEVICE_ID = "pixel2"$' "$tmp/rootfs/usr/sbin/plumos-system-update"
+grep -q '"runtime_abi": "plumos-pixel2-app-layer-v1"' \
+    "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
+test -s "$tmp/rootfs/etc/plumos-system-version"
 test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
 test -x "$tmp/rootfs/lib/ld-linux-aarch64.so.1"
 for directory in dev dev/pts proc sys run tmp boot state roms root \
@@ -77,6 +87,13 @@ if [ "$(uname -m)" = aarch64 ]; then
     chroot "$tmp/rootfs" /usr/bin/plumos-frontend-pixel2 --help >/dev/null
     chroot "$tmp/rootfs" /usr/bin/plumos-library-scan --help >/dev/null
     chroot "$tmp/rootfs" /usr/bin/plumos-text-ui --help >/dev/null
+    chroot "$tmp/rootfs" /usr/bin/python3 -c \
+        'import fcntl, hashlib, json, shutil, subprocess, tarfile, tempfile'
+    test "$(chroot "$tmp/rootfs" /usr/bin/python3 -c \
+        'import runpy; print(runpy.run_path("/usr/sbin/plumos-system-update")["DEVICE_ID"])')" \
+        = pixel2
+    chroot "$tmp/rootfs" /usr/bin/openssl version >/dev/null
+    chroot "$tmp/rootfs" /usr/sbin/plumos-system-update --help >/dev/null
     first_module=$(find "$tmp/rootfs/lib/modules/$release" -name '*.ko' -print -quit)
     if [ -n "$first_module" ]; then
         case "$(chroot "$tmp/rootfs" /sbin/modinfo -F vermagic \
@@ -88,6 +105,13 @@ if [ "$(uname -m)" = aarch64 ]; then
     chroot "$tmp/rootfs" /lib/ld-linux-aarch64.so.1 \
         --library-path /usr/lib/plumos/adbd/lib:/lib/aarch64-linux-gnu \
         --list /usr/lib/plumos/adbd/adbd.bin >/dev/null
+fi
+
+if find "$tmp/rootfs" -type f \
+    \( -iname '*private*.pem' -o -iname '*private*.key' \) \
+    -print -quit | grep -q .; then
+    printf 'error: private signing key in System rootfs\n' >&2
+    exit 1
 fi
 
 if find "$tmp/rootfs" -print | grep -Eiq '(rocknix|emuelec|batocera|knulli)'; then

@@ -34,7 +34,7 @@
 | standalone emulator | 3 built / 7 pending |
 | visible Apps entries | 2 |
 | enabled systems with pending content policy | 33 |
-| release blockers detected by audit | 3 |
+| release blockers detected by audit | 2 |
 
 ## Implemented build surface
 
@@ -58,7 +58,7 @@ Device verifiedを意味しない。
 
 | 項目 | 現状 | 必要な実装 |
 | --- | --- | --- |
-| System Update | manual overwriteの案内だけ | signed Runtime/System updater、進捗、失敗表示、safe reboot、rollback |
+| System Update | signed Ed25519 package、Runtime journal/1世代rollback、inactive System readback、FE request/safe rebootをhost実装済み | 実機FEからRuntime/System成功、失敗rollback、表示/logを検証 |
 | Storage Check | `/mnt/plumos-user`に対する同梱`fsck.fat -n`、45秒上限、status/logを実装。RW mount中は誤警告せず判定保留 | RO状態での実機clean/dirty検証 |
 | Factory Reset | `factory-defaults/{ra,pico,sa}`とbackup/atomic restore/dry-runを実装 | 実機対象別restoreと再起動後確認 |
 | Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
@@ -131,15 +131,17 @@ ROM set route testは代表ROMが存在する30 systemのhost routeを解決し�
 ## P1: first boot, storage, and update foundation
 
 現在の4 GiB imageはp1 512 MiB、p2 2048 MiB、p3 remainderを事前生成する。
-設計済みだが未実装なのは次の通り。
+first-bootで未実装なのは次の通り。
 
 - first bootでp2を8192 MiBへ拡張し、残りにp3を非破壊作成するprovisioner;
 - interrupted provisioningのresumeと既存p3保護;
-- System A/B slot selector、pending boot、renderer-ready health promotion;
-- Runtime write-ahead journal、1世代rollback、inactive System slot update;
-- Ed25519 package builder/verifier、公開鍵、package compatibility gate;
-- update UI、progress/log、readback verification、safe reboot;
 - ext4 label/UUID/resize markerの実機確認。
+
+System A/B selector、pending boot、renderer-ready promotionは実機成功経路まで、
+Runtime write-ahead journal、1世代rollback、inactive System update、Ed25519
+builder/verifier、公開鍵、compatibility gate、FE request、safe rebootはhost fixture
+とARM64 chrootまで実装済みである。署名packageの実機成功/失敗経路をrelease前に
+別途acceptanceする。
 
 ## P1: physical-device acceptance
 

@@ -1,7 +1,7 @@
 # 0003: Pixel2 updateable runtime and emulator layout
 
 Date: 2026-08-12
-Status: Adopted design; implementation is phased
+Status: Adopted; signed updater host-verified on 2026-08-13
 
 ## Decision
 
@@ -42,16 +42,17 @@ recoverable boot update contract exists.
 
 ### System A/B on PLUMOS_BOOT
 
-p1 is normally mounted read-only at `/mnt/plumos-boot` and contains:
+p1 is normally mounted read-only at `/flash` (`/boot` is a compatibility bind)
+and contains:
 
 ```text
 /Image
 /rk3326s-gkd-pixel2.dtb
 /SYSTEM                         fixed Pixel2 A/B dispatcher
 /system-slots/system-a.squashfs
-/system-slots/system-a.manifest
+/system-slots/system-a.sha256
 /system-slots/system-b.squashfs
-/system-slots/system-b.manifest
+/system-slots/system-b.sha256
 /plumos-image.manifest
 ```
 
@@ -65,9 +66,18 @@ and reboots.
 Frontend renderer readiness promotes the pending slot; a second attempt
 without readiness rejects it and returns to the previous healthy slot.
 
-The first development implementation uses SHA-256 integrity. A production
-update package additionally requires an Ed25519 signature verified by a public
-key embedded in System. Unsigned packages are never a normal FE option.
+The dispatcher uses SHA-256 slot integrity. Runtime/System update archives
+additionally require an Ed25519 signature verified by the public key embedded
+in System. The private signing key is ignored build-host material and is never
+copied into System or an SD image. Unsigned packages are accepted only with an
+explicit development environment override and are never a normal FE option.
+
+The FE System Update action scans `/mnt/plumos-user/updates`, verifies the
+newest compatible Pixel2 package, records the request on ext4, and performs a
+safe reboot. Early plumOS init applies Runtime transactions before services or
+writes System only to the inactive FAT32 slot, verifies a complete readback,
+commits metadata/pending state last, and reboots again when a System slot was
+staged.
 
 ### Runtime and Linux state on PLUMOS_SYS
 

@@ -8,7 +8,7 @@ usage() {
     printf '%s\n' \
         'Usage: scripts/docker-build.sh TARGET [ARGS...]' \
         '' \
-        'Targets: image frontend retroarch cores core-catalog picoarch standalone audio-router pyxel-runtime app-layer audit system-rootfs sd-image release-image'
+        'Targets: image frontend retroarch cores core-catalog picoarch standalone audio-router pyxel-runtime app-layer audit update-package system-rootfs sd-image release-image'
 }
 
 if [ "${1:-}" = --inside ]; then
@@ -27,6 +27,7 @@ if [ "${1:-}" = --inside ]; then
         pyxel-runtime) exec ./scripts/build-pyxel-runtime-pixel2.sh --inside "$@" ;;
         app-layer) exec ./scripts/build-app-layer.sh --inside "$@" ;;
         audit) exec ./scripts/audit-pixel2-implementation.py "$@" ;;
+        update-package) exec ./scripts/build-pixel2-update-package.py "$@" ;;
         system-rootfs) exec ./scripts/build-system-rootfs.sh --inside "$@" ;;
         sd-image) exec ./scripts/build-sd-image.sh --inside "$@" ;;
         release-image)

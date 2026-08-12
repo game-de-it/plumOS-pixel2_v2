@@ -1,8 +1,10 @@
 .DS_Store
 .cache/
+__pycache__/
+*.pyc
 artifacts/vendor/
+artifacts/update-signing/
 build/
 output/
 *.img
 *.img.xz
-

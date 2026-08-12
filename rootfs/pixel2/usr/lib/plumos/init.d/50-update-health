@@ -29,6 +29,14 @@ atomic_slot() {
 }
 
 promote() {
+    if [ -x /usr/sbin/plumos-system-update ]; then
+        PLUMOS_ROOT=/mnt/plumos PLUMOS_USERDATA_ROOT=/mnt/plumos-user \
+            PLUMOS_BOOT_ROOT=/flash \
+            /usr/sbin/plumos-system-update mark-healthy >>"$LOG" 2>&1
+        rc=$?
+        log "result=updater-health rc=$rc proof=$READY"
+        return "$rc"
+    fi
     pending=$(read_slot "$STATE/system-pending")
     booted=$(read_slot "$STATE/system-booted")
     [ -n "$pending" ] || {

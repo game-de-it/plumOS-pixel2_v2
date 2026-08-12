@@ -24,6 +24,10 @@ for script in \
     bash -n "$script"
 done
 
+python3 -m py_compile \
+    "$ROOT_DIR/scripts/plumos-system-update.py" \
+    "$ROOT_DIR/scripts/build-pixel2-update-package.py"
+
 bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
 bash -n "$ROOT_DIR/rootfs/pixel2/usr/bin/plumos-diagnostics"
@@ -54,6 +58,11 @@ grep -q 'app-layer-verified' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'system-booted' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
+grep -q 'plumos-system-update mark-healthy' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
+grep -q 'apply_pending_update' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q '"$updater" apply-pending' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'build-pixel2-update-package.py' "$ROOT_DIR/scripts/docker-build.sh"
 
 ! grep -q '\$bb mountpoint' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'ROOTFS_DIR/dev/pts' "$ROOT_DIR/scripts/build-system-rootfs.sh"

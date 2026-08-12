@@ -28,6 +28,8 @@ case "$SOURCE_EPOCH" in
     ''|*[!0-9]*) printf 'error: invalid SOURCE_DATE_EPOCH\n' >&2; exit 2 ;;
 esac
 
+"$ROOT_DIR/tests/test-pixel2-update.sh"
+
 rm -rf "$OUT_DIR"
 mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR/system-slots" "$DISPATCHER_DIR/bin" \
     "$DISPATCHER_DIR/sbin" "$DISPATCHER_DIR/usr/lib/systemd" \
@@ -65,14 +67,33 @@ copy_elf() {
 
 install -D -m 0755 /bin/busybox "$ROOTFS_DIR/bin/busybox"
 ln -s busybox "$ROOTFS_DIR/bin/sh"
-for applet in basename blkid cat chmod chown cttyhack cut date dirname grep \
+for applet in basename blkid cat chmod chown cttyhack cut date dirname env grep \
     hostname ip kill ln logger ls mkdir mdev mount mv rm sed \
     setsid sleep sync touch tr udhcpc umount; do
     ln -s /bin/busybox "$ROOTFS_DIR/bin/$applet"
 done
-for binary in ip iw wpa_supplicant wpa_cli dropbear dropbearkey kmod; do
+ln -s /bin/busybox "$ROOTFS_DIR/usr/bin/env"
+for binary in ip iw wpa_supplicant wpa_cli dropbear dropbearkey kmod python3 openssl; do
     copy_elf "$binary"
 done
+cp -a /usr/lib/python3.11 "$ROOTFS_DIR/usr/lib/"
+find /usr/lib/python3.11/lib-dynload -type f -name '*.so' -print0 | \
+    while IFS= read -r -d '' extension; do
+        ldd "$extension" 2>/dev/null | awk '
+            /=> \// { print $3 }
+            /^\// { print $1 }
+        ' | while IFS= read -r lib; do
+            [ -f "$lib" ] || continue
+            mkdir -p "$ROOTFS_DIR${lib%/*}"
+            cp -L "$lib" "$ROOTFS_DIR$lib"
+        done
+    done
+install -D -m 0755 "$ROOT_DIR/scripts/plumos-system-update.py" \
+    "$ROOTFS_DIR/usr/sbin/plumos-system-update"
+install -D -m 0644 "$ROOT_DIR/package/system-pixel2/plumos-update-public.pem" \
+    "$ROOTFS_DIR/etc/plumos-update-public.pem"
+printf '%s\n' 'plumos-pixel2-v1' >"$ROOTFS_DIR/etc/plumos-system-abi"
+printf '%s\n' "$VERSION" >"$ROOTFS_DIR/etc/plumos-system-version"
 install -D -m 0755 /lib/aarch64-linux-gnu/ld-linux-aarch64.so.1 \
     "$ROOTFS_DIR/lib/ld-linux-aarch64.so.1"
 mkdir -p "$ROOTFS_DIR/sbin"
@@ -81,7 +102,8 @@ ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/depmod"
 ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/modinfo"
 
 mkdir -p "$ROOTFS_DIR/usr/share/licenses/debian"
-for package in busybox-static kmod iproute2 iw wpasupplicant dropbear-bin; do
+for package in busybox-static kmod iproute2 iw wpasupplicant dropbear-bin \
+    python3.11-minimal openssl; do
     install -m 0644 "/usr/share/doc/$package/copyright" \
         "$ROOTFS_DIR/usr/share/licenses/debian/$package-copyright"
 done
@@ -97,7 +119,7 @@ cat >"$ROOTFS_DIR/usr/lib/plumos/system-manifest.json" <<EOF
   "device": "pixel2",
   "architecture": "aarch64",
   "version": "$VERSION",
-  "runtime_abi": "plumos-pixel2-v1",
+  "runtime_abi": "plumos-pixel2-app-layer-v1",
   "kernel_release": "$KERNEL_RELEASE",
   "boot_substrate": "stock-pixel2",
   "firmware_origin": "stock-kernel-overlay",
@@ -119,7 +141,7 @@ format=plumos-pixel2-system-v1
 device=pixel2
 architecture=aarch64
 version=$VERSION
-runtime_abi=plumos-pixel2-v1
+runtime_abi=plumos-pixel2-app-layer-v1
 source_ref=$SOURCE_REF
 source_date_epoch=$SOURCE_EPOCH
 image_size=$size

@@ -19,7 +19,8 @@
     - 2026-08-13: Pixel2 user volume `/mnt/plumos-user`を対象に、同梱`fsck.fat -n`、45秒上限、dirty bit/status/logを実装。RW mount中はLinuxがclean-shutdown bitをclearするため`mounted-rw`（判定保留）とし、誤ってrepair警告を出さない。RO状態での実機clean/dirty判定は未検証。
   - [x] `factory-defaults/{ra,pico,sa}` ABIと`plumos-factory-reset`を実装する
     - 2026-08-13: app-layer assemblerがRA/PicoArch/PPSSPP/DraSticのmutable path用overlayを生成し、対象別backup/atomic restore/dry-run helperを同梱。実機復元は未検証。
-  - [ ] signed update backend完成までSystem Updateをplaceholderではない開発状態表示・実装gateへ接続する
+  - [x] signed Runtime/System updaterをFE System Updateとsafe rebootへ接続する
+    - 2026-08-13: 既存plumOSの署名・journal・1世代rollback設計をPixel2の`/flash/system-slots`とnamed ABIへ移植。署名なし拒否、Runtime適用/health/rollback、中断journal復旧、inactive System readback、誤slot昇格拒否をhost fixtureで検証。実機FEからの署名package適用とfailure rollbackは未検証。
   - [x] Audio OutputのSpeaker/Headphone選択をPixel2 hardware capabilityと一致させる
     - Pixel2はRK817 speaker単一路のため、存在しない出力切替をFEに表示しない。
   - [x] lidのないPixel2でLid Suspendを選択不能にする
@@ -116,10 +117,11 @@
   - 2026-08-13: stockが固定で開く`/SYSTEM`を小さなPixel2 dispatcherとし、FAT32で名前衝突しない`/system-slots/system-{a,b}.squashfs`を選択する。pendingは一度だけ試し、次bootまでFE health promotionがなければactiveへrollback。`5932ef9`でslot A cold boot、`7f16e6d`でinactive B pending boot、FE promotion、B active再起動、mount継承、旧root detach、FE/ADB起動を実機確認。実機failure rollbackは未検証。
 - [x] frontend renderer-readyによるSystem health promotionを実装する
   - 2026-08-13: FE自身が初回描画成功後に作る`/tmp/plumos-fe-ready`だけをproofとし、dispatcherが記録した`system-booted`とpending slotが一致する場合だけactiveへatomic promotionする。slot B実機bootでready前は`active=a,pending=b,attempted=b`を保持し、ready後だけ`active=b`へ昇格してpending/attemptedを消去。B active再起動でも保持を確認。Runtime promotionはtransactional updaterと同時に実装する。
-- [ ] journaled Runtime updaterと1世代rollbackを実装する
-- [ ] inactive-slot System updaterとreadback検証を実装する
-- [ ] Ed25519署名package builder/verifierと公開鍵を実装する
-- [ ] FE System Update画面とsafe reboot flowを統合する
+- [x] journaled Runtime updaterと1世代rollbackを実装する
+- [x] inactive-slot System updaterとreadback検証を実装する
+- [x] Ed25519署名package builder/verifierと公開鍵を実装する
+- [x] FE System Update画面とsafe reboot flowを統合する
+  - 2026-08-13: `tests/test-pixel2-update.sh`とARM64 System chroot検証は合格。公開鍵だけをSystemへ同梱し秘密鍵混入gateを追加。実機でのsigned Runtime/System update、FE表示、進捗、失敗rollbackはacceptanceとして継続する。
 - [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
 
 ## Boot artifact boundary
@@ -143,7 +145,7 @@
 ## plumOS System
 
 - [x] plumOS Pixel2 rootfsを再現可能に生成する
-- [ ] stock initramfsからhandoffされるplumOS `SYSTEM`としてrootfsを生成する
+- [x] stock initramfsからhandoffされるplumOS `SYSTEM`としてrootfsを生成する
 - [x] stock kernel 5.10.198 ABI向けmodule/firmware/runtime manifestへ切り替える
 - [x] initでstateとROMをmountする
 - [x] stock由来名称・unit・frontendがSystemへ混入しないgateを実装する

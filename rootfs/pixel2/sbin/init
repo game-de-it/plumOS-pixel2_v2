@@ -102,6 +102,33 @@ printf 'plumos-init=mounts-ready boot=%s runtime=%s user=%s\n' \
     >>/mnt/plumos/logs/init.log 2>/dev/null || true
 /usr/bin/plumos-diagnostics > /state/plumos/logs/boot-diagnostics.txt 2>&1 || true
 
+apply_pending_update() {
+    updater=/usr/sbin/plumos-system-update
+    log=/mnt/plumos/logs/system-update-boot.log
+    [ -x "$updater" ] || return 0
+    printf '%s update=apply-pending stage=start\n' \
+        "$($bb date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$log"
+    PLUMOS_ROOT=/mnt/plumos PLUMOS_USERDATA_ROOT=/mnt/plumos-user \
+        PLUMOS_BOOT_ROOT=/flash "$updater" apply-pending >>"$log" 2>&1
+    rc=$?
+    printf '%s update=apply-pending stage=end rc=%s\n' \
+        "$($bb date -u +%Y-%m-%dT%H:%M:%SZ)" "$rc" >>"$log"
+    case "$rc" in
+        0) return 0 ;;
+        20)
+            $bb sync
+            if [ -x /mnt/plumos/bin/plumos-safe-shutdown ]; then
+                /mnt/plumos/bin/plumos-safe-shutdown --reboot --no-hold-resume \
+                    >>"$log" 2>&1 || true
+            fi
+            exec $bb reboot -f
+            ;;
+        *) return 0 ;;
+    esac
+}
+
+apply_pending_update
+
 for service in /usr/lib/plumos/init.d/*; do
     [ -x "$service" ] || continue
     printf 'plumos-init=service-start name=%s\n' "${service##*/}"
