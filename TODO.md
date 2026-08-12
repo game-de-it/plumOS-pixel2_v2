@@ -24,6 +24,7 @@
 - [x] FE catalogは存在するruntime/coreだけを公開する
 - [x] NES ROM scan -> `retroarch:quicknes` launch planをhost検証する
 - [x] Pixel2 live launcherで`PLUMOS_ROM_ROOT=/roms`からNESがRetroArchへ到達することをADB検証する
+- [x] Pixel2 RetroArchが`pixel2_joypad`をport 1へautoconfigすることをADB検証する
 - [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
 - [ ] audio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
@@ -95,3 +96,4 @@
 - [x] 同一source refから生成したSD imageのSHA-256再現性をhost検証する
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [ ] app-layer manifest/checksumを実機deploy単位で検証する
+- [ ] fb0に残るstock/旧boot splash由来の`Powered by ROCKNIX`残像をclearし、実機スクショ経路をplumOS化する
