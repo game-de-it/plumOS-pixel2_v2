@@ -26,7 +26,8 @@
   - [x] FTP/SFTP/SambaをPixel2 service capabilityと一致させる
     - Pixel2 imageが所有するSSH/ADBだけを表示する。未搭載daemonを機能するtoggleとして公開しない。
   - [ ] ADBを認証または明示opt-inにし、UI設定・boot・recoveryを一貫させる
-  - [ ] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
+  - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
+    - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
     - 2026-08-13: `/mnt/plumos-user/{roms,images}`を既定scopeとし、macOS/Windows sidecarだけを削除するbounded lock/interval/dry-run/cache-invalidation helperを追加。host fixtureでdry-runと削除を検証。
   - [x] ch/pt/fr/de translationを同梱し、6言語のkeyを検証する
@@ -35,7 +36,7 @@
     - 2026-08-13: 190x156 RGBのPixel2 theme badgeを再現可能なgeneratorから生成し、frontend component/checksumへ統合。
   - [ ] 公開中の`standalone:pcsx_rearmed`と`standalone:yabasanshiro`を実装・実機検証する
 - [ ] shared plumOS AppsをPixel2 componentとして実装する
-  - [ ] Scraping
+  - [x] Scraping
   - [ ] File Manager / NextCommander
   - [ ] Music Player
   - [ ] RetroArch menu

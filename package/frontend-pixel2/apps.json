@@ -3,6 +3,14 @@
   "device": "pixel2",
   "apps": [
     {
+      "id": "scraping",
+      "display_name": "Scraping",
+      "kind": "tool",
+      "launch_profile": "internal:scraping",
+      "visible": true,
+      "menu": "apps"
+    },
+    {
       "id": "pyxel_setup",
       "display_name": "Pyxel Setup",
       "kind": "tool",

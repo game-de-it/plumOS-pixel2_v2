@@ -32,9 +32,9 @@
 | required app-layer components | 7 / 7 present |
 | libretro cores | 114 built |
 | standalone emulator | 3 built / 7 pending |
-| visible Apps entries | 1 |
+| visible Apps entries | 2 |
 | enabled systems with pending content policy | 33 |
-| release blockers detected by audit | 5 |
+| release blockers detected by audit | 4 |
 
 ## Implemented build surface
 
@@ -65,7 +65,6 @@ Device verifiedを意味しない。
 | ADB release policy | development imageは認証無効 | 認証または明示opt-in、boot時設定反映、recovery手順 |
 | PSX alternate SA | `standalone:pcsx_rearmed`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
 | Saturn alternate SA | `standalone:yabasanshiro`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
-| Scraping backend | internal screenはあるがscraper/configなし | scraper sources、plan/fetch/result、HTTPS、artwork write、cancel/resume |
 
 Pixel2では存在しないAudio Output切替、Lid Suspend、FTP/SFTP/Sambaをdevice
 capabilityにより表示しない。これは未実装項目を隠す処置ではなく、物理hardwareと
@@ -77,17 +76,16 @@ Network SettingsのADB/SSH toggleは保存値とboot serviceの実状態が一�
 
 ## P1: application and standalone parity
 
-shared plumOS handheld surfaceにあり、Pixel2で未実装のAppsは次の6項目である。
+shared plumOS handheld surfaceにあり、Pixel2で未実装のAppsは次の5項目である。
 メニューから隠すことを実装完了の代替にはしない。各componentはpinned source、
 Pixel2 launcher、managed dependencies、mutable state、manifest/checksum、license、
 host test、実機acceptanceを揃えてから完了にする。
 
-1. Scraping
-2. File Manager / NextCommander
-3. Music Player
-4. RetroArch menu
-5. PortMaster
-6. Update PortMaster
+1. File Manager / NextCommander
+2. Music Player
+3. RetroArch menu
+4. PortMaster
+5. Update PortMaster
 
 standalone manifestで`pending-binary`なのは次の7件である。
 

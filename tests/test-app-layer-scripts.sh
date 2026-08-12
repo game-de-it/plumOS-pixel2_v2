@@ -20,7 +20,8 @@ for script in \
     package/app-layer-pixel2/bin/plumos-network-services \
     package/app-layer-pixel2/bin/plumos-time-sync \
     package/app-layer-pixel2/bin/plumos-storage-health \
-    package/app-layer-pixel2/bin/plumos-factory-reset; do
+    package/app-layer-pixel2/bin/plumos-factory-reset \
+    package/app-layer-pixel2/bin/plumos-thumbnail-scraper; do
     bash -n "$ROOT_DIR/$script"
 done
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
@@ -36,6 +37,7 @@ grep -q 'internal:network-settings' \
 grep -q 'menu:apps' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
 grep -q '"id": "pyxel_setup"' "$ROOT_DIR/package/frontend-pixel2/apps.json"
+grep -q '"id": "scraping"' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'video_force_aspect = "true"' \
@@ -190,6 +192,12 @@ grep -q 'if (!runtime_device_is_pixel2())' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'generate-pixel2-system-logos.py' \
     "$ROOT_DIR/scripts/build-frontend-component.sh"
+grep -q 'install_scraper_runtime' "$ROOT_DIR/scripts/build-frontend-component.sh"
+grep -q 'PLUMOS_SDCARD_ROOT:-/mnt/plumos-user' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
+grep -q 'PLUMOS_BUSYBOX:-/bin/busybox' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
+grep -q 'scraper-sources.tsv' "$ROOT_DIR/scripts/build-frontend-component.sh"
 
 feature_tmp="$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-feature-test.XXXXXX")"
 trap 'rm -rf "$feature_tmp"' EXIT
