@@ -27,7 +27,9 @@ for script in \
 done
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
-    python3 -m py_compile "$ROOT_DIR/scripts/generate-pixel2-system-logos.py"
+    python3 -m py_compile \
+        "$ROOT_DIR/scripts/generate-pixel2-system-logos.py" \
+        "$ROOT_DIR/scripts/prepare-pixel2-bios.py"
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:gambatte' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:pcsx_rearmed' "$ROOT_DIR/package/frontend-pixel2/systems.json"
