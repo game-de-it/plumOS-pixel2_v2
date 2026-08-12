@@ -33,6 +33,21 @@ that old read-only mount before starting normal services.
 mount namespace: it pivots from the container root into a fresh mounted root,
 executes the new root's init, and requires that init to unmount the old root.
 
+The corrected dispatcher and both slot images were rebuilt from clean commit
+`933ca32` and installed through macOS. Payloads were copied to temporary FAT32
+names, read back, then committed in payload, metadata, dispatcher order.
+
+```text
+dispatcher 703274f6433bc5da2d5587d873a715f2ed4efee0daa69d02a26fb5e261ce5564
+slot-a     8d4f6eb9cafefc4a8f2011fab278df0ade04cfd8f32b38f9d14a19e0c8e4435b
+slot-b     8d4f6eb9cafefc4a8f2011fab278df0ade04cfd8f32b38f9d14a19e0c8e4435b
+backup     a87d7b3ff1831c67f53debad9f9eafd3f77eef83f2fa2a58ba43f5f366a804a4
+```
+
+Both slot manifests report `source_ref=933ca32`; their external SHA-256 files
+match the complete slot images. `PLUMOS_BOOT` and `PLUMOS_USER` were unmounted
+and `/dev/disk4` was ejected successfully. Physical boot remains the next gate.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:
