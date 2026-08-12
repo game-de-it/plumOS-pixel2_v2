@@ -25,6 +25,8 @@ mkdir -p "$BIN_DIR" "$LIB_DIR" "$COMPONENT_DIR" \
 cp -a "$ROOT_DIR/vendor/plumos-frontend/seed/." "$PLUMOS_DIR/"
 rsync -a "$ROOT_DIR/package/app-layer-pixel2/" "$PLUMOS_DIR/"
 install -m 0755 /usr/sbin/fsck.fat "$BIN_DIR/fsck.fat"
+python3 "$ROOT_DIR/scripts/generate-pixel2-system-logos.py" \
+    "$PLUMOS_DIR/themes/default/logos/systems"
 install -m 0644 "$ROOT_DIR/package/frontend-pixel2/systems.json" \
     "$PLUMOS_DIR/config/frontend/systems.json"
 install -m 0644 "$ROOT_DIR/package/frontend-pixel2/menus.json" \

@@ -1,0 +1,361 @@
+#!/bin/sh
+# Remove host OS sidecar files from the SD card.
+
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+LOG_DIR="${PLUMOS_LOG_DIR:-${PLUMOS_ROOT}/logs}"
+LOG_FILE="${PLUMOS_SDCARD_CLEANUP_LOG:-${LOG_DIR}/sdcard-cleanup.log}"
+RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+LOCK_DIR="${PLUMOS_SDCARD_CLEANUP_LOCK:-$RUNTIME_ROOT/sdcard-cleanup.lock}"
+STAMP_FILE="${PLUMOS_SDCARD_CLEANUP_STAMP:-$RUNTIME_ROOT/sdcard-cleanup.last}"
+MIN_INTERVAL_SEC="${PLUMOS_SDCARD_CLEANUP_MIN_INTERVAL_SEC:-60}"
+TMP_PREFIX="$RUNTIME_ROOT/sdcard-cleanup-$$"
+CLEANUP_SCOPE="${PLUMOS_SDCARD_CLEANUP_SCOPE:-content}"
+DRY_RUN=0
+VERBOSE=0
+FORCE=0
+INVALIDATE_CACHE=1
+
+usage() {
+  cat <<EOF
+Usage: plumos-sdcard-cleanup [options]
+
+Options:
+  --scope SCOPE  Cleanup scope: content, roms, images, or all. Default: content.
+  --all         Alias for --scope all.
+  --dry-run     Report counts without deleting files.
+  --force       Ignore the recent-run interval.
+  --min-interval SEC
+                Skip cleanup if it completed within this many seconds.
+  --no-cache-invalidate
+                Do not remove frontend ROM scan caches after deleting sidecars.
+  --verbose     Log each removed path.
+  -h, --help    Show this help.
+
+Environment:
+  PLUMOS_ROOT                 Default: /mnt/plumos
+  PLUMOS_SDCARD_ROOT          Default: /mnt/plumos-user
+  PLUMOS_SDCARD_CLEANUP_SCOPE Default: content
+  PLUMOS_SDCARD_CLEANUP_LOG   Default: \$PLUMOS_ROOT/logs/sdcard-cleanup.log
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --scope)
+      shift
+      CLEANUP_SCOPE="${1:-}"
+      ;;
+    --all)
+      CLEANUP_SCOPE="all"
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    --force)
+      FORCE=1
+      ;;
+    --min-interval)
+      shift
+      MIN_INTERVAL_SEC="${1:-}"
+      ;;
+    --no-cache-invalidate)
+      INVALIDATE_CACHE=0
+      ;;
+    --verbose)
+      VERBOSE=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+mkdir -p "$LOG_DIR" "$RUNTIME_ROOT" 2>/dev/null || true
+
+timestamp() {
+  date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo unknown-time
+}
+
+log() {
+  line="$(printf '%s %s' "$(timestamp)" "$*")"
+  printf '%s\n' "$line"
+  printf '%s\n' "$line" >> "$LOG_FILE" 2>/dev/null || true
+}
+
+cleanup_exit() {
+  rm -f "${TMP_PREFIX}.files" "${TMP_PREFIX}.dirs" "${TMP_PREFIX}.roots" 2>/dev/null || true
+  rm -f "${LOCK_DIR}/pid" 2>/dev/null || true
+  rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
+die() {
+  log "result=error message=$*"
+  exit 1
+}
+
+acquire_lock() {
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo "$$" > "${LOCK_DIR}/pid" 2>/dev/null || true
+    return 0
+  fi
+
+  if [ -r "${LOCK_DIR}/pid" ]; then
+    read -r lock_pid < "${LOCK_DIR}/pid" || lock_pid=""
+    case "$lock_pid" in
+      *[!0-9]*|'') lock_pid="" ;;
+    esac
+    if [ -n "$lock_pid" ] && kill -0 "$lock_pid" 2>/dev/null; then
+      log "result=already_running lock=${LOCK_DIR} pid=${lock_pid}"
+      exit 0
+    fi
+  fi
+
+  rm -rf "$LOCK_DIR" 2>/dev/null || true
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo "$$" > "${LOCK_DIR}/pid" 2>/dev/null || true
+    return 0
+  fi
+
+  log "result=already_running lock=${LOCK_DIR}"
+  exit 0
+}
+
+safe_sdcard_root() {
+  case "$SDCARD_ROOT" in
+    ""|"/")
+      return 1
+      ;;
+  esac
+  [ -d "$SDCARD_ROOT" ]
+}
+
+safe_target_root() {
+  path="$1"
+  case "$path" in
+    ""|"/")
+      return 1
+      ;;
+  esac
+  case "$path" in
+    "$SDCARD_ROOT"|"$SDCARD_ROOT"/*)
+      [ -d "$path" ]
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+add_target_root() {
+  path="$1"
+  safe_target_root "$path" || return 0
+  printf '%s\n' "$path" >> "${TMP_PREFIX}.roots" 2>/dev/null || true
+}
+
+add_rom_roots() {
+  if [ -d "${SDCARD_ROOT}/Roms" ]; then
+    add_target_root "${SDCARD_ROOT}/Roms"
+  elif [ -d "${SDCARD_ROOT}/roms" ]; then
+    add_target_root "${SDCARD_ROOT}/roms"
+  fi
+}
+
+add_image_roots() {
+  if [ -d "${SDCARD_ROOT}/Images" ]; then
+    add_target_root "${SDCARD_ROOT}/Images"
+  elif [ -d "${SDCARD_ROOT}/images" ]; then
+    add_target_root "${SDCARD_ROOT}/images"
+  fi
+}
+
+build_target_roots() {
+  : > "${TMP_PREFIX}.roots" 2>/dev/null || return 0
+  case "$CLEANUP_SCOPE" in
+    content)
+      add_rom_roots
+      add_image_roots
+      ;;
+    roms)
+      add_rom_roots
+      ;;
+    images)
+      add_image_roots
+      ;;
+    all)
+      add_target_root "$SDCARD_ROOT"
+      ;;
+    *)
+      die "invalid --scope: ${CLEANUP_SCOPE}"
+      ;;
+  esac
+}
+
+numeric_value() {
+  case "$1" in
+    *[!0-9]*|'') return 1 ;;
+  esac
+  return 0
+}
+
+now_unix() {
+  date '+%s' 2>/dev/null || echo 0
+}
+
+skip_recent_run() {
+  now="$1"
+  [ "$FORCE" -eq 0 ] || return 1
+  numeric_value "$MIN_INTERVAL_SEC" || MIN_INTERVAL_SEC=0
+  [ "$MIN_INTERVAL_SEC" -gt 0 ] || return 1
+  [ -r "$STAMP_FILE" ] || return 1
+  read -r last_run < "$STAMP_FILE" || last_run=""
+  numeric_value "$last_run" || return 1
+  [ "$now" -ge "$last_run" ] || return 1
+  age=$((now - last_run))
+  if [ "$age" -lt "$MIN_INTERVAL_SEC" ]; then
+    log "result=skipped_recent age=${age} min_interval=${MIN_INTERVAL_SEC} stamp=${STAMP_FILE}"
+    return 0
+  fi
+  return 1
+}
+
+write_stamp() {
+  now="$1"
+  numeric_value "$now" || return 0
+  printf '%s\n' "$now" > "$STAMP_FILE" 2>/dev/null || true
+}
+
+invalidate_frontend_cache() {
+  index_path="${PLUMOS_ROOT}/state/frontend/library-index.json"
+  cache_dir="${PLUMOS_ROOT}/state/frontend/systems"
+  [ "$INVALIDATE_CACHE" -eq 1 ] || return 0
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  rm -f "$index_path" 2>/dev/null || true
+  if [ -d "$cache_dir" ]; then
+    rm -f "$cache_dir"/*.json 2>/dev/null || true
+  fi
+  log "invalidated frontend ROM scan cache"
+}
+
+cleanup_files_by_name() {
+  root="$1"
+  pattern="$2"
+  list="${TMP_PREFIX}.files"
+  count=0
+  failed=0
+
+  : > "$list" 2>/dev/null || return 0
+  find "$root" -type f -name "$pattern" -print > "$list" 2>/dev/null || true
+
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    if [ "$DRY_RUN" -eq 1 ]; then
+      [ "$VERBOSE" -eq 1 ] && log "dry-run file ${path}"
+      count=$((count + 1))
+      continue
+    fi
+    if rm -f "$path" 2>/dev/null; then
+      [ "$VERBOSE" -eq 1 ] && log "removed file ${path}"
+      count=$((count + 1))
+    else
+      log "failed file ${path}"
+      failed=$((failed + 1))
+    fi
+  done < "$list"
+
+  rm -f "$list" 2>/dev/null || true
+  total_files=$((total_files + count))
+  total_failed=$((total_failed + failed))
+  log "root=${root} pattern=${pattern} files=${count} failed=${failed} dry_run=${DRY_RUN}"
+}
+
+cleanup_dirs_by_name() {
+  root="$1"
+  pattern="$2"
+  list="${TMP_PREFIX}.dirs"
+  count=0
+  failed=0
+
+  : > "$list" 2>/dev/null || return 0
+  find "$root" -type d -name "$pattern" -prune -print > "$list" 2>/dev/null || true
+
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    case "$path" in
+      "$root"|"$SDCARD_ROOT"|"/")
+        log "skip unsafe dir ${path}"
+        failed=$((failed + 1))
+        continue
+        ;;
+    esac
+    if [ "$DRY_RUN" -eq 1 ]; then
+      [ "$VERBOSE" -eq 1 ] && log "dry-run dir ${path}"
+      count=$((count + 1))
+      continue
+    fi
+    if rm -rf "$path" 2>/dev/null; then
+      [ "$VERBOSE" -eq 1 ] && log "removed dir ${path}"
+      count=$((count + 1))
+    else
+      log "failed dir ${path}"
+      failed=$((failed + 1))
+    fi
+  done < "$list"
+
+  rm -f "$list" 2>/dev/null || true
+  total_dirs=$((total_dirs + count))
+  total_failed=$((total_failed + failed))
+  log "root=${root} pattern=${pattern} dirs=${count} failed=${failed} dry_run=${DRY_RUN}"
+}
+
+numeric_value "$MIN_INTERVAL_SEC" || die "invalid --min-interval: ${MIN_INTERVAL_SEC}"
+safe_sdcard_root || die "unsafe or missing SD card root: ${SDCARD_ROOT}"
+acquire_lock
+trap cleanup_exit EXIT HUP INT TERM
+
+total_files=0
+total_dirs=0
+total_failed=0
+started_at="$(now_unix)"
+
+if skip_recent_run "$started_at"; then
+  exit 0
+fi
+
+build_target_roots
+log "cleanup start root=${SDCARD_ROOT} scope=${CLEANUP_SCOPE} dry_run=${DRY_RUN} force=${FORCE} min_interval=${MIN_INTERVAL_SEC} invalidate_cache=${INVALIDATE_CACHE}"
+
+if [ ! -s "${TMP_PREFIX}.roots" ]; then
+  log "result=ok files=0 dirs=0 failed=0 dry_run=${DRY_RUN} scope=${CLEANUP_SCOPE} targets=0"
+  write_stamp "$started_at"
+  exit 0
+fi
+
+while IFS= read -r target_root; do
+  [ -n "$target_root" ] || continue
+  cleanup_files_by_name "$target_root" '._*'
+  cleanup_files_by_name "$target_root" '.DS_Store'
+  cleanup_files_by_name "$target_root" 'Thumbs.db'
+  cleanup_files_by_name "$target_root" 'desktop.ini'
+  cleanup_dirs_by_name "$target_root" '__MACOSX'
+done < "${TMP_PREFIX}.roots"
+
+if [ "$total_files" -gt 0 ] || [ "$total_dirs" -gt 0 ]; then
+  invalidate_frontend_cache
+fi
+
+write_stamp "$started_at"
+log "result=ok files=${total_files} dirs=${total_dirs} failed=${total_failed} dry_run=${DRY_RUN}"
+if [ "$total_failed" -gt 0 ]; then
+  exit 1
+fi
+exit 0

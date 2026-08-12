@@ -27,9 +27,12 @@
     - Pixel2 imageが所有するSSH/ADBだけを表示する。未搭載daemonを機能するtoggleとして公開しない。
   - [ ] ADBを認証または明示opt-inにし、UI設定・boot・recoveryを一貫させる
   - [ ] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
-  - [ ] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
-  - [ ] ch/pt/fr/de translationを同梱し、6言語のkey/表示を検証する
-  - [ ] arduboy、megaduck、puzzlescript、superbroswarのtheme logoを追加する
+  - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
+    - 2026-08-13: `/mnt/plumos-user/{roms,images}`を既定scopeとし、macOS/Windows sidecarだけを削除するbounded lock/interval/dry-run/cache-invalidation helperを追加。host fixtureでdry-runと削除を検証。
+  - [x] ch/pt/fr/de translationを同梱し、6言語のkeyを検証する
+    - 2026-08-13: en/jaを含む6言語すべてが364 keyで一致し、Pixel2以外のdevice/distro identityがないことをhost検証。実機glyph/折返しは未検証。
+  - [x] arduboy、megaduck、puzzlescript、superbroswarのtheme logoを追加する
+    - 2026-08-13: 190x156 RGBのPixel2 theme badgeを再現可能なgeneratorから生成し、frontend component/checksumへ統合。
   - [ ] 公開中の`standalone:pcsx_rearmed`と`standalone:yabasanshiro`を実装・実機検証する
 - [ ] shared plumOS AppsをPixel2 componentとして実装する
   - [ ] Scraping

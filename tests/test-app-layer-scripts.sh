@@ -23,6 +23,8 @@ for script in \
     package/app-layer-pixel2/bin/plumos-factory-reset; do
     bash -n "$ROOT_DIR/$script"
 done
+PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
+    python3 -m py_compile "$ROOT_DIR/scripts/generate-pixel2-system-logos.py"
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:gambatte' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:pcsx_rearmed' "$ROOT_DIR/package/frontend-pixel2/systems.json"
@@ -186,6 +188,31 @@ grep -q 'factory-defaults/sa/state/standalone' \
     "$ROOT_DIR/scripts/build-app-layer.sh"
 grep -q 'if (!runtime_device_is_pixel2())' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'generate-pixel2-system-logos.py' \
+    "$ROOT_DIR/scripts/build-frontend-component.sh"
+
+feature_tmp="$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-feature-test.XXXXXX")"
+trap 'rm -rf "$feature_tmp"' EXIT
+mkdir -p "$feature_tmp/card/roms/nes" "$feature_tmp/plumos"
+touch "$feature_tmp/card/roms/nes/.DS_Store"
+PLUMOS_ROOT="$feature_tmp/plumos" \
+PLUMOS_SDCARD_ROOT="$feature_tmp/card" \
+PLUMOS_RUNTIME_ROOT="$feature_tmp/run" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-sdcard-cleanup" \
+    --force --dry-run >"$feature_tmp/cleanup-dry-run.log"
+grep -q 'result=ok files=1 dirs=0 failed=0 dry_run=1' \
+    "$feature_tmp/cleanup-dry-run.log"
+test -f "$feature_tmp/card/roms/nes/.DS_Store"
+PLUMOS_ROOT="$feature_tmp/plumos" \
+PLUMOS_SDCARD_ROOT="$feature_tmp/card" \
+PLUMOS_RUNTIME_ROOT="$feature_tmp/run" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-sdcard-cleanup" \
+    --force >"$feature_tmp/cleanup.log"
+test ! -e "$feature_tmp/card/roms/nes/.DS_Store"
+"$ROOT_DIR/scripts/generate-pixel2-system-logos.py" "$feature_tmp/logos"
+for logo in arduboy megaduck puzzlescript superbroswar; do
+    file "$feature_tmp/logos/$logo.png" | grep -q 'PNG image data, 190 x 156'
+done
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
     "$ROOT_DIR/package/frontend-pixel2" \
     "$ROOT_DIR/package/retroarch-pixel2" \

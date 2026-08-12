@@ -34,7 +34,7 @@
 | standalone emulator | 3 built / 7 pending |
 | visible Apps entries | 1 |
 | enabled systems with pending content policy | 33 |
-| release blockers detected by audit | 14 |
+| release blockers detected by audit | 5 |
 
 ## Implemented build surface
 
@@ -66,9 +66,6 @@ Device verifiedを意味しない。
 | PSX alternate SA | `standalone:pcsx_rearmed`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
 | Saturn alternate SA | `standalone:yabasanshiro`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
 | Scraping backend | internal screenはあるがscraper/configなし | scraper sources、plan/fetch/result、HTTPS、artwork write、cancel/resume |
-| post-scan cleanup | `plumos-sdcard-cleanup`なし | FAT32書き込み完了処理とbounded cleanupをPixel2 storage contractへ合わせる |
-| Language | UIは6言語を列挙、en/jaのみ同梱 | ch/pt/fr/deをPixel2文言と同じkey setで同梱・表示確認 |
-| Theme logos | 4 enabled systemでlogoなし | arduboy、megaduck、puzzlescript、superbroswar assetsを追加 |
 
 Pixel2では存在しないAudio Output切替、Lid Suspend、FTP/SFTP/Sambaをdevice
 capabilityにより表示しない。これは未実装項目を隠す処置ではなく、物理hardwareと
