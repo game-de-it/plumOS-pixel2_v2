@@ -70,6 +70,15 @@ Both slot manifests and the dispatcher manifest report `source_ref=d84d2af`.
 The old recovery System remains intact, and both mounted volumes were cleanly
 unmounted before `/dev/disk4` was ejected.
 
+The `d84d2af` build also stopped at IUX. A read-only 2 GiB capture of p2 was
+taken after unmounting the SD on macOS. `e2fsck -fn` found no structural errors;
+a clone was separately journal-replayed with `e2fsck -fy`. Neither view
+contained `system-dispatcher.log` or `/update-state`, proving that the
+dispatcher had never executed. The fixed dispatcher SquashFS lacked `/dev`,
+`/proc`, `/sys`, `/flash`, and `/storage`, which the stock initramfs must move
+into its selected root before the first `switch_root`. The build now creates
+and verifies all of those mountpoints plus `/newroot` and `/dev/pts`.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:

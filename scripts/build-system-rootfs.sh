@@ -31,6 +31,8 @@ esac
 rm -rf "$OUT_DIR"
 mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR/system-slots" "$DISPATCHER_DIR/bin" \
     "$DISPATCHER_DIR/sbin" "$DISPATCHER_DIR/usr/lib/systemd" \
+    "$DISPATCHER_DIR/dev/pts" "$DISPATCHER_DIR/proc" "$DISPATCHER_DIR/sys" \
+    "$DISPATCHER_DIR/flash" "$DISPATCHER_DIR/storage" "$DISPATCHER_DIR/newroot" \
     "$ROOTFS_DIR/dev/pts" "$ROOTFS_DIR/proc" "$ROOTFS_DIR/sys" \
     "$ROOTFS_DIR/run" "$ROOTFS_DIR/tmp" "$ROOTFS_DIR/boot" \
     "$ROOTFS_DIR/.plumos-dispatcher-old" \

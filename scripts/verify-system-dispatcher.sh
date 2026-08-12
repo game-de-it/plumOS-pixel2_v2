@@ -23,6 +23,12 @@ test -x "$tmp/rootfs/bin/busybox"
 test -L "$tmp/rootfs/bin/sh"
 test "$(readlink "$tmp/rootfs/sbin/init")" = /init
 test "$(readlink "$tmp/rootfs/usr/lib/systemd/systemd")" = /init
+for directory in dev dev/pts proc sys flash storage newroot; do
+    test -d "$tmp/rootfs/$directory" || {
+        printf 'error: dispatcher mountpoint missing: /%s\n' "$directory" >&2
+        exit 1
+    }
+done
 grep -q '/flash/system-slots' "$tmp/rootfs/init"
 grep -q 'system-pending-attempted' "$tmp/rootfs/init"
 grep -q 'system_rolled_back' "$tmp/rootfs/init"
