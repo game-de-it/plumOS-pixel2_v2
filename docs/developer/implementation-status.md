@@ -58,7 +58,7 @@ Device verifiedを意味しない。
 
 | 項目 | 現状 | 必要な実装 |
 | --- | --- | --- |
-| System Update | signed Ed25519 package、Runtime journal/1世代rollback、inactive System readback、FE request/safe rebootをhost実装済み | 実機FEからRuntime/System成功、失敗rollback、表示/logを検証 |
+| System Update | signed Ed25519 Runtime/SystemをADB requestから実機適用し、journal/1世代backup、inactive readback、自動再起動、renderer-ready昇格まで合格 | FEメニューからのrequest、失敗rollback、進捗/失敗表示を実機検証 |
 | Storage Check | `/mnt/plumos-user`に対する同梱`fsck.fat -n`、45秒上限、status/logを実装。RW mount中は誤警告せず判定保留 | RO状態での実機clean/dirty検証 |
 | Factory Reset | `factory-defaults/{ra,pico,sa}`とbackup/atomic restore/dry-runを実装 | 実機対象別restoreと再起動後確認 |
 | Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
@@ -137,11 +137,11 @@ first-bootで未実装なのは次の通り。
 - interrupted provisioningのresumeと既存p3保護;
 - ext4 label/UUID/resize markerの実機確認。
 
-System A/B selector、pending boot、renderer-ready promotionは実機成功経路まで、
-Runtime write-ahead journal、1世代rollback、inactive System update、Ed25519
-builder/verifier、公開鍵、compatibility gate、FE request、safe rebootはhost fixture
-とARM64 chrootまで実装済みである。署名packageの実機成功/失敗経路をrelease前に
-別途acceptanceする。
+System A/B selector、pending boot、renderer-ready promotion、Runtime write-ahead
+journal、1世代backup、inactive System update、Ed25519 builder/verifier、公開鍵、
+compatibility gate、safe rebootは署名packageの実機成功経路まで合格した。FE
+メニューからのrequestと署名packageの実機失敗/rollback経路をrelease前に別途
+acceptanceする。
 
 ## P1: physical-device acceptance
 

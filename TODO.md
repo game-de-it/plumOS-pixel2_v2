@@ -20,7 +20,8 @@
   - [x] `factory-defaults/{ra,pico,sa}` ABIと`plumos-factory-reset`を実装する
     - 2026-08-13: app-layer assemblerがRA/PicoArch/PPSSPP/DraSticのmutable path用overlayを生成し、対象別backup/atomic restore/dry-run helperを同梱。実機復元は未検証。
   - [x] signed Runtime/System updaterをFE System Updateとsafe rebootへ接続する
-    - 2026-08-13: 既存plumOSの署名・journal・1世代rollback設計をPixel2の`/flash/system-slots`とnamed ABIへ移植。署名なし拒否、Runtime適用/health/rollback、中断journal復旧、inactive System readback、誤slot昇格拒否をhost fixtureで検証。実機FEからの署名package適用とfailure rollbackは未検証。
+    - 2026-08-13: 既存plumOSの署名・journal・1世代rollback設計をPixel2の`/flash/system-slots`とnamed ABIへ移植。署名なし拒否、Runtime適用/health/rollback、中断journal復旧、inactive System readback、誤slot昇格拒否をhost fixtureで検証。
+    - 2026-08-13: Ed25519署名済みRuntimeとSystemを実機適用。Runtimeはrenderer-ready前`pending_health`、ready後`healthy`、3450 checksum合格、1世代backupと設定保持を確認。Systemはinactive Bへのreadback、自動2段reboot、ready前の未昇格、B昇格、充電/USB接続中のB active再起動とFE/ADB復帰を確認。FEメニュー項目そのものの物理操作とfailure rollback injectionは未検証。
   - [x] Audio OutputのSpeaker/Headphone選択をPixel2 hardware capabilityと一致させる
     - Pixel2はRK817 speaker単一路のため、存在しない出力切替をFEに表示しない。
   - [x] lidのないPixel2でLid Suspendを選択不能にする
@@ -121,7 +122,7 @@
 - [x] inactive-slot System updaterとreadback検証を実装する
 - [x] Ed25519署名package builder/verifierと公開鍵を実装する
 - [x] FE System Update画面とsafe reboot flowを統合する
-  - 2026-08-13: `tests/test-pixel2-update.sh`とARM64 System chroot検証は合格。公開鍵だけをSystemへ同梱し秘密鍵混入gateを追加。実機でのsigned Runtime/System update、FE表示、進捗、失敗rollbackはacceptanceとして継続する。
+  - 2026-08-13: `tests/test-pixel2-update.sh`とARM64 System chroot検証は合格。公開鍵だけをSystemへ同梱し秘密鍵混入gateを追加。ADBからrequestしたsigned Runtime/Systemの実機成功経路は合格。FEからのrequest、進捗/失敗表示、実機failure rollbackはacceptanceとして継続する。
 - [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
 
 ## Boot artifact boundary
