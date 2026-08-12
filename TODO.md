@@ -113,9 +113,9 @@
 - [ ] first bootでp2を8192 MiBへ拡張しp3 `PLUMOS_USER`を作る
 - [ ] provisioningを中断・再開可能かつ既存p3非破壊にする
 - [x] stock initramfs固定handoffの内側へSystem A/B選択、SHA-256検証、rollbackを実装する
-  - 2026-08-13: stockが固定で開く`/SYSTEM`を小さなPixel2 dispatcherとし、FAT32で名前衝突しない`/system-slots/system-{a,b}.squashfs`を選択する。pendingは一度だけ試し、次bootまでFE health promotionがなければactiveへrollback。`5932ef9`でslot A cold boot、stock mount継承、旧root detach、FE/ADB起動を実機確認。inactive pending boot/promotion/rollbackは未検証。
+  - 2026-08-13: stockが固定で開く`/SYSTEM`を小さなPixel2 dispatcherとし、FAT32で名前衝突しない`/system-slots/system-{a,b}.squashfs`を選択する。pendingは一度だけ試し、次bootまでFE health promotionがなければactiveへrollback。`5932ef9`でslot A cold boot、`7f16e6d`でinactive B pending boot、FE promotion、B active再起動、mount継承、旧root detach、FE/ADB起動を実機確認。実機failure rollbackは未検証。
 - [x] frontend renderer-readyによるSystem health promotionを実装する
-  - 2026-08-13: FE自身が初回描画成功後に作る`/tmp/plumos-fe-ready`だけをproofとし、dispatcherが記録した`system-booted`とpending slotが一致する場合だけactiveへatomic promotionする。実機でFE proofを確認。initial baseline active確定とinactive pending promotionは次の実機gate。Runtime promotionはtransactional updaterと同時に実装する。
+  - 2026-08-13: FE自身が初回描画成功後に作る`/tmp/plumos-fe-ready`だけをproofとし、dispatcherが記録した`system-booted`とpending slotが一致する場合だけactiveへatomic promotionする。slot B実機bootでready前は`active=a,pending=b,attempted=b`を保持し、ready後だけ`active=b`へ昇格してpending/attemptedを消去。B active再起動でも保持を確認。Runtime promotionはtransactional updaterと同時に実装する。
 - [ ] journaled Runtime updaterと1世代rollbackを実装する
 - [ ] inactive-slot System updaterとreadback検証を実装する
 - [ ] Ed25519署名package builder/verifierと公開鍵を実装する

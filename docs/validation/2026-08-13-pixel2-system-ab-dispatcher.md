@@ -135,6 +135,41 @@ the dispatcher-proven `system-booted` slot only after the same FE draw proof.
 This gives the factory slot an explicit healthy generation without marking it
 before frontend readiness.
 
+## Physical inactive-slot promotion
+
+After validating slot A, FE readiness was used to record `system-active=a`.
+Clean commit `7f16e6d` was written only to inactive slot B and read back before
+the state transaction committed `system-pending=b`. Slot A and the fixed
+dispatcher were left untouched.
+
+On reboot, the early state was:
+
+```text
+System source_ref=7f16e6d
+active=a
+pending=b
+attempted=b
+booted=b
+dispatcher reason=pending
+```
+
+The state remained unchanged while FE checksum verification and startup were
+in progress. After `/tmp/plumos-fe-ready` appeared, the health service produced:
+
+```text
+active=b
+pending=missing
+attempted=missing
+booted=b
+last-result={"result":"system_healthy","slot":"b"}
+```
+
+A second safe reboot selected slot B with `reason=active`; FE and ADB returned,
+the old dispatcher root detached, and `active=b` remained intact. This proves
+the physical inactive boot, single-attempt marker, renderer-ready promotion,
+and subsequent active boot. A deliberately failed pending generation and its
+physical rollback remain a separate destructive hardware gate.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:
