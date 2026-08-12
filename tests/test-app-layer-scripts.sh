@@ -93,8 +93,12 @@ grep -q 'pcm.plumos_output' \
     "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
 grep -q 'factory-defaults/alsa/alsa.conf' \
     "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
+grep -q 'pcm.plumos_hw_card' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
 grep -q 'PLUMOS_PIXEL2_INTERNAL_CARD_ID' \
     "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
+grep -q 'plumos_%s_card%d' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos_hotplug.c"
 grep -q 'snd_pcm_avail_update' \
     "$ROOT_DIR/package/audio-router-pixel2/plumos_hotplug.c"
 grep -q 'plumOS Pixel2 hotplug audio' \

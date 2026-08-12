@@ -89,7 +89,7 @@ write_status() {
     printf 'router=alsa_ioplug_hotplug\n'
     printf 'card=%s\n' "$card"
     printf 'card_id=%s\n' "$id"
-    printf 'physical_pcm=plughw:%s,0\n' "$card"
+    printf 'physical_pcm=plumos_plughw_card%s\n' "$card"
     printf 'pcm=plumos_output\n'
     printf 'alsa_config_path=%s\n' "$ASOUND_CONFIG"
   } > "$status_tmp"
@@ -129,6 +129,23 @@ pcm.plumos_pyxel {
     slave.pcm "plumos_hotplug"
 }
 EOF
+  card=0
+  while [ "$card" -le 31 ]; do
+    cat >> "$config_tmp" <<EOF
+
+pcm.plumos_hw_card${card} {
+    type hw
+    card ${card}
+    device 0
+}
+
+pcm.plumos_plughw_card${card} {
+    type plug
+    slave.pcm "plumos_hw_card${card}"
+}
+EOF
+    card=$((card + 1))
+  done
   chmod 0644 "$config_tmp"
   mv -f "$config_tmp" "$ASOUND_CONFIG"
 

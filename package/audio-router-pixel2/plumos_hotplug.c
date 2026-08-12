@@ -275,7 +275,7 @@ static snd_pcm_t *open_physical(const snd_pcm_ioplug_t *io, int card,
                                 snd_pcm_uframes_t *actual_buffer)
 {
     const plumos_pcm_t *owner = io->private_data;
-    char name[32];
+    char name[64];
     snd_pcm_t *pcm = NULL;
     int mode = owner->allow_fast_drop ? SND_PCM_NONBLOCK : 0;
     int attempt;
@@ -292,8 +292,8 @@ static snd_pcm_t *open_physical(const snd_pcm_ioplug_t *io, int card,
      */
     for (attempt = 0; attempt <= 1; attempt++) {
         plug = direct_first ? attempt : 1 - attempt;
-        snprintf(name, sizeof(name), "%s:%d,0", plug ? "plughw" : "hw",
-                 card);
+        snprintf(name, sizeof(name), "plumos_%s_card%d",
+                 plug ? "plughw" : "hw", card);
         err = snd_pcm_open(&pcm, name, SND_PCM_STREAM_PLAYBACK, mode);
         if (err < 0)
             continue;
