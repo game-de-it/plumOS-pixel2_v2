@@ -32,7 +32,7 @@ grep -q '^input_device = "pixel2_joypad"$' \
     "$ROOT/factory-defaults/retroarch/autoconfig/linuxraw/pixel2_joypad.cfg"
 grep -q '^input_joypad_driver = "linuxraw"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
-grep -q '^video_rotation = "0"$' \
+grep -q '^video_rotation = "3"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^config_save_on_exit = "false"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"

@@ -41,6 +41,12 @@ device launch-plan verifier.
 RetroArch and QuickNES are packaged for AArch64. Factory defaults include the
 Pixel2 joypad autoconfig and the current display rotation contract.
 
+Pixel2's stock kernel exposes the LCD as a native `480x640` DRM mode, while
+plumOS presents the frontend and emulators as a logical `640x480` landscape
+surface. The RetroArch plain DRM backend is patched to implement software
+rotation; Pixel2 defaults to `video_rotation = "3"` (`ccw`) to match the
+frontend's validated panel correction.
+
 ## Pending Emulator Work
 
 The MF/V90S developer guides include full baseline libretro cores, PicoArch,

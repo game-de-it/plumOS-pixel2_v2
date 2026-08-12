@@ -27,17 +27,21 @@ grep -q 'internal:network-settings' \
 grep -q 'menu:apps' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
 grep -q '"apps": \[\]' "$ROOT_DIR/package/frontend-pixel2/apps.json"
-grep -q 'video_rotation = "0"' \
+grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'input_joypad_driver = "linuxraw"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
-grep -q '^input_a_btn = "1"$' \
+grep -q '^input_a_btn = "0"$' \
     "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-linuxraw.cfg"
-grep -q '^input_b_btn = "0"$' \
+grep -q '^input_b_btn = "1"$' \
     "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-linuxraw.cfg"
 grep -q '^input_device = "pixel2_joypad"$' \
     "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-linuxraw.cfg"
 grep -q 'SOURCE_COMMIT=69a4f0ea' "$ROOT_DIR/scripts/build-retroarch.sh"
+grep -q 'drm_set_rotation' \
+    "$ROOT_DIR/patches/retroarch/014-pixel2-drm-software-rotation.patch"
+grep -q 'logical_width' \
+    "$ROOT_DIR/patches/retroarch/014-pixel2-drm-software-rotation.patch"
 grep -q 'required_library in libpthread.so.0' \
     "$ROOT_DIR/scripts/build-retroarch.sh"
 grep -q 'emulator/lib/libpthread.so.0' \

@@ -83,12 +83,44 @@ Changes:
 - packaged both `udev` and `linuxraw` autoconfig variants;
 - switched Pixel2 RetroArch joypad runtime to `linuxraw`, which was verified to
   bind `pixel2_joypad`;
-- changed Pixel2 RetroArch runtime rotation from `video_rotation=3` to
-  `video_rotation=0`;
+- initially tested `video_rotation=0`, then `1` and `2`, but the LCD remained
+  rotated because RetroArch's plain DRM driver did not implement
+  `set_rotation`;
 - set `config_save_on_exit=false` so temporary validation settings do not
   overwrite the mutable RetroArch config;
 - launcher now appends required Pixel2 runtime settings every launch, so stale
   mutable RetroArch config cannot disable input/audio/video settings.
+
+## Follow-up Rotation and Button Repair
+
+After physical testing showed the game remained rotated even with
+`video_rotation=2`, the display root cause was narrowed to RetroArch's plain
+DRM backend: `video_drm` had `set_rotation = NULL`, so the configured
+`video_rotation` value did not affect scanout on Pixel2.
+
+The follow-up implementation adds a Pixel2 software-rotation path to the patched
+plain DRM backend:
+
+- caches RetroArch's final rotation in the DRM video state;
+- treats 90/270 degree rotation as a logical `640x480` viewport on the native
+  `480x640` panel;
+- rotates and nearest-neighbour scales each software frame into the physical
+  dumb framebuffer before page flip;
+- exposes `drm_set_rotation`, so `video_rotation` changes now recreate the
+  surface using the requested orientation.
+
+The default Pixel2 RetroArch rotation is restored to `video_rotation=3`,
+matching the frontend's validated `ccw` panel correction. The launcher also
+defaults `PLUMOS_RETROARCH_VIDEO_ROTATION` to `3` so stale mutable config cannot
+return the game to native portrait output.
+
+The same follow-up repair fixes the RetroArch face-button autoconfig to match
+the physical capture:
+
+```text
+input_a_btn = "0"
+input_b_btn = "1"
+```
 
 Runtime append after deployment:
 
@@ -96,7 +128,7 @@ Runtime append after deployment:
 audio_driver = "alsa"
 audio_device = "default"
 video_driver = "drm"
-video_rotation = "0"
+video_rotation = "3"
 input_driver = "udev"
 input_joypad_driver = "linuxraw"
 joypad_autoconfig_dir = "/mnt/plumos/factory-defaults/retroarch/autoconfig"
@@ -165,7 +197,8 @@ ALSA lib seq.c:935:(snd_seq_open_noupdate) Unknown SEQ default
 
 Launch NES from the frontend and confirm on the device:
 
-- the game display orientation is correct with `video_rotation=0`;
+- the game display orientation is correct with the DRM software rotation and
+  `video_rotation=3`;
 - D-pad, ABXY, START/SELECT, shoulders, and hotkey exit work;
 - game audio is audible;
 - volume buttons change real game volume.

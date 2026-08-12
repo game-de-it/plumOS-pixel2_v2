@@ -64,7 +64,8 @@ east-confirm mapping was the wrong direction for Pixel2.
 - `vendor/plumos-frontend/src/plumos_controller_ui.c` forces Pixel2 to use
   south-confirm mapping, while preserving `east-confirm` for non-Pixel2
   callers that explicitly request it.
-- `package/retroarch-pixel2/gkd-pixel2-joypad.cfg` maps joydev button 0 to A
+- `package/retroarch-pixel2/pixel2-joypad-linuxraw.cfg` and
+  `package/retroarch-pixel2/pixel2-joypad-udev.cfg` map joydev button 0 to A
   and joydev button 1 to B, matching the physical capture.
 
 ## Generated-artifact validation

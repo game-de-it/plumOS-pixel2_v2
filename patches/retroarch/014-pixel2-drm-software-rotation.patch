@@ -1,0 +1,285 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+index 3fe6705baf..60810301e4 100644
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -107,6 +107,9 @@ struct drm_surface
+    int frame_width;
+    int frame_height;
+ 
++   int logical_width;
++   int logical_height;
++
+    /* Surfaces with a higher layer will be on top of
+     * the ones with lower. Default is 0. */
+    int layer;
+@@ -116,6 +119,7 @@ struct drm_surface
+    int pitch;
+    int total_pitch;
+ 
++   unsigned rotation;
+    float aspect;
+    struct video_viewport viewport;
+    unsigned int flip_page;
+@@ -167,6 +171,8 @@ struct drm_video
+    int core_width;
+    int core_height;
+    int core_pitch;
++
++   unsigned rotation;
+    /* Both main and menu surfaces are going to have the same aspect,
+     * so we keep it here for future reference. */
+    float current_aspect;
+@@ -261,8 +267,17 @@ static void drm_surface_update_viewport(struct drm_surface *surface)
+    settings_t *settings              = config_get_ptr();
+    struct video_viewport *vp         = &surface->viewport;
+ 
+-   vp->full_width  = drm.current_mode->hdisplay;
+-   vp->full_height = drm.current_mode->vdisplay;
++   if (surface->rotation & 1)
++   {
++      vp->full_width  = drm.current_mode->vdisplay;
++      vp->full_height = drm.current_mode->hdisplay;
++   }
++   else
++   {
++      vp->full_width  = drm.current_mode->hdisplay;
++      vp->full_height = drm.current_mode->vdisplay;
++   }
++
+    video_driver_update_viewport(vp, false,
+          settings ? settings->bools.video_force_aspect : true);
+ 
+@@ -299,9 +314,20 @@ static void drm_surface_setup(void *data,  int src_width, int src_height,
+    surface->frame_width = src_width;
+    surface->frame_height = src_height;
+    surface->aspect      = aspect;
++   surface->rotation    = _drmvars ? (_drmvars->rotation & 3) : 0;
+    drm_surface_update_viewport(surface);
+-   surface->src_width   = surface->viewport.width;
+-   surface->src_height  = surface->viewport.height;
++   surface->logical_width  = surface->viewport.width;
++   surface->logical_height = surface->viewport.height;
++   if (surface->rotation & 1)
++   {
++      surface->src_width  = surface->logical_height;
++      surface->src_height = surface->logical_width;
++   }
++   else
++   {
++      surface->src_width  = surface->logical_width;
++      surface->src_height = surface->logical_height;
++   }
+    surface->pitch       = surface->src_width * bpp;
+ 
+    /* Allocate memory for all the pages in each surface
+@@ -348,6 +374,44 @@ static void drm_page_flip_handler(int fd, unsigned int frame,
+       *pending = false;
+ }
+ 
++static void drm_surface_map_rotated_pixel(const struct drm_surface *surface,
++      unsigned int dst_x, unsigned int dst_y,
++      unsigned int *logical_x, unsigned int *logical_y)
++{
++   unsigned int lw = (unsigned int)surface->logical_width;
++   unsigned int lh = (unsigned int)surface->logical_height;
++
++   if (!lw)
++      lw = 1;
++   if (!lh)
++      lh = 1;
++
++   switch (surface->rotation & 3)
++   {
++      case 1:
++         *logical_x = dst_y;
++         *logical_y = lh - 1 - dst_x;
++         break;
++      case 2:
++         *logical_x = lw - 1 - dst_x;
++         *logical_y = lh - 1 - dst_y;
++         break;
++      case 3:
++         *logical_x = lw - 1 - dst_y;
++         *logical_y = dst_x;
++         break;
++      default:
++         *logical_x = dst_x;
++         *logical_y = dst_y;
++         break;
++   }
++
++   if (*logical_x >= lw)
++      *logical_x = lw - 1;
++   if (*logical_y >= lh)
++      *logical_y = lh - 1;
++}
++
+ static bool drm_page_flip(struct drm_surface *surface)
+ {
+    /* We already have the id of the FB_ID property of
+@@ -574,34 +638,59 @@ static void drm_surface_update(void *data, const void *frame,
+    struct drm_page       *page = NULL;
+    unsigned int x;
+    unsigned int y;
++   unsigned int logical_width = (unsigned int)surface->logical_width;
++   unsigned int logical_height = (unsigned int)surface->logical_height;
+    uint8_t *dst_base = surface->pages[surface->flip_page].buf.map;
+ 
++   if (!logical_width)
++      logical_width = 1;
++   if (!logical_height)
++      logical_height = 1;
++
+    if (surface->bpp == 2)
+    {
+       for (y = 0; y < (unsigned int)surface->src_height; y++)
+       {
+-         const uint16_t *src = (const uint16_t *)((const uint8_t *)frame
+-               + (y * (unsigned int)surface->frame_height /
+-                  (unsigned int)surface->src_height) * surface->total_pitch);
+          uint16_t *dst = (uint16_t *)(dst_base +
+                y * surface->pages[surface->flip_page].buf.stride);
+          for (x = 0; x < (unsigned int)surface->src_width; x++)
+-            dst[x] = src[x * (unsigned int)surface->frame_width /
+-                  (unsigned int)surface->src_width];
++         {
++            unsigned int logical_x;
++            unsigned int logical_y;
++            unsigned int src_x;
++            unsigned int src_y;
++            drm_surface_map_rotated_pixel(surface, x, y,
++                  &logical_x, &logical_y);
++            src_x = logical_x * (unsigned int)surface->frame_width /
++                  logical_width;
++            src_y = logical_y * (unsigned int)surface->frame_height /
++                  logical_height;
++            dst[x] = ((const uint16_t *)((const uint8_t *)frame +
++                     src_y * surface->total_pitch))[src_x];
++         }
+       }
+    }
+    else
+    {
+       for (y = 0; y < (unsigned int)surface->src_height; y++)
+       {
+-         const uint32_t *src = (const uint32_t *)((const uint8_t *)frame
+-               + (y * (unsigned int)surface->frame_height /
+-                  (unsigned int)surface->src_height) * surface->total_pitch);
+          uint32_t *dst = (uint32_t *)(dst_base +
+                y * surface->pages[surface->flip_page].buf.stride);
+          for (x = 0; x < (unsigned int)surface->src_width; x++)
+-            dst[x] = src[x * (unsigned int)surface->frame_width /
+-                  (unsigned int)surface->src_width];
++         {
++            unsigned int logical_x;
++            unsigned int logical_y;
++            unsigned int src_x;
++            unsigned int src_y;
++            drm_surface_map_rotated_pixel(surface, x, y,
++                  &logical_x, &logical_y);
++            src_x = logical_x * (unsigned int)surface->frame_width /
++                  logical_width;
++            src_y = logical_y * (unsigned int)surface->frame_height /
++                  logical_height;
++            dst[x] = ((const uint32_t *)((const uint8_t *)frame +
++                     src_y * surface->total_pitch))[src_x];
++         }
+       }
+    }
+ 
+@@ -808,8 +897,8 @@ static void drm_plane_setup(struct drm_surface *surface)
+     * pw and ph are the input size: the size of the area we read from the fb. */
+    uint32_t plane_flags = 0;
+    struct video_viewport *vp = &surface->viewport;
+-   int32_t plane_x             = vp->x;
+-   int32_t plane_y             = vp->y;
++   int32_t plane_x;
++   int32_t plane_y;
+    uint32_t plane_w            = surface->src_width;
+    uint32_t plane_h            = surface->src_height;
+ 
+@@ -818,6 +907,35 @@ static void drm_plane_setup(struct drm_surface *surface)
+    uint32_t src_x = 0;
+    uint32_t src_y = 0;
+ 
++   switch (surface->rotation & 3)
++   {
++      case 1:
++         plane_x = (int32_t)drm.current_mode->hdisplay -
++            (vp->y + (int32_t)vp->height);
++         plane_y = vp->x;
++         break;
++      case 2:
++         plane_x = (int32_t)drm.current_mode->hdisplay -
++            (vp->x + (int32_t)vp->width);
++         plane_y = (int32_t)drm.current_mode->vdisplay -
++            (vp->y + (int32_t)vp->height);
++         break;
++      case 3:
++         plane_x = vp->y;
++         plane_y = (int32_t)drm.current_mode->vdisplay -
++            (vp->x + (int32_t)vp->width);
++         break;
++      default:
++         plane_x = vp->x;
++         plane_y = vp->y;
++         break;
++   }
++
++   if (plane_x < 0)
++      plane_x = 0;
++   if (plane_y < 0)
++      plane_y = 0;
++
+    /* We have to set a buffer for the plane, whatever buffer we want,
+     * but we must set a buffer so the plane starts reading from it now. */
+    if (drmModeSetPlane(drm.fd, drm.plane_id, drm.crtc_id,
+@@ -1038,6 +1156,7 @@ static void *drm_init(const video_info_t *video,
+    _drmvars->pending_mutex    = slock_new();
+    _drmvars->core_width       = 0;
+    _drmvars->core_height      = 0;
++   _drmvars->rotation         = retroarch_get_rotation() & 3;
+ 
+    _drmvars->main_surface     = NULL;
+    _drmvars->menu_surface     = NULL;
+@@ -1257,6 +1376,31 @@ static void drm_apply_state_changes(void *data)
+       drm_plane_setup(_drmvars->main_surface);
+ }
+ 
++static void drm_set_rotation(void *data, unsigned rotation)
++{
++   struct drm_video *_drmvars = data;
++   unsigned next_rotation = rotation & 3;
++
++   if (!_drmvars || _drmvars->rotation == next_rotation)
++      return;
++
++   _drmvars->rotation = next_rotation;
++   RARCH_LOG("[DRM] Software rotation set to %u.\n", next_rotation);
++
++   if (_drmvars->main_surface)
++   {
++      drm_surface_free(_drmvars, &_drmvars->main_surface);
++      _drmvars->core_width = 0;
++      _drmvars->core_height = 0;
++   }
++
++   if (_drmvars->menu_surface)
++   {
++      drm_surface_free(_drmvars, &_drmvars->menu_surface);
++      _drmvars->menu_active = false;
++   }
++}
++
+ static void drm_set_aspect_ratio (void *data, unsigned aspect_ratio_idx)
+ {
+    struct drm_video *_drmvars = data;
+@@ -1368,7 +1512,7 @@ video_driver_t video_drm = {
+    drm_gfx_free,
+    "drm",
+    NULL, /* set_viewport */
+-   NULL, /* set_rotation */
++   drm_set_rotation,
+    drm_viewport_info,
+    NULL, /* read_viewport */
+    NULL, /* read_frame_raw */
