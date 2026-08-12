@@ -15,7 +15,7 @@ diff --git a/engine/sdl/control.h b/engine/sdl/control.h
 index 9450fdb..be4d790 100644
 --- a/engine/sdl/control.h
 +++ b/engine/sdl/control.h
-@@ -17,7 +17,23 @@
+@@ -17,7 +17,24 @@
  #endif
  #include "joysticks.h"
  
