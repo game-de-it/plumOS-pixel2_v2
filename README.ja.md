@@ -1,61 +1,66 @@
 # plumOS Pixel2
 
-GKD Pixel2（RK3326S）向けのplumOSを再現可能にビルドするための
-リポジトリです。
+[English](README.md)
 
-stock SDから採取するvendor kernel、Pixel2 DTB、module、firmwareは、初期解析と
-ABI比較のための過渡的artifactです。最終imageではplumOS initramfsを組み込んだ
-Pixel2対応kernelをbuildします。stockのSquashFS、init、systemd unit、frontend、
-設定、サービス、テーマ、名称はplumOS runtimeへ持ち込みません。
+GKD Pixel2（RK3326S）向けplumOSを、再現可能なbuildと検証可能な
+component metadataから構築するプロジェクトです。
 
-## 現在の段階
+現在採用しているboot境界は、Pixel2 stockのRockchip boot prefix、kernel
+5.10.198、DTB、内蔵initramfsをboot substrateとして保持し、stock initramfsが
+`/boot/SYSTEM`へhandoffした後の`/sbin/init`以降をplumOSが所有する構成です。
+stockの通常userland、frontend、service、設定、テーマは実行時に使用しません。
 
-- stock SDのブート経路とハードウェアDTBを解析済み
-- ブート必須artifactの採取契約を整備中
-- plumOS所有のrootfs、SquashFS、SD image builderを実装中
-- 初期bring-upではUSB ADBを既定の保守経路とし、USB Wi-Fiは任意機能とする
+## 現在の実装
 
-進捗と実機gateは `TODO.md` と `docs/` を参照してください。
+- plumOS `SYSTEM` SquashFS、init、ADB、USB Wi-Fi、SSH、persistent logs;
+- Pixel2 frontend、START menu、ROM scanner、physical input contract;
+- RetroArchと114 libretro core、PicoArch;
+- OpenBOR、DraStic、PPSSPP standalone;
+- Python 3.11、Pyxel、pygame runtime;
+- RK817/USB向けplumOS audio routing、音量・輝度service;
+- component manifest/checksum付きapp-layerと4 GiB SD image builder。
 
-## System rootfs
+実装済みcomponentと実機合格は同じ意味ではありません。公開済みだがbackendが
+不足するFE項目、未実装Apps、standalone、update、全system実機試験は
+[Pixel2 Implementation Inventory](docs/developer/implementation-status.md)と
+[TODO](TODO.md)で追跡します。
 
-arm64 Docker toolchainを使ってplumOS所有のSquashFSを生成する。
+## Build
 
-```sh
-./scripts/build-tools-image.sh
-./scripts/build-system-rootfs.sh
-```
-
-成果物は`output/system-rootfs/pixel2/payload/SYSTEM`に生成され、build中に
-再展開、主要binaryの実行、kernel module ABI、firmware hash、manifest、
-旧distribution名の不在を検証する。先に`./scripts/build-kernel.sh`を実行し、
-stock kernel overlayを読み取り専用で採取しておく必要がある。stockからSYSTEMへ
-取り込むのは、USB Wi-Fi用firmwareだけであり、userspaceは一切取り込まない。
-
-## Kernel
-
-Linux 6.12.79、Pixel2/PX30S hardware support、plumOS initramfsから
-`Image`、DTB、moduleを生成する。
+Docker Desktopまたは互換Docker engineと、stock Pixel2から読み取り専用で
+採取したboot artifactが必要です。private stock captureはGitへ追加しません。
 
 ```sh
-./scripts/build-kernel.sh
+./scripts/docker-build.sh frontend
+./scripts/docker-build.sh retroarch
+./scripts/docker-build.sh core-catalog --filter all --concurrency 4
+./scripts/docker-build.sh picoarch
+./scripts/docker-build.sh standalone
+./scripts/docker-build.sh pyxel-runtime
+./scripts/docker-build.sh app-layer --strict
+./scripts/docker-build.sh audit
+./scripts/docker-build.sh system-rootfs
+./scripts/docker-build.sh sd-image
 ```
 
-hardware supportはcommit固定し、gamepadは標準`gpio-keys`、DSI compatibleは
-`plumos,generic-dsi`としてbuildする。第三者codeの出所とlicenseは
-`output/kernel/pixel2/source.manifest`と`licenses/`へ記録する。
+成果物は`output/`へ生成されます。現在のSD imageはstock-compatible boot prefix、
+512 MiB `PLUMOS_BOOT`、2048 MiB ext4 `PLUMOS_SYS`、残りのFAT32
+`PLUMOS_USER`を持つ4 GiB seed imageです。
 
-## SD image
+`release-image`は実装監査のrelease blockerが0になるまで失敗します。開発中の
+実機試験には`sd-image`を使い、書き込みにはstock SDとは別のカードを使用します。
 
-stock SDの先頭16 MiBを読み取り専用で一度だけ採取した後、plumOS kernel、
-DTB、SYSTEMから2 GiBのSD imageを生成する。
+## Validation
 
 ```sh
-./scripts/capture-stock-prefix-macos.sh /dev/disk4
-./scripts/build-kernel.sh
-./scripts/build-system-rootfs.sh
-./scripts/build-sd-image.sh
+./tests/test-app-layer-scripts.sh
+./tests/test-system-rootfs-scripts.sh
+./tests/test-sd-image-scripts.sh
+./scripts/verify-app-layer.sh output/app-layer/pixel2/plumos
+./scripts/audit-pixel2-implementation.py --release-gate
 ```
 
-成果物は`output/image/pixel2/`へ生成する。元のstock SDは変更せず、書き込みと
-実機試験には必ず別のSDカードを使用する。
+host上のbuild/checksum成功だけでは、Pixel2のLCD回転、入力、音声、frame pacing、
+終了、save、power動作を保証しません。実機証跡は`docs/validation/`へ記録します。
+
+開発者向けの入口は[Developer Guide](docs/developer/README.md)です。

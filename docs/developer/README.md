@@ -13,6 +13,7 @@ Pixel2 uses its own stock RK3326 boot substrate and hardware runtime.
 5. [Frontend and emulator integration](frontend-emulators.md)
 6. [Hardware services](hardware-services.md)
 7. [Validation and evidence](validation.md)
+8. [Implementation inventory and release blockers](implementation-status.md)
 
 ## Repository Map
 

@@ -21,6 +21,7 @@ stay out of git.
 ./scripts/docker-build.sh standalone
 ./scripts/docker-build.sh pyxel-runtime
 ./scripts/docker-build.sh app-layer --strict
+./scripts/docker-build.sh audit
 ./scripts/docker-build.sh system-rootfs
 ./scripts/docker-build.sh sd-image
 ```
@@ -31,7 +32,17 @@ Host contract checks:
 ./tests/test-app-layer-scripts.sh
 ./tests/test-system-rootfs-scripts.sh
 ./scripts/verify-app-layer.sh output/app-layer/pixel2/plumos
+./scripts/audit-pixel2-implementation.py \
+  --markdown output/validation/pixel2-implementation-audit.md \
+  --json output/validation/pixel2-implementation-audit.json
 ```
+
+`audit` is informational during normal port development. Its
+`--release-gate` form fails while any user-visible Pixel2 setting, Apps entry,
+launch profile, selectable language, or enabled-system theme asset lacks its
+managed implementation. `release-image` runs this gate automatically; a
+development `sd-image` remains available while the known work list is being
+implemented.
 
 ## App Layer
 
