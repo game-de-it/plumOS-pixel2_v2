@@ -7,6 +7,7 @@ for script in \
     scripts/build-frontend-component.sh \
     scripts/build-retroarch.sh \
     scripts/build-libretro-cores.sh \
+    scripts/build-standalone-pixel2.sh \
     scripts/build-app-layer.sh \
     scripts/verify-app-layer.sh \
     package/app-layer-pixel2/bin/plumos-retroarch-launch \
@@ -24,6 +25,7 @@ for script in \
     package/app-layer-pixel2/bin/plumos-thumbnail-scraper; do
     bash -n "$ROOT_DIR/$script"
 done
+sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
     python3 -m py_compile "$ROOT_DIR/scripts/generate-pixel2-system-logos.py"
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
@@ -172,6 +174,26 @@ grep -q 'quicknes|A|https://github.com/libretro/QuickNES_Core.git|058d6651' \
     "$ROOT_DIR/docker/pixel2-tools/libretro-core-recipes.tsv"
 grep -q 'pcsx_rearmed|A|https://github.com/libretro/pcsx_rearmed.git|d26eaee5' \
     "$ROOT_DIR/docker/pixel2-tools/libretro-core-recipes.tsv"
+grep -q 'PCSX_REF=.*9f8b6f248e073f03c530efda7c4cc60a7e2ecafc' \
+    "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
+grep -q 'PCSX_SDL12_REF=.*fc2ec0c128197f1f5050e48359bc41e618f3abfb' \
+    "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
+grep -q 'renderer.*builtin-neon-threaded-pixel2-fbdev-ccw' \
+    "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
+grep -q 'SDL_VIDEODRIVER=dummy' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q 'PLUMOS_PCSX_REQUIRE_ALSA=1' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q '^Gpu3 = builtin_gpu$' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
+grep -q 'logical=640x480 ccw' \
+    "$ROOT_DIR/package/standalone-pixel2/src/pcsx-pixel2-fbdev.h"
+if grep -ERiq 'V9[0]S|M[F]|Miy[o]o|ROCKNIX' \
+    "$ROOT_DIR/patches/pcsx_rearmed" \
+    "$ROOT_DIR/package/standalone-pixel2/src/pcsx-pixel2-fbdev.h"; then
+    printf 'error: foreign identity in Pixel2 PCSX-ReARMed implementation\n' >&2
+    exit 1
+fi
 grep -q 'component: "libretro-cores"' "$ROOT_DIR/scripts/build-libretro-cores.sh"
 grep -q '^complete=true$' "$ROOT_DIR/scripts/build-app-layer.sh"
 grep -q 'PLUMOS_STORAGE_ROOT:-/mnt/plumos-user' \

@@ -87,6 +87,25 @@ grep -q '"device": "pixel2"' "$ROOT/components/picoarch/manifest.json"
 grep -q '"device": "pixel2"' "$ROOT/components/standalone/manifest.json"
 grep -q '"device": "pixel2"' "$ROOT/components/pyxel/manifest.json"
 grep -q '"id": "pyxel"' "$ROOT/config/frontend/systems.json"
+if jq -e '.emulators[] | select(.id == "pcsx_rearmed" and .status == "built")' \
+    "$ROOT/components/standalone/manifest.json" >/dev/null; then
+    for path in \
+        standalone/pcsx_rearmed/bin/pcsx \
+        standalone/pcsx_rearmed/lib/libSDL-1.2.so.0 \
+        standalone/pcsx_rearmed/build-manifest.json \
+        factory-defaults/standalone/pcsx_rearmed/pcsx.cfg; do
+        [ -f "$ROOT/$path" ] || {
+            printf 'error: built PCSX-ReARMed file missing: %s\n' "$path" >&2
+            exit 1
+        }
+    done
+    grep -q '^Gpu3 = builtin_gpu$' \
+        "$ROOT/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
+    grep -q '^thread_rendering = 1$' \
+        "$ROOT/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
+    grep -q '"renderer": "builtin-neon-threaded-pixel2-fbdev-ccw"' \
+        "$ROOT/standalone/pcsx_rearmed/build-manifest.json"
+fi
 python3 - "$ROOT/config/frontend/systems.json" <<'PY'
 import json
 import sys

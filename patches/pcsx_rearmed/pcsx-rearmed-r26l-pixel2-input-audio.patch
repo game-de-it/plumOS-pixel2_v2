@@ -1,0 +1,377 @@
+diff --git a/frontend/plat_sdl.c b/frontend/plat_sdl.c
+index ca0bdf7..2757092 100644
+--- a/frontend/plat_sdl.c
++++ b/frontend/plat_sdl.c
+@@ -92,6 +92,19 @@ static const struct in_default_bind in_sdl_defbinds[] = {
+   { SDLK_F8,     IN_BINDTYPE_EMU, SACTION_SWITCH_DISPMODE },
+   { SDLK_F11,    IN_BINDTYPE_EMU, SACTION_TOGGLE_FULLSCREEN },
+   { SDLK_BACKSPACE, IN_BINDTYPE_EMU, SACTION_FAST_FORWARD },
++#ifdef PLUMOS_PIXEL2
++  { SDLK_WORLD_0,  IN_BINDTYPE_PLAYER12, DKEY_CIRCLE },
++  { SDLK_WORLD_1,  IN_BINDTYPE_PLAYER12, DKEY_CROSS },
++  { SDLK_WORLD_2,  IN_BINDTYPE_PLAYER12, DKEY_TRIANGLE },
++  { SDLK_WORLD_3,  IN_BINDTYPE_PLAYER12, DKEY_SQUARE },
++  { SDLK_WORLD_4,  IN_BINDTYPE_PLAYER12, DKEY_L1 },
++  { SDLK_WORLD_5,  IN_BINDTYPE_PLAYER12, DKEY_R1 },
++  { SDLK_WORLD_6,  IN_BINDTYPE_PLAYER12, DKEY_L2 },
++  { SDLK_WORLD_7,  IN_BINDTYPE_PLAYER12, DKEY_R2 },
++  { SDLK_WORLD_8,  IN_BINDTYPE_PLAYER12, DKEY_SELECT },
++  { SDLK_WORLD_9,  IN_BINDTYPE_PLAYER12, DKEY_START },
++  { SDLK_WORLD_10, IN_BINDTYPE_EMU, SACTION_ENTER_MENU },
++#endif
+   { 0, 0, 0 }
+ };
+ 
+@@ -121,6 +134,11 @@ const struct menu_keymap in_sdl_joy_map[] =
+   { SDLK_WORLD_1, PBTN_MBACK },
+   { SDLK_WORLD_2, PBTN_MA2 },
+   { SDLK_WORLD_3, PBTN_MA3 },
++#ifdef PLUMOS_PIXEL2
++  { SDLK_WORLD_4,  PBTN_L },
++  { SDLK_WORLD_5,  PBTN_R },
++  { SDLK_WORLD_10, PBTN_MENU },
++#endif
+ };
+ 
+ static const struct in_pdata in_sdl_platform_data = {
+diff --git a/frontend/main.c b/frontend/main.c
+index ee2de1c..cfab8e7 100644
+--- a/frontend/main.c
++++ b/frontend/main.c
+@@ -52,3 +52,6 @@
+ #include "libpicofe/readpng.h"
+ 
++#ifdef PLUMOS_PIXEL2
++volatile int plumos_pixel2_fast_forward;
++#endif
+ static void toggle_fast_forward(int force_off);
+@@ -746,19 +749,25 @@ static void toggle_fast_forward(int force_off)
+ 	if (force_off && !fast_forward)
+ 		return;
+ 
+ 	fast_forward = !fast_forward;
+ 	if (fast_forward) {
++#ifdef PLUMOS_PIXEL2
++		plumos_pixel2_fast_forward = 1;
++#endif
+ 		normal_g_opts = g_opts;
+ 		normal_frameskip = pl_rearmed_cbs.frameskip;
+ 		normal_enhancement_enable =
+ 			pl_rearmed_cbs.gpu_neon.enhancement_enable;
+ 
+ 		g_opts |= OPT_NO_FRAMELIM;
+ 		if (normal_frameskip != 0)
+ 			pl_rearmed_cbs.frameskip = 3;
+ 		pl_rearmed_cbs.gpu_neon.enhancement_enable = 0;
+ 	} else {
++#ifdef PLUMOS_PIXEL2
++		plumos_pixel2_fast_forward = 0;
++#endif
+ 		g_opts = normal_g_opts;
+ 		pl_rearmed_cbs.frameskip = normal_frameskip;
+ 		pl_rearmed_cbs.gpu_neon.enhancement_enable =
+ 			normal_enhancement_enable;
+diff --git a/plugins/dfsound/alsa.c b/plugins/dfsound/alsa.c
+index 6b9f83e..53465eb 100644
+--- a/plugins/dfsound/alsa.c
++++ b/plugins/dfsound/alsa.c
+@@ -16,6 +16,8 @@
+  ***************************************************************************/
+ 
+ #include <stdio.h>
++#include <stdlib.h>
++#include <stdint.h>
+ #include <string.h>
+ #define ALSA_PCM_NEW_HW_PARAMS_API
+ #define ALSA_PCM_NEW_SW_PARAMS_API
+@@ -24,6 +26,23 @@
+ 
+ static snd_pcm_t *handle = NULL;
+ static snd_pcm_uframes_t buffer_size;
++#ifdef PLUMOS_PIXEL2
++extern volatile int plumos_pixel2_fast_forward;
++static int fast_forward_muted;
++#endif
++static FILE *audio_dump;
++static size_t audio_dump_bytes;
++static size_t audio_dump_limit;
++static FILE *audio_output_dump;
++static size_t audio_output_dump_bytes;
++static size_t audio_output_dump_limit;
++static unsigned int resample_input_rate = 44100;
++static const unsigned int resample_output_rate = 48000;
++static int16_t *resample_buffer;
++static size_t resample_capacity;
++static uint64_t resample_phase;
++static int16_t resample_previous[2];
++static int resample_have_previous;
+ 
+ static void alsa_finish(void);
+ 
+@@ -37,8 +52,8 @@ static int alsa_init(void)
+  unsigned int pspeed;
+  int pchannels;
+  int format;
+- unsigned int buffer_time = 100000;
+- unsigned int period_time = buffer_time / 4;
++ snd_pcm_uframes_t buffer_frames = 4096;
++ snd_pcm_uframes_t period_frames = 1024;
+  const char *alsa_name = "default";
+  const char *name;
+  int retval = -1;
+@@ -74,6 +89,14 @@ static int alsa_init(void)
+  pchannels=2;
+ 
+- pspeed = 44100;
++ pspeed = resample_output_rate;
++ name = getenv("PLUMOS_PCSX_AUDIO_INPUT_RATE");
++ if (name != NULL)
++  {
++   char *end;
++   unsigned long configured = strtoul(name, &end, 10);
++   if (end != name && *end == '\0' && configured >= 8000 && configured <= 192000)
++    resample_input_rate = (unsigned int)configured;
++  }
+  format = SND_PCM_FORMAT_S16;
+ 
+  if ((err = snd_pcm_open(&handle, alsa_name, 
+@@ -121,15 +143,15 @@ static int alsa_init(void)
+    goto out;
+   }
+ 
+- if((err=snd_pcm_hw_params_set_buffer_time_near(handle, hwparams, &buffer_time, 0))<0)
++ if((err=snd_pcm_hw_params_set_period_size_near(handle, hwparams, &period_frames, 0))<0)
+   {
+-   printf("Buffer time error: %s\n", snd_strerror(err));
++   printf("Period size error: %s\n", snd_strerror(err));
+    goto out;
+   }
+ 
+- if((err=snd_pcm_hw_params_set_period_time_near(handle, hwparams, &period_time, 0))<0)
++ if((err=snd_pcm_hw_params_set_buffer_size_near(handle, hwparams, &buffer_frames))<0)
+   {
+-   printf("Period time error: %s\n", snd_strerror(err));
++   printf("Buffer size error: %s\n", snd_strerror(err));
+    goto out;
+   }
+ 
+@@ -147,6 +169,20 @@ static int alsa_init(void)
+   }
+ 
+  buffer_size = snd_pcm_status_get_avail(status);
++ name = getenv("PLUMOS_PCSX_AUDIO_DUMP");
++ if (name != NULL && name[0] != '\0')
++  {
++   audio_dump = fopen(name, "wb");
++   audio_dump_bytes = 0;
++   audio_dump_limit = 16 * 1024 * 1024;
++  }
++ name = getenv("PLUMOS_PCSX_AUDIO_OUTPUT_DUMP");
++ if (name != NULL && name[0] != '\0')
++  {
++   audio_output_dump = fopen(name, "wb");
++   audio_output_dump_bytes = 0;
++   audio_output_dump_limit = 16 * 1024 * 1024;
++  }
+  retval = 0;
+ 
+ out:
+@@ -158,6 +195,21 @@ out:
+ // REMOVE SOUND
+ static void alsa_finish(void)
+ {
++ if(audio_dump != NULL)
++  {
++   fclose(audio_dump);
++   audio_dump = NULL;
++  }
++ if(audio_output_dump != NULL)
++  {
++   fclose(audio_output_dump);
++   audio_output_dump = NULL;
++  }
++ free(resample_buffer);
++ resample_buffer = NULL;
++ resample_capacity = 0;
++ resample_phase = 0;
++ resample_have_previous = 0;
+  if(handle != NULL)
+   {
+    snd_pcm_drop(handle);
+@@ -182,34 +238,160 @@ static int alsa_busy(void)
+  return l;
+ }
+ 
++static const int16_t *resample_audio(const int16_t *input,
++ snd_pcm_uframes_t frames, snd_pcm_uframes_t *output_frames)
++{
++ const uint64_t output_rate = resample_output_rate;
++ uint64_t limit;
++ size_t needed;
++ snd_pcm_uframes_t produced = 0;
++
++ if (resample_input_rate == output_rate || frames == 0)
++  {
++   *output_frames = frames;
++   return input;
++  }
++ if (!resample_have_previous)
++  {
++   resample_previous[0] = input[0];
++   resample_previous[1] = input[1];
++   resample_have_previous = 1;
++   input += 2;
++   frames--;
++   if (frames == 0)
++    {
++     *output_frames = 0;
++     return input;
++    }
++  }
++ needed = (size_t)(((uint64_t)frames * output_rate + resample_phase +
++  resample_input_rate - 1) / resample_input_rate + 2);
++ if (needed > resample_capacity)
++  {
++   int16_t *resized = realloc(resample_buffer, needed * 2 * sizeof(*resized));
++   if (resized == NULL)
++    {
++     *output_frames = frames;
++     return input;
++    }
++   resample_buffer = resized;
++   resample_capacity = needed;
++  }
++ limit = (uint64_t)frames * output_rate;
++ while (resample_phase < limit)
++  {
++   snd_pcm_uframes_t index = (snd_pcm_uframes_t)(resample_phase / output_rate);
++   uint64_t fraction = resample_phase % output_rate;
++   const int16_t *before = index == 0 ? resample_previous : input + (index - 1) * 2;
++   const int16_t *after = input + index * 2;
++   int channel;
++
++   for (channel = 0; channel < 2; channel++)
++    {
++     int64_t mixed = (int64_t)before[channel] *
++      (int64_t)(output_rate - fraction) +
++      (int64_t)after[channel] * (int64_t)fraction;
++     resample_buffer[produced * 2 + channel] =
++      (int16_t)(mixed / (int64_t)output_rate);
++    }
++   produced++;
++   resample_phase += resample_input_rate;
++  }
++ resample_phase -= limit;
++ resample_previous[0] = input[(frames - 1) * 2];
++ resample_previous[1] = input[(frames - 1) * 2 + 1];
++ *output_frames = produced;
++ return resample_buffer;
++}
++
+ // FEED SOUND DATA
+ static void alsa_feed(void *pSound, int lBytes)
+ {
+- char sbuf[4096];
++ const int16_t *samples = pSound;
++ snd_pcm_sframes_t frames = lBytes / 4;
++ snd_pcm_uframes_t resampled_frames;
++ const char *data;
+ 
+  if (handle == NULL) return;
++#ifdef PLUMOS_PIXEL2
++ if (plumos_pixel2_fast_forward)
++  {
++   if (!fast_forward_muted)
++    {
++     snd_pcm_drop(handle);
++     snd_pcm_prepare(handle);
++     resample_phase = 0;
++     resample_have_previous = 0;
++     fast_forward_muted = 1;
++    }
++   return;
++  }
++ if (fast_forward_muted)
++  {
++   snd_pcm_prepare(handle);
++   fast_forward_muted = 0;
++  }
++#endif
++
+ 
+- if (snd_pcm_state(handle) == SND_PCM_STATE_XRUN)
++ if (audio_dump != NULL && audio_dump_bytes < audio_dump_limit)
+   {
+-   memset(sbuf, 0, sizeof(sbuf));
+-   snd_pcm_prepare(handle);
+-   snd_pcm_writei(handle, sbuf, sizeof(sbuf) / 4);
+-   snd_pcm_writei(handle, sbuf, sizeof(sbuf) / 4);
+-   snd_pcm_writei(handle, sbuf, sizeof(sbuf) / 4);
++   size_t remaining = audio_dump_limit - audio_dump_bytes;
++   size_t bytes = (size_t)lBytes < remaining ? (size_t)lBytes : remaining;
++   audio_dump_bytes += fwrite(pSound, 1, bytes, audio_dump);
++   if (audio_dump_bytes >= audio_dump_limit)
++    {
++     fclose(audio_dump);
++     audio_dump = NULL;
++   }
+   }
+- else
++
++ samples = resample_audio(samples, (snd_pcm_uframes_t)frames,
++  &resampled_frames);
++ frames = (snd_pcm_sframes_t)resampled_frames;
++ data = (const char *)samples;
++ if (audio_output_dump != NULL &&
++     audio_output_dump_bytes < audio_output_dump_limit)
++  {
++   size_t remaining = audio_output_dump_limit - audio_output_dump_bytes;
++   size_t available = (size_t)frames * 4;
++   size_t bytes = available < remaining ? available : remaining;
++   audio_output_dump_bytes += fwrite(samples, 1, bytes, audio_output_dump);
++   if (audio_output_dump_bytes >= audio_output_dump_limit)
++    {
++     fclose(audio_output_dump);
++     audio_output_dump = NULL;
++    }
++  }
++
++ while (frames > 0)
+   {
+-   int l = snd_pcm_avail(handle);
+-   if (l < lBytes / 4)
+-    {
+-     if (l == 0)
+-      return;
++   snd_pcm_sframes_t written = snd_pcm_writei(handle, data, frames);
+ 
+-     lBytes = l * 4;
++   if (written == -EAGAIN)
++    {
++     snd_pcm_wait(handle, 100);
++     continue;
++    }
++   if (written < 0)
++    {
++     int err = snd_pcm_recover(handle, written, 1);
++     if (err < 0)
++      {
++       printf("Audio write recovery failed: %s\n", snd_strerror(err));
++       return;
++      }
++     continue;
++    }
++   if (written == 0)
++    {
++     snd_pcm_wait(handle, 100);
++     continue;
+     }
+-  }
+ 
+- snd_pcm_writei(handle, pSound, lBytes / 4);
++   data += written * 4;
++   frames -= written;
++  }
+ }
+ 
+ void out_register_alsa(struct out_driver *drv)

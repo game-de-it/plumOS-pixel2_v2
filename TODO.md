@@ -38,6 +38,9 @@
   - [x] arduboy、megaduck、puzzlescript、superbroswarのtheme logoを追加する
     - 2026-08-13: 190x156 RGBのPixel2 theme badgeを再現可能なgeneratorから生成し、frontend component/checksumへ統合。
   - [ ] 公開中の`standalone:pcsx_rearmed`と`standalone:yabasanshiro`を実装・実機検証する
+    - [x] PCSX-ReARMed r26l、sdl12-compat、Pixel2回転fbdev、入力、48 kHz音声、factory configを再現可能にhost buildする
+    - [ ] PCSX-ReARMedを実機で起動し、画面、全入力、音声、menu/exit、FE復帰を確認する
+    - [ ] YabaSanshiroをPixel2向けにbuild・実機検証する
 - [ ] shared plumOS AppsをPixel2 componentとして実装する
   - [x] Scraping
   - [ ] File Manager / NextCommander
@@ -80,6 +83,9 @@
   - 2026-08-12: Nintendo DSはPixel2向けDraStic standaloneを追加。armhf DraStic core、source-built Pixel2 integration library、package-local armhf runtime、armhf ALSA `plumos_output` pluginをapp-layerへ統合し、FE routeを`standalone:drastic`へ固定。DraStic BIOSは配布物へ含めず、実機では`/mnt/plumos-user/bios/drastic`、`/mnt/plumos-user/bios/nds`、`/mnt/plumos-user/bios`からmutable workdirへ取り込む。
   - 2026-08-12: PPSSPP v1.20.4をpinned source buildし、Pixel2向けSDL2/GLES/EGL binary、assets、factory `ppsspp.ini`/`controls.ini`、manifest/checksumへ統合。ROM set route validationでPSP `standalone:ppsspp`は`ok`へ移行し、代表ROMがある29 systemのpending binaryは0。実機での画面向き・入力・音声・終了hotkeyは未検証。
   - [ ] PCSX-ReARMed
+    - [x] pinned sourceからAArch64 binaryとpackage-local sdl12-compatをbuildし、component manifest/checksumへ統合する
+    - [x] Pixel2の480x640 framebufferへCCW回転した論理640x480/4:3 presenter、物理button/hat、`plumos_output` 48 kHz routeを実装する
+    - [ ] 代表PSX ROMで実機acceptanceを完了する
   - [ ] YabaSanshiro
   - [ ] ScummVM
   - [ ] EasyRPG

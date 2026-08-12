@@ -175,7 +175,43 @@ case "$id" in
     workdir="${EMU_ROOT}/pcsx_rearmed"
     rom=${1:-}
     [ -n "$rom" ] || fail "missing PlayStation content path" 2
+    [ -f "$rom" ] || fail "missing PlayStation content: $rom" 2
     shift
+    pcsx_factory="${PLUMOS_ROOT}/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
+    pcsx_profile="${HOME}/.pcsx"
+    pcsx_config="${pcsx_profile}/pcsx.cfg"
+    [ -f "$pcsx_factory" ] || fail "PCSX-ReARMed factory config missing" 78
+    mkdir -p "$pcsx_profile/bios" "$pcsx_profile/memcards" \
+      "$pcsx_profile/sstates" "$pcsx_profile/cheats" \
+      "$pcsx_profile/patches" "$pcsx_profile/cfg" \
+      "$pcsx_profile/screenshots" "$HOME/.picodrive"
+    if [ ! -s "$pcsx_config" ]; then
+      pcsx_config_tmp="${pcsx_config}.tmp.$$"
+      cp "$pcsx_factory" "$pcsx_config_tmp" ||
+        fail "failed to seed PCSX-ReARMed config" 78
+      mv -f "$pcsx_config_tmp" "$pcsx_config"
+    fi
+    if [ ! -e "$HOME/.picodrive/skin" ]; then
+      ln -s "$workdir/skin" "$HOME/.picodrive/skin" ||
+        fail "failed to seed PCSX-ReARMed skin" 78
+    fi
+    bios_root="${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"
+    for bios_dir in "$bios_root/psx" "$bios_root/ps1" "$bios_root"; do
+      [ -d "$bios_dir" ] || continue
+      for bios in "$bios_dir"/[sS][cC][pP][hH]*.[bB][iI][nN]; do
+        [ -f "$bios" ] || continue
+        bios_name=${bios##*/}
+        [ -e "$pcsx_profile/bios/$bios_name" ] ||
+          cp -p "$bios" "$pcsx_profile/bios/$bios_name"
+      done
+    done
+    export LD_LIBRARY_PATH="${workdir}/lib:${LD_LIBRARY_PATH}"
+    export SDL_VIDEODRIVER=dummy
+    export SDL_AUDIODRIVER=alsa
+    export SDL_NOMOUSE=1
+    export SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1
+    export PLUMOS_PCSX_AUDIO_INPUT_RATE=44100
+    export PLUMOS_PCSX_REQUIRE_ALSA=1
     set -- -cdfile "$rom" "$@"
     ;;
   nxengine-evo)

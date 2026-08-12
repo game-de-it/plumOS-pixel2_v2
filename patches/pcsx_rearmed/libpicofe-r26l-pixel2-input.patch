@@ -1,0 +1,19 @@
+diff --git a/in_sdl.c b/in_sdl.c
+index 93fe22d..c7cb1a3 100644
+--- a/in_sdl.c
++++ b/in_sdl.c
+@@ -685,7 +685,12 @@ static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_binds)
+ 	for (t = 0; t < IN_BINDTYPE_COUNT; t++) {
+ 		for (i = 0; i < SDLK_LAST; i++) {
+ 			int offs = IN_BIND_OFFS(i, t);
+-			if (state->joy && i < SDLK_WORLD_0)
++			if (state->joy && i < SDLK_WORLD_0
++#ifdef PLUMOS_PIXEL2
++			    && i != SDLK_UP && i != SDLK_DOWN
++			    && i != SDLK_LEFT && i != SDLK_RIGHT
++#endif
++			   )
+ 				binds[offs] = def_binds[offs] = 0;
+ 			if (binds[offs]) {
+ 				if (t == IN_BINDTYPE_EMU)
+

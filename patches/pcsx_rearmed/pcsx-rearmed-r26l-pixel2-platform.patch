@@ -1,0 +1,126 @@
+diff --git a/frontend/plat_sdl.c b/frontend/plat_sdl.c
+index 4fd071a..b0acb11 100644
+--- a/frontend/plat_sdl.c
++++ b/frontend/plat_sdl.c
+@@ -28,4 +28,8 @@
+ #include "plat.h"
+ #include "revision.h"
+ 
++#ifdef PLUMOS_PIXEL2
++#include "pcsx_pixel2_fbdev.h"
++#endif
++
+ #include "libpicofe/plat_sdl.c"
+@@ -130,8 +134,8 @@ const struct menu_keymap in_sdl_joy_map[] =
+   { SDLK_LEFT,  PBTN_LEFT },
+   { SDLK_RIGHT, PBTN_RIGHT },
+   /* joystick */
+-  { SDLK_WORLD_0, PBTN_MOK },
+-  { SDLK_WORLD_1, PBTN_MBACK },
++  { SDLK_WORLD_0, PBTN_MBACK },
++  { SDLK_WORLD_1, PBTN_MOK },
+   { SDLK_WORLD_2, PBTN_MA2 },
+   { SDLK_WORLD_3, PBTN_MA3 },
+ #ifdef PLUMOS_PIXEL2
+@@ -244,6 +248,15 @@ void plat_init(void)
+   if (ret != 0)
+     exit(1);
+ 
++#ifdef PLUMOS_PIXEL2
++  plat_target.vout_method = 0;
++  if (plat_sdl_change_video_mode(g_menuscreen_w, g_menuscreen_h, 1) != 0 ||
++      pixel2_pcsx_fb_init() != 0) {
++    fprintf(stderr, "Pixel2 PCSX framebuffer presenter initialization failed\n");
++    exit(1);
++  }
++#endif
++
+   ver = SDL_Linked_Version();
+   sdl12_compat = ver->patch >= 50;
+   printf("SDL %u.%u.%u compat=%d\n", ver->major, ver->minor, ver->patch, sdl12_compat);
+@@ -280,6 +293,9 @@ void plat_init(void)
+ 
+ void plat_finish(void)
+ {
++#ifdef PLUMOS_PIXEL2
++  pixel2_pcsx_fb_finish();
++#endif
+   free(shadow_fb);
+   shadow_fb = NULL;
+   free(menubg_img);
+@@ -421,6 +437,9 @@ static void gl_resize(void)
+ 
+ static void overlay_or_gl_check_enable(void)
+ {
++#ifdef PLUMOS_PIXEL2
++  plat_target.vout_method = 0;
++#endif
+   int ovl_on = plat_target.vout_method == vout_mode_overlay ||
+     plat_target.vout_method == vout_mode_overlay2x;
+   int gl_on = plat_target.vout_method == vout_mode_gl;
+@@ -582,6 +601,9 @@ static void *setup_blit_callbacks(int w, int h)
+ static void change_mode(int w, int h)
+ {
+   int set_w = w, set_h = h, had_overlay = 0, had_gl = 0;
++#ifdef PLUMOS_PIXEL2
++  plat_target.vout_method = 0;
++#endif
+   if (plat_target.vout_fullscreen && (plat_target.vout_method != 0 || !sdl12_compat))
+     set_w = fs_w, set_h = fs_h;
+   if (plat_sdl_screen->w != set_w || plat_sdl_screen->h != set_h ||
+@@ -703,8 +725,12 @@ void *plat_gvideo_flip(void)
+     forced_flips--;
+     do_flip |= 1;
+   }
+-  if (do_flip)
++  if (do_flip) {
+     SDL_Flip(plat_sdl_screen);
++#ifdef PLUMOS_PIXEL2
++    pixel2_pcsx_fb_present(plat_sdl_screen);
++#endif
++  }
+   handle_window_resize();
+   if (do_flip) {
+     if (forced_clears > 0) {
+@@ -810,8 +836,12 @@ void plat_video_menu_end(void)
+     forced_flips--;
+     do_flip |= 1;
+   }
+-  if (do_flip)
++  if (do_flip) {
+     SDL_Flip(plat_sdl_screen);
++#ifdef PLUMOS_PIXEL2
++    pixel2_pcsx_fb_present(plat_sdl_screen);
++#endif
++  }
+ 
+   handle_window_resize();
+   g_menuscreen_ptr = NULL;
+diff --git a/plugins/dfsound/out.c b/plugins/dfsound/out.c
+index 4443dae..0b82eff 100644
+--- a/plugins/dfsound/out.c
++++ b/plugins/dfsound/out.c
+@@ -1,5 +1,6 @@
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <string.h>
+ #include "out.h"
+ 
+ #define MAX_OUT_DRIVERS 5
+@@ -40,6 +41,11 @@ void SetupSound(void)
+ 	for (i = 0; i < driver_count; i++)
+ 		if (out_drivers[i].init() == 0)
+ 			break;
++	if (getenv("PLUMOS_PCSX_REQUIRE_ALSA") != NULL &&
++	    (i >= driver_count || strcmp(out_drivers[i].name, "alsa") != 0)) {
++		fprintf(stderr, "PCSX-ReARMed requires the plumOS ALSA route\n");
++		exit(1);
++	}
+ 
+ 	if (i < 0 || i >= driver_count) {
+ 		printf("the impossible happened\n");
+@@ -49,4 +55,3 @@ void SetupSound(void)
+ 	out_current = &out_drivers[i];
+ 	// printf("selected sound output driver: %s\n", out_current->name);
+ }
+-

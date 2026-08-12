@@ -64,6 +64,11 @@ if [ -d "$PLUMOS_DIR/factory-defaults/standalone/ppsspp/PSP/SYSTEM" ]; then
     cp -a "$PLUMOS_DIR/factory-defaults/standalone/ppsspp/PSP/SYSTEM/." \
         "$PLUMOS_DIR/factory-defaults/sa/state/standalone/ppsspp/config/ppsspp/PSP/SYSTEM/"
 fi
+if [ -f "$PLUMOS_DIR/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg" ]; then
+    install -D -m 0644 \
+        "$PLUMOS_DIR/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg" \
+        "$PLUMOS_DIR/factory-defaults/sa/state/standalone/pcsx_rearmed/.pcsx/pcsx.cfg"
+fi
 if [ -d "$PLUMOS_DIR/standalone/drastic/config" ]; then
     mkdir -p "$PLUMOS_DIR/factory-defaults/sa/state/standalone/drastic/work/config"
     cp -a "$PLUMOS_DIR/standalone/drastic/config/." \

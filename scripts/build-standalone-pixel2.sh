@@ -30,11 +30,25 @@ DRASTIC_RELEASE_SHA256="${PLUMOS_PIXEL2_DRASTIC_RELEASE_SHA256:-9e4ed98047dea0f0
 DRASTIC_ARCHIVE="${PLUMOS_PIXEL2_DRASTIC_ARCHIVE:-$ROOT_DIR/output/downloads/drastic_miyoo-flip_20251104.zip}"
 DRASTIC_PATCH="$PATCH_DIR/drastic/steward-fu-nds-pixel2-toolchain.patch"
 DRASTIC_MMAP_COMPAT="$ROOT_DIR/package/standalone-pixel2/src/drastic-mmap-compat.c"
+PCSX_REPO="${PLUMOS_PIXEL2_PCSX_REPO:-https://github.com/notaz/pcsx_rearmed.git}"
+PCSX_REF="${PLUMOS_PIXEL2_PCSX_REF:-9f8b6f248e073f03c530efda7c4cc60a7e2ecafc}"
+PCSX_PICOFE_REF="${PLUMOS_PIXEL2_PCSX_PICOFE_REF:-dd11f2d723162eb1cf8e6db9f40de7db0d0b6bba}"
+PCSX_SDL12_REPO="${PLUMOS_PIXEL2_PCSX_SDL12_REPO:-https://github.com/libsdl-org/sdl12-compat.git}"
+PCSX_SDL12_REF="${PLUMOS_PIXEL2_PCSX_SDL12_REF:-fc2ec0c128197f1f5050e48359bc41e618f3abfb}"
+PCSX_INPUT_AUDIO_PATCH="$PATCH_DIR/pcsx_rearmed/pcsx-rearmed-r26l-pixel2-input-audio.patch"
+PCSX_PLATFORM_PATCH="$PATCH_DIR/pcsx_rearmed/pcsx-rearmed-r26l-pixel2-platform.patch"
+PCSX_PICOFE_PATCH="$PATCH_DIR/pcsx_rearmed/libpicofe-r26l-pixel2-input.patch"
+PCSX_FBDEV_HEADER="$ROOT_DIR/package/standalone-pixel2/src/pcsx-pixel2-fbdev.h"
 PPSSPP_REPO="${PLUMOS_PIXEL2_PPSSPP_REPO:-https://github.com/hrydgard/ppsspp.git}"
 PPSSPP_REF="${PLUMOS_PIXEL2_PPSSPP_REF:-v1.20.4}"
 PPSSPP_COMMIT="${PLUMOS_PIXEL2_PPSSPP_COMMIT:-fa50bb1976065c4f8b1b47af227d367fe9771555}"
 PPSSPP_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-no-sdl2-ttf.patch"
 COMMON_CFLAGS="${PLUMOS_PIXEL2_STANDALONE_CFLAGS:--O2 -pipe -march=armv8-a+crc -mtune=cortex-a35 -fomit-frame-pointer -fcommon}"
+VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
+PROJECT_SOURCE_REF="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
+SOURCE_EPOCH="${SOURCE_DATE_EPOCH:-}"
+[ -n "$SOURCE_EPOCH" ] || SOURCE_EPOCH="$(git -C "$ROOT_DIR" show -s --format=%ct HEAD)"
+export SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -133,6 +147,10 @@ copy_runtime_deps() {
       [ -f "$dep" ] || continue
       soname=$(basename "$dep")
       case "$soname" in
+        libSDL-1.2.so.*)
+          # PCSX-ReARMed uses its pinned package-local sdl12-compat build.
+          continue
+          ;;
         ld-linux-aarch64.so.1|libc.so.6|libm.so.6|libpthread.so.0|libdl.so.2|librt.so.1)
           continue
           ;;
@@ -177,6 +195,184 @@ build_openbor() {
   "$STRIP" "$PLUMOS_DIR/standalone/openbor/bin/OpenBOR" >/dev/null 2>&1 || true
   install -m 0644 "$src/LICENSE" "$PLUMOS_DIR/licenses/openbor-LICENSE.txt"
   copy_runtime_deps "$PLUMOS_DIR/standalone/openbor/bin/OpenBOR"
+}
+
+build_pcsx_rearmed() {
+  selected pcsx_rearmed || return 0
+  for command in cmake file git make ninja readelf sha256sum; do
+    require_command "$command"
+  done
+  for input in \
+    "$PCSX_INPUT_AUDIO_PATCH" \
+    "$PCSX_PLATFORM_PATCH" \
+    "$PCSX_PICOFE_PATCH" \
+    "$PCSX_FBDEV_HEADER"; do
+    [ -s "$input" ] || {
+      printf 'error: PCSX-ReARMed Pixel2 input is missing: %s\n' "$input" >&2
+      return 1
+    }
+  done
+
+  PCSX_LOG="$LOG_DIR/pcsx_rearmed.log"
+  PCSX_DST="$PLUMOS_DIR/standalone/pcsx_rearmed"
+  PCSX_SDL_BUILD="$BUILD_ROOT/pcsx-sdl12-build"
+  PCSX_SDL_PREFIX="$BUILD_ROOT/pcsx-sdl12-prefix"
+  mkdir -p "$LOG_DIR" "$PLUMOS_DIR/licenses"
+  : >"$PCSX_LOG"
+
+  src=$(clone_checkout pcsx_rearmed "$PCSX_REPO" "$PCSX_REF") || return 1
+  git -C "$src" submodule sync frontend/libpicofe >>"$PCSX_LOG" 2>&1
+  git -C "$src" submodule update --init --force frontend/libpicofe \
+    >>"$PCSX_LOG" 2>&1 || return 1
+  [ "$(git -C "$src" rev-parse HEAD)" = "$PCSX_REF" ] || {
+    printf 'error: unexpected PCSX-ReARMed source ref\n' >&2
+    return 1
+  }
+  [ "$(git -C "$src/frontend/libpicofe" rev-parse HEAD)" = \
+      "$PCSX_PICOFE_REF" ] || {
+    printf 'error: unexpected PCSX-ReARMed libpicofe source ref\n' >&2
+    return 1
+  }
+  git -C "$src" apply --check "$PCSX_INPUT_AUDIO_PATCH" \
+    >>"$PCSX_LOG" 2>&1
+  git -C "$src" apply "$PCSX_INPUT_AUDIO_PATCH" >>"$PCSX_LOG" 2>&1
+  git -C "$src" apply --check "$PCSX_PLATFORM_PATCH" \
+    >>"$PCSX_LOG" 2>&1
+  git -C "$src" apply "$PCSX_PLATFORM_PATCH" >>"$PCSX_LOG" 2>&1
+  git -C "$src/frontend/libpicofe" apply --check "$PCSX_PICOFE_PATCH" \
+    >>"$PCSX_LOG" 2>&1
+  git -C "$src/frontend/libpicofe" apply "$PCSX_PICOFE_PATCH" \
+    >>"$PCSX_LOG" 2>&1
+  install -m 0644 "$PCSX_FBDEV_HEADER" "$src/frontend/pcsx_pixel2_fbdev.h"
+
+  sdl_src=$(clone_checkout pcsx_sdl12_compat "$PCSX_SDL12_REPO" \
+    "$PCSX_SDL12_REF") || return 1
+  [ "$(git -C "$sdl_src" rev-parse HEAD)" = "$PCSX_SDL12_REF" ] || {
+    printf 'error: unexpected sdl12-compat source ref\n' >&2
+    return 1
+  }
+  rm -rf "$PCSX_SDL_BUILD" "$PCSX_SDL_PREFIX"
+  cmake -S "$sdl_src" -B "$PCSX_SDL_BUILD" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$PCSX_SDL_PREFIX" \
+    -DSDL12TESTS=OFF >>"$PCSX_LOG" 2>&1
+  cmake --build "$PCSX_SDL_BUILD" -j"$JOBS" >>"$PCSX_LOG" 2>&1
+  cmake --install "$PCSX_SDL_BUILD" >>"$PCSX_LOG" 2>&1
+  PCSX_SDL_LIBRARY=$(find "$PCSX_SDL_PREFIX" -type f \
+    -name 'libSDL-1.2.so.*' -print -quit)
+  [ -n "$PCSX_SDL_LIBRARY" ] && [ -f "$PCSX_SDL_LIBRARY" ] || {
+    printf 'error: sdl12-compat library was not installed\n' >&2
+    return 1
+  }
+
+  (
+    cd "$src" || exit 1
+    make clean >/dev/null 2>&1 || true
+    env \
+      CC=gcc CXX=g++ AR=ar RANLIB=ranlib STRIP="$STRIP" \
+      CFLAGS="$COMMON_CFLAGS -DPLUMOS_PIXEL2=1" \
+      CXXFLAGS="$COMMON_CFLAGS -DPLUMOS_PIXEL2=1" \
+      SDL_CONFIG="$PCSX_SDL_PREFIX/bin/sdl-config" \
+      PATH="$PCSX_SDL_PREFIX/bin:$PATH" \
+      ./configure \
+        --platform=generic \
+        --gpu=neon \
+        --sound-drivers=alsa \
+        --enable-neon \
+        --enable-threads \
+        --disable-dynamic \
+        --dynarec=ari64
+    make -j"$JOBS"
+  ) >>"$PCSX_LOG" 2>&1 || return 1
+
+  PCSX_BINARY="$src/pcsx"
+  [ -x "$PCSX_BINARY" ] || {
+    printf 'error: PCSX-ReARMed binary was not produced\n' >&2
+    return 1
+  }
+  file "$PCSX_BINARY" | grep -q 'ELF 64-bit.*ARM aarch64' || return 1
+  needed="$(readelf -d "$PCSX_BINARY" | awk -F'[][]' '/NEEDED/ { print $2 }')"
+  for library in libSDL-1.2.so.0 libasound.so.2; do
+    grep -qx "$library" <<<"$needed" || {
+      printf 'error: PCSX-ReARMed dependency missing: %s\n' "$library" >&2
+      return 1
+    }
+  done
+
+  rm -rf "$PCSX_DST"
+  mkdir -p "$PCSX_DST/bin" "$PCSX_DST/lib" "$PCSX_DST/skin"
+  install -m 0755 "$PCSX_BINARY" "$PCSX_DST/bin/pcsx"
+  "$STRIP" "$PCSX_DST/bin/pcsx" >/dev/null 2>&1 || true
+  install -m 0644 "$PCSX_SDL_LIBRARY" "$PCSX_DST/lib/libSDL-1.2.so.0"
+  install -m 0644 "$src/frontend/pandora/skin/font.png" \
+    "$PCSX_DST/skin/font.png"
+  install -m 0644 "$src/frontend/pandora/skin/font.png" \
+    "$PCSX_DST/skin/fontx2.png"
+  install -m 0644 "$src/frontend/pandora/skin/selector.png" \
+    "$PCSX_DST/skin/selector.png"
+  install -m 0644 "$src/frontend/pandora/skin/selector.png" \
+    "$PCSX_DST/skin/selectorx2.png"
+  install -m 0644 "$src/frontend/pandora/skin/background.png" \
+    "$PCSX_DST/skin/background.png"
+  install -m 0644 "$src/frontend/pandora/skin/skin.txt" \
+    "$PCSX_DST/skin/skin.txt"
+  install -m 0644 "$src/COPYING" \
+    "$PLUMOS_DIR/licenses/pcsx-rearmed-COPYING.txt"
+  install -m 0644 "$sdl_src/LICENSE.txt" \
+    "$PLUMOS_DIR/licenses/sdl12-compat-LICENSE.txt"
+  copy_runtime_deps "$PCSX_DST/bin/pcsx"
+  copy_runtime_deps "$PCSX_DST/lib/libSDL-1.2.so.0"
+  PCSX_SDL2_LIBRARY=$(readlink -f /usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0)
+  [ -f "$PCSX_SDL2_LIBRARY" ] || {
+    printf 'error: PCSX-ReARMed SDL2 runtime is unavailable\n' >&2
+    return 1
+  }
+  pcsx_sdl2_real_name=$(basename "$PCSX_SDL2_LIBRARY")
+  install -m 0644 "$PCSX_SDL2_LIBRARY" "$PLUMOS_DIR/lib/$pcsx_sdl2_real_name"
+  pcsx_sdl2_map=$(printf '%s\t%s' libSDL2-2.0.so.0 "$pcsx_sdl2_real_name")
+  grep -Fqx "$pcsx_sdl2_map" \
+    "$PLUMOS_DIR/config/standalone/soname-links.tsv" ||
+    printf '%s\n' "$pcsx_sdl2_map" >> \
+      "$PLUMOS_DIR/config/standalone/soname-links.tsv"
+  copy_runtime_deps "$PCSX_SDL2_LIBRARY"
+
+  binary_sha256=$(sha256_file "$PCSX_DST/bin/pcsx")
+  sdl_sha256=$(sha256_file "$PCSX_DST/lib/libSDL-1.2.so.0")
+  input_audio_sha256=$(sha256_file "$PCSX_INPUT_AUDIO_PATCH")
+  platform_sha256=$(sha256_file "$PCSX_PLATFORM_PATCH")
+  picofe_sha256=$(sha256_file "$PCSX_PICOFE_PATCH")
+  fbdev_sha256=$(sha256_file "$PCSX_FBDEV_HEADER")
+  cat >"$PCSX_DST/build-manifest.json" <<EOF
+{
+  "device": "pixel2",
+  "version": "$VERSION",
+  "project_source_ref": "$PROJECT_SOURCE_REF",
+  "source_date_epoch": $SOURCE_EPOCH,
+  "upstream": "$PCSX_REPO",
+  "commit": "$PCSX_REF",
+  "libpicofe_commit": "$PCSX_PICOFE_REF",
+  "sdl12_compat": {
+    "upstream": "$PCSX_SDL12_REPO",
+    "commit": "$PCSX_SDL12_REF",
+    "sha256": "$sdl_sha256"
+  },
+  "binary": {
+    "path": "bin/pcsx",
+    "sha256": "$binary_sha256"
+  },
+  "patches": {
+    "input_audio": "$input_audio_sha256",
+    "platform": "$platform_sha256",
+    "libpicofe_input": "$picofe_sha256",
+    "fbdev_presenter": "$fbdev_sha256"
+  },
+  "renderer": "builtin-neon-threaded-pixel2-fbdev-ccw",
+  "display": "640x480-logical-on-480x640-physical",
+  "audio": "alsa-plumos-output-44100-to-48000",
+  "input": "pixel2-sdl-buttons-and-hat",
+  "factory_config": "factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
+}
+EOF
 }
 
 build_drastic() {
@@ -491,11 +687,16 @@ chmod 0755 "$PLUMOS_DIR/bin/plumos-standalone-launch" \
 : >"$PLUMOS_DIR/config/standalone/soname-links.tsv"
 
 OPENBOR_STATUS=pending-binary
+PCSX_STATUS=pending-binary
 DRASTIC_STATUS=pending-binary
 PPSSPP_STATUS=pending-binary
 if selected openbor; then
   build_openbor
   OPENBOR_STATUS=built
+fi
+if selected pcsx_rearmed; then
+  build_pcsx_rearmed
+  PCSX_STATUS=built
 fi
 if selected drastic; then
   build_drastic
@@ -506,16 +707,21 @@ if selected ppsspp; then
   PPSSPP_STATUS=built
 fi
 
-cat > "$COMPONENT_DIR/manifest.json" <<'EOF'
+cat > "$COMPONENT_DIR/manifest.json" <<EOF
 {
   "name": "plumOS Pixel2 standalone launcher",
   "component": "standalone",
   "device": "pixel2",
   "architecture": "aarch64",
+  "version": "$VERSION",
+  "source_ref": "$PROJECT_SOURCE_REF",
+  "source_date_epoch": $SOURCE_EPOCH,
   "status": "partial-binaries",
   "runtime_contract": "Pixel2 app-layer launcher, ALSA plumos_output, SDL/KMSDRM defaults",
   "emulators": [
-    {"id": "pcsx_rearmed", "status": "pending-binary"},
+EOF
+cat >> "$COMPONENT_DIR/manifest.json" <<EOF
+    {"id": "pcsx_rearmed", "status": "$PCSX_STATUS"},
 EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<EOF
     {"id": "ppsspp", "status": "$PPSSPP_STATUS"},

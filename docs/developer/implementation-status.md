@@ -47,6 +47,7 @@ Device verifiedを意味しない。
 - RetroArch 1.22.2と114 libretro core catalog;
 - PicoArchと共有libretro core route;
 - OpenBOR、DraStic、PPSSPP standalone;
+- PCSX-ReARMed standalone（host build済み、実機acceptance待ち）;
 - Pyxel/Python 3.11/pygame/numpy/Pillow runtimeとPyxel Setup;
 - RK817/USB向けALSA `plumos_output`、global volume/brightness service;
 - strict app-layer metadata、SquashFS `SYSTEM`、4 GiB SD image generation。
@@ -62,7 +63,7 @@ Device verifiedを意味しない。
 | Storage Check | `/mnt/plumos-user`に対する同梱`fsck.fat -n`、45秒上限、status/logを実装。RW mount中は誤警告せず判定保留 | RO状態での実機clean/dirty検証 |
 | Factory Reset | `factory-defaults/{ra,pico,sa}`とbackup/atomic restore/dry-runを実装 | 実機対象別restoreと再起動後確認 |
 | Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
-| PSX alternate SA | `standalone:pcsx_rearmed`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
+| PSX alternate SA | pinned PCSX-ReARMed r26l、sdl12-compat、Pixel2 CCW fbdev presenter、入力、48 kHz音声、factory configをhost build済み | 実機で起動、画面、全入力、音声、menu/exit、FE復帰を検証 |
 | Saturn alternate SA | `standalone:yabasanshiro`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
 
 Pixel2では存在しないAudio Output切替、Lid Suspend、FTP/SFTP/Sambaをdevice
@@ -87,9 +88,9 @@ host test、実機acceptanceを揃えてから完了にする。
 4. PortMaster
 5. Update PortMaster
 
-standalone manifestで`pending-binary`なのは次の7件である。
+standalone manifestで`pending-binary`なのは次の6件である。PCSX-ReARMedは
+host build済みだが、実機acceptance完了まではP0 release blockerとして扱う。
 
-- PCSX-ReARMed;
 - YabaSanshiro;
 - ScummVM;
 - EasyRPG;

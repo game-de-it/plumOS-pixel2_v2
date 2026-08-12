@@ -101,6 +101,29 @@ for the current logical landscape runtime. Physical Pixel2 display, controls,
 audio, and exit-hotkey validation are still required before treating PPSSPP as
 a release-proven runtime.
 
+PCSX-ReARMed is built from pinned upstream r26l commit
+`9f8b6f248e073f03c530efda7c4cc60a7e2ecafc` with libpicofe commit
+`dd11f2d723162eb1cf8e6db9f40de7db0d0b6bba` and sdl12-compat commit
+`fc2ec0c128197f1f5050e48359bc41e618f3abfb`. Its default renderer is the
+threaded built-in NEON GPU. Pixel2 does not use a foreign-device GLES profile:
+the SDL surface is presented directly to `/dev/fb0` as a logical 640x480 frame,
+counter-clockwise rotated onto the physical 480x640 framebuffer and scaled to
+4:3.
+
+The PCSX input contract follows Pixel2's captured SDL order: physical B/A/X/Y
+are buttons 0/1/2/3, L/R/L2/R2 are 4/5/6/7, SELECT/START are 8/9, and FUNCTION
+is button 10. D-pad directions are SDL hat events. In the emulator menu,
+physical A confirms and B returns. Audio is required to open the plumOS ALSA
+route and is resampled from the PSX 44.1 kHz stream to the RK817 route's 48 kHz
+contract. The launcher seeds `~/.pcsx/pcsx.cfg`, preserves user changes and
+save data, and imports user-provided `scph*.bin` files from the Pixel2 BIOS
+directories without packaging BIOS content.
+
+The host build and dependency gates are complete. Physical Pixel2 launch,
+rotation/aspect, D-pad/ABXY/START/SELECT/shoulders/FUNCTION, sound, save, menu
+exit, and frontend reacquisition remain required before this alternate profile
+is release-proven.
+
 Do not expose a Nintendo DS libretro DeSmuME route on Pixel2 unless a real
 Pixel2 build-system component exists. The current DS route is
 `standalone:drastic`.
