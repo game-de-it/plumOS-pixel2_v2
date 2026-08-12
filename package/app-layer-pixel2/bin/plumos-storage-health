@@ -1,0 +1,122 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+STORAGE_ROOT="${PLUMOS_STORAGE_ROOT:-/mnt/plumos-user}"
+RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+BB="${PLUMOS_BUSYBOX:-/bin/busybox}"
+FSCK="${PLUMOS_FSCK_FAT:-$PLUMOS_ROOT/bin/fsck.fat}"
+TIMEOUT_SEC="${PLUMOS_STORAGE_CHECK_TIMEOUT_SEC:-45}"
+STATE_DIR="$PLUMOS_ROOT/state/storage-health"
+STATUS_FILE="$STATE_DIR/status"
+LOG_FILE="$PLUMOS_ROOT/logs/storage-health.log"
+RUN_DIR="$RUNTIME_ROOT/storage-health"
+LOCK_DIR="$RUN_DIR/check.lock"
+CHECK_OUTPUT="$RUN_DIR/fsck-output.log"
+PROC_MOUNTS="${PLUMOS_PROC_MOUNTS:-/proc/mounts}"
+[ -x "$BB" ] || BB=/bin/busybox
+case "$TIMEOUT_SEC" in ''|*[!0-9]*) TIMEOUT_SEC=45 ;; esac
+[ "$TIMEOUT_SEC" -ge 1 ] && [ "$TIMEOUT_SEC" -le 60 ] || TIMEOUT_SEC=45
+
+canonical_storage_root() {
+  "$BB" readlink -f "$STORAGE_ROOT" 2>/dev/null || printf '%s\n' "$STORAGE_ROOT"
+}
+
+mount_fields() {
+  root="$(canonical_storage_root)"
+  best_mount= best_device= best_fstype= best_options=
+  while read -r device mountpoint fstype options rest; do
+    case "$root" in
+      "$mountpoint"|"$mountpoint"/*)
+        if [ "${#mountpoint}" -gt "${#best_mount}" ]; then
+          best_mount="$mountpoint"; best_device="$device"
+          best_fstype="$fstype"; best_options="$options"
+        fi
+        ;;
+    esac
+  done <"$PROC_MOUNTS"
+  [ -n "$best_mount" ] || return 1
+  printf 'device=%s\nmountpoint=%s\nfstype=%s\nmount_options=%s\n' \
+    "$best_device" "$best_mount" "$best_fstype" "$best_options"
+}
+
+field() {
+  key="$1"
+  printf '%s\n' "$MOUNT_FIELDS" | "$BB" sed -n "s/^${key}=//p" | "$BB" head -n 1
+}
+
+mount_mode() {
+  case ",$1," in *,ro,*) printf 'ro\n' ;; *) printf 'rw\n' ;; esac
+}
+
+fat_clean_shutdown_flag() {
+  device="$1"
+  set -- $("$BB" dd if="$device" bs=1 skip=65 count=1 2>/dev/null | "$BB" od -An -tu1)
+  [ "$#" -eq 1 ] || { printf 'unknown\n'; return; }
+  if [ $(($1 & 1)) -ne 0 ]; then printf 'false\n'; else printf 'true\n'; fi
+}
+
+print_status() {
+  MOUNT_FIELDS="$(mount_fields 2>/dev/null || true)"
+  if [ -z "$MOUNT_FIELDS" ]; then
+    printf 'result=unavailable\nreason=mount-not-found\n'
+    return 1
+  fi
+  printf '%s\n' "$MOUNT_FIELDS"
+  printf 'mount_mode=%s\n' "$(mount_mode "$(field mount_options)")"
+  if [ -r "$STATUS_FILE" ]; then "$BB" cat "$STATUS_FILE"; else
+    printf 'result=unknown\nrepair_required=unknown\nlast_check=never\n'
+  fi
+}
+
+run_check() {
+  "$BB" mkdir -p "$STATE_DIR" "$PLUMOS_ROOT/logs" "$RUN_DIR" || return 1
+  if ! "$BB" mkdir "$LOCK_DIR" 2>/dev/null; then
+    printf 'result=already-running\n'
+    return 0
+  fi
+  trap '"$BB" rm -rf "$LOCK_DIR"; "$BB" rm -f "$CHECK_OUTPUT"' EXIT HUP INT TERM
+  MOUNT_FIELDS="$(mount_fields 2>/dev/null || true)"
+  [ -n "$MOUNT_FIELDS" ] || { printf 'result=unavailable\nreason=mount-not-found\n'; return 1; }
+  device="$(field device)"; mountpoint="$(field mountpoint)"
+  fstype="$(field fstype)"; options="$(field mount_options)"
+  mode="$(mount_mode "$options")"
+  case "$fstype" in vfat|msdos) ;; *) printf 'result=unsupported\nfstype=%s\n' "$fstype"; return 1 ;; esac
+  [ -x "$FSCK" ] || { printf 'result=unavailable\nreason=fsck-fat-missing\n'; return 1; }
+
+  "$BB" sync
+  "$BB" rm -f "$CHECK_OUTPUT"
+  clean_shutdown="$(fat_clean_shutdown_flag "$device")"
+  rc=0
+  "$BB" timeout "$TIMEOUT_SEC" "$FSCK" -n "$device" >"$CHECK_OUTPUT" 2>&1 || rc=$?
+  dirty=unknown
+  case "$clean_shutdown" in true) dirty=false ;; false) dirty=true ;; esac
+  if "$BB" grep -qi 'Dirty bit is set' "$CHECK_OUTPUT" 2>/dev/null; then dirty=true; fi
+  if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ] || [ "$rc" -eq 143 ]; then
+    if [ "$dirty" = true ]; then result=dirty; repair=true; else result=timeout; repair=unknown; fi
+  elif [ "$dirty" = true ]; then result=dirty; repair=true
+  elif [ "$rc" -eq 0 ]; then result=clean; repair=false
+  else result=inconsistent; repair=true
+  fi
+  checked_at="$("$BB" date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || printf unknown)"
+  {
+    printf 'result=%s\nrepair_required=%s\ndirty_bit=%s\n' "$result" "$repair" "$dirty"
+    printf 'clean_shutdown_bit=%s\nfsck_rc=%s\ncheck_mode=read-only\n' "$clean_shutdown" "$rc"
+    printf 'checked_while_mounted=%s\ntimeout_sec=%s\nlast_check=%s\n' "$mode" "$TIMEOUT_SEC" "$checked_at"
+  } >"$STATUS_FILE.tmp.$$"
+  "$BB" mv -f "$STATUS_FILE.tmp.$$" "$STATUS_FILE"
+  {
+    printf '%s device=%s mount=%s fstype=%s mode=%s result=%s dirty=%s rc=%s\n' \
+      "$checked_at" "$device" "$mountpoint" "$fstype" "$mode" "$result" "$dirty" "$rc"
+    "$BB" sed -n '1,200p' "$CHECK_OUTPUT"
+    printf '%s\n' '---'
+  } >>"$LOG_FILE"
+  "$BB" sync
+  print_status
+}
+
+case "${1:-status}" in
+  status) print_status ;;
+  check) run_check ;;
+  *) printf 'usage: %s [status|check]\n' "$0" >&2; exit 2 ;;
+esac

@@ -6124,15 +6124,21 @@ static void add_system_settings_entries(struct ui_state *ui) {
   format_runtime_number_setting_value("system_volume", device->volume, value,
                                       sizeof(value));
   add_setting_entry(ui, "system_volume", "Volume", value);
-  add_setting_entry(ui, "system_audio_output", "Audio Output",
-                    setting_choice_display_value("system_audio_output",
-                                                 device->audio_output));
+  /* Pixel2 has one RK817 speaker route and no jack-routing backend. */
+  if (!runtime_device_is_pixel2()) {
+    add_setting_entry(ui, "system_audio_output", "Audio Output",
+                      setting_choice_display_value("system_audio_output",
+                                                   device->audio_output));
+  }
 
   format_runtime_number_setting_value("system_brightness", device->brightness,
                                       value, sizeof(value));
   add_setting_entry(ui, "system_brightness", "Brightness", value);
-  add_bool_setting_entry(ui, "system_lid_suspend", "Lid Suspend",
-                         device->lid_suspend_enabled);
+  /* A lid setting is not a Pixel2 capability. */
+  if (!runtime_device_is_pixel2()) {
+    add_bool_setting_entry(ui, "system_lid_suspend", "Lid Suspend",
+                           device->lid_suspend_enabled);
+  }
   format_runtime_number_setting_value("system_lumination", device->lumination,
                                       value, sizeof(value));
   add_setting_entry(ui, "system_lumination", "Lumination", value);
@@ -6301,12 +6307,15 @@ static void add_network_service_entries(struct ui_state *ui) {
 
   add_bool_setting_entry(ui, "network_ssh_enabled", "SSH",
                          device->ssh_service_running);
-  add_bool_setting_entry(ui, "network_ftp_enabled", "FTP",
-                         device->ftp_service_running);
-  add_bool_setting_entry(ui, "network_sftp_enabled", "SFTP",
-                         device->sftp_service_running);
-  add_bool_setting_entry(ui, "network_samba_enabled", "Samba",
-                         device->samba_service_running);
+  /* Pixel2 ships SSH and ADB only; do not expose absent daemons as toggles. */
+  if (!runtime_device_is_pixel2()) {
+    add_bool_setting_entry(ui, "network_ftp_enabled", "FTP",
+                           device->ftp_service_running);
+    add_bool_setting_entry(ui, "network_sftp_enabled", "SFTP",
+                           device->sftp_service_running);
+    add_bool_setting_entry(ui, "network_samba_enabled", "Samba",
+                           device->samba_service_running);
+  }
   add_bool_setting_entry(ui, "network_adb_enabled", "ADB",
                          device->adb_service_running);
 }

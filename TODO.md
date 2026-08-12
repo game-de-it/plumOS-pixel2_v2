@@ -13,13 +13,18 @@
 - [x] FE catalogと生成app-layerの不整合を検出する自動監査を追加する
   - `./scripts/docker-build.sh audit`は開発中のreport、`audit --release-gate`は公開済み未実装があれば失敗する。`release-image`へrelease gateを統合。
 - [ ] P0 user surface blockerを0件にする
-  - [ ] `plumos-time-sync`とRK817 RTC/timezone/manual-time contractを実装する
-  - [ ] `plumos-storage-health`のbounded read-only FAT32検査を実装する
-  - [ ] `factory-defaults/{ra,pico,sa}` ABIと`plumos-factory-reset`を実装する
+  - [x] `plumos-time-sync`とRK817 RTC/timezone/manual-time contractを実装する
+    - 2026-08-13: RK817 `/dev/rtc0`へのUTC保存、8秒上限のRFC868同期、automatic/manual time、status/logをfrontend componentへ統合。実機RTC read/writeと再起動後保持は未検証。
+  - [x] `plumos-storage-health`のbounded read-only FAT32検査を実装する
+    - 2026-08-13: Pixel2 user volume `/mnt/plumos-user`を対象に、同梱`fsck.fat -n`、45秒上限、dirty bit/status/logを実装。実機clean/dirty判定は未検証。
+  - [x] `factory-defaults/{ra,pico,sa}` ABIと`plumos-factory-reset`を実装する
+    - 2026-08-13: app-layer assemblerがRA/PicoArch/PPSSPP/DraSticのmutable path用overlayを生成し、対象別backup/atomic restore/dry-run helperを同梱。実機復元は未検証。
   - [ ] signed update backend完成までSystem Updateをplaceholderではない開発状態表示・実装gateへ接続する
-  - [ ] Audio OutputのSpeaker/Headphone選択をPixel2 hardware capabilityと一致させる
-  - [ ] lidのないPixel2でLid Suspendを選択不能にする
-  - [ ] FTP/SFTP/Sambaを所有runtimeとして実装し、service設定をboot状態へ反映する
+  - [x] Audio OutputのSpeaker/Headphone選択をPixel2 hardware capabilityと一致させる
+    - Pixel2はRK817 speaker単一路のため、存在しない出力切替をFEに表示しない。
+  - [x] lidのないPixel2でLid Suspendを選択不能にする
+  - [x] FTP/SFTP/SambaをPixel2 service capabilityと一致させる
+    - Pixel2 imageが所有するSSH/ADBだけを表示する。未搭載daemonを機能するtoggleとして公開しない。
   - [ ] ADBを認証または明示opt-inにし、UI設定・boot・recoveryを一貫させる
   - [ ] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
   - [ ] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する

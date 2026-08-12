@@ -1,0 +1,63 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+FACTORY_ROOT="${PLUMOS_FACTORY_DEFAULTS_ROOT:-$PLUMOS_ROOT/factory-defaults}"
+BACKUP_ROOT="${PLUMOS_FACTORY_RESET_BACKUP_ROOT:-$PLUMOS_ROOT/backups/factory-reset}"
+TARGET="${1:-}"
+DRY_RUN=0
+[ "${2:-}" = --dry-run ] && DRY_RUN=1
+
+case "$TARGET" in
+  ra|retroarch) targets=ra ;;
+  pico|picoarch) targets=pico ;;
+  sa|standalone) targets=sa ;;
+  all|emulators)
+    targets=
+    for candidate in ra pico sa; do
+      [ -d "$FACTORY_ROOT/$candidate" ] && targets="${targets}${targets:+ }${candidate}"
+    done
+    ;;
+  *) printf 'Usage: plumos-factory-reset ra|pico|sa|all [--dry-run]\n' >&2; exit 2 ;;
+esac
+[ -n "$targets" ] || { printf 'error: no installed factory defaults\n' >&2; exit 1; }
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  backup_base="$BACKUP_ROOT/dry-run"
+else
+  stamp="$(date '+%Y%m%d-%H%M%S' 2>/dev/null || printf unknown)"
+  backup_base="$BACKUP_ROOT/$stamp"
+  mkdir -p "$backup_base" || exit 1
+fi
+
+restore_target() {
+  target="$1"
+  source_root="$FACTORY_ROOT/$target"
+  [ -d "$source_root" ] || return 1
+  find "$source_root" -type f | while IFS= read -r source; do
+    relative="${source#"$source_root"/}"
+    destination="$PLUMOS_ROOT/$relative"
+    if [ "$DRY_RUN" -eq 1 ]; then
+      printf 'would restore %s: %s\n' "$target" "$relative"
+      continue
+    fi
+    if [ -f "$destination" ]; then
+      backup="$backup_base/$target/$relative"
+      mkdir -p "${backup%/*}" || exit 1
+      cp -p "$destination" "$backup" || exit 1
+    fi
+    mkdir -p "${destination%/*}" || exit 1
+    temporary="${destination}.factory-reset.$$"
+    cp -p "$source" "$temporary" || exit 1
+    mv -f "$temporary" "$destination" || exit 1
+    printf 'restored %s: %s\n' "$target" "$relative"
+  done
+}
+
+status=0
+for target in $targets; do restore_target "$target" || status=1; done
+if [ "$DRY_RUN" -eq 0 ]; then
+  sync 2>/dev/null || true
+  printf 'backup: %s\n' "$backup_base"
+fi
+exit "$status"

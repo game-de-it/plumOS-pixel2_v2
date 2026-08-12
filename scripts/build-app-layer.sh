@@ -48,6 +48,27 @@ rsync -a "$AUDIO_ROUTER/" "$PLUMOS_DIR/"
 rsync -a "$PYXEL/" "$PLUMOS_DIR/"
 rsync -a "$ROOT_DIR/package/app-layer-pixel2/" "$PLUMOS_DIR/"
 chmod 0755 "$PLUMOS_DIR/bin/"*
+
+# Normalize component-specific defaults into the public Factory Reset ABI.
+# Paths below each target are relative to PLUMOS_ROOT and are restored by
+# plumos-factory-reset with a timestamped backup of any existing file.
+install -D -m 0644 \
+    "$PLUMOS_DIR/factory-defaults/retroarch/retroarch.cfg" \
+    "$PLUMOS_DIR/factory-defaults/ra/config/retroarch/retroarch.cfg"
+install -D -m 0644 \
+    "$PLUMOS_DIR/config/standalone/picoarch.env" \
+    "$PLUMOS_DIR/factory-defaults/pico/config/standalone/picoarch.env"
+if [ -d "$PLUMOS_DIR/factory-defaults/standalone/ppsspp/PSP/SYSTEM" ]; then
+    mkdir -p \
+        "$PLUMOS_DIR/factory-defaults/sa/state/standalone/ppsspp/config/ppsspp/PSP/SYSTEM"
+    cp -a "$PLUMOS_DIR/factory-defaults/standalone/ppsspp/PSP/SYSTEM/." \
+        "$PLUMOS_DIR/factory-defaults/sa/state/standalone/ppsspp/config/ppsspp/PSP/SYSTEM/"
+fi
+if [ -d "$PLUMOS_DIR/standalone/drastic/config" ]; then
+    mkdir -p "$PLUMOS_DIR/factory-defaults/sa/state/standalone/drastic/work/config"
+    cp -a "$PLUMOS_DIR/standalone/drastic/config/." \
+        "$PLUMOS_DIR/factory-defaults/sa/state/standalone/drastic/work/config/"
+fi
 mkdir -p "$PLUMOS_DIR/config" "$PLUMOS_DIR/state" "$PLUMOS_DIR/saves" \
     "$PLUMOS_DIR/states" "$PLUMOS_DIR/logs" "$PLUMOS_DIR/updates"
 printf '%s\n' "$VERSION" >"$PLUMOS_DIR/VERSION"

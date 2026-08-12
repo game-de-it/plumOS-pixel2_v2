@@ -1,7 +1,7 @@
 # Pixel2 Implementation Inventory
 
 最終更新: 2026-08-13
-監査ベース: `4b5ad01` と、そのcommitから生成したapp-layer
+監査ベース: 2026-08-13 P0 backend実装後の生成app-layer
 
 この文書は「buildできる」「FEに表示される」「hostでrouteが解決する」
 「Pixel2実機で合格した」を区別する、実装作業のsource of truthである。
@@ -34,7 +34,7 @@
 | standalone emulator | 3 built / 7 pending |
 | visible Apps entries | 1 |
 | enabled systems with pending content policy | 33 |
-| release blockers detected by audit | 22 |
+| release blockers detected by audit | 14 |
 
 ## Implemented build surface
 
@@ -59,12 +59,9 @@ Device verifiedを意味しない。
 | 項目 | 現状 | 必要な実装 |
 | --- | --- | --- |
 | System Update | manual overwriteの案内だけ | signed Runtime/System updater、進捗、失敗表示、safe reboot、rollback |
-| Storage Check | `plumos-storage-health`なし | mounted FAT32のbounded read-only検査、status/log、実機dirty/clean検証 |
-| Factory Reset | helperと`factory-defaults/{ra,pico,sa}` ABIなし | mutable設定backup、対象別restore、dry-run、実機再起動後確認 |
-| Time Settings | `plumos-time-sync`なし | bounded network sync、RK817 RTC write/read、timezone/manual-time検証 |
-| Audio Output | Speaker/Headphoneを選べるがstate-only | jack検出または非対応選択肢のdevice policy、router切替、実音声検証 |
-| Lid Suspend | lidがないPixel2にも表示 | Pixel2 capabilityで非表示/disabled化し、誤操作できないようにする |
-| FTP/SFTP/Samba | Network Serviceに表示するがnot packaged | 各serviceを所有runtimeとして実装するか、capabilityにより表示対象を決定する |
+| Storage Check | `/mnt/plumos-user`に対する同梱`fsck.fat -n`、45秒上限、status/logを実装 | 実機clean/dirty検証 |
+| Factory Reset | `factory-defaults/{ra,pico,sa}`とbackup/atomic restore/dry-runを実装 | 実機対象別restoreと再起動後確認 |
+| Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
 | ADB release policy | development imageは認証無効 | 認証または明示opt-in、boot時設定反映、recovery手順 |
 | PSX alternate SA | `standalone:pcsx_rearmed`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
 | Saturn alternate SA | `standalone:yabasanshiro`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
@@ -72,6 +69,10 @@ Device verifiedを意味しない。
 | post-scan cleanup | `plumos-sdcard-cleanup`なし | FAT32書き込み完了処理とbounded cleanupをPixel2 storage contractへ合わせる |
 | Language | UIは6言語を列挙、en/jaのみ同梱 | ch/pt/fr/deをPixel2文言と同じkey setで同梱・表示確認 |
 | Theme logos | 4 enabled systemでlogoなし | arduboy、megaduck、puzzlescript、superbroswar assetsを追加 |
+
+Pixel2では存在しないAudio Output切替、Lid Suspend、FTP/SFTP/Sambaをdevice
+capabilityにより表示しない。これは未実装項目を隠す処置ではなく、物理hardwareと
+imageが所有しない機能を操作可能と誤表示しないための契約である。
 
 Network SettingsのADB/SSH toggleは保存値とboot serviceの実状態が一致することも
 別途確認する。特にADBは現在常時起動、SSHは`authorized_keys`の有無が起動条件で、

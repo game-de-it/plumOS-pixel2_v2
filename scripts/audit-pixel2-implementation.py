@@ -197,7 +197,11 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                 True,
             )
         )
-    if "Pixel2 has no lid switch." in controller_text and "system_lid_suspend" in controller_text:
+    if (
+        "Pixel2 has no lid switch." in controller_text
+        and 'if (!runtime_device_is_pixel2()) {\n    add_bool_setting_entry(ui, "system_lid_suspend"'
+        not in controller_text
+    ):
         findings.append(
             Finding(
                 "P0",
@@ -213,7 +217,11 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
         if volume_control.is_file()
         else ""
     )
-    if "pixel2-state-only" in volume_text and "SYSTEM_AUDIO_OUTPUT_CHOICES" in controller_text:
+    if (
+        "pixel2-state-only" in volume_text
+        and 'if (!runtime_device_is_pixel2()) {\n    add_setting_entry(ui, "system_audio_output"'
+        not in controller_text
+    ):
         findings.append(
             Finding(
                 "P0",
@@ -223,8 +231,14 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                 True,
             )
         )
+    pixel2_absent_services_hidden = (
+        'if (!runtime_device_is_pixel2()) {\n    add_bool_setting_entry(ui, "network_ftp_enabled"'
+        in controller_text
+    )
     for service in ("ftp", "sftp", "samba"):
         if re.search(rf"{service}\).*not_installed|{service}[^\n]*not packaged", network_text):
+            if pixel2_absent_services_hidden:
+                continue
             findings.append(
                 Finding(
                     "P0",

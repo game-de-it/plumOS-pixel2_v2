@@ -17,7 +17,10 @@ for script in \
     package/app-layer-pixel2/bin/plumos-display-control \
     package/app-layer-pixel2/bin/plumos-volume-control \
     package/app-layer-pixel2/bin/plumos-network-control \
-    package/app-layer-pixel2/bin/plumos-network-services; do
+    package/app-layer-pixel2/bin/plumos-network-services \
+    package/app-layer-pixel2/bin/plumos-time-sync \
+    package/app-layer-pixel2/bin/plumos-storage-health \
+    package/app-layer-pixel2/bin/plumos-factory-reset; do
     bash -n "$ROOT_DIR/$script"
 done
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
@@ -167,6 +170,22 @@ grep -q 'pcsx_rearmed|A|https://github.com/libretro/pcsx_rearmed.git|d26eaee5' \
     "$ROOT_DIR/docker/pixel2-tools/libretro-core-recipes.tsv"
 grep -q 'component: "libretro-cores"' "$ROOT_DIR/scripts/build-libretro-cores.sh"
 grep -q '^complete=true$' "$ROOT_DIR/scripts/build-app-layer.sh"
+grep -q 'PLUMOS_STORAGE_ROOT:-/mnt/plumos-user' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-storage-health"
+grep -q '"$FSCK" -n "$device"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-storage-health"
+grep -q 'PLUMOS_RTC_DEVICE:-/dev/rtc0' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-time-sync"
+grep -q 'hwclock -u -f "$RTC_DEVICE" -w' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-time-sync"
+grep -q 'factory-defaults/ra/config/retroarch' \
+    "$ROOT_DIR/scripts/build-app-layer.sh"
+grep -q 'factory-defaults/pico/config/standalone' \
+    "$ROOT_DIR/scripts/build-app-layer.sh"
+grep -q 'factory-defaults/sa/state/standalone' \
+    "$ROOT_DIR/scripts/build-app-layer.sh"
+grep -q 'if (!runtime_device_is_pixel2())' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli|stockos)' \
     "$ROOT_DIR/package/frontend-pixel2" \
     "$ROOT_DIR/package/retroarch-pixel2" \
