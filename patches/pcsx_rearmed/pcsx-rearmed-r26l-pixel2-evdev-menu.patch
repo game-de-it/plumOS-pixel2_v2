@@ -7,7 +7,7 @@ index b0acb113..74002587 100644
 +#include <linux/input.h>
 +#include "libpicofe/linux/in_evdev.h"
  #include "pcsx_pixel2_fbdev.h"
-@@ -35,2 +37,44 @@
+@@ -35,2 +37,52 @@
  #include "libpicofe/plat_sdl.c"
 +
 +#ifdef PLUMOS_PIXEL2
@@ -16,6 +16,10 @@ index b0acb113..74002587 100644
 +  { KEY_DOWN,           IN_BINDTYPE_PLAYER12, DKEY_DOWN },
 +  { KEY_LEFT,           IN_BINDTYPE_PLAYER12, DKEY_LEFT },
 +  { KEY_RIGHT,          IN_BINDTYPE_PLAYER12, DKEY_RIGHT },
++  { BTN_DPAD_UP,        IN_BINDTYPE_PLAYER12, DKEY_UP },
++  { BTN_DPAD_DOWN,      IN_BINDTYPE_PLAYER12, DKEY_DOWN },
++  { BTN_DPAD_LEFT,      IN_BINDTYPE_PLAYER12, DKEY_LEFT },
++  { BTN_DPAD_RIGHT,     IN_BINDTYPE_PLAYER12, DKEY_RIGHT },
 +  { BTN_SOUTH,          IN_BINDTYPE_PLAYER12, DKEY_CIRCLE },
 +  { BTN_EAST,           IN_BINDTYPE_PLAYER12, DKEY_CROSS },
 +  { BTN_NORTH,          IN_BINDTYPE_PLAYER12, DKEY_TRIANGLE },
@@ -35,6 +39,10 @@ index b0acb113..74002587 100644
 +  { KEY_DOWN,           PBTN_DOWN },
 +  { KEY_LEFT,           PBTN_LEFT },
 +  { KEY_RIGHT,          PBTN_RIGHT },
++  { BTN_DPAD_UP,        PBTN_UP },
++  { BTN_DPAD_DOWN,      PBTN_DOWN },
++  { BTN_DPAD_LEFT,      PBTN_LEFT },
++  { BTN_DPAD_RIGHT,     PBTN_RIGHT },
 +  { BTN_EAST,           PBTN_MOK },
 +  { BTN_SOUTH,          PBTN_MBACK },
 +  { BTN_WEST,           PBTN_MA2 },
@@ -52,7 +60,7 @@ index b0acb113..74002587 100644
 +};
 +#endif
  
-@@ -278,2 +322,8 @@ void plat_init(void)
+@@ -278,2 +330,8 @@ void plat_init(void)
  
 +#ifdef PLUMOS_PIXEL2
 +  if (in_evdev_init(&in_pixel2_evdev_platform_data) != 0) {

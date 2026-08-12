@@ -52,6 +52,18 @@ for binding in \
         fail "PCSX-ReARMed raw FUNCTION contract missing: $binding"
 done
 for binding in \
+    'BTN_DPAD_UP,        IN_BINDTYPE_PLAYER12, DKEY_UP' \
+    'BTN_DPAD_DOWN,      IN_BINDTYPE_PLAYER12, DKEY_DOWN' \
+    'BTN_DPAD_LEFT,      IN_BINDTYPE_PLAYER12, DKEY_LEFT' \
+    'BTN_DPAD_RIGHT,     IN_BINDTYPE_PLAYER12, DKEY_RIGHT' \
+    'BTN_DPAD_UP,        PBTN_UP' \
+    'BTN_DPAD_DOWN,      PBTN_DOWN' \
+    'BTN_DPAD_LEFT,      PBTN_LEFT' \
+    'BTN_DPAD_RIGHT,     PBTN_RIGHT'; do
+    grep -Fq "$binding" "$PCSX_PATCH" ||
+        fail "PCSX-ReARMed physical D-pad contract missing: $binding"
+done
+for binding in \
     'Pixel2 controller input is owned by evdev' \
     'joycount = 0'; do
     grep -Fq "$binding" "$PCSX_PICOFE_PATCH" ||
