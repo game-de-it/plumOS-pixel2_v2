@@ -1,0 +1,140 @@
+#!/bin/sh
+set -u
+
+# The stock Pixel2 initramfs always mounts /flash/SYSTEM.  Keep that immutable
+# handoff stable and select the plumOS-owned A/B System one level below it.
+bb=${PLUMOS_DISPATCHER_BUSYBOX:-/bin/busybox}
+PATH=/bin:/sbin
+export PATH
+
+log() {
+    printf 'plumos-dispatcher=%s\n' "$*" >/dev/console 2>/dev/null || true
+    printf 'plumos-dispatcher=%s\n' "$*" >/dev/kmsg 2>/dev/null || true
+}
+
+mounted() {
+    $bb grep -qs " $1 " /proc/mounts 2>/dev/null
+}
+
+if [ "${PLUMOS_DISPATCHER_TEST:-0}" != 1 ]; then
+    mounted /proc || $bb mount -t proc proc /proc
+    mounted /sys || $bb mount -t sysfs sysfs /sys
+    mounted /dev || $bb mount -t devtmpfs devtmpfs /dev
+    $bb mkdir -p /dev/pts /flash /storage /newroot
+    mounted /dev/pts || $bb mount -t devpts devpts /dev/pts
+    $bb mdev -s 2>/dev/null || true
+
+    if ! mounted /flash; then
+        $bb mount -t vfat -o ro /dev/mmcblk0p1 /flash || {
+            log 'result=failed reason=boot-mount'
+            exec $bb sh
+        }
+    fi
+    if ! mounted /storage; then
+        $bb mount -t ext4 -o rw /dev/mmcblk0p2 /storage || {
+            log 'result=failed reason=state-mount'
+            exec $bb sh
+        }
+    fi
+fi
+
+state=${PLUMOS_DISPATCHER_STATE_ROOT:-/storage/update-state}
+system=${PLUMOS_DISPATCHER_SYSTEM_ROOT:-/flash/system-slots}
+$bb mkdir -p "$state"
+
+read_slot() {
+    value=$($bb cat "$1" 2>/dev/null || true)
+    case "$value" in a|b) printf '%s\n' "$value" ;; *) printf '%s\n' "$2" ;; esac
+}
+
+atomic_slot() {
+    path=$1
+    value=$2
+    tmp="$path.new.$$"
+    printf '%s\n' "$value" >"$tmp"
+    $bb sync
+    $bb mv -f "$tmp" "$path"
+    $bb sync
+}
+
+verify_slot() {
+    slot=$1
+    image="$system/system-$slot.squashfs"
+    sum_file="$system/system-$slot.sha256"
+    [ -f "$image" ] && [ -f "$sum_file" ] || return 1
+    set -- $($bb cat "$sum_file" 2>/dev/null)
+    expected=${1:-}
+    case "$expected" in
+        [0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
+        *) return 1 ;;
+    esac
+    actual=$($bb sha256sum "$image" 2>/dev/null | $bb cut -d ' ' -f 1)
+    [ "$actual" = "$expected" ]
+}
+
+active=$(read_slot "$state/system-active" a)
+pending=$(read_slot "$state/system-pending" '')
+attempted=$(read_slot "$state/system-pending-attempted" '')
+selected=$active
+reason=active
+
+if [ -n "$pending" ]; then
+    if [ "$attempted" = "$pending" ]; then
+        # The pending generation reached a second boot without frontend health
+        # promotion. Reject it before attempting userspace again.
+        $bb rm -f "$state/system-pending" "$state/system-pending-attempted" \
+            "$state/system-pending.json"
+        printf '{"result":"system_rolled_back","slot":"%s"}\n' "$pending" \
+            >"$state/last-result.json"
+        $bb sync
+        reason=rollback
+    else
+        atomic_slot "$state/system-pending-attempted" "$pending"
+        selected=$pending
+        reason=pending
+    fi
+fi
+
+if ! verify_slot "$selected"; then
+    log "slot=$selected result=invalid action=fallback"
+    if [ "$selected" != "$active" ] && verify_slot "$active"; then
+        selected=$active
+        reason=pending-invalid
+        $bb rm -f "$state/system-pending" "$state/system-pending-attempted" \
+            "$state/system-pending.json"
+    else
+        alternate=a
+        [ "$selected" = a ] && alternate=b
+        if verify_slot "$alternate"; then
+            selected=$alternate
+            reason=active-invalid
+            atomic_slot "$state/system-active" "$alternate"
+        else
+            log 'result=failed reason=no-valid-system-slot'
+            exec $bb sh
+        fi
+    fi
+fi
+
+atomic_slot "$state/system-booted" "$selected"
+log "result=selected slot=$selected reason=$reason"
+if [ "${PLUMOS_DISPATCHER_TEST:-0}" = 1 ]; then
+    printf 'selected=%s\nreason=%s\n' "$selected" "$reason"
+    exit 0
+fi
+$bb mount -t squashfs -o loop,ro "$system/system-$selected.squashfs" /newroot || {
+    log "result=failed reason=slot-mount slot=$selected"
+    exec $bb sh
+}
+
+for mountpoint in dev proc sys flash storage; do
+    $bb mkdir -p "/newroot/$mountpoint"
+    if mounted "/$mountpoint"; then
+        $bb mount --move "/$mountpoint" "/newroot/$mountpoint" || {
+            log "result=failed reason=move-mount mount=$mountpoint"
+            exec $bb sh
+        }
+    fi
+done
+
+exec $bb switch_root /newroot /sbin/init

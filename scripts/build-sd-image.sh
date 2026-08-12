@@ -140,7 +140,7 @@ done
 install -m 0644 "$STOCK_BOOT_DIR/Image" "$WORK/boot/Image"
 install -m 0644 "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" \
     "$WORK/boot/rk3326s-gkd-pixel2.dtb"
-install -m 0644 "$SYSTEM_DIR/SYSTEM" "$WORK/boot/SYSTEM"
+cp -a "$SYSTEM_DIR/." "$WORK/boot/"
 for hook in post-flash.sh post-sysroot.sh; do
     [ -f "$BOOT_HOOK_DIR/$hook" ] || {
         printf 'error: boot hook missing: %s/%s\n' "$BOOT_HOOK_DIR" "$hook" >&2
@@ -164,6 +164,7 @@ stock_image_sha256=$stock_image_sha
 stock_dtb_sha256=$stock_dtb_sha
 layout=boot-prefix-16MiB,boot-fat-512MiB,plumos-sys-ext4-2048MiB,plumos-user-fat32-remainder
 runtime_abi=plumos-pixel2-app-layer-v1
+system_layout=fixed-dispatcher,system-a,system-b
 stock_initramfs_hooks=post-flash.sh,post-sysroot.sh
 EOF
 find "$WORK/boot" -exec touch -h -d "@$SOURCE_EPOCH" {} +

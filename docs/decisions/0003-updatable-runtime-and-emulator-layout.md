@@ -47,18 +47,21 @@ p1 is normally mounted read-only at `/mnt/plumos-boot` and contains:
 ```text
 /Image
 /rk3326s-gkd-pixel2.dtb
-/System/system-a.squashfs
-/System/system-a.manifest
-/System/system-b.squashfs
-/System/system-b.manifest
-/System/active-slot
+/SYSTEM                         fixed Pixel2 A/B dispatcher
+/system-slots/system-a.squashfs
+/system-slots/system-a.manifest
+/system-slots/system-b.squashfs
+/system-slots/system-b.manifest
 /plumos-image.manifest
 ```
 
-The stock initramfs mounts the selected-compatible `SYSTEM` SquashFS and
-hands off to the plumOS `/sbin/init` inside it. The active System is never
-overwritten. A System update writes and fully reads back only the inactive
-slot, commits its manifest last, records a pending boot on p2, and reboots.
+FAT32 is case-insensitive, so the fixed `/SYSTEM` file cannot coexist with a
+`/System` directory. The stock initramfs mounts the fixed dispatcher
+`/SYSTEM`; that dispatcher verifies and loop-mounts a selected image below
+`/system-slots`, then hands off to the plumOS `/sbin/init` inside it. The active
+System is never overwritten. A System update writes and fully reads back only
+the inactive slot, commits its manifest last, records a pending boot on p2,
+and reboots.
 Frontend renderer readiness promotes the pending slot; a second attempt
 without readiness rejects it and returns to the previous healthy slot.
 

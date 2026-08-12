@@ -112,7 +112,8 @@
 - [x] p2を2048 MiB seed ext4 `PLUMOS_SYS`として生成する
 - [ ] first bootでp2を8192 MiBへ拡張しp3 `PLUMOS_USER`を作る
 - [ ] provisioningを中断・再開可能かつ既存p3非破壊にする
-- [ ] initramfsへSystem A/B選択、SHA-256検証、rollbackを実装する
+- [x] stock initramfs固定handoffの内側へSystem A/B選択、SHA-256検証、rollbackを実装する
+  - 2026-08-13: stockが固定で開く`/SYSTEM`を小さなPixel2 dispatcherとし、FAT32で名前衝突しない`/system-slots/system-{a,b}.squashfs`を選択する。pendingは一度だけ試し、次bootまでFE health promotionがなければactiveへrollback。host state-machine testと4 GiB image再抽出検証は完了、実機cold boot/rollbackは未検証。
 - [ ] frontend renderer-readyによるSystem/Runtime health promotionを実装する
 - [ ] journaled Runtime updaterと1世代rollbackを実装する
 - [ ] inactive-slot System updaterとreadback検証を実装する

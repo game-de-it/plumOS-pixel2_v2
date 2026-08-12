@@ -61,16 +61,32 @@ for file in Image SYSTEM rk3326s-gkd-pixel2.dtb plumos-image.manifest \
     post-flash.sh post-sysroot.sh; do
     MTOOLS_SKIP_CHECK=1 mcopy -i "$WORK/boot.fat" "::/$file" "$WORK/$file"
 done
+for slot in a b; do
+    for suffix in squashfs sha256 manifest; do
+        MTOOLS_SKIP_CHECK=1 mcopy -i "$WORK/boot.fat" \
+            "::/system-slots/system-$slot.$suffix" "$WORK/system-$slot.$suffix"
+    done
+done
 cmp "$WORK/Image" "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/Image"
 cmp "$WORK/rk3326s-gkd-pixel2.dtb" \
     "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/rk3326s-gkd-pixel2.dtb"
 grep -q '^boot_substrate=stock-pixel2$' "$WORK/plumos-image.manifest"
+grep -q '^system_layout=fixed-dispatcher,system-a,system-b$' \
+    "$WORK/plumos-image.manifest"
 grep -q '^stock_initramfs_hooks=post-flash.sh,post-sysroot.sh$' \
     "$WORK/plumos-image.manifest"
 grep -q 'post-flash' "$WORK/post-flash.sh"
 grep -q 'post-sysroot' "$WORK/post-sysroot.sh"
 cmp "$WORK/SYSTEM" "$ROOT_DIR/output/system-rootfs/pixel2/payload/SYSTEM"
-"$ROOT_DIR/scripts/verify-system-rootfs.sh" "$WORK/SYSTEM"
+"$ROOT_DIR/scripts/verify-system-dispatcher.sh" "$WORK/SYSTEM"
+for slot in a b; do
+    cmp "$WORK/system-$slot.squashfs" \
+        "$ROOT_DIR/output/system-rootfs/pixel2/payload/system-slots/system-$slot.squashfs"
+    expected=$(awk '{print $1}' "$WORK/system-$slot.sha256")
+    actual=$(sha256sum "$WORK/system-$slot.squashfs" | awk '{print $1}')
+    [ "$actual" = "$expected" ]
+    "$ROOT_DIR/scripts/verify-system-rootfs.sh" "$WORK/system-$slot.squashfs"
+done
 mkdir -p "$WORK/app-layer"
 debugfs -R "rdump / $WORK/app-layer" "$WORK/plumos-sys.ext4" >/dev/null 2>&1
 "$ROOT_DIR/scripts/verify-app-layer.sh" "$WORK/app-layer"

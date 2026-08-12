@@ -33,5 +33,10 @@ Pixel2. The target design remains:
 - health promotion after FE renderer readiness;
 - rollback on failed pending boot or interrupted Runtime transaction.
 
+The Pixel2 stock initramfs always opens `/SYSTEM`. The final boot contract
+therefore keeps that filename as a small immutable dispatcher and stores the
+case-insensitively distinct slot images below `/system-slots/`. A `/System/`
+directory is invalid on FAT32 because it collides with `/SYSTEM`.
+
 Until that lands, generated SD images and careful metadata-complete live deploys
 are the supported development paths.

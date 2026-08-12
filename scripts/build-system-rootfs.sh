@@ -18,6 +18,7 @@ ROOT_DIR=/work
 OUT_DIR=/work/output/system-rootfs/pixel2
 ROOTFS_DIR="$OUT_DIR/rootfs"
 PAYLOAD_DIR="$OUT_DIR/payload"
+DISPATCHER_DIR="$OUT_DIR/dispatcher"
 VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
 SOURCE_REF="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || printf unknown)"
 SOURCE_EPOCH="${SOURCE_DATE_EPOCH:-}"
@@ -28,7 +29,7 @@ case "$SOURCE_EPOCH" in
 esac
 
 rm -rf "$OUT_DIR"
-mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR" \
+mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR/system-slots" "$DISPATCHER_DIR/bin" \
     "$ROOTFS_DIR/dev/pts" "$ROOTFS_DIR/proc" "$ROOTFS_DIR/sys" \
     "$ROOTFS_DIR/run" "$ROOTFS_DIR/tmp" "$ROOTFS_DIR/boot" \
     "$ROOTFS_DIR/flash" "$ROOTFS_DIR/storage" \
@@ -103,13 +104,13 @@ cat >"$ROOTFS_DIR/usr/lib/plumos/system-manifest.json" <<EOF
 EOF
 
 find "$ROOTFS_DIR" -exec touch -h -d "@$SOURCE_EPOCH" {} +
-env -u SOURCE_DATE_EPOCH mksquashfs "$ROOTFS_DIR" "$PAYLOAD_DIR/SYSTEM" -noappend -all-root \
+env -u SOURCE_DATE_EPOCH mksquashfs "$ROOTFS_DIR" "$PAYLOAD_DIR/system-slots/system-a.squashfs" -noappend -all-root \
     -no-xattrs -comp xz -mkfs-time "$SOURCE_EPOCH" -all-time "$SOURCE_EPOCH" \
     >/dev/null
 
-size=$(stat -c '%s' "$PAYLOAD_DIR/SYSTEM")
-sha=$(sha256sum "$PAYLOAD_DIR/SYSTEM" | awk '{print $1}')
-cat >"$PAYLOAD_DIR/SYSTEM.manifest" <<EOF
+size=$(stat -c '%s' "$PAYLOAD_DIR/system-slots/system-a.squashfs")
+sha=$(sha256sum "$PAYLOAD_DIR/system-slots/system-a.squashfs" | awk '{print $1}')
+cat >"$PAYLOAD_DIR/system-slots/system-a.manifest" <<EOF
 format=plumos-pixel2-system-v1
 device=pixel2
 architecture=aarch64
@@ -120,6 +121,38 @@ source_date_epoch=$SOURCE_EPOCH
 image_size=$size
 image_sha256=$sha
 EOF
-(cd "$PAYLOAD_DIR" && sha256sum SYSTEM SYSTEM.manifest >checksums.sha256)
-"$ROOT_DIR/scripts/verify-system-rootfs.sh" "$PAYLOAD_DIR/SYSTEM"
-printf 'created: %s\n' "$PAYLOAD_DIR/SYSTEM"
+cp -a "$PAYLOAD_DIR/system-slots/system-a.squashfs" \
+    "$PAYLOAD_DIR/system-slots/system-b.squashfs"
+cp -a "$PAYLOAD_DIR/system-slots/system-a.manifest" \
+    "$PAYLOAD_DIR/system-slots/system-b.manifest"
+printf '%s  system-a.squashfs\n' "$sha" >"$PAYLOAD_DIR/system-slots/system-a.sha256"
+printf '%s  system-b.squashfs\n' "$sha" >"$PAYLOAD_DIR/system-slots/system-b.sha256"
+
+install -m 0755 "$ROOT_DIR/rootfs/pixel2-dispatcher/init" "$DISPATCHER_DIR/init"
+install -m 0755 /bin/busybox "$DISPATCHER_DIR/bin/busybox"
+ln -s busybox "$DISPATCHER_DIR/bin/sh"
+find "$DISPATCHER_DIR" -exec touch -h -d "@$SOURCE_EPOCH" {} +
+env -u SOURCE_DATE_EPOCH mksquashfs "$DISPATCHER_DIR" "$PAYLOAD_DIR/SYSTEM" \
+    -noappend -all-root -no-xattrs -comp xz -mkfs-time "$SOURCE_EPOCH" \
+    -all-time "$SOURCE_EPOCH" >/dev/null
+
+dispatcher_size=$(stat -c '%s' "$PAYLOAD_DIR/SYSTEM")
+dispatcher_sha=$(sha256sum "$PAYLOAD_DIR/SYSTEM" | awk '{print $1}')
+cat >"$PAYLOAD_DIR/SYSTEM.manifest" <<EOF
+format=plumos-pixel2-system-dispatcher-v1
+device=pixel2
+architecture=aarch64
+version=$VERSION
+source_ref=$SOURCE_REF
+source_date_epoch=$SOURCE_EPOCH
+image_size=$dispatcher_size
+image_sha256=$dispatcher_sha
+slot_a_sha256=$sha
+slot_b_sha256=$sha
+EOF
+(cd "$PAYLOAD_DIR" && find SYSTEM system-slots -type f -print0 | sort -z | \
+    xargs -0 sha256sum >checksums.sha256)
+"$ROOT_DIR/scripts/verify-system-dispatcher.sh" "$PAYLOAD_DIR/SYSTEM"
+"$ROOT_DIR/scripts/verify-system-rootfs.sh" "$PAYLOAD_DIR/system-slots/system-a.squashfs"
+"$ROOT_DIR/scripts/verify-system-rootfs.sh" "$PAYLOAD_DIR/system-slots/system-b.squashfs"
+printf 'created: %s with System A/B slots\n' "$PAYLOAD_DIR/SYSTEM"

@@ -14,6 +14,8 @@ for script in \
     "$ROOT_DIR/scripts/build-app-layer.sh" \
     "$ROOT_DIR/scripts/verify-app-layer.sh" \
     "$ROOT_DIR/scripts/verify-system-rootfs.sh" \
+    "$ROOT_DIR/scripts/verify-system-dispatcher.sh" \
+    "$ROOT_DIR/rootfs/pixel2-dispatcher/init" \
     "$ROOT_DIR/rootfs/pixel2/sbin/init" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/systemd/systemd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
@@ -62,6 +64,10 @@ grep -q 'mount-source storage=stock-initramfs' "$ROOT_DIR/rootfs/pixel2/sbin/ini
 grep -q '5.10.198' "$ROOT_DIR/scripts/install-kernel-runtime.sh"
 grep -q 'stock-pixel2' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'stock-pixel2' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
+grep -q 'system-pending-attempted' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
+grep -q 'system_rolled_back' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
+grep -q 'PLUMOS_DISPATCHER_TEST' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
+grep -q 'fixed-dispatcher,system-a,system-b' "$ROOT_DIR/scripts/build-sd-image.sh"
 
 if grep -R -E -i '(rocknix|emuelec|batocera|knulli)' \
     "$ROOT_DIR/rootfs/pixel2" >/dev/null; then
