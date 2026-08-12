@@ -24,8 +24,11 @@ to exactly 8 GiB and creates p3 from the following aligned sector through the
 last usable MBR sector. Provisioning must be idempotent and must never format
 an existing p3 containing unknown or user data.
 
-The current 2 GiB three-partition image remains a bring-up format only. It is
-not the final update contract.
+The current 4 GiB three-partition seed image is an implementation step toward
+that contract. It already uses the final p1 and p2 seed sizes and includes a
+small host-visible p3 for development ROM staging. The compact p1+p2 release
+image and idempotent first-boot p2/p3 provisioning remain the final update
+contract.
 
 ## Ownership boundary
 

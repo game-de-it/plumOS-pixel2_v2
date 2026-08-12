@@ -15,14 +15,8 @@ if [ "${1:-}" != --inside ]; then
         "$ROOT_DIR"/*) ;;
         *) printf 'error: boot prefix must be under the repository\n' >&2; exit 2 ;;
     esac
-    docker image inspect "$TOOLS_IMAGE" >/dev/null 2>&1 || \
-        "$ROOT_DIR/scripts/build-tools-image.sh"
-    exec docker run --rm --platform linux/arm64 \
-        -e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-}" \
-        -e PLUMOS_PIXEL2_VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}" \
-        -e PLUMOS_PIXEL2_BOOT_PREFIX="/work/${PREFIX#"$ROOT_DIR"/}" \
-        -v "$ROOT_DIR:/work" -w /work "$TOOLS_IMAGE" \
-        ./scripts/build-sd-image.sh --inside
+    export PLUMOS_PIXEL2_BOOT_PREFIX="$PREFIX"
+    exec "$ROOT_DIR/scripts/docker-build.sh" sd-image
 fi
 
 ROOT_DIR=/work
@@ -101,14 +95,14 @@ normalize_ext4_timestamps() {
     faketime "$fake_time" debugfs -w -f "$commands" "$image" >/dev/null 2>&1
 }
 
-# Fixed 2 GiB layout, in 512-byte sectors.
-TOTAL_SECTORS=4194304
+# Fixed 4 GiB seed layout, in 512-byte sectors.
+TOTAL_SECTORS=8388608
 BOOT_START=32768
-BOOT_SECTORS=524288
-SYS_START=557056
-SYS_SECTORS=1048576
-USER_START=1605632
-USER_SECTORS=2588672
+BOOT_SECTORS=1048576
+SYS_START=1081344
+SYS_SECTORS=4194304
+USER_START=5275648
+USER_SECTORS=3112960
 IMAGE="$OUT_DIR/plumOS-Pixel2-$VERSION.img"
 WORK="$(mktemp -d /tmp/plumos-pixel2-image.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
@@ -168,7 +162,7 @@ boot_prefix_sha256=$prefix_sha
 boot_substrate=stock-pixel2
 stock_image_sha256=$stock_image_sha
 stock_dtb_sha256=$stock_dtb_sha
-layout=boot-prefix-16MiB,boot-fat-256MiB,plumos-sys-ext4-512MiB,plumos-user-fat32-remainder
+layout=boot-prefix-16MiB,boot-fat-512MiB,plumos-sys-ext4-2048MiB,plumos-user-fat32-remainder
 runtime_abi=plumos-pixel2-app-layer-v1
 stock_initramfs_hooks=post-flash.sh,post-sysroot.sh
 EOF

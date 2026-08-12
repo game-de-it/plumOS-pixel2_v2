@@ -47,9 +47,28 @@ if [ "$target" = image ]; then
     exec docker build --platform linux/arm64 -t "$IMAGE" "$ROOT_DIR/docker/pixel2-tools"
 fi
 docker image inspect "$IMAGE" >/dev/null 2>&1 || "$ROOT_DIR/scripts/build-tools-image.sh"
-exec docker run --rm --platform linux/arm64 \
+host_boot_prefix="${PLUMOS_PIXEL2_BOOT_PREFIX:-$ROOT_DIR/artifacts/vendor/pixel2-stock-source/rockchip-boot-prefix.bin}"
+host_boot_prefix="$(CDPATH= cd -- "$(dirname -- "$host_boot_prefix")" && pwd)/$(basename -- "$host_boot_prefix")"
+case "$host_boot_prefix" in
+    "$ROOT_DIR"/*) container_boot_prefix="/work/${host_boot_prefix#"$ROOT_DIR"/}" ;;
+    *) printf 'error: boot prefix must be under the repository\n' >&2; exit 2 ;;
+esac
+container="$(
+    docker create --platform linux/arm64 \
     -e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-}" \
     -e PLUMOS_PIXEL2_VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}" \
-    -e PLUMOS_PIXEL2_BOOT_PREFIX="/work/artifacts/vendor/pixel2-stock-source/rockchip-boot-prefix.bin" \
+    -e PLUMOS_PIXEL2_BOOT_PREFIX="$container_boot_prefix" \
     -v "$ROOT_DIR:/work" -w /work "$IMAGE" \
     ./scripts/docker-build.sh --inside "$@"
+)"
+cleanup_container() {
+    [ -n "${container:-}" ] || return 0
+    docker rm -f "$container" >/dev/null 2>&1 || true
+}
+trap cleanup_container INT TERM HUP
+docker start "$container" >/dev/null
+docker logs -f "$container"
+rc="$(docker wait "$container")"
+docker rm "$container" >/dev/null 2>&1 || true
+trap - INT TERM HUP
+exit "$rc"

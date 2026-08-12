@@ -26,7 +26,8 @@
 - [x] standalone launcher componentをPixel2 build/app-layerへ統合する
   - 2026-08-12: `./scripts/docker-build.sh standalone` でPixel2 standalone launcher componentを生成。個別standalone emulator binaryはmanifest上で`pending-binary`として明示。
 - [ ] standalone emulator binaryをPixel2向けに順次build・実機検証する
-- [ ] Docker runtime復旧後、PicoArch/standalone統合済みapp-layerでSD imageを再生成する
+- [ ] Docker runtime復旧後、clean commitからPicoArch/standalone統合済みapp-layerでSD imageを再生成する
+  - 2026-08-12: 4 GiB seed layout（p1=512 MiB, p2=2048 MiB, p3=remainder）でdirty-tree生成は完了し、host checksum/MBR/hdiutil partition recognitionは確認済み。Docker Desktopがcontainer metadata I/O error後にAPI socketを失ったため、clean commit source_refでの再生成とDocker内full verifyは未完了。
 
 ## Frontend game lifecycle
 
@@ -41,8 +42,8 @@
 
 ## Final partition and update contract
 
-- [ ] p1を512 MiB System A/B layoutへ変更する
-- [ ] p2を2048 MiB seed ext4 `PLUMOS_SYS`として生成する
+- [x] p1を512 MiB System A/B layoutへ変更する
+- [x] p2を2048 MiB seed ext4 `PLUMOS_SYS`として生成する
 - [ ] first bootでp2を8192 MiBへ拡張しp3 `PLUMOS_USER`を作る
 - [ ] provisioningを中断・再開可能かつ既存p3非破壊にする
 - [ ] initramfsへSystem A/B選択、SHA-256検証、rollbackを実装する

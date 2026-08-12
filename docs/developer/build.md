@@ -15,7 +15,9 @@ stay out of git.
 ```sh
 ./scripts/docker-build.sh frontend
 ./scripts/docker-build.sh retroarch
-./scripts/docker-build.sh libretro-cores
+./scripts/docker-build.sh cores --filter all
+./scripts/docker-build.sh picoarch
+./scripts/docker-build.sh standalone
 ./scripts/docker-build.sh app-layer --strict
 ./scripts/docker-build.sh system-rootfs
 ./scripts/docker-build.sh sd-image
@@ -35,9 +37,11 @@ The app-layer root is `output/app-layer/pixel2/plumos`. It must contain:
 
 - root `manifest.json`, `checksums.sha256`, `VERSION`, `COMPAT_VENDOR`, and
   `RUNTIME_ABI`;
-- component manifests/checksums for frontend, RetroArch, and libretro cores;
+- component manifests/checksums for frontend, RetroArch, libretro cores,
+  PicoArch, standalone launchers, and audio routing;
 - Pixel2 frontend binary, scanner, text UI, hardware-key daemon, safe shutdown,
-  input-map files, RetroArch, and QuickNES.
+  input-map files, RetroArch, PicoArch, available standalone launchers, and
+  canonical libretro cores.
 
 Strict assembly must emit `complete=true` and `missing_components=[]`.
 
