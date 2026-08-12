@@ -38,6 +38,10 @@ grep -q '^video_force_aspect = "true"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^aspect_ratio_index = "0"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^audio_latency = "96"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^video_threaded = "true"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^input_player1_analog_dpad_mode = "1"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg" && exit 1
 grep -q '^input_player1_analog_dpad_mode = "0"$' \

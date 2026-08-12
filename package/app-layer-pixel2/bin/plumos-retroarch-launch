@@ -10,6 +10,9 @@ input_env=${PLUMOS_INPUT_MAP_ENV:-$root/config/system/input-map.env}
 system_id=
 core=
 rom=
+requested_cpu_policy=
+audio_latency=${PLUMOS_RETROARCH_AUDIO_LATENCY:-96}
+cpu_governor=${PLUMOS_RETROARCH_CPU_GOVERNOR:-}
 
 if [ -r "$input_env" ]; then
     set -a
@@ -22,10 +25,22 @@ while [ "$#" -gt 0 ]; do
         --system) system_id=$2; shift 2 ;;
         --core) core=$2; shift 2 ;;
         --rom) rom=$2; shift 2 ;;
-        --cpu|--audio|--audio-latency|--safe-exit) shift 2 ;;
+        --cpu) requested_cpu_policy=$2; shift 2 ;;
+        --audio-latency) audio_latency=$2; shift 2 ;;
+        --audio|--safe-exit) shift 2 ;;
         *) printf 'plumos-retroarch-launch: unknown argument: %s\n' "$1" >&2; exit 2 ;;
     esac
 done
+if [ -z "$cpu_governor" ]; then
+    cpu_governor=$requested_cpu_policy
+fi
+case "$cpu_governor" in
+    ''|interactive|performance|ondemand|schedutil|conservative|powersave|userspace) ;;
+    *)
+        printf 'plumos-retroarch-launch: unsupported CPU governor: %s\n' "$cpu_governor" >&2
+        exit 2
+        ;;
+esac
 
 case "$system_id" in
     ''|*[!A-Za-z0-9._-]*|*..*)
@@ -69,16 +84,51 @@ if [ -x "$root/bin/plumos-ensure-udev-input-db" ]; then
     "$root/bin/plumos-ensure-udev-input-db" >>"$root/logs/retroarch-launch.log" 2>&1 || true
 fi
 
+cpu_restore="$runtime_root/retroarch/cpu-governors.$$"
+set_cpu_governor() {
+    [ -n "$cpu_governor" ] || return 0
+    : >"$cpu_restore"
+    changed=0
+    for governor_path in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+        [ -e "$governor_path" ] || continue
+        old_governor=$(cat "$governor_path" 2>/dev/null || true)
+        printf '%s %s\n' "$governor_path" "$old_governor" >>"$cpu_restore"
+        available_governors=$(cat "${governor_path%/scaling_governor}/scaling_available_governors" 2>/dev/null || true)
+        case " $available_governors " in *" $cpu_governor "*) ;; *) continue ;; esac
+        if [ -w "$governor_path" ] && printf '%s\n' "$cpu_governor" >"$governor_path" 2>/dev/null; then
+            changed=$((changed + 1))
+        fi
+    done
+    printf 'cpu_governor=result-set requested=%s effective=%s fe_policy=%s changed=%s\n' \
+        "$cpu_governor" "$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || true)" \
+        "${requested_cpu_policy:-none}" "$changed" >>"$root/logs/retroarch-launch.log"
+}
+
+restore_cpu_governor() {
+    [ -s "$cpu_restore" ] || return 0
+    while read -r governor_path old_governor; do
+        [ -n "$governor_path" ] || continue
+        [ -n "$old_governor" ] || continue
+        [ -w "$governor_path" ] || continue
+        printf '%s\n' "$old_governor" >"$governor_path" 2>/dev/null || true
+    done <"$cpu_restore"
+    rm -f "$cpu_restore"
+}
+trap 'restore_cpu_governor' EXIT HUP INT TERM
+set_cpu_governor
+
 append="$runtime_root/retroarch/append.cfg"
 {
     printf 'audio_driver = "alsa"\n'
     printf 'audio_device = "default"\n'
+    printf 'audio_latency = "%s"\n' "$audio_latency"
     printf 'video_driver = "drm"\n'
     printf 'video_rotation = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}"
     printf 'video_force_aspect = "true"\n'
     printf 'video_aspect_ratio_auto = "false"\n'
     printf 'aspect_ratio_index = "0"\n'
     printf 'video_aspect_ratio = "1.333333"\n'
+    printf 'video_threaded = "true"\n'
     printf 'input_driver = "udev"\n'
     printf 'input_joypad_driver = "udev"\n'
     printf 'joypad_autoconfig_dir = "%s"\n' "$root/factory-defaults/retroarch/autoconfig"

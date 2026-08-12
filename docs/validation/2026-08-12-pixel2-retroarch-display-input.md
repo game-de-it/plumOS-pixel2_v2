@@ -488,3 +488,32 @@ Launch NES from the frontend and confirm on the device:
 - D-pad, ABXY, START/SELECT, shoulders, and hotkey exit work;
 - game audio is audible;
 - volume buttons change real game volume.
+
+## Frame Pacing Follow-up
+
+After the udev D-pad button binding was deployed, the device could be operated
+with the physical D-pad. The next observed issue was unstable frame pacing and
+audio dropouts while NES was running.
+
+ADB showed the live CPU governor was:
+
+```text
+ondemand
+```
+
+The launcher receives the frontend CPU policy. Pixel2 follows that policy
+instead of forcing an emulator-specific `performance` governor; NES currently
+uses the frontend's `ondemand` policy. The first Pixel2-specific runtime profile
+therefore avoids a performance-governor workaround and applies RetroArch-side
+frame/audio settings first:
+
+```text
+audio_latency = "96"
+video_threaded = "true"
+```
+
+The launcher validates and applies the frontend-requested governor when the
+kernel exposes it. `performance` remains a policy/profile choice to use only as
+a later diagnostic or last resort, not a Pixel2 NES default. The mutable user
+RetroArch config is not overwritten; these settings are appended at launch time
+and are also present in factory defaults for newly provisioned configs.
