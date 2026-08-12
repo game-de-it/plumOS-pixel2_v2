@@ -23,6 +23,18 @@ STANDALONE_FIRMWARE = {
     "drastic_bios_arm9.bin": ("standalone:drastic", False),
 }
 
+# The frontend uses stable plumOS profile IDs while a few upstream core-info
+# files retain their historical canonical names. Keep these aliases explicit so
+# firmware inventory cannot silently skip an alternate route.
+CORE_INFO_ALIASES = {
+    "beetle_saturn": "mednafen_saturn",
+    "dosbox_pure_0.9.7": "dosbox_pure",
+    "km_duckswanstation_xtreme_amped": "pcsx_rearmed",
+    "km_mame2003_xtreme": "mame2003_plus",
+    "km_puae_xtreme_amped": "puae",
+    "mba_mini": "fbneo",
+}
+
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -65,7 +77,8 @@ def collect_requirements(app_root: Path) -> dict[str, dict[str, Any]]:
 
     requirements: dict[str, dict[str, Any]] = {}
     for core in sorted(cores):
-        info_path = app_root / "info" / f"{core}_libretro.info"
+        info_id = CORE_INFO_ALIASES.get(core, core)
+        info_path = app_root / "info" / f"{info_id}_libretro.info"
         if not info_path.is_file():
             continue
         values = parse_info(info_path)

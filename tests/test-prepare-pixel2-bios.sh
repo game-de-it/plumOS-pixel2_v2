@@ -9,7 +9,7 @@ mkdir -p \
     "$tmp/rom/bios/Databases" "$tmp/rom/bios/Machines/Test" \
     "$tmp/out"
 cat >"$tmp/app/config/frontend/systems.json" <<'EOF'
-{"systems":[{"id":"test","enabled":true,"launch_profiles":["retroarch:test","standalone:drastic"]}]}
+{"systems":[{"id":"test","enabled":true,"launch_profiles":["retroarch:test","retroarch:beetle_saturn","standalone:drastic"]}]}
 EOF
 cat >"$tmp/app/manifest.json" <<'EOF'
 {"source_ref":"fixture"}
@@ -24,7 +24,13 @@ firmware2_path = "Databases/test.xml"
 firmware2_desc = "'Databases' folder"
 firmware2_opt = "false"
 EOF
+cat >"$tmp/app/info/mednafen_saturn_libretro.info" <<'EOF'
+firmware_count = "1"
+firmware0_path = "saturn-required.bin"
+firmware0_opt = "false"
+EOF
 printf 'required\n' >"$tmp/rom/bios/REQUIRED.BIN"
+printf 'saturn\n' >"$tmp/rom/bios/saturn-required.bin"
 printf 'database\n' >"$tmp/rom/bios/Databases/test.xml"
 printf 'extra\n' >"$tmp/rom/bios/Databases/extra.xml"
 printf 'machine\n' >"$tmp/rom/bios/Machines/Test/machine.rom"
@@ -40,6 +46,7 @@ grep -q '^bios_prepare=result-ok ' "$tmp/result.log"
 grep -q '^missing_required=0$' "$tmp/result.log"
 grep -q '^missing_optional=1$' "$tmp/result.log"
 test -f "$tmp/out/bios/required.bin"
+test -f "$tmp/out/bios/saturn-required.bin"
 test -f "$tmp/out/bios/Databases/test.xml"
 test -f "$tmp/out/bios/Databases/extra.xml"
 test -f "$tmp/out/bios/drastic_bios_arm7.bin"
@@ -53,5 +60,6 @@ assert data["source_ref"] == "fixture"
 assert data["missing_required"] == 0
 assert [x["destination"] for x in data["missing"]] == ["optional.bin"]
 assert any(x["destination"] == "required.bin" and x["match"] == "relative" for x in data["files"])
+assert any(x["destination"] == "saturn-required.bin" and x["consumers"] == ["libretro:beetle_saturn"] for x in data["files"])
 PY
 printf 'pixel2_bios_prepare=result-ok\n'
