@@ -85,6 +85,27 @@ case "$id" in
   ppsspp)
     exe="${EMU_ROOT}/ppsspp/bin/PPSSPPSDL"
     workdir="${EMU_ROOT}/ppsspp"
+    ppsspp_factory_dir="${PLUMOS_ROOT}/factory-defaults/standalone/ppsspp/PSP/SYSTEM"
+    ppsspp_config_dir="${XDG_CONFIG_HOME}/ppsspp/PSP/SYSTEM"
+    ppsspp_config="${ppsspp_config_dir}/ppsspp.ini"
+    if [ ! -f "$ppsspp_config" ]; then
+      for ppsspp_name in controls.ini ppsspp.ini; do
+        [ -f "$ppsspp_factory_dir/$ppsspp_name" ] ||
+          fail "PPSSPP factory config missing: $ppsspp_factory_dir/$ppsspp_name" 78
+      done
+      mkdir -p "$ppsspp_config_dir"
+      for ppsspp_name in controls.ini ppsspp.ini; do
+        ppsspp_config_tmp="$ppsspp_config_dir/$ppsspp_name.tmp.$$"
+        cp "$ppsspp_factory_dir/$ppsspp_name" "$ppsspp_config_tmp" ||
+          fail "failed to seed PPSSPP config: $ppsspp_name" 78
+      done
+      mv -f "$ppsspp_config_dir/controls.ini.tmp.$$" \
+        "$ppsspp_config_dir/controls.ini"
+      mv -f "$ppsspp_config_dir/ppsspp.ini.tmp.$$" "$ppsspp_config"
+    fi
+    if ! pidof PPSSPPSDL >/dev/null 2>&1; then
+      rm -f /dev/shm/PPSSPP_ID /run/shm/PPSSPP_ID 2>/dev/null || true
+    fi
     set -- --fullscreen --graphics=gles2.0 "$@"
     ;;
   flycast)

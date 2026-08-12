@@ -78,14 +78,26 @@ PicoArch is packaged as a Pixel2 app-layer component. It reuses the generated
 libretro core set through the shared `/mnt/plumos/cores/*_libretro.so` route
 and uses the Pixel2 ALSA `plumos_output` path.
 
-Standalone has a Pixel2 launcher component and route manifest. OpenBOR and
-DraStic are packaged binaries in the current Pixel2 app-layer. DraStic uses the
-steward-fu/nds Pixel2 integration layer with the closed armhf DraStic runtime,
-package-local armhf libraries, and an armhf ALSA plugin for `plumos_output`.
-DraStic BIOS files are never packaged; the launcher copies user-provided
-`drastic_bios_*.bin` files from `/mnt/plumos-user/bios/drastic`,
+Standalone has a Pixel2 launcher component and route manifest. OpenBOR,
+DraStic, and PPSSPP are packaged binaries in the current Pixel2 app-layer.
+DraStic uses the steward-fu/nds Pixel2 integration layer with the closed armhf
+DraStic runtime, package-local armhf libraries, and an armhf ALSA plugin for
+`plumos_output`. DraStic BIOS files are never packaged; the launcher copies
+user-provided `drastic_bios_*.bin` files from `/mnt/plumos-user/bios/drastic`,
 `/mnt/plumos-user/bios/nds`, or `/mnt/plumos-user/bios` into the mutable
 per-user DraStic work directory.
+
+PPSSPP is built from pinned upstream source (`v1.20.4`,
+`fa50bb1976065c4f8b1b47af227d367fe9771555`) as a Pixel2 SDL2/GLES/EGL
+standalone binary. The app-layer includes PPSSPP assets and factory
+`ppsspp.ini`/`controls.ini` under
+`factory-defaults/standalone/ppsspp/PSP/SYSTEM`; the launcher seeds those files
+to the mutable PPSSPP config directory on first launch and keeps user changes
+out of the immutable app-layer. The factory config disables touch controls,
+uses the Pixel2 state directory, and starts with `InternalScreenRotation = 0`
+for the current logical landscape runtime. Physical Pixel2 display, controls,
+audio, and exit-hotkey validation are still required before treating PPSSPP as
+a release-proven runtime.
 
 Do not expose a Nintendo DS libretro DeSmuME route on Pixel2 unless a real
 Pixel2 build-system component exists. The current DS route is
@@ -93,8 +105,7 @@ Pixel2 build-system component exists. The current DS route is
 
 Remaining standalone emulator binaries are intentionally marked
 `pending-binary` until each binary is built, packaged, and physically validated
-on Pixel2. PPSSPP should follow the MF/V90S pinned-source build and factory
-configuration ownership model rather than importing an opaque generated output.
+on Pixel2.
 
 Pyxel, PortMaster, File Manager, and Music Player are not yet Pixel2 runtime
 guarantees. Add them only when each component is built, routed, checksummed, and

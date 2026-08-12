@@ -30,6 +30,10 @@ DRASTIC_RELEASE_SHA256="${PLUMOS_PIXEL2_DRASTIC_RELEASE_SHA256:-9e4ed98047dea0f0
 DRASTIC_ARCHIVE="${PLUMOS_PIXEL2_DRASTIC_ARCHIVE:-$ROOT_DIR/output/downloads/drastic_miyoo-flip_20251104.zip}"
 DRASTIC_PATCH="$PATCH_DIR/drastic/steward-fu-nds-pixel2-toolchain.patch"
 DRASTIC_MMAP_COMPAT="$ROOT_DIR/package/standalone-pixel2/src/drastic-mmap-compat.c"
+PPSSPP_REPO="${PLUMOS_PIXEL2_PPSSPP_REPO:-https://github.com/hrydgard/ppsspp.git}"
+PPSSPP_REF="${PLUMOS_PIXEL2_PPSSPP_REF:-v1.20.4}"
+PPSSPP_COMMIT="${PLUMOS_PIXEL2_PPSSPP_COMMIT:-fa50bb1976065c4f8b1b47af227d367fe9771555}"
+PPSSPP_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-no-sdl2-ttf.patch"
 COMMON_CFLAGS="${PLUMOS_PIXEL2_STANDALONE_CFLAGS:--O2 -pipe -march=armv8-a+crc -mtune=cortex-a35 -fomit-frame-pointer -fcommon}"
 
 while [ "$#" -gt 0 ]; do
@@ -335,6 +339,148 @@ build_drastic() {
 EOF
 }
 
+build_ppsspp() {
+  selected ppsspp || return 0
+  for command in cmake file git ninja readelf rsync sha256sum; do
+    require_command "$command"
+  done
+  [ -s "$PPSSPP_PATCH" ] || {
+    printf 'error: PPSSPP patch is missing: %s\n' "$PPSSPP_PATCH" >&2
+    return 1
+  }
+
+  PPSSPP_BUILD_DIR="$BUILD_ROOT/ppsspp"
+  PPSSPP_SOURCE_DIR="$PPSSPP_BUILD_DIR/source"
+  PPSSPP_CMAKE_DIR="$PPSSPP_BUILD_DIR/build"
+  PPSSPP_LOG="$LOG_DIR/ppsspp.log"
+  PPSSPP_DST="$PLUMOS_DIR/standalone/ppsspp"
+  PPSSPP_FACTORY="$PLUMOS_DIR/factory-defaults/standalone/ppsspp/PSP/SYSTEM"
+  mkdir -p "$LOG_DIR" "$PLUMOS_DIR/licenses" "$PPSSPP_DST/bin" \
+    "$PPSSPP_DST/assets" "$PPSSPP_FACTORY"
+  : >"$PPSSPP_LOG"
+
+  if [ ! -d "$PPSSPP_SOURCE_DIR/.git" ]; then
+    [ ! -e "$PPSSPP_SOURCE_DIR" ] || {
+      printf 'error: PPSSPP source path is not a Git clone: %s\n' \
+        "$PPSSPP_SOURCE_DIR" >&2
+      return 1
+    }
+    mkdir -p "$(dirname "$PPSSPP_SOURCE_DIR")"
+    git clone --filter=blob:none "$PPSSPP_REPO" "$PPSSPP_SOURCE_DIR" \
+      >>"$PPSSPP_LOG" 2>&1 || return 1
+  fi
+  git -C "$PPSSPP_SOURCE_DIR" fetch --tags --force origin "$PPSSPP_REF" \
+    >>"$PPSSPP_LOG" 2>&1 || return 1
+  git -C "$PPSSPP_SOURCE_DIR" checkout --detach "$PPSSPP_COMMIT" \
+    >>"$PPSSPP_LOG" 2>&1 || return 1
+  git -C "$PPSSPP_SOURCE_DIR" reset --hard "$PPSSPP_COMMIT" \
+    >>"$PPSSPP_LOG" 2>&1 || return 1
+  git -C "$PPSSPP_SOURCE_DIR" clean -fdx >>"$PPSSPP_LOG" 2>&1 || return 1
+  git -C "$PPSSPP_SOURCE_DIR" submodule sync --recursive \
+    >>"$PPSSPP_LOG" 2>&1 || return 1
+  git -C "$PPSSPP_SOURCE_DIR" submodule update --init --recursive \
+    >>"$PPSSPP_LOG" 2>&1 || return 1
+  git -C "$PPSSPP_SOURCE_DIR" apply --check "$PPSSPP_PATCH" \
+    >>"$PPSSPP_LOG" 2>&1
+  git -C "$PPSSPP_SOURCE_DIR" apply "$PPSSPP_PATCH" >>"$PPSSPP_LOG" 2>&1
+
+  rm -rf "$PPSSPP_CMAKE_DIR"
+  cmake -S "$PPSSPP_SOURCE_DIR" -B "$PPSSPP_CMAKE_DIR" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_C_FLAGS="$COMMON_CFLAGS" \
+    -DCMAKE_CXX_FLAGS="$COMMON_CFLAGS -DPLUMOS_PIXEL2=1" \
+    -DARM64=ON \
+    -DARMV7=OFF \
+    -DUSING_EGL=OFF \
+    -DUSING_FBDEV=ON \
+    -DUSING_GLES2=ON \
+    -DPLUMOS_PIXEL2=ON \
+    -DVULKAN=OFF \
+    -DUSING_X11_VULKAN=OFF \
+    -DUSE_WAYLAND_WSI=OFF \
+    -DUSE_VULKAN_DISPLAY_KHR=OFF \
+    -DCMAKE_DISABLE_FIND_PACKAGE_X11=TRUE \
+    -DUSE_FFMPEG=ON \
+    -DUSE_SYSTEM_FFMPEG=OFF \
+    -DUSE_DISCORD=OFF \
+    -DUSE_MINIUPNPC=OFF \
+    -DUSE_SYSTEM_LIBSDL2=ON \
+    -DSDL2_INCLUDE_DIR=/usr/include/SDL2 \
+    -DSDL2_LIBRARY=/usr/lib/aarch64-linux-gnu/libSDL2.so \
+    -DUSE_SYSTEM_FREETYPE=OFF \
+    -DUSE_SYSTEM_LIBCHDR=OFF \
+    -DUSE_SYSTEM_LIBZIP=OFF \
+    -DUSE_SYSTEM_SNAPPY=OFF \
+    -DUSE_SYSTEM_ZSTD=OFF \
+    -DHEADLESS=OFF \
+    -DUNITTEST=OFF \
+    -DATLAS_TOOL=OFF \
+    -DUSING_QT_UI=OFF \
+    -DMOBILE_DEVICE=OFF \
+    -DGOLD=OFF >>"$PPSSPP_LOG" 2>&1
+  cmake --build "$PPSSPP_CMAKE_DIR" --target PPSSPPSDL -j"$JOBS" \
+    >>"$PPSSPP_LOG" 2>&1 || return 1
+
+  PPSSPP_BINARY="$PPSSPP_CMAKE_DIR/PPSSPPSDL"
+  [ -x "$PPSSPP_BINARY" ] || {
+    printf 'error: PPSSPP binary was not produced: %s\n' "$PPSSPP_BINARY" >&2
+    return 1
+  }
+  file "$PPSSPP_BINARY" | grep -q 'ELF 64-bit.*ARM aarch64' || return 1
+  needed="$(readelf -d "$PPSSPP_BINARY" | awk -F'[][]' '/NEEDED/ { print $2 }')"
+  for library in libSDL2-2.0.so.0 libGLESv2.so.2 libEGL.so.1; do
+    grep -qx "$library" <<<"$needed" || {
+      printf 'error: PPSSPP dependency missing: %s\n' "$library" >&2
+      return 1
+    }
+  done
+  if grep -Eq '^lib(X11|Xext|vulkan)' <<<"$needed"; then
+    printf 'error: PPSSPP contains an unintended desktop dependency\n' >&2
+    return 1
+  fi
+
+  rm -rf "$PPSSPP_DST"
+  mkdir -p "$PPSSPP_DST/bin" "$PPSSPP_DST/assets"
+  install -m 0755 "$PPSSPP_BINARY" "$PPSSPP_DST/bin/PPSSPPSDL"
+  "$STRIP" "$PPSSPP_DST/bin/PPSSPPSDL" >/dev/null 2>&1 || true
+  rsync -a --delete "$PPSSPP_SOURCE_DIR/assets/" "$PPSSPP_DST/assets/"
+  install -m 0644 "$PPSSPP_SOURCE_DIR/LICENSE.TXT" \
+    "$PLUMOS_DIR/licenses/ppsspp-LICENSE.txt"
+  copy_runtime_deps "$PPSSPP_DST/bin/PPSSPPSDL"
+
+  binary_sha256=$(sha256_file "$PPSSPP_DST/bin/PPSSPPSDL")
+  asset_tree_sha256="$(
+    cd "$PPSSPP_DST"
+    find assets -type f -print0 |
+      sort -z |
+      xargs -0 sha256sum |
+      sha256sum |
+      awk '{ print $1 }'
+  )"
+  patch_sha256=$(sha256_file "$PPSSPP_PATCH")
+  cat >"$PPSSPP_DST/build-manifest.json" <<EOF
+{
+  "device": "pixel2",
+  "upstream": "$PPSSPP_REPO",
+  "ref": "$PPSSPP_REF",
+  "commit": "$PPSSPP_COMMIT",
+  "binary": {
+    "path": "bin/PPSSPPSDL",
+    "sha256": "$binary_sha256"
+  },
+  "asset_tree_sha256": "$asset_tree_sha256",
+  "patches": {
+    "ppsspp-1.20.4-pixel2-no-sdl2-ttf": "$patch_sha256"
+  },
+  "target_cpu": "cortex-a35",
+  "compiler_flags": "$COMMON_CFLAGS",
+  "renderer": "pixel2-kmsdrm-gles2",
+  "audio": "alsa-plumos-output",
+  "factory_config": "factory-defaults/standalone/ppsspp/PSP/SYSTEM"
+}
+EOF
+}
+
 rm -rf "$OUT_ROOT"
 mkdir -p "$PLUMOS_DIR" "$COMPONENT_DIR" "$PLUMOS_DIR/licenses" \
   "$PLUMOS_DIR/config/standalone" "$PLUMOS_DIR/standalone" \
@@ -346,6 +492,7 @@ chmod 0755 "$PLUMOS_DIR/bin/plumos-standalone-launch" \
 
 OPENBOR_STATUS=pending-binary
 DRASTIC_STATUS=pending-binary
+PPSSPP_STATUS=pending-binary
 if selected openbor; then
   build_openbor
   OPENBOR_STATUS=built
@@ -353,6 +500,10 @@ fi
 if selected drastic; then
   build_drastic
   DRASTIC_STATUS=built
+fi
+if selected ppsspp; then
+  build_ppsspp
+  PPSSPP_STATUS=built
 fi
 
 cat > "$COMPONENT_DIR/manifest.json" <<'EOF'
@@ -365,7 +516,9 @@ cat > "$COMPONENT_DIR/manifest.json" <<'EOF'
   "runtime_contract": "Pixel2 app-layer launcher, ALSA plumos_output, SDL/KMSDRM defaults",
   "emulators": [
     {"id": "pcsx_rearmed", "status": "pending-binary"},
-    {"id": "ppsspp", "status": "pending-binary"},
+EOF
+cat >> "$COMPONENT_DIR/manifest.json" <<EOF
+    {"id": "ppsspp", "status": "$PPSSPP_STATUS"},
 EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<EOF
     {"id": "drastic", "status": "$DRASTIC_STATUS"},
@@ -388,7 +541,8 @@ EOF
 
 (
   cd "$PLUMOS_DIR"
-  find bin config/standalone components/standalone standalone lib licenses -type f \
+  find bin config/standalone components/standalone standalone \
+    factory-defaults/standalone lib licenses -type f \
     ! -path 'components/standalone/checksums.sha256' \
     -print |
     sort |

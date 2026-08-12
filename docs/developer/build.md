@@ -55,8 +55,8 @@ Pixel2 app-layer.
 `standalone --filter <id>` is useful for quick emulator iteration, but it
 intentionally emits a filtered standalone component. Before assembling the final
 app-layer or SD image, rebuild `./scripts/docker-build.sh standalone` without a
-filter so built standalone binaries such as OpenBOR and DraStic are present
-together.
+filter so built standalone binaries such as OpenBOR, DraStic, and PPSSPP are
+present together.
 
 ## SYSTEM
 

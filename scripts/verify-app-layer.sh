@@ -120,10 +120,21 @@ if strings "$ROOT/bin/plumos-hardware-keys" | \
     printf 'error: foreign device identity in Pixel2 hardware key daemon\n' >&2
     exit 1
 fi
-if find "$ROOT" -type f \( -iname '*.nes' -o -iname '*.gb' -o -iname '*.gba' \
-    -o -iname '*.sfc' -o -iname '*.smc' -o -iname '*.bin' -o -iname '*.cue' \) |
-    grep -q .; then
+rom_like_content="$(
+    find "$ROOT" -type f \( -iname '*.nes' -o -iname '*.gb' -o -iname '*.gba' \
+        -o -iname '*.sfc' -o -iname '*.smc' -o -iname '*.bin' -o -iname '*.cue' \) |
+    while IFS= read -r path; do
+        rel=${path#"$ROOT"/}
+        if [ "$rel" = "standalone/ppsspp/assets/shaders/smiley_16x16_rgba.bin" ]; then
+            continue
+        fi
+        printf '%s\n' "$rel"
+    done |
+    head -n 1
+)"
+if [ -n "$rom_like_content" ]; then
     printf 'error: ROM or BIOS-like content in app layer\n' >&2
+    printf 'error: first match: %s\n' "$rom_like_content" >&2
     exit 1
 fi
 if grep -R -a -E -i -n 'rock[n]ix|emuel[e]c|batocer[a]|knull[i]|stock[o]s' \
