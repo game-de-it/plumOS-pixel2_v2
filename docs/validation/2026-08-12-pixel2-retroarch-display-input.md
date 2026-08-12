@@ -122,6 +122,57 @@ input_a_btn = "0"
 input_b_btn = "1"
 ```
 
+Commit:
+
+```text
+c4a5cf2 fix: rotate Pixel2 RetroArch DRM output
+```
+
+Host validation:
+
+```text
+app_layer_scripts=result-ok
+retroarch_component=result-ok output=/work/output/retroarch/pixel2/plumos
+app_layer_verify=result-ok root=/work/output/app-layer/pixel2/plumos
+app_layer=result-ok strict=1 output=/work/output/app-layer/pixel2/plumos
+```
+
+The generated app-layer and RetroArch component manifests both recorded:
+
+```text
+source_ref = c4a5cf2
+```
+
+Live deployment was staged on the Pixel2, verified before installation, then
+copied into `/mnt/plumos` as a checksum-complete managed-file unit:
+
+```text
+stage_verify=ok
+deployed_verify=ok
+/mnt/plumos/manifest.json:  "source_ref": "c4a5cf2",
+/mnt/plumos/components/retroarch/manifest.json:  "source_ref": "c4a5cf2",
+```
+
+Deployed key hashes:
+
+```text
+a1014294307b392358618e3ffcce8b911ca256459ec29b495a6b5598f7e057f0  /mnt/plumos/bin/retroarch
+d9a084ef4976bc00921f66033f6b01c46f899e0efae8417e97fc5e0fa1f238e5  /mnt/plumos/factory-defaults/retroarch/autoconfig/linuxraw/pixel2_joypad.cfg
+e734b59f9aef9e47cb48b89f3919f51ed22a97dd6dd6a7ac73fb0528114ad24b  /mnt/plumos/factory-defaults/retroarch/retroarch.cfg
+```
+
+After deployment, a direct NES launch wrote:
+
+```text
+video_driver = "drm"
+video_rotation = "3"
+input_joypad_driver = "linuxraw"
+joypad_autoconfig_dir = "/mnt/plumos/factory-defaults/retroarch/autoconfig"
+```
+
+Physical LCD orientation and in-game button behavior are awaiting operator
+confirmation.
+
 Runtime append after deployment:
 
 ```text
