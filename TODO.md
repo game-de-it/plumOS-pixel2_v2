@@ -26,6 +26,7 @@
 - [x] standalone launcher componentをPixel2 build/app-layerへ統合する
   - 2026-08-12: `./scripts/docker-build.sh standalone` でPixel2 standalone launcher componentを生成。個別standalone emulator binaryはmanifest上で`pending-binary`として明示。
 - [ ] standalone emulator binaryをPixel2向けに順次build・実機検証する
+- [ ] Docker runtime復旧後、PicoArch/standalone統合済みapp-layerでSD imageを再生成する
 
 ## Frontend game lifecycle
 
@@ -105,4 +106,5 @@
 - [x] 同一source refから生成したSD imageのSHA-256再現性をhost検証する
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [ ] app-layer manifest/checksumを実機deploy単位で検証する
+- [ ] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
 - [ ] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する
