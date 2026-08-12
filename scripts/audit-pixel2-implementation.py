@@ -249,9 +249,17 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                 )
             )
     adbd_service = repo / "rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-    if adbd_service.is_file() and "auth=disabled-development" in adbd_service.read_text(
-        encoding="utf-8", errors="replace"
-    ):
+    adbd_text = (
+        adbd_service.read_text(encoding="utf-8", errors="replace")
+        if adbd_service.is_file()
+        else ""
+    )
+    adb_has_explicit_opt_in = (
+        "adb_opted_in()" in adbd_text
+        and "explicit-opt-in-required" in adbd_text
+        and "/mnt/plumos-user/plumos-enable-adb" in adbd_text
+    )
+    if adbd_service.is_file() and not adb_has_explicit_opt_in:
         findings.append(
             Finding(
                 "P0",

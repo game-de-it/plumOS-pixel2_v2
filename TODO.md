@@ -25,7 +25,8 @@
   - [x] lidのないPixel2でLid Suspendを選択不能にする
   - [x] FTP/SFTP/SambaをPixel2 service capabilityと一致させる
     - Pixel2 imageが所有するSSH/ADBだけを表示する。未搭載daemonを機能するtoggleとして公開しない。
-  - [ ] ADBを認証または明示opt-inにし、UI設定・boot・recoveryを一貫させる
+  - [x] ADBを明示opt-inにし、UI設定・boot・recoveryを一貫させる
+    - 2026-08-13: release defaultはOFF、`adb_enabled=1`またはFAT32 rootの`plumos-enable-adb`だけがFunctionFS gadgetを起動する。FE toggleは再起動後に反映し、OFF時はrecovery markerも除去。現行実機は接続維持のため`adb_enabled=1`を明示保存済み。新SYSTEMでのcold boot ON/OFF/recovery marker検証は未完了。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する

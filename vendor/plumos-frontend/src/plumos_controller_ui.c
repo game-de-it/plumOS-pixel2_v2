@@ -4777,7 +4777,7 @@ static void load_network_service_saved_state(struct ui_state *ui) {
   device->samba_service_running =
       read_network_service_enabled(ui, "samba", 0);
   device->adb_service_running =
-      read_network_service_enabled(ui, "adb", 1);
+      read_network_service_enabled(ui, "adb", runtime_device_is_pixel2() ? 0 : 1);
 }
 
 static void load_device_runtime_status(struct ui_state *ui) {

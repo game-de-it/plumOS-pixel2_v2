@@ -34,7 +34,7 @@
 | standalone emulator | 3 built / 7 pending |
 | visible Apps entries | 2 |
 | enabled systems with pending content policy | 33 |
-| release blockers detected by audit | 4 |
+| release blockers detected by audit | 3 |
 
 ## Implemented build surface
 
@@ -62,7 +62,6 @@ Device verifiedを意味しない。
 | Storage Check | `/mnt/plumos-user`に対する同梱`fsck.fat -n`、45秒上限、status/logを実装。RW mount中は誤警告せず判定保留 | RO状態での実機clean/dirty検証 |
 | Factory Reset | `factory-defaults/{ra,pico,sa}`とbackup/atomic restore/dry-runを実装 | 実機対象別restoreと再起動後確認 |
 | Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
-| ADB release policy | development imageは認証無効 | 認証または明示opt-in、boot時設定反映、recovery手順 |
 | PSX alternate SA | `standalone:pcsx_rearmed`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
 | Saturn alternate SA | `standalone:yabasanshiro`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
 
@@ -70,9 +69,10 @@ Pixel2では存在しないAudio Output切替、Lid Suspend、FTP/SFTP/Sambaをd
 capabilityにより表示しない。これは未実装項目を隠す処置ではなく、物理hardwareと
 imageが所有しない機能を操作可能と誤表示しないための契約である。
 
-Network SettingsのADB/SSH toggleは保存値とboot serviceの実状態が一致することも
-別途確認する。特にADBは現在常時起動、SSHは`authorized_keys`の有無が起動条件で、
-単純なUI toggleだけでは完全なservice contractになっていない。
+ADB daemon自体はhost-key challengeを持たないため、release defaultをOFFにし、FEで
+保存した`adb_enabled=1`またはuser FAT32 rootの`plumos-enable-adb` markerだけを
+boot opt-inとして扱う。新SYSTEMでON/OFF/recovery markerをcold boot検証する。
+SSHは`authorized_keys`の有無に加えてUI toggleとboot状態の一致を別途確認する。
 
 ## P1: application and standalone parity
 

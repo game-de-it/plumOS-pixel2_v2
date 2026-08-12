@@ -14,9 +14,17 @@ adb devices
 adb shell
 ```
 
-現在のdaemonは初期bring-up専用で、認証を無効化している。信頼できないhostへ
-接続しないこと。一般配布imageへ進む前に、ADBを明示opt-inにするか認証を
-有効化するrelease gateが必要である。
+daemonはAndroidのhost-key challengeを持たないため、release imageでは既定OFFに
+する。START > Network > NW Service > ADBをONにして再起動した場合だけ起動する。
+設定画面へ到達できない場合は、SDカードのFAT32 user partition直下へ次の空fileを
+置くとrecovery opt-inになる。
+
+```text
+plumos-enable-adb
+```
+
+ADBをOFFにすると保存設定を0にし、このrecovery markerも削除する。opt-in中も
+信頼できないhostへUSB接続しないこと。
 
 ## USB Wi-Fi
 

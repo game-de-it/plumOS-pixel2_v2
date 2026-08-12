@@ -8,6 +8,8 @@ FFS=/dev/usb-ffs/adb
 PID=/run/plumos/adbd.pid
 LOG=/state/plumos/logs/adbd.log
 SERIAL_FILE=/state/plumos/config/adb-serial
+SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/state/plumos/config/network/services.conf}"
+OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 
 log() {
     mkdir -p "${LOG%/*}"
@@ -26,6 +28,13 @@ pid_running() {
 
 gadget_bound() {
     [ -r "$GADGET/UDC" ] && [ -n "$(cat "$GADGET/UDC" 2>/dev/null)" ]
+}
+
+adb_opted_in() {
+    [ -f "$OPT_IN_MARKER" ] && return 0
+    [ -r "$SERVICES_CONF" ] || return 1
+    value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
+    case "$value" in 1|true|on) return 0 ;; *) return 1 ;; esac
 }
 
 stop_adbd() {
@@ -47,6 +56,10 @@ stop_adbd() {
 }
 
 start_adbd() {
+    if ! adb_opted_in; then
+        log "result=disabled reason=explicit-opt-in-required marker=$OPT_IN_MARKER"
+        return 0
+    fi
     [ -x /usr/sbin/adbd ] || {
         log 'result=failed reason=binary-missing'
         return 1
@@ -121,7 +134,7 @@ start_adbd() {
         stop_adbd
         return 1
     }
-    log "result=started udc=$udc auth=disabled-development"
+    log "result=started udc=$udc access=explicit-opt-in"
 }
 
 recover_adbd() {
@@ -149,7 +162,9 @@ status_adbd() {
     udc_state=unknown
     set -- /sys/class/udc/*
     [ -e "$1/state" ] && udc_state=$(cat "$1/state" 2>/dev/null || true)
-    if pid_running && [ "$bound" -eq 1 ]; then
+    if ! adb_opted_in; then
+        state=disabled
+    elif pid_running && [ "$bound" -eq 1 ]; then
         case "$udc_state" in
             configured|suspended) state=running ;;
             *) state=waiting_usb ;;
@@ -157,7 +172,8 @@ status_adbd() {
     fi
     printf 'service=adb\nrunning=%s\ngadget_bound=%s\nudc_state=%s\n' \
         "$(pid_running && echo 1 || echo 0)" "$bound" "$udc_state"
-    printf 'state=%s\n' "$state"
+    printf 'state=%s\nopted_in=%s\n' "$state" \
+        "$(adb_opted_in && echo 1 || echo 0)"
 }
 
 case "${1:-}" in

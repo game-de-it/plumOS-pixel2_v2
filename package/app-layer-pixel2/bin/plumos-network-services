@@ -7,6 +7,7 @@ RUN_DIR="${PLUMOS_NETWORK_SERVICES_RUN_DIR:-$RUNTIME_ROOT/network-services}"
 LOG_DIR="${PLUMOS_ROOT}/logs"
 CONFIG_DIR="${PLUMOS_ROOT}/config/network"
 SERVICES_CONF="${CONFIG_DIR}/services.conf"
+ADB_OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 LOG_FILE="${LOG_DIR}/network-services.log"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR" "$CONFIG_DIR" 2>/dev/null || true
@@ -31,9 +32,12 @@ config_key() {
 service_enabled() {
   service="$1"
   key="$(config_key "$service")" || return 1
-  [ -r "$SERVICES_CONF" ] || { [ "$service" = ssh ] || [ "$service" = adb ]; return $?; }
+  if [ "$service" = adb ] && [ -f "$ADB_OPT_IN_MARKER" ]; then
+    return 0
+  fi
+  [ -r "$SERVICES_CONF" ] || { [ "$service" = ssh ]; return $?; }
   value="$(sed -n "s/^${key}=//p" "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-  [ -n "$value" ] || { [ "$service" = ssh ] || [ "$service" = adb ]; return $?; }
+  [ -n "$value" ] || { [ "$service" = ssh ]; return $?; }
   [ "$value" = 1 ] || [ "$value" = true ] || [ "$value" = on ]
 }
 
@@ -143,6 +147,7 @@ stop_service() {
   case "$service" in
     adb)
       log 'enabled=0 apply=reboot-required' adb
+      rm -f "$ADB_OPT_IN_MARKER" 2>/dev/null || true
       return 0
       ;;
     ssh)
