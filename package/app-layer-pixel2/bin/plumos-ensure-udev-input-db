@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+bb=/bin/busybox
+data_dir=${PLUMOS_UDEV_DATA_DIR:-/run/udev/data}
+event_name=${PLUMOS_INPUT_EVENT_NAME:-pixel2_joypad}
+
+$bb mkdir -p "$data_dir"
+
+for name_path in /sys/class/input/event*/device/name; do
+    [ -r "$name_path" ] || continue
+    name=$($bb cat "$name_path" 2>/dev/null || true)
+    [ "$name" = "$event_name" ] || continue
+
+    event=${name_path#/sys/class/input/}
+    event=${event%%/*}
+    dev_path="/sys/class/input/$event/dev"
+    [ -r "$dev_path" ] || continue
+    dev=$($bb cat "$dev_path")
+    major=${dev%:*}
+    minor=${dev#*:}
+    data_file="$data_dir/c$major:$minor"
+
+    {
+        printf 'E:ID_INPUT=1\n'
+        printf 'E:ID_INPUT_JOYSTICK=1\n'
+        printf 'E:ID_BUS=platform\n'
+        printf 'E:ID_INPUT_KEY=1\n'
+        printf 'E:NAME=%s\n' "$name"
+    } >"$data_file.next"
+    $bb mv "$data_file.next" "$data_file"
+    printf 'udev_input_db=result-ok event=%s name=%s data=%s\n' \
+        "$event" "$name" "$data_file"
+    exit 0
+done
+
+printf 'udev_input_db=result-missing name=%s\n' "$event_name" >&2
+exit 1

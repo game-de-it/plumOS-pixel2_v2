@@ -10,6 +10,7 @@ for script in \
     scripts/build-app-layer.sh \
     scripts/verify-app-layer.sh \
     package/app-layer-pixel2/bin/plumos-retroarch-launch \
+    package/app-layer-pixel2/bin/plumos-ensure-udev-input-db \
     package/app-layer-pixel2/bin/plumos-safe-shutdown \
     package/app-layer-pixel2/bin/plumos-run-with-input-map \
     package/app-layer-pixel2/bin/plumos-hardware-keys-service \
@@ -65,6 +66,10 @@ grep -q '^PLUMOS_INPUT_B_UDEV_BTN=0$' \
 grep -q '^PLUMOS_INPUT_DOWN_UDEV_AXIS=+1$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q 'input-map.env' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'ID_INPUT_JOYSTICK=1' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
+grep -q 'plumos-ensure-udev-input-db' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'input-map.env' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-run-with-input-map"

@@ -24,6 +24,12 @@ the FE while keeping RetroArch and standalone launchers on the shared contract.
 The D-pad is exposed as `ABS_X`/`ABS_Y` and is recorded in the contract as
 udev axes (`left=-0`, `right=+0`, `up=-1`, `down=+1`), not button numbers.
 
+Pixel2 uses busybox `mdev`, not a full udev daemon. Runtime launchers that rely
+on libudev joystick discovery should run `plumos-ensure-udev-input-db` before
+starting the emulator. It writes the minimal `/run/udev/data/cMAJ:MIN`
+properties required for `pixel2_joypad` to enumerate as
+`ID_INPUT_JOYSTICK=1`.
+
 ## Global Volume and Brightness
 
 The hardware-key daemon is based on the MF/V90S service contract:

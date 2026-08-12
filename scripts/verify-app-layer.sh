@@ -6,7 +6,8 @@ ROOT="${1:-}"
 for path in \
     manifest.json checksums.sha256 VERSION COMPAT_VENDOR RUNTIME_ABI \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
-    bin/plumos-retroarch-launch bin/retroarch cores/quicknes_libretro.so \
+    bin/plumos-retroarch-launch bin/plumos-ensure-udev-input-db \
+    bin/retroarch cores/quicknes_libretro.so \
     bin/plumos-safe-shutdown bin/plumos-run-with-input-map \
     bin/plumos-hardware-keys bin/plumos-hardware-keys-service \
     bin/plumos-display-control bin/plumos-volume-control \
@@ -40,6 +41,7 @@ grep -q '^aspect_ratio_index = "0"$' \
 grep -q '^config_save_on_exit = "false"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
+grep -q 'ID_INPUT_JOYSTICK=1' "$ROOT/bin/plumos-ensure-udev-input-db"
 grep -q '^PLUMOS_INPUT_AB_LAYOUT=east-confirm$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_A_CODE=305$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_CODE=304$' "$ROOT/config/system/input-map.env"

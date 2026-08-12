@@ -65,6 +65,9 @@ if [ ! -s "$alsa_config" ] && [ -s "$alsa_factory" ]; then
     $bb sync
     $bb mv "$alsa_config.next" "$alsa_config"
 fi
+if [ -x "$root/bin/plumos-ensure-udev-input-db" ]; then
+    "$root/bin/plumos-ensure-udev-input-db" >>"$root/logs/retroarch-launch.log" 2>&1 || true
+fi
 
 append="$runtime_root/retroarch/append.cfg"
 {

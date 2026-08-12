@@ -301,6 +301,34 @@ Physical confirmation still required:
 - physical B no longer triggers RetroPad A;
 - A/B/X/Y, START/SELECT, shoulders, and hotkey exit work.
 
+## Follow-up udev database shim
+
+Physical testing reported that controls did not respond at all with the `udev`
+joypad driver. The Pixel2 rootfs uses busybox `mdev`, so `/run/udev` did not
+contain libudev properties for `/dev/input/event2` even though the device node
+and sysfs capabilities existed:
+
+```text
+/sys/class/input/event2/device/name = pixel2_joypad
+/sys/class/input/event2/device/uevent includes EV=20000b, ABS=3
+/run/udev/data/c13:66 was absent
+```
+
+RetroArch's udev joypad driver enumerates devices with
+`ID_INPUT_JOYSTICK=1`. A live shim test wrote that property for event2 and
+RetroArch immediately detected the controller:
+
+```text
+[INFO] [udev] Keyboard #0: "pixel2_joypad" (/dev/input/event2).
+[INFO] [Autoconf] pixel2_joypad configured in port 1.
+[INFO] [Input] Found joypad driver: "udev".
+```
+
+`plumos-ensure-udev-input-db` now creates the minimal `/run/udev/data/cMAJ:MIN`
+record for `pixel2_joypad`, and `plumos-retroarch-launch` runs it before
+starting RetroArch. This keeps the shared udev button/axis map while preserving
+the minimal mdev-based System.
+
 ## Host Validation
 
 ```text
