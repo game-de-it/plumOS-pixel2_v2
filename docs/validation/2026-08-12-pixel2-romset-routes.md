@@ -7,8 +7,8 @@ App root: `output/app-layer/pixel2/plumos`
 
 - enabled systems: 87
 - systems with representative ROM: 29
-- route OK: 26
-- standalone pending binary: 3
+- route OK: 27
+- standalone pending binary: 2
 - systems without matching ROM: 58
 - unmapped ROM directories: 01, 3ds, ATARI, _etc, ports, pyxel
 
@@ -31,7 +31,7 @@ App root: `output/app-layer/pixel2/plumos`
 | n64 | `n64/AeroGauge [V1.1].z64` | `retroarch:parallel_n64` | ok | `cores/parallel_n64_libretro.so` |
 | nds | `nds/99のなみだ バンダイナムコゲームス.nds` | `standalone:drastic` | pending-binary | `drastic` |
 | dreamcast | `dreamcast/Crazy Taxi (Japan).chd` | `retroarch:flycast_xtreme` | ok | `cores/flycast_xtreme_libretro.so` |
-| saturn | `saturn/BLACK_MATRIX.BIN` | `standalone:yabasanshiro` | pending-binary | `yabasanshiro` |
+| saturn | `saturn/BLACK_MATRIX.BIN` | `retroarch:yabasanshiro` | ok | `cores/yabasanshiro_libretro.so` |
 | ngpc | `ngpc/Bakumatsu Rouman Tokubetsu Hen - Gekka no Kenshi - Tsuki ni Saku Hana, Chiri Yuku Hana (Japan).ngc` | `retroarch:mednafen_ngp` | ok | `cores/mednafen_ngp_libretro.so` |
 | wonderswan | `wonderswan/Puzzle Bobble.ws` | `retroarch:mednafen_wswan` | ok | `cores/mednafen_wswan_libretro.so` |
 | arcade | `mame/1942a.zip` | `retroarch:mame2003_plus` | ok | `cores/mame2003_plus_libretro.so` |

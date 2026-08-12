@@ -1211,11 +1211,11 @@
         ]
       },
       "launch_profiles": [
-        "standalone:yabasanshiro",
         "retroarch:yabasanshiro",
-        "retroarch:beetle_saturn"
+        "retroarch:beetle_saturn",
+        "standalone:yabasanshiro"
       ],
-      "default_launch_profile": "standalone:yabasanshiro",
+      "default_launch_profile": "retroarch:yabasanshiro",
       "default_cpu_policy": "ondemand",
       "scraper": {
         "enabled": false,
