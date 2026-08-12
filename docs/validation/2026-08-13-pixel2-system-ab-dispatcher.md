@@ -51,6 +51,8 @@ Results:
 - rebuilt 4 GiB image checksum: pass;
 - image extraction, FAT/ext4 checks, dispatcher verification, both slot
   rootfs/kernel ABI verifications, and app-layer verification: pass.
+- renderer-ready promotion refuses a booted/pending mismatch and atomically
+  promotes a matching slot while removing its attempt state: pass.
 
 The rebuilt image was produced from source ref `f5a3bfc` while this worktree was
 dirty, so it is a development validation artifact, not a release artifact.

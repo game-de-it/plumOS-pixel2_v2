@@ -1,0 +1,73 @@
+#!/bin/sh
+set -u
+
+bb=${PLUMOS_UPDATE_BUSYBOX:-/bin/busybox}
+STATE=${PLUMOS_UPDATE_STATE_ROOT:-/mnt/plumos/update-state}
+READY=${PLUMOS_FE_READY_FLAG:-/tmp/plumos-fe-ready}
+LOG=${PLUMOS_UPDATE_HEALTH_LOG:-/mnt/plumos/logs/update-health.log}
+WAIT_SECONDS=${PLUMOS_UPDATE_HEALTH_WAIT_SECONDS:-60}
+
+log() {
+    $bb mkdir -p "${LOG%/*}"
+    printf '%s service=update-health %s\n' \
+        "$($bb date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
+}
+
+read_slot() {
+    value=$($bb cat "$1" 2>/dev/null || true)
+    case "$value" in a|b) printf '%s\n' "$value" ;; esac
+}
+
+atomic_slot() {
+    path=$1
+    value=$2
+    tmp="$path.new.$$"
+    printf '%s\n' "$value" >"$tmp" || return 1
+    $bb sync
+    $bb mv -f "$tmp" "$path" || return 1
+    $bb sync
+}
+
+promote() {
+    pending=$(read_slot "$STATE/system-pending")
+    [ -n "$pending" ] || {
+        log 'result=no-pending-system'
+        return 0
+    }
+    booted=$(read_slot "$STATE/system-booted")
+    [ "$booted" = "$pending" ] || {
+        log "result=refused reason=booted-slot-mismatch pending=$pending booted=${booted:-unknown}"
+        return 1
+    }
+    atomic_slot "$STATE/system-active" "$pending" || return 1
+    $bb rm -f "$STATE/system-pending" "$STATE/system-pending-attempted" \
+        "$STATE/system-pending.json"
+    printf '{"result":"system_healthy","slot":"%s"}\n' "$pending" \
+        >"$STATE/last-result.json"
+    $bb sync
+    log "result=system-healthy slot=$pending proof=$READY"
+}
+
+wait_and_promote() {
+    elapsed=0
+    while [ "$elapsed" -lt "$WAIT_SECONDS" ]; do
+        if [ -s "$READY" ]; then
+            promote
+            return $?
+        fi
+        $bb sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    log "result=pending-unhealthy reason=frontend-ready-timeout wait_seconds=$WAIT_SECONDS"
+    return 1
+}
+
+case "${1:-}" in
+    start)
+        $bb mkdir -p "$STATE"
+        wait_and_promote &
+        ;;
+    promote) promote ;;
+    wait) wait_and_promote ;;
+    *) printf 'usage: %s {start|wait|promote}\n' "$0" >&2; exit 2 ;;
+esac

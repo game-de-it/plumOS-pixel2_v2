@@ -25,6 +25,7 @@ for script in \
 done
 
 bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
 bash -n "$ROOT_DIR/rootfs/pixel2/usr/bin/plumos-diagnostics"
 grep -q 'PLUMOS_DEVICE_ID=pixel2' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
@@ -51,6 +52,8 @@ grep -q 'pixel2_usb_present' "$ROOT_DIR/scripts/pixel2-adb.sh"
 grep -q 'PLUMOS_SYS' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'app-layer-verified' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'system-booted' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
 
 ! grep -q '\$bb mountpoint' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'ROOTFS_DIR/dev/pts' "$ROOT_DIR/scripts/build-system-rootfs.sh"
