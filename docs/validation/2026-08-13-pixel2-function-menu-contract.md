@@ -49,3 +49,36 @@ PASS: Pixel2 emulator FUNCTION menu contract
 
 `tests/test-app-layer-scripts.sh` also passes. Physical confirmation remains a
 separate gate after rebuilding and deploying the affected managed components.
+
+## Build and signed Runtime deployment
+
+The corrected frontend, RetroArch, PicoArch, and standalone components were
+rebuilt from clean commit `e9c8f38`. Component checksum verification passed for
+all four outputs. The versioned strict app-layer reported:
+
+```text
+version=0.1.0-dev-e9c8f38
+source_ref=e9c8f38
+app_layer_verify=result-ok
+```
+
+A signed delta from the installed `0.1.0-dev-b33b877` generation contained 34
+managed files and no deletions:
+
+```text
+package=plumos-pixel2-runtime-0.1.0-dev-e9c8f38.tar.gz
+sha256=6fca0cca0174338ed7faf11aa3b048ab4dda3b951c014e39dfabbcd309c96783
+payload_uncompressed_bytes=39698056
+```
+
+The device verified the signature, Pixel2 IDs, ABI, current version and
+package hash before accepting the request. After safe reboot, the Runtime
+transaction remained `pending_health` until the frontend's first render, then
+became `healthy` and removed the pending marker. The frontend returned as one
+process on `/dev/input/event2`.
+
+Twenty-two targeted host/device hashes matched, including every changed
+launcher, emulator binary, Function mapping, component manifest/checksum, and
+root metadata file. Full on-device verification passed all 3470 root checksum
+entries. Physical Function-menu interaction in each runtime remains unchecked
+until observed by the operator.

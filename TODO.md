@@ -107,7 +107,7 @@
 - [x] Pixel2 RetroArchが`pixel2_joypad`をport 1へautoconfigすることをADB検証する
 - [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
 - [ ] RA/PicoArch/SAの物理Function menuを実機確認する
-  - 2026-08-13: RA、PicoArch、PCSX-ReARMed、DraStic、PPSSPP、OpenBORのFunction menu契約を実装し、source contract testを追加。対象componentのbuild/deployと各runtimeの実機menu/exit確認が必要。
+  - 2026-08-13: RA、PicoArch、PCSX-ReARMed、DraStic、PPSSPP、OpenBORのFunction menu契約を実装し、source contract testを追加。`e9c8f38`から全対象をbuildし、署名Runtimeを実機へ適用。health昇格、対象22 SHA一致、root checksum 3470件合格。各runtimeの物理menu/exit確認が必要。
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
 - [ ] `plumos_output`経由のaudio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
 - [ ] save/stateが再起動後も保持されることを実機確認する
