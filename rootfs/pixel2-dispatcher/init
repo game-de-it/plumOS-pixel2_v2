@@ -137,4 +137,15 @@ for mountpoint in dev proc sys flash storage; do
     fi
 done
 
-exec $bb switch_root /newroot /sbin/init
+# The stock initramfs already performed switch_root into this block-backed
+# dispatcher SquashFS. The second handoff must therefore use pivot_root.
+cd /newroot || {
+    log 'result=failed reason=newroot-chdir'
+    exec $bb sh
+}
+$bb pivot_root . .plumos-dispatcher-old || {
+    log 'result=failed reason=pivot-root'
+    exec $bb sh
+}
+cd /
+exec /sbin/init

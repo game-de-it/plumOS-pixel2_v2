@@ -21,6 +21,18 @@ without those compatibility entrypoints stopped before ADB enumeration; the
 omission was reproduced by inspecting the proven stock handoff shim and added
 to the dispatcher verification gate.
 
+The next live attempt reached the stock IUX framebuffer logo but did not start
+ADB. The dispatcher had incorrectly called BusyBox `switch_root` a second time.
+At that point the current root is already the block-backed dispatcher SquashFS,
+not initramfs/rootfs, so the second handoff must use `pivot_root`. The corrected
+contract pivots into a verified slot through its pre-created
+`/.plumos-dispatcher-old` mountpoint. The slot `/sbin/init` immediately detaches
+that old read-only mount before starting normal services.
+
+`tests/test-pivot-root-handoff.sh` reproduces this with a privileged isolated
+mount namespace: it pivots from the container root into a fresh mounted root,
+executes the new root's init, and requires that init to unmount the old root.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:

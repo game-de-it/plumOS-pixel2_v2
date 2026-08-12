@@ -27,7 +27,8 @@ grep -q '/flash/system-slots' "$tmp/rootfs/init"
 grep -q 'system-pending-attempted' "$tmp/rootfs/init"
 grep -q 'system_rolled_back' "$tmp/rootfs/init"
 grep -q 'sha256sum' "$tmp/rootfs/init"
-grep -q 'switch_root /newroot /sbin/init' "$tmp/rootfs/init"
+grep -q 'pivot_root . .plumos-dispatcher-old' "$tmp/rootfs/init"
+! grep -q 'switch_root /newroot' "$tmp/rootfs/init"
 if LC_ALL=C grep -r -a -E -i -n '(rocknix|emuelec|batocera|knulli|miyoo|v90s)' \
     "$tmp/rootfs" >/dev/null; then
     printf 'error: foreign device or distribution identity in dispatcher\n' >&2

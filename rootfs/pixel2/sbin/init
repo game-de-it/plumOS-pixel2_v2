@@ -9,6 +9,11 @@ is_mounted() {
     $bb grep -qs " $1 " /proc/mounts 2>/dev/null
 }
 
+if is_mounted /.plumos-dispatcher-old; then
+    $bb umount /.plumos-dispatcher-old 2>/dev/null || \
+        $bb umount -l /.plumos-dispatcher-old 2>/dev/null || true
+fi
+
 is_mounted /proc || $bb mount -t proc proc /proc
 is_mounted /sys || $bb mount -t sysfs sysfs /sys
 is_mounted /dev || $bb mount -t devtmpfs devtmpfs /dev

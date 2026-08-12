@@ -25,6 +25,8 @@ trap 'rm -rf "$tmp"' EXIT
 unsquashfs -d "$tmp/rootfs" "$IMAGE" >/dev/null
 
 test -x "$tmp/rootfs/sbin/init"
+test -d "$tmp/rootfs/.plumos-dispatcher-old"
+grep -q 'umount /.plumos-dispatcher-old' "$tmp/rootfs/sbin/init"
 grep -q '^ID=plumos$' "$tmp/rootfs/etc/os-release"
 grep -q '"device": "pixel2"' "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/20-usb-wifi"

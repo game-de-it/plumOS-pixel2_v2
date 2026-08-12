@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+/bin/busybox umount -l /.plumos-dispatcher-old
+if /bin/busybox grep -qs ' /.plumos-dispatcher-old ' /proc/mounts; then
+    echo 'pivot_root_handoff=result=failed reason=old-root-mounted' >&2
+    exit 1
+fi
+echo 'pivot_root_handoff=result-ok'

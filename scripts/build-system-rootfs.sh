@@ -33,6 +33,7 @@ mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR/system-slots" "$DISPATCHER_DIR/bin" \
     "$DISPATCHER_DIR/sbin" "$DISPATCHER_DIR/usr/lib/systemd" \
     "$ROOTFS_DIR/dev/pts" "$ROOTFS_DIR/proc" "$ROOTFS_DIR/sys" \
     "$ROOTFS_DIR/run" "$ROOTFS_DIR/tmp" "$ROOTFS_DIR/boot" \
+    "$ROOTFS_DIR/.plumos-dispatcher-old" \
     "$ROOTFS_DIR/flash" "$ROOTFS_DIR/storage" \
     "$ROOTFS_DIR/state" "$ROOTFS_DIR/roms" "$ROOTFS_DIR/root" \
     "$ROOTFS_DIR/mnt/plumos" "$ROOTFS_DIR/mnt/plumos-user"
