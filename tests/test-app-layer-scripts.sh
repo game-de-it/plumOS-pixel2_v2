@@ -91,6 +91,8 @@ grep -q 'audio_device = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'pcm.plumos_output' \
     "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
+grep -q 'factory-defaults/alsa/alsa.conf' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
 grep -q 'PLUMOS_PIXEL2_INTERNAL_CARD_ID' \
     "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
 grep -q 'snd_pcm_avail_update' \
