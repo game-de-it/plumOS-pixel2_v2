@@ -56,6 +56,20 @@ dispatcher now synchronously records every mount, slot, and pivot stage to
 `/storage/plumos/logs/system-dispatcher.log`, allowing the precise stop point
 to be recovered from ext4 even when ADB never starts.
 
+The mount-order and persistent-diagnostics fix was rebuilt from clean commit
+`d84d2af` and installed to both slots using staged FAT32 names and readback
+verification:
+
+```text
+dispatcher 837e5183158de3900861b18f5c71a3f28afe93647e9daf8d15553ecb209c3e4c
+slot-a     4b64e0b16a297d340641cb108fffd61267c77d46e76b5df5e5e1ac631d0bb262
+slot-b     4b64e0b16a297d340641cb108fffd61267c77d46e76b5df5e5e1ac631d0bb262
+```
+
+Both slot manifests and the dispatcher manifest report `source_ref=d84d2af`.
+The old recovery System remains intact, and both mounted volumes were cleanly
+unmounted before `/dev/disk4` was ejected.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:
