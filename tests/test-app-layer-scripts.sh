@@ -184,6 +184,10 @@ grep -q 'SDL_VIDEODRIVER=dummy' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 grep -q 'PLUMOS_PCSX_REQUIRE_ALSA=1' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q 'emulator/lib/libpthread.so.0' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q 'PCSX-ReARMed SDL2 pthread compatibility runtime missing' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 grep -q '^Gpu3 = builtin_gpu$' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
 grep -q 'logical=640x480 ccw' \

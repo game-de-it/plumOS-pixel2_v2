@@ -205,7 +205,14 @@ case "$id" in
           cp -p "$bios" "$pcsx_profile/bios/$bios_name"
       done
     done
-    export LD_LIBRARY_PATH="${workdir}/lib:${LD_LIBRARY_PATH}"
+    # The minimal Pixel2 System intentionally does not install the legacy
+    # libpthread compatibility DSO.  The managed RetroArch runtime owns the
+    # glibc-2.36-compatible copy required by Debian's SDL2 build, so expose it
+    # only to this package-local sdl12-compat chain.
+    pcsx_pthread="${PLUMOS_ROOT}/emulator/lib/libpthread.so.0"
+    [ -f "$pcsx_pthread" ] ||
+      fail "PCSX-ReARMed SDL2 pthread compatibility runtime missing" 127
+    export LD_LIBRARY_PATH="${workdir}/lib:${PLUMOS_ROOT}/emulator/lib:${LD_LIBRARY_PATH}"
     export SDL_VIDEODRIVER=dummy
     export SDL_AUDIODRIVER=alsa
     export SDL_NOMOUSE=1

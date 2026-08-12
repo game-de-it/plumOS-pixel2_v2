@@ -99,6 +99,16 @@ entry, and an explicit `standalone:pcsx_rearmed` launch plan reported
 
 ## Physical acceptance remaining
 
+The first FE launch reached the standalone launcher but stopped before PCSX
+initialization with `sdl12-compat: Failed loading SDL2 library.` Loader tracing
+showed that the minimal System has glibc 2.36 but intentionally omits the
+legacy `libpthread.so.0` DSO required by the packaged Debian SDL2. The existing
+managed RetroArch runtime contains the matching compatibility DSO. The PCSX
+launcher now adds only `/mnt/plumos/emulator/lib` to its package-local library
+search path and fails explicitly if that managed file is absent. On-device
+loader and `LD_PRELOAD` probes then resolved both SDL2 and sdl12-compat with
+return code zero.
+
 The following still requires observation while PCSX owns the foreground:
 
 1. game image is correctly rotated and retains 4:3 geometry;
