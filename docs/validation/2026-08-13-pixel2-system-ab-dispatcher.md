@@ -65,3 +65,23 @@ The rebuilt image was produced from source ref `f5a3bfc` while this worktree was
 dirty, so it is a development validation artifact, not a release artifact.
 Cold boot, renderer-ready promotion, and forced rollback on a physical Pixel2
 remain explicit hardware gates.
+
+## First-device recovery
+
+The first dispatcher deployment stopped before ADB because the stock handoff
+entrypoint was absent. With the SD attached to macOS as `/dev/disk4`, the boot
+volume contained the expected failed dispatcher, intact A/B slots, and the
+original `SYSTEM.pre-ab-a87d7b3f` recovery image. Only `/SYSTEM` was replaced
+with the corrected dispatcher from commit `b19ff96`.
+
+Readback results before eject:
+
+```text
+dispatcher cb545b5c7e8c40a65a6a0c6de2dc78871511586a9e3e8d40655788d4efae9103
+slot-a     d1634c22f874da943b4ae361e3c1e32b25089f769aadac163539a688e7638a99
+slot-b     d1634c22f874da943b4ae361e3c1e32b25089f769aadac163539a688e7638a99
+backup     a87d7b3ff1831c67f53debad9f9eafd3f77eef83f2fa2a58ba43f5f366a804a4
+```
+
+The complete `/dev/disk4` device was ejected successfully. No slot, Runtime,
+user content, or original recovery image was replaced during this recovery.
