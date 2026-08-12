@@ -14,6 +14,7 @@ requested_cpu_policy=
 audio_latency=${PLUMOS_RETROARCH_AUDIO_LATENCY:-96}
 cpu_governor=${PLUMOS_RETROARCH_CPU_GOVERNOR:-}
 audio_output="$root/bin/plumos-audio-output"
+fast_forward_state=
 
 if [ -r "$input_env" ]; then
     set -a
@@ -115,7 +116,11 @@ restore_cpu_governor() {
     done <"$cpu_restore"
     rm -f "$cpu_restore"
 }
-trap 'restore_cpu_governor' EXIT HUP INT TERM
+cleanup_runtime() {
+    restore_cpu_governor
+    [ -z "$fast_forward_state" ] || "$bb" rm -f "$fast_forward_state"
+}
+trap 'cleanup_runtime' EXIT HUP INT TERM
 set_cpu_governor
 
 append="$runtime_root/retroarch/append.cfg"
@@ -128,6 +133,10 @@ if [ -x "$audio_output" ]; then
     export ALSA_CONFIG_PATH="$runtime_root/audio/asound.conf"
     export ALSA_PLUGIN_DIR="$root/lib/alsa-lib"
     export AUDIODEV=plumos_output
+    fast_forward_state="$runtime_root/audio/retroarch-fast-forward.$$.state"
+    "$bb" rm -f "$fast_forward_state"
+    export PLUMOS_AUDIO_FAST_FORWARD_DROP=1
+    export PLUMOS_AUDIO_FAST_FORWARD_STATE="$fast_forward_state"
 else
     printf 'audio_route=result-fallback reason=router-missing\n' \
         >>"$root/logs/retroarch-launch.log"
@@ -182,5 +191,6 @@ set +e
 rc=$?
 set -e
 $bb rm -f "$append"
+[ -z "$fast_forward_state" ] || "$bb" rm -f "$fast_forward_state"
 printf 'retroarch=result-exit rc=%s\n' "$rc" >>"$root/logs/retroarch-launch.log"
 exit "$rc"

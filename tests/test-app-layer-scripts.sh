@@ -87,6 +87,10 @@ grep -q 'plumos-audio-output' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'ALSA_PLUGIN_DIR' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'PLUMOS_AUDIO_FAST_FORWARD_DROP=1' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'PLUMOS_AUDIO_FAST_FORWARD_STATE' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'audio_device = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'pcm.plumos_output' \
