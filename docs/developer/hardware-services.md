@@ -23,6 +23,9 @@ Known face-button contract:
 the FE while keeping RetroArch and standalone launchers on the shared contract.
 The D-pad is exposed as `ABS_X`/`ABS_Y` and is recorded in the contract as
 udev axes (`left=-0`, `right=+0`, `up=-1`, `down=+1`), not button numbers.
+RetroArch also sets `input_player1_analog_dpad_mode = "1"` and binds those
+same ABS axes to the left-stick directions, so cores that read analog-to-digital
+D-pad state receive the same physical D-pad.
 
 Pixel2 uses busybox `mdev`, not a full udev daemon. Runtime launchers that rely
 on libudev joystick discovery should run `plumos-ensure-udev-input-db` before

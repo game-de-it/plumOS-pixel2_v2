@@ -30,6 +30,7 @@
       "right": "+0",
       "up": "-1",
       "down": "+1"
-    }
+    },
+    "analog_dpad_mode": "left-stick"
   }
 }

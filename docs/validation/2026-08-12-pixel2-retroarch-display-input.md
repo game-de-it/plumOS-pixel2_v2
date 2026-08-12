@@ -374,6 +374,31 @@ NES was relaunched through `plumos-retroarch-launch`; the runtime append still
 uses `input_joypad_driver = "udev"` and the launcher log records
 `udev_input_db=result-ok`.
 
+## Follow-up D-pad axis binding
+
+Physical testing after the udev database shim confirmed that START and A work
+in-game, but the D-pad still did not move the NES character. This means
+RetroArch is now detecting `pixel2_joypad` and applying button bindings, but
+the ABS D-pad axes need to be forced into the runtime player-1 map.
+
+Pixel2 now binds the D-pad axes in two ways:
+
+```text
+input_player1_left_axis = "-0"
+input_player1_right_axis = "+0"
+input_player1_up_axis = "-1"
+input_player1_down_axis = "+1"
+input_player1_l_x_minus_axis = "-0"
+input_player1_l_x_plus_axis = "+0"
+input_player1_l_y_minus_axis = "-1"
+input_player1_l_y_plus_axis = "+1"
+input_player1_analog_dpad_mode = "1"
+```
+
+The direct `player1_*_axis` entries target RetroPad D-pad state. The left-stick
+entries plus `analog_dpad_mode=1` provide a second path for cores/input layers
+that map analog-left to digital D-pad.
+
 ## Host Validation
 
 ```text
