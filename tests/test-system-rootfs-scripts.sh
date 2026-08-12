@@ -73,8 +73,13 @@ grep -q 'system_rolled_back' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
 grep -q 'pivot_root . .plumos-dispatcher-old' \
     "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
 ! grep -q 'switch_root /newroot' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
-grep -q 'for mountpoint in dev sys flash storage proc' \
+grep -q 'for mountpoint in sys flash storage' \
     "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
+grep -q 'mount --move /dev /newroot/dev' \
+    "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
+grep -q 'mount --move /proc /newroot/proc' \
+    "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
+! grep -q 'for mountpoint in dev ' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
 grep -q 'system-dispatcher.log' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
 grep -q 'PLUMOS_DISPATCHER_TEST' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
 grep -q 'fixed-dispatcher,system-a,system-b' "$ROOT_DIR/scripts/build-sd-image.sh"

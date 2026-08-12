@@ -8,13 +8,14 @@ PATH=/bin:/sbin
 export PATH
 
 log() {
-    printf 'plumos-dispatcher=%s\n' "$*" >/dev/console 2>/dev/null || true
-    printf 'plumos-dispatcher=%s\n' "$*" >/dev/kmsg 2>/dev/null || true
+    if [ "${devices_moved:-0}" = 0 ]; then
+        printf 'plumos-dispatcher=%s\n' "$*" >/dev/console 2>/dev/null || true
+        printf 'plumos-dispatcher=%s\n' "$*" >/dev/kmsg 2>/dev/null || true
+    fi
     for log_root in /storage /newroot/storage; do
-        [ -d "$log_root" ] || continue
-        $bb mkdir -p "$log_root/plumos/logs" 2>/dev/null || true
+        [ -w "$log_root/plumos/logs" ] || continue
         printf 'plumos-dispatcher=%s\n' "$*" \
-            >>"$log_root/plumos/logs/system-dispatcher.log" 2>/dev/null || true
+            >>"$log_root/plumos/logs/system-dispatcher.log" || true
     done
     $bb sync
 }
@@ -136,24 +137,32 @@ $bb mount -t squashfs -o loop,ro "$system/system-$selected.squashfs" /newroot ||
 }
 log "stage=slot-mounted slot=$selected"
 
-# /proc/mounts is the source of truth for mounted(). Move proc last so every
-# preceding mount remains observable while it is transferred to the slot root.
-for mountpoint in dev sys flash storage proc; do
-    $bb mkdir -p "/newroot/$mountpoint"
-    if mounted "/$mountpoint"; then
-        $bb mount --move "/$mountpoint" "/newroot/$mountpoint" || {
-            log "result=failed reason=move-mount mount=$mountpoint"
-            exec $bb sh
-        }
-        if [ "$mountpoint" = storage ]; then
-            printf 'plumos-dispatcher=stage=mount-moved mount=storage\n' \
-                >>/newroot/storage/plumos/logs/system-dispatcher.log 2>/dev/null || true
-            $bb sync
-        else
-            log "stage=mount-moved mount=$mountpoint"
-        fi
-    fi
+# setup above guarantees these five mounts. Move /dev only after all checks
+# and /proc last: moving /dev removes the old root's /dev/null, while moving
+# /proc removes mounted()'s source of truth. No old-root dependency is allowed
+# after these two operations.
+for mountpoint in sys flash storage; do
+    $bb mount --move "/$mountpoint" "/newroot/$mountpoint" || {
+        log "result=failed reason=move-mount mount=$mountpoint"
+        exec $bb sh
+    }
+    log "stage=mount-moved mount=$mountpoint"
 done
+log 'stage=mount-move-final mounts=dev,proc'
+$bb mount --move /dev /newroot/dev || {
+    log 'result=failed reason=move-mount mount=dev'
+    exec $bb sh
+}
+devices_moved=1
+$bb mount --move /proc /newroot/proc || {
+    printf 'plumos-dispatcher=result=failed reason=move-mount mount=proc\n' \
+        >>/newroot/storage/plumos/logs/system-dispatcher.log || true
+    $bb sync
+    exec $bb sh
+}
+printf 'plumos-dispatcher=stage=mount-moved mounts=dev,proc\n' \
+    >>/newroot/storage/plumos/logs/system-dispatcher.log || true
+$bb sync
 
 # The stock initramfs already performed switch_root into this block-backed
 # dispatcher SquashFS. The second handoff must therefore use pivot_root.

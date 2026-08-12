@@ -94,6 +94,15 @@ both FAT32 volumes were unmounted, and `/dev/disk4` was ejected successfully.
 The untouched read-only ext4 capture and its SHA-256 remain under
 `output/live/2026-08-13-system-dispatcher-stop/` for diagnostic provenance.
 
+The `45b1ad5` build reached FE and ADB. Live mountinfo showed only `/dev` had
+moved into slot A; `/sys`, `/flash`, `/storage`, and `/proc` remained below
+`/.plumos-dispatcher-old`. The persistent log stopped after `slot-mounted`.
+Moving `/dev` first removed the old root's `/dev/null`, so the shell could not
+set up `2>/dev/null` for subsequent `mounted()` checks and silently skipped the
+remaining mounts. The corrected dispatcher directly and mandatorily moves
+`sys, flash, storage, dev, proc` in that order and has no old-root `/dev` or
+`/proc` dependency after the final two moves.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:
