@@ -13,6 +13,7 @@
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
 - [x] Pixel2向けRetroArchをpinned sourceからbuildする
 - [x] QuickNESをpinned sourceからbuildしcomponent manifest/checksumを生成する
+- [x] Pixel2向けALSA `plumos_output` audio-router componentを実装する
 - [x] strict app-layer assemblerとmanaged/mutable path gateを実装する
 - [x] app-layerをseedしたext4 filesystemをSD image buildへ統合する
 - [ ] canonical libretro core recipe catalogとfilter buildを実装する
@@ -27,7 +28,7 @@
 - [x] Pixel2 RetroArchが`pixel2_joypad`をport 1へautoconfigすることをADB検証する
 - [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
-- [ ] audio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
+- [ ] `plumos_output`経由のaudio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
 - [ ] save/stateが再起動後も保持されることを実機確認する
 
 ## Final partition and update contract

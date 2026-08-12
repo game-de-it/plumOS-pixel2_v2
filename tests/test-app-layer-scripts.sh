@@ -83,6 +83,20 @@ grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'plumos-audio-output' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'ALSA_PLUGIN_DIR' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'audio_device = "%s"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'pcm.plumos_output' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
+grep -q 'PLUMOS_PIXEL2_INTERNAL_CARD_ID' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
+grep -q 'snd_pcm_avail_update' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos_hotplug.c"
+grep -q 'plumOS Pixel2 hotplug audio' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos_hotplug.c"
 grep -q 'PLUMOS_RETROARCH_CPU_GOVERNOR:-}' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'unsupported CPU governor' \

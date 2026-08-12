@@ -12,18 +12,21 @@ for path in \
     bin/plumos-hardware-keys bin/plumos-hardware-keys-service \
     bin/plumos-display-control bin/plumos-volume-control \
     bin/plumos-network-control bin/plumos-network-services \
+    bin/plumos-audio-output lib/alsa-lib/libasound_module_pcm_plumos_hotplug.so \
     emulator/lib/libpthread.so.0 \
     factory-defaults/alsa/alsa.conf \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
     factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg \
     config/system/input-map.env config/system/input-map.json \
     components/frontend/manifest.json components/retroarch/manifest.json \
+    components/audio-router/manifest.json \
     components/libretro-cores/manifest.json; do
     [ -f "$ROOT/$path" ] || { printf 'error: app-layer file missing: %s\n' "$path" >&2; exit 1; }
 done
 (cd "$ROOT" && sha256sum -c checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/frontend/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/retroarch/checksums.sha256 >/dev/null)
+(cd "$ROOT" && sha256sum -c components/audio-router/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/libretro-cores/checksums.sha256 >/dev/null)
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
@@ -31,6 +34,8 @@ grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
 grep -q '^input_device = "pixel2_joypad"$' \
     "$ROOT/factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg"
 grep -q '^input_joypad_driver = "udev"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^audio_device = "plumos_output"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^video_rotation = "3"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
@@ -52,6 +57,10 @@ grep -q '^config_save_on_exit = "false"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
 grep -q 'ID_INPUT_JOYSTICK=1' "$ROOT/bin/plumos-ensure-udev-input-db"
+grep -q 'plumos-audio-output' "$ROOT/bin/plumos-retroarch-launch"
+grep -q 'ALSA_PLUGIN_DIR' "$ROOT/bin/plumos-retroarch-launch"
+grep -q 'pcm.plumos_output' "$ROOT/bin/plumos-audio-output"
+grep -q '"component": "audio-router"' "$ROOT/components/audio-router/manifest.json"
 grep -q '^PLUMOS_INPUT_AB_LAYOUT=east-confirm$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_A_CODE=305$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_CODE=304$' "$ROOT/config/system/input-map.env"

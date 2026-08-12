@@ -503,17 +503,29 @@ ondemand
 
 The launcher receives the frontend CPU policy. Pixel2 follows that policy
 instead of forcing an emulator-specific `performance` governor; NES currently
-uses the frontend's `ondemand` policy. The first Pixel2-specific runtime profile
-therefore avoids a performance-governor workaround and applies RetroArch-side
-frame/audio settings first:
+uses the frontend's `ondemand` policy. Cross-project review found the existing plumOS
+audio-routing fix for similar audio/FPS instability, so the first Pixel2
+runtime profile avoids a performance-governor workaround and applies the
+plumOS audio route plus RetroArch-side frame/audio settings first:
 
 ```text
+audio_device = "plumos_output"
+ALSA_CONFIG_PATH = "/run/plumos/audio/asound.conf"
+ALSA_PLUGIN_DIR = "/mnt/plumos/lib/alsa-lib"
 audio_latency = "96"
 video_threaded = "true"
 ```
 
 The launcher validates and applies the frontend-requested governor when the
 kernel exposes it. `performance` remains a policy/profile choice to use only as
-a later diagnostic or last resort, not a Pixel2 NES default. The mutable user
-RetroArch config is not overwritten; these settings are appended at launch time
-and are also present in factory defaults for newly provisioned configs.
+a later diagnostic or last resort, not a Pixel2 NES default.
+
+Pixel2 now has an `audio-router` app-layer component. It exposes the logical
+ALSA PCM `plumos_output`, resolves RK817 by the `rockchiprk817` ALSA card ID
+instead of card number, and uses the same ioplug delay boundary as the existing plumOS
+router: logical delay is derived from physical ring occupancy via
+`snd_pcm_avail_update()` instead of raw `snd_pcm_delay()`.
+
+The mutable user RetroArch config is not overwritten; these settings are
+appended at launch time and are also present in factory defaults for newly
+provisioned configs.

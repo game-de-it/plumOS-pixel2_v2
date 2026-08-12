@@ -13,6 +13,7 @@ rom=
 requested_cpu_policy=
 audio_latency=${PLUMOS_RETROARCH_AUDIO_LATENCY:-96}
 cpu_governor=${PLUMOS_RETROARCH_CPU_GOVERNOR:-}
+audio_output="$root/bin/plumos-audio-output"
 
 if [ -r "$input_env" ]; then
     set -a
@@ -118,9 +119,23 @@ trap 'restore_cpu_governor' EXIT HUP INT TERM
 set_cpu_governor
 
 append="$runtime_root/retroarch/append.cfg"
+audio_device="${PLUMOS_RETROARCH_AUDIO_DEVICE:-plumos_output}"
+if [ -x "$audio_output" ]; then
+    "$bb" sh "$audio_output" prepare >>"$root/logs/retroarch-launch.log" 2>&1 || {
+        printf 'plumos-retroarch-launch: audio route preparation failed\n' >&2
+        exit 1
+    }
+    export ALSA_CONFIG_PATH="$runtime_root/audio/asound.conf"
+    export ALSA_PLUGIN_DIR="$root/lib/alsa-lib"
+    export AUDIODEV=plumos_output
+else
+    printf 'audio_route=result-fallback reason=router-missing\n' \
+        >>"$root/logs/retroarch-launch.log"
+    audio_device="${PLUMOS_RETROARCH_AUDIO_DEVICE:-default}"
+fi
 {
     printf 'audio_driver = "alsa"\n'
-    printf 'audio_device = "default"\n'
+    printf 'audio_device = "%s"\n' "$audio_device"
     printf 'audio_latency = "%s"\n' "$audio_latency"
     printf 'video_driver = "drm"\n'
     printf 'video_rotation = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}"
@@ -154,7 +169,7 @@ append="$runtime_root/retroarch/append.cfg"
 export HOME="$root/state/retroarch/home"
 export XDG_CONFIG_HOME="$root/config"
 export XDG_CACHE_HOME="$root/state/retroarch/cache"
-if [ -s "$alsa_config" ]; then
+if [ -z "${ALSA_CONFIG_PATH:-}" ] && [ -s "$alsa_config" ]; then
     export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$alsa_config}"
 fi
 export LD_LIBRARY_PATH="$root/emulator/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
