@@ -14,6 +14,12 @@ state="$work/state"
 mkdir -p "$state"
 helper="$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
 
+printf 'a\n' >"$state/system-booted"
+PLUMOS_UPDATE_BUSYBOX=/bin/busybox PLUMOS_UPDATE_STATE_ROOT="$state" \
+    PLUMOS_UPDATE_HEALTH_LOG="$work/log" "$helper" promote
+grep -q '^a$' "$state/system-active"
+grep -q 'system_baseline_healthy' "$state/last-result.json"
+
 printf 'a\n' >"$state/system-active"
 printf 'b\n' >"$state/system-pending"
 printf 'b\n' >"$state/system-pending-attempted"

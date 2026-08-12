@@ -30,11 +30,20 @@ atomic_slot() {
 
 promote() {
     pending=$(read_slot "$STATE/system-pending")
+    booted=$(read_slot "$STATE/system-booted")
     [ -n "$pending" ] || {
+        active=$(read_slot "$STATE/system-active")
+        if [ -z "$active" ] && [ -n "$booted" ]; then
+            atomic_slot "$STATE/system-active" "$booted" || return 1
+            printf '{"result":"system_baseline_healthy","slot":"%s"}\n' \
+                "$booted" >"$STATE/last-result.json"
+            $bb sync
+            log "result=system-baseline-healthy slot=$booted proof=$READY"
+            return 0
+        fi
         log 'result=no-pending-system'
         return 0
     }
-    booted=$(read_slot "$STATE/system-booted")
     [ "$booted" = "$pending" ] || {
         log "result=refused reason=booted-slot-mismatch pending=$pending booted=${booted:-unknown}"
         return 1

@@ -130,6 +130,11 @@ The initial image has no pending generation, so update health correctly logged
 health initialization and a real inactive-slot pending promotion remain the
 next A/B gates.
 
+The health service now materializes a missing baseline `system-active` from
+the dispatcher-proven `system-booted` slot only after the same FE draw proof.
+This gives the factory slot an explicit healthy generation without marking it
+before frontend readiness.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:
