@@ -72,10 +72,36 @@ Docker runtime note:
   partition recognition, but a clean-commit rebuild and Docker-side
   `verify-sd-image.sh` full filesystem extraction remain required.
 
+Clean rebuild:
+
+```sh
+docker desktop stop --force --timeout 30
+open -a Docker
+find /Users/kroot/plumOS-pixel2_v2/output/build -mindepth 1 -delete
+./scripts/docker-build.sh sd-image
+(cd output/image/pixel2 && sha256sum -c checksums.sha256)
+```
+
+Result:
+
+```text
+system_rootfs=result-ok image=/tmp/plumos-pixel2-verify.vMs6wb/SYSTEM
+app_layer_verify=result-ok root=/tmp/plumos-pixel2-verify.vMs6wb/app-layer
+sd_image=result-ok image=/work/output/image/pixel2/plumOS-Pixel2-0.1.0-dev.img
+created: /work/output/image/pixel2/plumOS-Pixel2-0.1.0-dev.img
+plumOS-Pixel2-0.1.0-dev.img: OK
+image.manifest: OK
+```
+
+Final manifest:
+
+```text
+image_size=4294967296
+image_sha256=3f8e1f3df28b5c553e854748bc2530f8e13e57e69bcc30268e24a6d4794c4101
+source_ref=631c30b
+```
+
 Follow-up:
 
-- Restart Docker Desktop outside the broken API session.
-- Re-run `./scripts/docker-build.sh sd-image` after this work is committed so
-  `image.manifest` records the clean source ref.
-- Re-run `./scripts/verify-sd-image.sh` once Docker or native Linux filesystem
-  tools are available.
+- Continue standalone emulator binary implementation and real-device route
+  validation.
