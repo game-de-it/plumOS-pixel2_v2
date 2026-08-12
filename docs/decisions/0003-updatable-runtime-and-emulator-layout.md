@@ -103,6 +103,11 @@ bounded rollback backup, commit root/component manifests and checksums last,
 and become healthy only after the FE renderer-ready marker. Interrupted
 transactions roll back before FE startup.
 
+The package builder may use either a complete prior app-layer directory or the
+installed app-layer `checksums.sha256` as its delta baseline. The checksum
+baseline is intended for content changes on a physical device; mode-only or
+symlink-only transitions require a complete prior directory baseline.
+
 ### Portable content on PLUMOS_USER
 
 p3 is mounted at `/mnt/plumos-user` and is the only normal macOS/Windows

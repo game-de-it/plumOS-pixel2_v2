@@ -119,6 +119,38 @@ def runtime_inventory(root: Path) -> dict[str, tuple[Path, dict[str, Any]]]:
     return inventory
 
 
+def checksum_inventory(path: Path) -> dict[str, str]:
+    inventory: dict[str, str] = {}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise SystemExit(f"error: cannot read --base-checksums: {path}") from exc
+    for line_number, line in enumerate(lines, 1):
+        fields = line.split(maxsplit=1)
+        if len(fields) != 2 or len(fields[0]) != 64 or any(
+            character not in "0123456789abcdefABCDEF" for character in fields[0]
+        ):
+            raise SystemExit(
+                f"error: malformed --base-checksums line {line_number}: {path}"
+            )
+        relative = fields[1]
+        if relative.startswith("*"):
+            relative = relative[1:]
+        pure = PurePosixPath(relative)
+        if (
+            not relative
+            or pure.is_absolute()
+            or ".." in pure.parts
+            or str(pure) != relative
+        ):
+            raise SystemExit(
+                f"error: unsafe --base-checksums path on line {line_number}: {relative}"
+            )
+        if managed_runtime_path(relative):
+            inventory[relative] = fields[0].lower()
+    return inventory
+
+
 def read_required_line(path: Path, label: str) -> str:
     try:
         value = path.read_text(encoding="utf-8").strip()
@@ -199,15 +231,21 @@ def build_runtime(args: argparse.Namespace) -> tuple[dict[str, Any], list[tuple[
         raise SystemExit("error: --runtime-abi does not match runtime RUNTIME_ABI")
     inventory = runtime_inventory(root)
     base_inventory: dict[str, tuple[Path, dict[str, Any]]] = {}
+    base_hashes: dict[str, str] = {}
     if args.base_dir:
         base_inventory = runtime_inventory(args.base_dir.resolve())
+    elif args.base_checksums:
+        base_hashes = checksum_inventory(args.base_checksums.resolve())
     changed: list[tuple[Path, dict[str, Any]]] = []
     for relative, item in inventory.items():
         base = base_inventory.get(relative)
         if base and base[1] == item[1]:
             continue
+        if item[1]["type"] == "file" and base_hashes.get(relative) == item[1]["sha256"]:
+            continue
         changed.append(item)
-    deleted = sorted(set(base_inventory) - set(inventory))
+    base_paths = set(base_inventory) | set(base_hashes)
+    deleted = sorted(base_paths - set(inventory))
     payload_size = sum(int(entry["size"]) for _, entry in changed)
     manifest: dict[str, Any] = {
         "format": FORMAT_VERSION,
@@ -220,7 +258,7 @@ def build_runtime(args: argparse.Namespace) -> tuple[dict[str, Any], list[tuple[
         "system_abi": args.system_abi,
         "runtime_abi": args.runtime_abi,
         "payload_uncompressed_bytes": payload_size,
-        "full_payload": not bool(args.base_dir),
+        "full_payload": not bool(args.base_dir or args.base_checksums),
         "files": [entry for _, entry in changed],
         "delete": deleted,
     }
@@ -276,7 +314,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--type", choices=("runtime", "system"), required=True)
     parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--base-dir", type=Path)
+    base_group = parser.add_mutually_exclusive_group()
+    base_group.add_argument("--base-dir", type=Path)
+    base_group.add_argument("--base-checksums", type=Path)
     parser.add_argument("--version", required=True)
     parser.add_argument("--base-version", default="*")
     parser.add_argument("--system-abi", default="plumos-pixel2-v1")
@@ -297,8 +337,8 @@ def main() -> None:
     if args.type == "runtime":
         manifest, payload = build_runtime(args)
     else:
-        if args.base_dir:
-            parser.error("--base-dir is valid only for runtime packages")
+        if args.base_dir or args.base_checksums:
+            parser.error("--base-dir/--base-checksums are valid only for runtime packages")
         manifest, payload = build_system(args)
 
     manifest_bytes = canonical_json(manifest)

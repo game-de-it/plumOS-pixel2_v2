@@ -76,9 +76,31 @@ cp -a "$base_100" "$runtime_root"
 mkdir -p "$runtime_root/config/user"
 printf '%s\n' 'preserve-me' >"$runtime_root/config/user/settings.ini"
 
+base_checksums="$temp_root/runtime-1.0.0-checksums.sha256"
+python3 - "$base_100" "$base_checksums" <<'PY'
+from hashlib import sha256
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+with Path(sys.argv[2]).open("w", encoding="ascii") as output:
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        output.write(f"{sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}\n")
+PY
 python3 "$BUILDER" --type runtime --input "$runtime_101" \
-    --base-dir "$base_100" --base-version 1.0.0 --version 1.0.1 \
+    --base-checksums "$base_checksums" --base-version 1.0.0 --version 1.0.1 \
     --signing-key "$private_key" --output-dir "$dist" >/dev/null
+python3 - "$dist/plumos-pixel2-runtime-1.0.1.tar.gz" <<'PY'
+import json
+from pathlib import Path
+import sys
+import tarfile
+
+with tarfile.open(Path(sys.argv[1]), "r:gz") as archive:
+    manifest = json.load(archive.extractfile("META/manifest.json"))
+assert manifest["full_payload"] is False
+assert {entry["path"] for entry in manifest["files"]} == {"VERSION", "bin/test-tool"}
+PY
 cp "$dist/plumos-pixel2-runtime-1.0.1.tar.gz" "$user_root/updates/"
 run_updater request-latest >/dev/null
 run_updater apply-pending
