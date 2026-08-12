@@ -85,6 +85,8 @@
   - [ ] PCSX-ReARMed
     - [x] pinned sourceからAArch64 binaryとpackage-local sdl12-compatをbuildし、component manifest/checksumへ統合する
     - [x] Pixel2の480x640 framebufferへCCW回転した論理640x480/4:3 presenter、物理button/hat、`plumos_output` 48 kHz routeを実装する
+    - [x] clean `8b54b97` app-layer、署名Runtime差分、実機health promotion、3468 root checksumを検証する
+    - [x] ROM setの`PSX/chroQW.img`を実機へSHA一致で配置し、`standalone:pcsx_rearmed` launch planを解決する
     - [ ] 代表PSX ROMで実機acceptanceを完了する
   - [ ] YabaSanshiro
   - [ ] ScummVM

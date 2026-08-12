@@ -23,20 +23,33 @@ credentials, SSH state, and future app state.
 Live deploys must update managed files and metadata together. They must not
 overwrite active user data.
 
-## Update Status
+## Implemented Update Contract
 
-The final MF/V90S-style transactional update system is not implemented yet for
-Pixel2. The target design remains:
+Pixel2 has a transactional update path with the same ownership goals as the
+other plumOS handhelds, adapted to the stock boot substrate:
 
-- fixed System A/B slots on the boot volume;
-- signed Runtime updates on `PLUMOS_SYS`;
-- health promotion after FE renderer readiness;
-- rollback on failed pending boot or interrupted Runtime transaction.
+- `/SYSTEM` is a small immutable dispatcher because the stock initramfs always
+  opens that exact filename;
+- System generations are stored as `/system-slots/system-{a,b}.squashfs` on
+  `PLUMOS_BOOT` and only the inactive slot is written;
+- a complete readback SHA-256 is required before pending-slot metadata is
+  committed;
+- signed Runtime updates modify only managed app-layer paths on `PLUMOS_SYS`,
+  keep one rollback generation, and use a write-ahead transaction journal;
+- Ed25519 signature, device ID, vendor runtime, System ABI, Runtime ABI, source
+  version, payload path, and package hash are checked before installation;
+- System and Runtime generations become healthy only after the FE creates
+  `/tmp/plumos-fe-ready` following its first successful render;
+- an unpromoted System boot returns to the active slot, while an unpromoted or
+  interrupted Runtime transaction restores the previous managed generation.
 
-The Pixel2 stock initramfs always opens `/SYSTEM`. The final boot contract
-therefore keeps that filename as a small immutable dispatcher and stores the
-case-insensitively distinct slot images below `/system-slots/`. A `/System/`
-directory is invalid on FAT32 because it collides with `/SYSTEM`.
+`/System/` cannot be used for slot storage because FAT32 treats it as colliding
+with `/SYSTEM`. Update packages are staged in
+`/mnt/plumos-user/updates`; the request journal itself is committed on ext4
+under `/mnt/plumos/update-state` before safe reboot.
 
-Until that lands, generated SD images and careful metadata-complete live deploys
-are the supported development paths.
+The host fixtures cover signature rejection, compatibility gates, interrupted
+Runtime recovery, inactive-slot readback, and rollback state transitions. The
+successful signed Runtime and System paths have also been validated on a
+physical Pixel2. Remaining release acceptance is the FE menu interaction and
+deliberate failure injection on a physical device.

@@ -31,10 +31,10 @@
 | frontend systems | 97 total / 88 enabled / 9 disabled |
 | required app-layer components | 7 / 7 present |
 | libretro cores | 114 built |
-| standalone emulator | 3 built / 7 pending |
+| standalone emulator | 4 built / 6 pending |
 | visible Apps entries | 2 |
 | enabled systems with pending content policy | 33 |
-| release blockers detected by audit | 2 |
+| release blockers detected by audit | 1 |
 
 ## Implemented build surface
 
@@ -172,9 +172,9 @@ GitHub公開前に、実装とは別に次を整える。
 
 1. P0の公開済み未実装surfaceをすべて実装し、audit blockerを0にする。
 2. Scraping、File Manager、Music Player、RetroArch menu、PortMasterをcomponent化する。
-3. 7 standalone pending binaryを順にbuildし、default/alternate routeを実機検証する。
+3. 6 standalone pending binaryを順にbuildし、default/alternate routeを実機検証する。
 4. 33 content policyと9 disabled systemをROM setに基づき解決する。
-5. first-boot provisioning、System A/B、signed updaterを実装する。
+5. 実装済みSystem A/B・signed updaterを維持しつつ、first-boot provisioningを完成する。
 6. clean imageを複製SDへ書き、全physical-device acceptanceを完走する。
 7. repository/release gateを通し、配布物を再取得して最終checksumを確認する。
 
