@@ -310,7 +310,17 @@ clone_or_update_repo() {
       git checkout --quiet --detach "$fetched_commit"
       [ "$(git rev-parse HEAD)" = "$fetched_commit" ] || exit 1
     fi
-    git submodule update --init --recursive >> "$log" 2>&1 || true
+    if [ -f .gitmodules ]; then
+      git submodule sync --recursive --quiet >> "$log" 2>&1 || true
+      if [ "$id" = "ecwolf" ]; then
+        # The legacy SDL Bitbucket forks referenced by ECWolf are no longer
+        # publicly reachable. The libretro target only needs libretro-common.
+        git submodule update --init --depth 1 --quiet \
+          src/libretro/libretro-common >> "$log" 2>&1 || true
+      else
+        git submodule update --init --recursive >> "$log" 2>&1 || true
+      fi
+    fi
     git clean -fdx --quiet
   ) >> "$log" 2>&1
 }

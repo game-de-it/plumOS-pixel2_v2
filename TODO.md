@@ -19,6 +19,8 @@
 - [x] canonical libretro core recipe catalogとfilter buildを実装する
 - [x] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
   - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
+- [x] canonical all-core libretro buildを完走させる
+  - 2026-08-12: `./scripts/docker-build.sh cores --filter all --jobs 4 --fail-on-error 1` で114 coreがbuild成功、component manifest/checksumを生成。
 - [ ] PicoArchとstandalone emulator componentを段階的に統合する
 
 ## Frontend game lifecycle
@@ -80,7 +82,7 @@
 - [x] frontendとADBの診断logをSTATE partitionへ保存する
 - [x] 実機LCDでfrontend描画と90度回転を確認する
 - [x] 実機でfrontendのbutton mappingを確認する
-- [x] MF/V90S型のグローバル音量キー・SELECT+音量輝度サービスを実装し、自動起動と実ゲーム音量変化を確認する
+- [x] plumOS共通型のグローバル音量キー・SELECT+音量輝度サービスを実装し、自動起動と実ゲーム音量変化を確認する
   - 2026-08-12: `380a006` app-layer/SYSTEMでdaemon起動、`pixel2_joypad`/`gpio-keys` open、helper往復確認済み。SELECT+音量による画面輝度変更は実機確認済み。音量の実音声確認はゲーム起動後に実施する。
   - 2026-08-12: `c8150cc` app-layerでPixel2 audio-routerがRK817内部ルートにもruntime software gainを適用するようにした。NES起動中に音量ボタンで実音量が変化することを確認済み。
 
@@ -99,4 +101,4 @@
 - [x] 同一source refから生成したSD imageのSHA-256再現性をhost検証する
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [ ] app-layer manifest/checksumを実機deploy単位で検証する
-- [ ] fb0に残るstock/旧boot splash由来の`Powered by ROCKNIX`残像をclearし、実機スクショ経路をplumOS化する
+- [ ] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する

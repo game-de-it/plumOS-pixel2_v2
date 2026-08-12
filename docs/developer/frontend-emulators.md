@@ -38,10 +38,12 @@ device launch-plan verifier.
 
 ## RetroArch
 
-RetroArch and the Pixel2 standard libretro set are packaged for AArch64.
+RetroArch and the Pixel2 libretro sets are packaged for AArch64.
 `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1`
 builds 41 catalog cores and emits the `libretro-cores` component manifest and
-checksums. The FE system catalog is generated around those managed launch
+checksums. `./scripts/docker-build.sh cores --filter all --jobs 4
+--fail-on-error 1` builds the full 114-core catalog used for full-system route
+coverage. The FE system catalog is generated around those managed launch
 profiles rather than a single QuickNES-only route.
 
 Factory defaults include the Pixel2 joypad autoconfig and the current
