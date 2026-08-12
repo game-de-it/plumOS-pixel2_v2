@@ -2,10 +2,14 @@ diff --git a/frontend/plat_sdl.c b/frontend/plat_sdl.c
 index b0acb113..74002587 100644
 --- a/frontend/plat_sdl.c
 +++ b/frontend/plat_sdl.c
-@@ -31,0 +32,2 @@
+@@ -31,2 +31,4 @@
+ #ifdef PLUMOS_PIXEL2
 +#include <linux/input.h>
 +#include "libpicofe/linux/in_evdev.h"
-@@ -36,0 +39,42 @@
+ #include "pcsx_pixel2_fbdev.h"
+@@ -35,2 +37,44 @@
+ #include "libpicofe/plat_sdl.c"
++
 +#ifdef PLUMOS_PIXEL2
 +static const struct in_default_bind in_pixel2_evdev_defbinds[] = {
 +  { KEY_UP,             IN_BINDTYPE_PLAYER12, DKEY_UP },
@@ -47,11 +51,13 @@ index b0acb113..74002587 100644
 +               sizeof(in_pixel2_evdev_key_map[0]),
 +};
 +#endif
-+
-@@ -278,0 +323,6 @@ void plat_init(void)
+ 
+@@ -278,2 +322,8 @@ void plat_init(void)
+ 
 +#ifdef PLUMOS_PIXEL2
 +  if (in_evdev_init(&in_pixel2_evdev_platform_data) != 0) {
 +    fprintf(stderr, "Pixel2 PCSX evdev input initialization failed\n");
 +    exit(1);
 +  }
 +#endif
+   in_sdl_init(&in_sdl_platform_data, sdl_event_handler);
