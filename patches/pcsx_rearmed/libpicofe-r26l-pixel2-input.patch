@@ -2,7 +2,22 @@ diff --git a/in_sdl.c b/in_sdl.c
 index 93fe22d..c7cb1a3 100644
 --- a/in_sdl.c
 +++ b/in_sdl.c
-@@ -685,7 +685,12 @@ static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_binds)
+@@ -233,4 +233,10 @@ static void in_sdl_probe(const in_drv_t *drv)
+-	/* joysticks go here too */
+-	SDL_InitSubSystem(SDL_INIT_JOYSTICK);
+-
+-	joycount = SDL_NumJoysticks();
++#ifdef PLUMOS_PIXEL2
++	/* Pixel2 controller input is owned by evdev.  Registering the same
++	 * event device through SDL duplicates menu press/release events. */
++	joycount = 0;
++#else
++	/* joysticks go here too */
++	SDL_InitSubSystem(SDL_INIT_JOYSTICK);
++
++	joycount = SDL_NumJoysticks();
++#endif
+@@ -685,7 +691,12 @@ static int in_sdl_clean_binds(void *drv_data, int *binds, int *def_binds)
  	for (t = 0; t < IN_BINDTYPE_COUNT; t++) {
  		for (i = 0; i < SDLK_LAST; i++) {
  			int offs = IN_BIND_OFFS(i, t);
@@ -16,4 +31,3 @@ index 93fe22d..c7cb1a3 100644
  				binds[offs] = def_binds[offs] = 0;
  			if (binds[offs]) {
  				if (t == IN_BINDTYPE_EMU)
-

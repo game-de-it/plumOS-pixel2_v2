@@ -8,6 +8,7 @@ RA_LAUNCHER="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 INPUT_ENV="$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 PICO_PATCH="$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch-pixel2-input-aspect.patch"
 PCSX_PATCH="$ROOT_DIR/patches/pcsx_rearmed/pcsx-rearmed-r26l-pixel2-evdev-menu.patch"
+PCSX_PICOFE_PATCH="$ROOT_DIR/patches/pcsx_rearmed/libpicofe-r26l-pixel2-input.patch"
 OPENBOR_PATCH="$ROOT_DIR/patches/openbor/openbor-v6391-pixel2-sdl.patch"
 SA_BUILD="$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 SA_LAUNCHER="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
@@ -49,6 +50,12 @@ for binding in \
     'in_evdev_init(&in_pixel2_evdev_platform_data)'; do
     grep -Fq "$binding" "$PCSX_PATCH" ||
         fail "PCSX-ReARMed raw FUNCTION contract missing: $binding"
+done
+for binding in \
+    'Pixel2 controller input is owned by evdev' \
+    'joycount = 0'; do
+    grep -Fq "$binding" "$PCSX_PICOFE_PATCH" ||
+        fail "PCSX-ReARMed single input path contract missing: $binding"
 done
 
 for binding in \

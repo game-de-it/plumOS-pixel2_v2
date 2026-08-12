@@ -244,9 +244,11 @@ build_pcsx_rearmed() {
   git -C "$src" apply --check "$PCSX_EVDEV_MENU_PATCH" \
     >>"$PCSX_LOG" 2>&1
   git -C "$src" apply "$PCSX_EVDEV_MENU_PATCH" >>"$PCSX_LOG" 2>&1
-  git -C "$src/frontend/libpicofe" apply --check "$PCSX_PICOFE_PATCH" \
+  git -C "$src/frontend/libpicofe" apply --check --unidiff-zero \
+    "$PCSX_PICOFE_PATCH" \
     >>"$PCSX_LOG" 2>&1
-  git -C "$src/frontend/libpicofe" apply "$PCSX_PICOFE_PATCH" \
+  git -C "$src/frontend/libpicofe" apply --unidiff-zero \
+    "$PCSX_PICOFE_PATCH" \
     >>"$PCSX_LOG" 2>&1
   install -m 0644 "$PCSX_FBDEV_HEADER" "$src/frontend/pcsx_pixel2_fbdev.h"
 
