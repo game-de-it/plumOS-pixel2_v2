@@ -26,10 +26,12 @@ launchers that are not present in the Pixel2 app-layer.
 
 ## Launch Profile Contract
 
-The implemented libretro launch route family is:
+The implemented launch route families are:
 
 ```text
 retroarch:<core-id>
+picoarch:<core-id>
+standalone:<emulator-id>
 ```
 
 The FE catalog must only expose systems whose runtime/core exists in the
@@ -69,6 +71,14 @@ captured and validated on the real device.
 
 ## Pending Emulator Work
 
-PicoArch, standalone emulators, Pyxel, PortMaster, File Manager, and Music
-Player are not yet Pixel2 runtime guarantees. Add them only when each component
-is built, routed, checksummed, and physically validated on Pixel2.
+PicoArch is packaged as a Pixel2 app-layer component. It reuses the generated
+libretro core set through the shared `/mnt/plumos/cores/*_libretro.so` route
+and uses the Pixel2 ALSA `plumos_output` path.
+
+Standalone has a Pixel2 launcher component and route manifest. Individual
+standalone emulator binaries are intentionally marked `pending-binary` until
+each binary is built, packaged, and physically validated on Pixel2.
+
+Pyxel, PortMaster, File Manager, and Music Player are not yet Pixel2 runtime
+guarantees. Add them only when each component is built, routed, checksummed, and
+physically validated on Pixel2.

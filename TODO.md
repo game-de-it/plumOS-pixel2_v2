@@ -21,7 +21,11 @@
   - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
 - [x] canonical all-core libretro buildを完走させる
   - 2026-08-12: `./scripts/docker-build.sh cores --filter all --jobs 4 --fail-on-error 1` で114 coreがbuild成功、component manifest/checksumを生成。
-- [ ] PicoArchとstandalone emulator componentを段階的に統合する
+- [x] PicoArch componentをPixel2 build/app-layerへ統合する
+  - 2026-08-12: `./scripts/docker-build.sh picoarch` でPixel2 PicoArch/SDL12 compatをbuildし、component manifest/checksumを生成。
+- [x] standalone launcher componentをPixel2 build/app-layerへ統合する
+  - 2026-08-12: `./scripts/docker-build.sh standalone` でPixel2 standalone launcher componentを生成。個別standalone emulator binaryはmanifest上で`pending-binary`として明示。
+- [ ] standalone emulator binaryをPixel2向けに順次build・実機検証する
 
 ## Frontend game lifecycle
 

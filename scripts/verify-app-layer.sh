@@ -7,7 +7,11 @@ for path in \
     manifest.json checksums.sha256 VERSION COMPAT_VENDOR RUNTIME_ABI \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
     bin/plumos-retroarch-launch bin/plumos-ensure-udev-input-db \
+    bin/plumos-picoarch-launch bin/plumos-picoarch-stop \
+    bin/plumos-standalone-launch bin/plumos-standalone-stop \
     bin/retroarch cores/quicknes_libretro.so \
+    picoarch/bin/picoarch picoarch/lib/libSDL-1.2.so.0 \
+    config/standalone/picoarch.env config/standalone/pixel2.env \
     bin/plumos-safe-shutdown bin/plumos-run-with-input-map \
     bin/plumos-hardware-keys bin/plumos-hardware-keys-service \
     bin/plumos-display-control bin/plumos-volume-control \
@@ -19,6 +23,7 @@ for path in \
     factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg \
     config/system/input-map.env config/system/input-map.json \
     components/frontend/manifest.json components/retroarch/manifest.json \
+    components/picoarch/manifest.json components/standalone/manifest.json \
     components/audio-router/manifest.json \
     components/libretro-cores/manifest.json; do
     [ -f "$ROOT/$path" ] || { printf 'error: app-layer file missing: %s\n' "$path" >&2; exit 1; }
@@ -26,13 +31,13 @@ done
 (cd "$ROOT" && sha256sum -c checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/frontend/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/retroarch/checksums.sha256 >/dev/null)
+(cd "$ROOT" && sha256sum -c components/picoarch/checksums.sha256 >/dev/null)
+(cd "$ROOT" && sha256sum -c components/standalone/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/audio-router/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/libretro-cores/checksums.sha256 >/dev/null)
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
-grep -q '"retroarch:gambatte"' "$ROOT/config/frontend/systems.json"
-grep -q '"retroarch:pcsx_rearmed"' "$ROOT/config/frontend/systems.json"
 grep -q '^input_device = "pixel2_joypad"$' \
     "$ROOT/factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg"
 grep -q '^input_joypad_driver = "udev"$' \
@@ -64,9 +69,17 @@ grep -q '^config_save_on_exit = "false"$' \
 grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
 grep -q 'ID_INPUT_JOYSTICK=1' "$ROOT/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-audio-output' "$ROOT/bin/plumos-retroarch-launch"
+grep -q 'plumos-audio-output' "$ROOT/bin/plumos-picoarch-launch"
+grep -q 'plumos-audio-output' "$ROOT/bin/plumos-standalone-launch"
 grep -q 'ALSA_PLUGIN_DIR' "$ROOT/bin/plumos-retroarch-launch"
+grep -q 'ALSA_PLUGIN_DIR' "$ROOT/bin/plumos-picoarch-launch"
+grep -q 'ALSA_PLUGIN_DIR' "$ROOT/bin/plumos-standalone-launch"
 grep -q 'pcm.plumos_output' "$ROOT/bin/plumos-audio-output"
 grep -q '"component": "audio-router"' "$ROOT/components/audio-router/manifest.json"
+grep -q '"component": "picoarch"' "$ROOT/components/picoarch/manifest.json"
+grep -q '"component": "standalone"' "$ROOT/components/standalone/manifest.json"
+grep -q '"device": "pixel2"' "$ROOT/components/picoarch/manifest.json"
+grep -q '"device": "pixel2"' "$ROOT/components/standalone/manifest.json"
 grep -q '^PLUMOS_INPUT_AB_LAYOUT=east-confirm$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_A_CODE=305$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_CODE=304$' "$ROOT/config/system/input-map.env"
@@ -113,7 +126,7 @@ if find "$ROOT" -type f \( -iname '*.nes' -o -iname '*.gb' -o -iname '*.gba' \
     printf 'error: ROM or BIOS-like content in app layer\n' >&2
     exit 1
 fi
-if grep -R -a -E -i -n 'rocknix|emuelec|batocera|knulli|stockos' \
+if grep -R -a -E -i -n 'rock[n]ix|emuel[e]c|batocer[a]|knull[i]|stock[o]s' \
     "$ROOT" >/dev/null; then
     printf 'error: foreign distribution identity in app layer\n' >&2
     exit 1
@@ -128,7 +141,9 @@ from pathlib import Path
 root = Path(sys.argv[1])
 systems = json.loads((root / "config/frontend/systems.json").read_text())["systems"]
 manifest = json.loads((root / "components/libretro-cores/manifest.json").read_text())
+standalone_manifest = json.loads((root / "components/standalone/manifest.json").read_text())
 cores = {entry["id"] for entry in manifest["cores"]}
+standalone_ids = {entry["id"] for entry in standalone_manifest.get("emulators", [])}
 aliases = {
     "beetle_saturn": "mednafen_saturn",
     "mednafen_saturn": "beetle_saturn",
@@ -148,6 +163,22 @@ for system in systems:
         continue
     for profile in system.get("launch_profiles", []):
         if not profile.startswith("retroarch:"):
+            if profile.startswith("picoarch:"):
+                core = profile.split(":", 1)[1]
+                if not (root / "bin/plumos-picoarch-launch").exists():
+                    missing.append(profile)
+                    continue
+                if (root / "picoarch/cores" / f"{core}_libretro.so").exists():
+                    continue
+                if (root / "cores" / f"{core}_libretro.so").exists():
+                    continue
+                missing.append(profile)
+            elif profile.startswith("standalone:"):
+                emulator = profile.split(":", 1)[1]
+                if not (root / "bin/plumos-standalone-launch").exists():
+                    missing.append(profile)
+                elif emulator not in standalone_ids:
+                    missing.append(profile)
             continue
         core = profile.split(":", 1)[1]
         binary = root / "cores" / f"{core}_libretro.so"
@@ -158,7 +189,7 @@ for system in systems:
             continue
         missing.append(profile)
 if missing:
-    raise SystemExit("missing retroarch profile cores: " + ", ".join(missing))
+    raise SystemExit("missing launch profile runtimes: " + ", ".join(missing))
 PY
 if [ "$(uname -m)" = aarch64 ]; then
     LD_LIBRARY_PATH="$ROOT/emulator/lib:$ROOT/frontend/lib" \

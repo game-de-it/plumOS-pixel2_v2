@@ -1,0 +1,29 @@
+diff --git a/core.c b/core.c
+--- a/core.c
++++ b/core.c
+@@ -668,16 +668,25 @@ int core_load_content(struct content *content) {
+ 	struct retro_game_info game_info = {};
+ 	struct retro_system_av_info av_info = {};
+ 	int ret = -1;
+ 	char cheats_path[MAX_PATH] = {0};
++	bool defer_controller_setup = !strcmp(core_name, "tyrquake");
+ 
+ 	if (core_load_game_info(content, &game_info)) {
+ 		goto finish;
+ 	}
+ 
++	if (current_core.retro_set_controller_port_device && !defer_controller_setup) {
++		current_core.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
++	}
++
+ 	if (!current_core.retro_load_game(&game_info)) {
+ 		PA_ERROR("Couldn't load content\n");
+ 		goto finish;
+ 	}
++
++	if (current_core.retro_set_controller_port_device && defer_controller_setup) {
++		current_core.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
++	}
+ 
+ 	content_loaded = true;
+ 	content_based_name(content, cheats_path, sizeof(cheats_path), config_dir, "cheats/", ".cht");

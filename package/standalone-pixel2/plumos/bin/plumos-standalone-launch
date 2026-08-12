@@ -1,0 +1,192 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+PLUMOS_USER_ROOT="${PLUMOS_USER_ROOT:-/mnt/plumos-user}"
+EMU_ROOT="${PLUMOS_ROOT}/standalone"
+LOG_ROOT="${PLUMOS_ROOT}/logs/standalone"
+id=${1:-}
+[ "$#" -gt 0 ] && shift
+
+fail() {
+  mkdir -p "$LOG_ROOT"
+  printf 'plumos-standalone-launch: %s\n' "$*" >&2
+  printf 'id=%s error=%s\n' "$id" "$*" >>"$LOG_ROOT/launcher.log"
+  exit "${2:-1}"
+}
+
+[ -n "$id" ] || fail "missing emulator ID" 2
+case "$id" in
+  *[!A-Za-z0-9_.-]*) fail "invalid emulator ID: $id" 2 ;;
+esac
+
+mkdir -p "$LOG_ROOT"
+export HOME="${PLUMOS_ROOT}/state/standalone/${id}"
+export XDG_CONFIG_HOME="${HOME}/config"
+export XDG_DATA_HOME="${HOME}/data"
+export XDG_CACHE_HOME="${PLUMOS_RUNTIME_ROOT}/cache/standalone/${id}"
+export PATH="${PLUMOS_ROOT}/bin:${PATH}"
+SONAME_MAP="${PLUMOS_ROOT}/config/standalone/soname-links.tsv"
+SONAME_DIR="${PLUMOS_RUNTIME_ROOT}/standalone/lib"
+mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$SONAME_DIR"
+find "$SONAME_DIR" -type l -delete 2>/dev/null || true
+if [ -f "$SONAME_MAP" ]; then
+  while IFS="$(printf '\t')" read -r soname real_name; do
+    [ -n "$soname" ] && [ -f "${PLUMOS_ROOT}/lib/${real_name}" ] || continue
+    ln -sf "${PLUMOS_ROOT}/lib/${real_name}" "${SONAME_DIR}/${soname}"
+  done <"$SONAME_MAP"
+fi
+
+export LD_LIBRARY_PATH="${SONAME_DIR}:${PLUMOS_ROOT}/lib:${LD_LIBRARY_PATH:-}"
+export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
+export ALSA_CONFIG_PATH="${PLUMOS_ALSA_CONFIG_PATH:-${PLUMOS_RUNTIME_ROOT}/audio/asound.conf}"
+export ALSA_PLUGIN_DIR="${PLUMOS_ALSA_PLUGIN_DIR:-${PLUMOS_ROOT}/lib/alsa-lib}"
+export AUDIODEV="${AUDIODEV:-plumos_output}"
+
+AUDIO_OUTPUT_HELPER="${PLUMOS_AUDIO_OUTPUT_HELPER:-${PLUMOS_ROOT}/bin/plumos-audio-output}"
+if [ -x "$AUDIO_OUTPUT_HELPER" ]; then
+  audio_status="$($AUDIO_OUTPUT_HELPER prepare 2>&1)" || {
+    fail "audio output prepare failed: $audio_status" 49
+  }
+  printf 'id=%s audio_device=%s alsa_config=%s %s\n' "$id" "$AUDIODEV" \
+    "$ALSA_CONFIG_PATH" "$(printf '%s' "$audio_status" | tr '\n' ' ')" \
+    >>"$LOG_ROOT/launcher.log"
+else
+  fail "audio output helper missing: $AUDIO_OUTPUT_HELPER" 49
+fi
+
+cpu_index=1
+while [ "$cpu_index" -le 3 ]; do
+  online_path="/sys/devices/system/cpu/cpu${cpu_index}/online"
+  [ -w "$online_path" ] && printf '1\n' >"$online_path" 2>/dev/null || true
+  cpu_index=$((cpu_index + 1))
+done
+
+cpu_policy="${PLUMOS_STANDALONE_CPU_POLICY:-ondemand}"
+case "$cpu_policy" in
+  interactive|performance|ondemand|schedutil|conservative)
+    for cpufreq in /sys/devices/system/cpu/cpufreq/policy*; do
+      [ -w "${cpufreq}/scaling_governor" ] || continue
+      cpu_min="$(cat "${cpufreq}/cpuinfo_min_freq" 2>/dev/null || true)"
+      cpu_max="$(cat "${cpufreq}/cpuinfo_max_freq" 2>/dev/null || true)"
+      [ -z "$cpu_min" ] || printf '%s\n' "$cpu_min" >"${cpufreq}/scaling_min_freq" 2>/dev/null || true
+      [ -z "$cpu_max" ] || printf '%s\n' "$cpu_max" >"${cpufreq}/scaling_max_freq" 2>/dev/null || true
+      grep -qw "$cpu_policy" "${cpufreq}/scaling_available_governors" 2>/dev/null || continue
+      printf '%s\n' "$cpu_policy" >"${cpufreq}/scaling_governor" 2>/dev/null || true
+    done
+    ;;
+esac
+
+case "$id" in
+  ppsspp)
+    exe="${EMU_ROOT}/ppsspp/bin/PPSSPPSDL"
+    workdir="${EMU_ROOT}/ppsspp"
+    set -- --fullscreen --graphics=gles2.0 "$@"
+    ;;
+  flycast)
+    exe="${EMU_ROOT}/flycast/bin/flycast"
+    workdir="${EMU_ROOT}/flycast"
+    set -- -config window:fullscreen=yes "$@"
+    ;;
+  mupen64plus)
+    exe="${EMU_ROOT}/mupen64plus/bin/mupen64plus"
+    workdir="${EMU_ROOT}/mupen64plus"
+    set -- --fullscreen --resolution 640x480 "$@"
+    ;;
+  yabasanshiro)
+    exe="${EMU_ROOT}/yabasanshiro/bin/yabasanshiro"
+    workdir="${EMU_ROOT}/yabasanshiro"
+    rom=${1:-}
+    [ -n "$rom" ] || fail "missing Saturn content path" 2
+    shift
+    set -- --iso "$rom" --resolution_mode 0 --keep_aspect_rate "$@"
+    ;;
+  drastic)
+    exe="${EMU_ROOT}/drastic/bin/drastic"
+    workdir="${EMU_ROOT}/drastic"
+    ;;
+  scummvm)
+    exe="${EMU_ROOT}/scummvm/bin/scummvm"
+    workdir="${EMU_ROOT}/scummvm"
+    content=${1:-}
+    [ -n "$content" ] || fail "missing ScummVM content path" 2
+    shift
+    if [ -d "$content" ]; then
+      game_dir=$content
+    elif [ -f "$content" ]; then
+      game_dir=${content%/*}
+    else
+      fail "missing ScummVM content: $content" 2
+    fi
+    set -- --config="${XDG_CONFIG_HOME}/scummvm.ini" \
+      --savepath="${XDG_DATA_HOME}/saves" --fullscreen \
+      --path="$game_dir" --auto-detect "$@"
+    ;;
+  easyrpg)
+    exe="${EMU_ROOT}/easyrpg/bin/easyrpg-player"
+    workdir="${EMU_ROOT}/easyrpg"
+    project=${1:-}
+    [ -n "$project" ] || fail "missing EasyRPG project path" 2
+    shift
+    case "$project" in *.[lL][dD][bB]) project=${project%/*} ;; esac
+    set -- --project-path "$project" "$@"
+    ;;
+  openbor)
+    exe="${EMU_ROOT}/openbor/bin/OpenBOR"
+    workdir="${PLUMOS_RUNTIME_ROOT}/standalone/openbor-work.$$"
+    pak=${1:-}
+    [ -n "$pak" ] || fail "missing OpenBOR PAK path" 2
+    [ -f "$pak" ] || fail "missing OpenBOR PAK: $pak" 2
+    shift
+    mkdir -p "$workdir/Paks" "${XDG_DATA_HOME}/Saves" "${XDG_DATA_HOME}/Logs" \
+      "${XDG_DATA_HOME}/ScreenShots"
+    ln -s "$pak" "$workdir/Paks/${pak##*/}"
+    ;;
+  pcsx_rearmed)
+    exe="${EMU_ROOT}/pcsx_rearmed/bin/pcsx"
+    workdir="${EMU_ROOT}/pcsx_rearmed"
+    rom=${1:-}
+    [ -n "$rom" ] || fail "missing PlayStation content path" 2
+    shift
+    set -- -cdfile "$rom" "$@"
+    ;;
+  nxengine-evo)
+    exe="${EMU_ROOT}/nxengine-evo/bin/nxengine-evo"
+    workdir="${EMU_ROOT}/nxengine-evo"
+    set --
+    ;;
+  *) fail "unknown standalone emulator: $id" 2 ;;
+esac
+
+[ -x "$exe" ] || fail "missing standalone emulator binary: $exe" 127
+
+PID_ROOT="${PLUMOS_RUNTIME_ROOT}/standalone"
+pid_file="${PID_ROOT}/${id}.pid"
+exe_file="${PID_ROOT}/${id}.exe"
+mkdir -p "$PID_ROOT"
+if [ -f "$pid_file" ] && [ -f "$exe_file" ]; then
+  old_pid="$(cat "$pid_file" 2>/dev/null || true)"
+  old_exe="$(cat "$exe_file" 2>/dev/null || true)"
+  if [ -n "$old_pid" ] && [ -r "/proc/${old_pid}/exe" ] &&
+     [ "$(readlink "/proc/${old_pid}/exe" 2>/dev/null || true)" = "$old_exe" ]; then
+    fail "standalone emulator already running: $id pid=$old_pid" 75
+  fi
+fi
+rm -f "$pid_file" "$exe_file"
+
+cleanup() {
+  rc=$?
+  [ -n "${openbor_workdir:-}" ] && rm -rf "$openbor_workdir"
+  exit "$rc"
+}
+trap cleanup EXIT INT TERM HUP
+
+printf 'id=%s exe=%s args=%s\n' "$id" "$exe" "$*" >>"$LOG_ROOT/launcher.log"
+cd "$workdir" || exit 127
+"$exe" "$@" >>"$LOG_ROOT/${id}.log" 2>&1 &
+pid=$!
+printf '%s\n' "$pid" >"$pid_file"
+printf '%s\n' "$exe" >"$exe_file"
+wait "$pid"

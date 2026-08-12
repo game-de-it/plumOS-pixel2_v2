@@ -1,0 +1,138 @@
+diff --git a/core.c b/core.c
+--- a/core.c
++++ b/core.c
+@@ -5,6 +5,7 @@
+ #include <sys/stat.h>
+ #include <sys/types.h>
+ #include <fcntl.h>
++#include <pthread.h>
+ #include <unistd.h>
+ #include "cheat.h"
+ #include "core.h"
+@@ -32,6 +33,9 @@ enum retro_pixel_format core_pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
+ static bool content_loaded;
+ static struct retro_frame_time_callback frame_time_callback;
+ static struct retro_audio_callback audio_callback;
++static pthread_t audio_callback_thread;
++static bool audio_callback_thread_running;
++static int audio_callback_thread_stop;
+ 
+ static char config_dir[MAX_PATH];
+ static char save_dir[MAX_PATH];
+@@ -133,21 +137,63 @@ void core_run_frame_time_callback(void)
+ 	frame_time_callback.callback(usec);
+ }
+ 
+-void core_run_audio_callback(void)
++static void *core_audio_callback_thread_main(void *unused)
+ {
+-	if (audio_callback.callback)
+-		audio_callback.callback();
++	(void)unused;
++	while (!__atomic_load_n(&audio_callback_thread_stop, __ATOMIC_ACQUIRE) &&
++	       !should_quit) {
++		retro_audio_callback_t callback = audio_callback.callback;
++		if (!callback)
++			break;
++		callback();
++		/* Avoid a busy loop when a callback temporarily produces no samples. */
++		usleep(1000);
++	}
++	return NULL;
+ }
+ 
+-static void core_set_audio_callback(const struct retro_audio_callback *next)
++void core_stop_audio_callback(void)
+ {
++	if (audio_callback_thread_running) {
++		__atomic_store_n(&audio_callback_thread_stop, 1, __ATOMIC_RELEASE);
++		pthread_join(audio_callback_thread, NULL);
++		audio_callback_thread_running = false;
++		PA_INFO("Audio callback thread stopped\n");
++	}
+ 	if (audio_callback.set_state)
+ 		audio_callback.set_state(false);
++}
++
++int core_start_audio_callback(void)
++{
++	int rc;
++
++	if (!audio_callback.callback || audio_callback_thread_running)
++		return 0;
++	__atomic_store_n(&audio_callback_thread_stop, 0, __ATOMIC_RELEASE);
++	if (audio_callback.set_state)
++		audio_callback.set_state(true);
++	rc = pthread_create(&audio_callback_thread, NULL,
++	                    core_audio_callback_thread_main, NULL);
++	if (rc != 0) {
++		if (audio_callback.set_state)
++			audio_callback.set_state(false);
++		PA_ERROR("Unable to start audio callback thread: %s\n", strerror(rc));
++		return -1;
++	}
++	audio_callback_thread_running = true;
++	PA_INFO("Audio callback thread started\n");
++	return 0;
++}
++
++static void core_set_audio_callback(const struct retro_audio_callback *next)
++{
++	core_stop_audio_callback();
+ 	memset(&audio_callback, 0, sizeof(audio_callback));
+ 	if (next)
+ 		memcpy(&audio_callback, next, sizeof(audio_callback));
+-	if (audio_callback.set_state)
+-		audio_callback.set_state(true);
+ }
+ 
+ void state_file_name(char *name, size_t size, int slot) {
+@@ -781,14 +827,15 @@ void core_unload_content(void) {
+ void core_unload_content(void) {
+ 	if (content_loaded) {
+ 		sram_write();
+ 
+ 		cheats_free(cheats);
+ 		cheats = NULL;
++		core_stop_audio_callback();
+ 
+ 		current_core.retro_unload_game();
+ 		content_loaded = false;
+ 	}
+ 	content_free(content);
+ 	content = NULL;
+ }
+ 
+diff --git a/core.h b/core.h
+--- a/core.h
++++ b/core.h
+@@ -52,7 +52,8 @@ void sram_write(void);
+ 
+ bool state_allowed(void);
+ void core_run_frame_time_callback(void);
+-void core_run_audio_callback(void);
++int core_start_audio_callback(void);
++void core_stop_audio_callback(void);
+ void state_file_name(char *name, size_t size, int slot);
+ int state_read(void);
+ int state_write(void);
+diff --git a/main.c b/main.c
+--- a/main.c
++++ b/main.c
+@@ -592,13 +592,13 @@ int main(int argc, char **argv) {
+ 	show_startup_message();
+ 	state_resume();
+ 
++	if (core_start_audio_callback())
++		quit(-1);
++
+ 	do {
+ 		count_fps();
+ 		adjust_audio();
+ 		core_run_frame_time_callback();
+ 		current_core.retro_run();
+-		if (!should_quit)
+-			core_run_audio_callback();
+ 		if (!should_quit)
+ 			plat_video_flip();
+ 	} while (!should_quit);

@@ -1,0 +1,31 @@
+--- a/content.c
++++ b/content.c
+@@ -352,15 +352,28 @@ void content_based_name(const struct content *content,
+ int content_load_game_info(struct content *content, struct retro_game_info *info, bool needs_fullpath) {
+ 	const char *path;
+ 	int ret = -1;
++	struct stat st;
+ 	PA_INFO("Loading %s\n", content->path);
+ 
+ 	content_load_zip(content);
+ 	path = content->tmpfile ? content->tmpfile : content->path;
+ 
++	if (stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
++		info->path = path;
++		info->data = NULL;
++		info->size = 0;
++		content->data = NULL;
++		content->size = 0;
++		ret = 0;
++		goto finish;
++	}
++
+ 	if (needs_fullpath) {
+ 		content_patch_file(content, path);
+ 		path = content->tmpfile ? content->tmpfile : content->path;
+ 		info->path = path;
++		info->data = NULL;
++		info->size = 0;
+ 	} else {
+ 		void *data = NULL;
+ 		size_t size = 0;

@@ -1,0 +1,96 @@
+--- a/core.c
++++ b/core.c
+@@ -30,6 +30,8 @@ int state_slot;
+ int resume_slot = -1;
+ enum retro_pixel_format core_pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
+ static bool content_loaded;
++static struct retro_frame_time_callback frame_time_callback;
++static struct retro_audio_callback audio_callback;
+ 
+ static char config_dir[MAX_PATH];
+ static char save_dir[MAX_PATH];
+@@ -116,6 +118,37 @@ bool state_allowed(void) {
+ 	return current_core.retro_serialize_size() > 0;
+ }
+ 
++void core_run_frame_time_callback(void)
++{
++	retro_usec_t usec;
++
++	if (!frame_time_callback.callback)
++		return;
++	usec = frame_time_callback.reference;
++	if (usec <= 0 && frame_rate > 0.0)
++		usec = (retro_usec_t)(1000000.0 / frame_rate);
++	if (usec <= 0)
++		usec = 16667;
++	frame_time_callback.callback(usec);
++}
++
++void core_run_audio_callback(void)
++{
++	if (audio_callback.callback)
++		audio_callback.callback();
++}
++
++static void core_set_audio_callback(const struct retro_audio_callback *next)
++{
++	if (audio_callback.set_state)
++		audio_callback.set_state(false);
++	memset(&audio_callback, 0, sizeof(audio_callback));
++	if (next)
++		memcpy(&audio_callback, next, sizeof(audio_callback));
++	if (audio_callback.set_state)
++		audio_callback.set_state(true);
++}
++
+ void state_file_name(char *name, size_t size, int slot) {
+ 	char extension[5] = {0};
+ 
+@@ -410,6 +441,22 @@ static bool pa_environment(unsigned cmd, void *data) {
+ 	case RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME: { /* 18 */
+ 		break;
+ 	}
++	case RETRO_ENVIRONMENT_SET_FRAME_TIME_CALLBACK: { /* 21 */
++		if (data)
++			memcpy(&frame_time_callback, data, sizeof(frame_time_callback));
++		else
++			memset(&frame_time_callback, 0, sizeof(frame_time_callback));
++		PA_INFO("SET_FRAME_TIME_CALLBACK: %s reference=%lld\n",
++		        frame_time_callback.callback ? "enabled" : "disabled",
++		        (long long)frame_time_callback.reference);
++		break;
++	}
++	case RETRO_ENVIRONMENT_SET_AUDIO_CALLBACK: { /* 22 */
++		core_set_audio_callback((const struct retro_audio_callback *)data);
++		PA_INFO("SET_AUDIO_CALLBACK: %s\n",
++		        audio_callback.callback ? "enabled" : "disabled");
++		break;
++	}
+ 	case RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE: { /* 23 */
+         struct retro_rumble_interface *iface =
+            (struct retro_rumble_interface*)data;
+--- a/core.h
++++ b/core.h
+@@ -51,6 +51,8 @@ void sram_read(void);
+ void sram_write(void);
+ 
+ bool state_allowed(void);
++void core_run_frame_time_callback(void);
++void core_run_audio_callback(void);
+ void state_file_name(char *name, size_t size, int slot);
+ int state_read(void);
+ int state_write(void);
+--- a/main.c
++++ b/main.c
+@@ -590,7 +590,10 @@ int main(int argc, char **argv) {
+ 	do {
+ 		count_fps();
+ 		adjust_audio();
++		core_run_frame_time_callback();
+ 		current_core.retro_run();
++		if (!should_quit)
++			core_run_audio_callback();
+ 		if (!should_quit)
+ 			plat_video_flip();
+ 	} while (!should_quit);

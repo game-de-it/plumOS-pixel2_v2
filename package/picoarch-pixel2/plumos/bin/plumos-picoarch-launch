@@ -1,0 +1,153 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+PLUMOS_USER_ROOT="${PLUMOS_USER_ROOT:-/mnt/plumos-user}"
+PICOARCH_ROOT="${PLUMOS_PICOARCH_ROOT:-$PLUMOS_ROOT/picoarch}"
+PICOARCH_BIN="${PLUMOS_PICOARCH_BIN:-$PICOARCH_ROOT/bin/picoarch}"
+SYSTEM_ID="${PLUMOS_PICOARCH_SYSTEM:-unknown}"
+CORE_ID="${1:-}"
+ROM_PATH="${2:-}"
+PID_FILE="$PLUMOS_RUNTIME_ROOT/picoarch/runtime.pid"
+LOG_DIR="$PLUMOS_ROOT/logs/picoarch"
+RUNTIME_LIB_DIR="$PLUMOS_RUNTIME_ROOT/picoarch/lib"
+LIBRETRO_RUNTIME_DIR="${PLUMOS_PICOARCH_LIBRETRO_RUNTIME_DIR:-$PLUMOS_ROOT/lib/libretro}"
+
+fail() {
+  printf 'plumos-picoarch-launch: %s\n' "$*" >&2
+  exit 1
+}
+
+[ -n "$CORE_ID" ] || fail "missing core ID"
+[ -n "$ROM_PATH" ] || fail "missing content path"
+[ -x "$PICOARCH_BIN" ] || fail "runtime not found: $PICOARCH_BIN"
+if [ ! -f "$ROM_PATH" ] && [ ! -d "$ROM_PATH" ]; then
+  fail "content not found: $ROM_PATH"
+fi
+
+case "$CORE_ID" in
+  flycast|flycast_xtreme|mupen64plus_next|parallel_n64|beetle_saturn|yabasanshiro)
+    fail "$CORE_ID requires a renderer that is outside the Pixel2 PicoArch contract"
+    ;;
+esac
+
+case "$CORE_ID" in
+  */*) CORE_PATH="$CORE_ID" ;;
+  *)
+    CORE_PATH="$PLUMOS_ROOT/picoarch/cores/${CORE_ID}_libretro.so"
+    [ -f "$CORE_PATH" ] || CORE_PATH="$PLUMOS_ROOT/cores/${CORE_ID}_libretro.so"
+    ;;
+esac
+[ -f "$CORE_PATH" ] || fail "64-bit core not found: $CORE_ID"
+
+case "$SYSTEM_ID" in
+  *[!A-Za-z0-9._-]*|'') fail "invalid system ID: $SYSTEM_ID" ;;
+esac
+
+if [ -r "$PID_FILE" ]; then
+  old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  case "$old_pid" in
+    *[!0-9]*|'') rm -f "$PID_FILE" ;;
+    *)
+      if [ -r "/proc/$old_pid/exe" ] &&
+         [ "$(readlink "/proc/$old_pid/exe")" = "$PICOARCH_BIN" ]; then
+        fail "already running with PID $old_pid"
+      fi
+      rm -f "$PID_FILE"
+      ;;
+  esac
+fi
+
+mkdir -p "$LOG_DIR" "$PLUMOS_RUNTIME_ROOT/picoarch" \
+  "$PLUMOS_ROOT/state/picoarch/$SYSTEM_ID" \
+  "$PLUMOS_ROOT/saves/$SYSTEM_ID" "$PLUMOS_USER_ROOT/bios" "$RUNTIME_LIB_DIR"
+ln -sf "$PICOARCH_ROOT/lib/libSDL-1.2.so.0" "$RUNTIME_LIB_DIR/libSDL-1.2.so.0"
+ln -sf "$PICOARCH_ROOT/lib/libpng16.so.16" "$RUNTIME_LIB_DIR/libpng16.so.16"
+ln -sf "$PICOARCH_ROOT/lib/libz.so.1" "$RUNTIME_LIB_DIR/libz.so.1"
+
+CONFIG="$PLUMOS_ROOT/config/standalone/picoarch.env"
+[ ! -r "$CONFIG" ] || . "$CONFIG"
+
+AUDIO_OUTPUT_HELPER="${PLUMOS_AUDIO_OUTPUT_HELPER:-$PLUMOS_ROOT/bin/plumos-audio-output}"
+[ -x "$AUDIO_OUTPUT_HELPER" ] || fail "audio output helper missing: $AUDIO_OUTPUT_HELPER"
+audio_status="$($AUDIO_OUTPUT_HELPER prepare 2>&1)" || fail "audio output prepare failed: $audio_status"
+
+export ALSA_CONFIG_PATH="${PLUMOS_ALSA_CONFIG_PATH:-$PLUMOS_RUNTIME_ROOT/audio/asound.conf}"
+export ALSA_PLUGIN_DIR="${PLUMOS_ALSA_PLUGIN_DIR:-$PLUMOS_ROOT/lib/alsa-lib}"
+export AUDIODEV="${PLUMOS_PICOARCH_AUDIODEV:-plumos_output}"
+export HOME="$PLUMOS_ROOT/state/picoarch/$SYSTEM_ID"
+export SDCARD_PATH="$PLUMOS_USER_ROOT"
+export PLUMOS_PICOARCH_SYSTEM="$SYSTEM_ID"
+export PLUMOS_PICOARCH_SAVE_ROOT="$PLUMOS_ROOT/saves"
+export PLUMOS_PICOARCH_BIOS_DIR="$PLUMOS_USER_ROOT/bios"
+export SDL_VIDEODRIVER="${PLUMOS_PICOARCH_SDL_VIDEODRIVER:-dummy}"
+export SDL_AUDIODRIVER="${PLUMOS_PICOARCH_SDL_AUDIODRIVER:-alsa}"
+export SDL_RENDER_DRIVER="${PLUMOS_PICOARCH_SDL_RENDER_DRIVER:-software}"
+export SDL12COMPAT_SYNC_TO_VBLANK="${PLUMOS_PICOARCH_SYNC_TO_VBLANK:-0}"
+export SDL_NOMOUSE=1
+export LD_LIBRARY_PATH="$LIBRETRO_RUNTIME_DIR:$RUNTIME_LIB_DIR:$PICOARCH_ROOT/lib:$PLUMOS_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+cpu_index=1
+while [ "$cpu_index" -le 3 ]; do
+  online_path="/sys/devices/system/cpu/cpu${cpu_index}/online"
+  [ -w "$online_path" ] && printf '1\n' > "$online_path" 2>/dev/null || true
+  cpu_index=$((cpu_index + 1))
+done
+
+cpu_policy="${PLUMOS_PICOARCH_CPU_POLICY:-ondemand}"
+case "$cpu_policy" in
+  interactive|performance|ondemand|schedutil|conservative)
+    for cpufreq in /sys/devices/system/cpu/cpufreq/policy*; do
+      [ -w "$cpufreq/scaling_governor" ] || continue
+      cpu_min="$(cat "$cpufreq/cpuinfo_min_freq" 2>/dev/null || true)"
+      cpu_max="$(cat "$cpufreq/cpuinfo_max_freq" 2>/dev/null || true)"
+      [ -z "$cpu_min" ] || printf '%s\n' "$cpu_min" > "$cpufreq/scaling_min_freq" 2>/dev/null || true
+      [ -z "$cpu_max" ] || printf '%s\n' "$cpu_max" > "$cpufreq/scaling_max_freq" 2>/dev/null || true
+      grep -qw "$cpu_policy" "$cpufreq/scaling_available_governors" 2>/dev/null || continue
+      printf '%s\n' "$cpu_policy" > "$cpufreq/scaling_governor" 2>/dev/null || true
+    done
+    ;;
+esac
+
+EFFECT="${PLUMOS_PICOARCH_EFFECT:-NONE}"
+case "$EFFECT" in
+  NONE|LCD|DMG|SCANLINE) ;;
+  *) fail "invalid scaling effect: $EFFECT" ;;
+esac
+
+log_file="$LOG_DIR/${SYSTEM_ID}-${CORE_ID##*/}.log"
+if [ -d "$ROM_PATH" ]; then
+  content_type=directory
+else
+  content_type=file
+fi
+printf 'system=%s core=%s content=%s content_type=%s effect=%s libretro_runtime=%s\n' \
+  "$SYSTEM_ID" "$CORE_PATH" "$ROM_PATH" "$content_type" "$EFFECT" \
+  "$LIBRETRO_RUNTIME_DIR" >> "$log_file"
+printf 'audio_device=%s alsa_config=%s %s\n' "$AUDIODEV" "$ALSA_CONFIG_PATH" \
+  "$(printf '%s' "$audio_status" | tr '\n' ' ')" >> "$log_file"
+
+child=''
+cleanup() {
+  rc=$?
+  trap - EXIT INT TERM HUP
+  if [ -n "$child" ] && kill -0 "$child" 2>/dev/null; then
+    kill -INT "$child" 2>/dev/null || true
+    i=0
+    while kill -0 "$child" 2>/dev/null && [ "$i" -lt 20 ]; do
+      sleep 0.1
+      i=$((i + 1))
+    done
+    kill -0 "$child" 2>/dev/null && kill -KILL "$child" 2>/dev/null || true
+  fi
+  [ ! -f "$PID_FILE" ] || [ "$(cat "$PID_FILE" 2>/dev/null || true)" != "$child" ] || rm -f "$PID_FILE"
+  exit "$rc"
+}
+trap cleanup EXIT INT TERM HUP
+
+cd "$HOME"
+"$PICOARCH_BIN" "$CORE_PATH" "$ROM_PATH" "$EFFECT" >> "$log_file" 2>&1 &
+child=$!
+printf '%s\n' "$child" > "$PID_FILE"
+wait "$child"

@@ -1,0 +1,73 @@
+--- a/core.c
++++ b/core.c
+@@ -341,6 +341,13 @@ static bool pa_environment(unsigned cmd, void *data) {
+ 
+ 		break;
+ 	}
++	case RETRO_ENVIRONMENT_SHUTDOWN: { /* 7 */
++		should_quit = true;
++		break;
++	}
++	case RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL: { /* 8 */
++		break;
++	}
+ 	case RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY: { /* 9 */
+ 		const char **out = (const char **)data;
+ 		if (out)
+@@ -367,6 +375,9 @@ static bool pa_environment(unsigned cmd, void *data) {
+ 		}
+ 		break;
+ 	}
++	case RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS: { /* 11 */
++		break;
++	}
+ 	case RETRO_ENVIRONMENT_SET_DISK_CONTROL_INTERFACE: { /* 13 */
+ 		const struct retro_disk_control_callback *var =
+ 			(const struct retro_disk_control_callback *)data;
+@@ -396,6 +407,9 @@ static bool pa_environment(unsigned cmd, void *data) {
+ 			*out = options_changed();
+ 		break;
+ 	}
++	case RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME: { /* 18 */
++		break;
++	}
+ 	case RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE: { /* 23 */
+         struct retro_rumble_interface *iface =
+            (struct retro_rumble_interface*)data;
+@@ -410,12 +424,36 @@ static bool pa_environment(unsigned cmd, void *data) {
+ 			log_cb->log = pa_log;
+ 		break;
+ 	}
++	case RETRO_ENVIRONMENT_GET_CORE_ASSETS_DIRECTORY: { /* 30 */
++		const char **out = (const char **)data;
++		if (out)
++			*out = system_dir;
++		break;
++	}
+ 	case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY: { /* 31 */
+ 		const char **out = (const char **)data;
+ 		if (out)
+ 			*out = save_dir;
+ 		break;
+ 	}
++	case RETRO_ENVIRONMENT_SET_GEOMETRY: { /* 37 */
++		const struct retro_game_geometry *geometry =
++			(const struct retro_game_geometry *)data;
++		if (!geometry || !geometry->base_width || !geometry->base_height)
++			return false;
++		if (geometry->aspect_ratio > 0.0f)
++			aspect_ratio = geometry->aspect_ratio;
++		PA_INFO("SET_GEOMETRY: %ux%u aspect=%f\n",
++		        geometry->base_width, geometry->base_height,
++		        geometry->aspect_ratio);
++		break;
++	}
++	case RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE: { /* 47 | experimental */
++		int *out = (int *)data;
++		if (out)
++			*out = 3; /* Video and audio are both enabled. */
++		break;
++	}
+ 	case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS: { /* 52 */
+ 		bool *out = (bool *)data;
+ 		if (out)

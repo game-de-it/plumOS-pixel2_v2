@@ -1,0 +1,79 @@
+diff --git a/main.c b/main.c
+index 060a6ed..b80f6a8 100644
+--- a/main.c
++++ b/main.c
+@@ -1,7 +1,10 @@
+ // #include <png.h>
++#include <errno.h>
++#include <stdint.h>
+ #include <stdarg.h>
+ #include <stdio.h>
+ #include <string.h>
++#include <time.h>
+ #include <unistd.h>
+ #include "core.h"
+ #include "config.h"
+@@ -31,6 +35,51 @@ static int last_screenshot = 0;
+ static uint32_t vsyncs;
+ static uint32_t renders;
+ 
++static int64_t frame_deadline_ns;
++
++static int64_t monotonic_ns(void)
++{
++	struct timespec now;
++
++	if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
++		return 0;
++	return (int64_t)now.tv_sec * INT64_C(1000000000) + now.tv_nsec;
++}
++
++static void pace_frame(void)
++{
++	struct timespec deadline;
++	int64_t interval_ns;
++	int64_t now_ns;
++	int rc;
++
++	if (!limit_frames || frame_rate <= 1.0) {
++		frame_deadline_ns = 0;
++		return;
++	}
++
++	interval_ns = (int64_t)(1000000000.0 / frame_rate + 0.5);
++	now_ns = monotonic_ns();
++	if (now_ns <= 0 || interval_ns <= 0)
++		return;
++
++	if (frame_deadline_ns == 0 ||
++	    now_ns - frame_deadline_ns > interval_ns * 4 ||
++	    frame_deadline_ns - now_ns > interval_ns * 4)
++		frame_deadline_ns = now_ns + interval_ns;
++	else
++		frame_deadline_ns += interval_ns;
++
++	if (frame_deadline_ns <= now_ns)
++		return;
++	deadline.tv_sec = frame_deadline_ns / INT64_C(1000000000);
++	deadline.tv_nsec = frame_deadline_ns % INT64_C(1000000000);
++	do {
++		rc = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME,
++		                     &deadline, NULL);
++	} while (rc == EINTR);
++}
++
+ static void toggle_fast_forward(int force_off)
+ {
+ 	static int frameskip_style_was;
+@@ -600,8 +648,10 @@ int main(int argc, char **argv) {
+ 		adjust_audio();
+ 		core_run_frame_time_callback();
+ 		current_core.retro_run();
+-		if (!should_quit)
++		if (!should_quit) {
+ 			plat_video_flip();
++			pace_frame();
++		}
+ 	} while (!should_quit);
+ 
+ 	return quit(0);

@@ -1,0 +1,188 @@
+--- a/core.c
++++ b/core.c
+@@ -27,6 +27,8 @@
+ unsigned audio_buffer_size_override;
+ int state_slot;
+ int resume_slot = -1;
++enum retro_pixel_format core_pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
++static bool content_loaded;
+ 
+ static char config_dir[MAX_PATH];
+ static char save_dir[MAX_PATH];
+@@ -347,8 +349,17 @@ static bool pa_environment(unsigned cmd, void *data) {
+ 	case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT: { /* 10 */
+ 		const enum retro_pixel_format *format = (enum retro_pixel_format *)data;
+ 
+-		if (*format != RETRO_PIXEL_FORMAT_RGB565) {
+-			/* 565 is only supported format */
++		if (!format)
++			return false;
++		switch (*format) {
++		case RETRO_PIXEL_FORMAT_0RGB1555:
++		case RETRO_PIXEL_FORMAT_XRGB8888:
++		case RETRO_PIXEL_FORMAT_RGB565:
++			core_pixel_format = *format;
++			PA_INFO("SET_PIXEL_FORMAT: %d\n", *format);
++			break;
++		default:
++			PA_ERROR("Unsupported pixel format: %d\n", *format);
+ 			return false;
+ 		}
+ 		break;
+@@ -604,6 +614,8 @@ int core_open(const char *corefile, const char* tag_name) {
+ 	set_input_poll = dlsym(current_core.handle, "retro_set_input_poll");
+ 	set_input_state = dlsym(current_core.handle, "retro_set_input_state");
+ 
++	core_pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
++	content_loaded = false;
+ 	set_environment(pa_environment);
+ 	set_video_refresh(pa_video_refresh);
+ 	set_audio_sample(pa_audio_sample);
+@@ -635,6 +647,7 @@ int core_load_content(struct content *content) {
+ 		goto finish;
+ 	}
+ 
++	content_loaded = true;
+ 	content_based_name(content, cheats_path, sizeof(cheats_path), config_dir, "cheats/", ".cht");
+ 	if (cheats_path[0] != '\0') {
+ 		cheats = cheats_load(cheats_path);
+@@ -685,12 +698,15 @@ void core_apply_cheats(struct cheats *cheats) {
+ }
+ 
+ void core_unload_content(void) {
+-	sram_write();
++	if (content_loaded) {
++		sram_write();
+ 
+-	cheats_free(cheats);
+-	cheats = NULL;
++		cheats_free(cheats);
++		cheats = NULL;
+ 
+-	current_core.retro_unload_game();
++		current_core.retro_unload_game();
++		content_loaded = false;
++	}
+ 	content_free(content);
+ 	content = NULL;
+ }
+--- a/core.h
++++ b/core.h
+@@ -42,6 +42,7 @@ extern double aspect_ratio;
+ extern unsigned audio_buffer_size_override;
+ extern int state_slot;
+ extern int resume_slot;
++extern enum retro_pixel_format core_pixel_format;
+ 
+ void config_file_name(char *buf, size_t len, int is_game);
+ void save_relative_path(char *buf, size_t len, const char *basename);
+--- a/plat_sdl.c
++++ b/plat_sdl.c
+@@ -1,6 +1,8 @@
+ #include <SDL/SDL.h>
+ #include <unistd.h>
+ #include <math.h>
++#include <stdint.h>
++#include <stdlib.h>
+ #include "core.h"
+ #include "libpicofe/fonts.h"
+ #include "libpicofe/plat.h"
+@@ -210,12 +212,74 @@ void plat_video_set_msg(const char *new_msg, unsigned priority, unsigned msec)
+ 
+ static SDL_Surface* clean_screen = NULL;
+ static const void* framebuffer; // NOTE: we don't own this
++static uint16_t *converted_frame;
++static size_t converted_frame_pixels;
++
++static const void *prepare_rgb565_frame(const void *data, unsigned width,
++                                        unsigned height, size_t pitch,
++                                        size_t *output_pitch)
++{
++	size_t pixel_count;
++	unsigned y;
++
++	if (!data || !width || !height || !output_pitch)
++		return NULL;
++	if (core_pixel_format == RETRO_PIXEL_FORMAT_RGB565) {
++		*output_pitch = pitch;
++		return data;
++	}
++
++	pixel_count = (size_t)width * height;
++	if (pixel_count > converted_frame_pixels) {
++		uint16_t *new_frame = realloc(converted_frame,
++		                                  pixel_count * sizeof(*converted_frame));
++		if (!new_frame) {
++			PA_ERROR("Unable to allocate RGB565 conversion buffer\n");
++			return NULL;
++		}
++		converted_frame = new_frame;
++		converted_frame_pixels = pixel_count;
++	}
++
++	for (y = 0; y < height; y++) {
++		uint16_t *dst = converted_frame + (size_t)y * width;
++		unsigned x;
++
++		if (core_pixel_format == RETRO_PIXEL_FORMAT_XRGB8888) {
++			const uint32_t *src = (const uint32_t *)((const uint8_t *)data +
++			                                                (size_t)y * pitch);
++			for (x = 0; x < width; x++) {
++				uint32_t pixel = src[x];
++				dst[x] = (uint16_t)(((pixel & 0x00f80000) >> 8) |
++				                    ((pixel & 0x0000fc00) >> 5) |
++				                    ((pixel & 0x000000f8) >> 3));
++			}
++		} else {
++			const uint16_t *src = (const uint16_t *)((const uint8_t *)data +
++			                                                (size_t)y * pitch);
++			for (x = 0; x < width; x++) {
++				uint16_t pixel = src[x];
++				uint16_t green = (pixel >> 5) & 0x1f;
++				dst[x] = (uint16_t)(((pixel & 0x7c00) << 1) |
++				                    (((green << 1) | (green >> 4)) << 5) |
++				                    (pixel & 0x001f));
++			}
++		}
++	}
++
++	*output_pitch = (size_t)width * sizeof(*converted_frame);
++	return converted_frame;
++}
++
+ void* plat_clean_screen(void) {
+ 	return scale_clean(framebuffer, clean_screen->pixels) ? clean_screen : NULL;
+ }
+ 
+ void plat_video_process(const void *data, unsigned width, unsigned height, size_t pitch) {
+-	framebuffer = data;
++	const void *rgb565 = prepare_rgb565_frame(data, width, height, pitch, &pitch);
++	if (!rgb565)
++		return;
++	framebuffer = rgb565;
+ 	
+ 	static int had_msg = 0;
+ 	SDL_LockSurface(screen);
+@@ -228,10 +287,10 @@ void plat_video_process(const void *data, unsigned width, unsigned height, size_t pitch) {
+ 	}
+ 	
+ 	if (scale_size==SCALE_SIZE_NONE) {
+-		scale(width, height, pitch, data, screen->pixels);
++		scale(width, height, pitch, rgb565, screen->pixels);
+ 	}
+ 	else {
+-		buffer_scale(width, height, pitch, data);
++		buffer_scale(width, height, pitch, rgb565);
+ 	}
+ 	
+ 	if (msg[0]) {
+@@ -480,6 +539,9 @@ void plat_finish(void)
+ 	SDL_FreeSurface(screen);
+ 	SDL_FreeSurface(display);
+ 	pixel2_fb_finish();
++	free(converted_frame);
++	converted_frame = NULL;
++	converted_frame_pixels = 0;
+ 	screen = NULL;
+ 	display = NULL;
+ 	SDL_Quit();
