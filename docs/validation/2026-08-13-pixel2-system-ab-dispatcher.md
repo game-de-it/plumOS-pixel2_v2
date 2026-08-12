@@ -79,6 +79,21 @@ dispatcher had never executed. The fixed dispatcher SquashFS lacked `/dev`,
 into its selected root before the first `switch_root`. The build now creates
 and verifies all of those mountpoints plus `/newroot` and `/dev/pts`.
 
+The corrected build was produced from clean commit `45b1ad5`, passed the
+dispatcher, both slot-rootfs, kernel ABI, state-machine, pivot-root, and update
+health host gates, then was staged and read back on the boot FAT:
+
+```text
+dispatcher a2f0fd4d6a40b40906828f96ae45ca1f1f5be295b3eeb38d731e03d31a4306ea
+slot-a     dbaf19ce6f92d2180d06b1d9e8a93bb4971a3161c0bc08e64ab409fe3dbe1224
+slot-b     dbaf19ce6f92d2180d06b1d9e8a93bb4971a3161c0bc08e64ab409fe3dbe1224
+```
+
+Both slot manifests report `source_ref=45b1ad5`. The recovery System was kept,
+both FAT32 volumes were unmounted, and `/dev/disk4` was ejected successfully.
+The untouched read-only ext4 capture and its SHA-256 remain under
+`output/live/2026-08-13-system-dispatcher-stop/` for diagnostic provenance.
+
 ## Boot state contract
 
 State is stored on the ext4 Runtime partition below `/update-state`:
