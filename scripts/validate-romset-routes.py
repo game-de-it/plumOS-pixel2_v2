@@ -112,6 +112,20 @@ def profile_status(app_root: Path, profile: str, standalone_ids: set[str]) -> tu
         if any(path.exists() for path in exe_candidates):
             return "ok", emulator
         return "pending-binary", emulator
+    if profile.startswith("pyxel:"):
+        pyxel_profile = profile.split(":", 1)[1]
+        launcher = app_root / "bin/plumos-pyxel-pixel2-launch"
+        python = app_root / "apps/python/bin/python3.11"
+        package = app_root / "apps/pyxel/site/pyxel/__init__.py"
+        if pyxel_profile != "pixel2":
+            return "unknown-profile", profile
+        if not launcher.exists():
+            return "missing-launcher", str(launcher.relative_to(app_root))
+        if not python.exists():
+            return "missing-runtime", str(python.relative_to(app_root))
+        if not package.exists():
+            return "missing-runtime", str(package.relative_to(app_root))
+        return "ok", "pyxel"
     return "unknown-profile", profile
 
 

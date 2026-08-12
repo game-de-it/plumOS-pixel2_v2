@@ -19,6 +19,7 @@ stay out of git.
 ./scripts/docker-build.sh core-catalog --filter all --concurrency 4
 ./scripts/docker-build.sh picoarch
 ./scripts/docker-build.sh standalone
+./scripts/docker-build.sh pyxel-runtime
 ./scripts/docker-build.sh app-layer --strict
 ./scripts/docker-build.sh system-rootfs
 ./scripts/docker-build.sh sd-image
@@ -39,10 +40,13 @@ The app-layer root is `output/app-layer/pixel2/plumos`. It must contain:
 - root `manifest.json`, `checksums.sha256`, `VERSION`, `COMPAT_VENDOR`, and
   `RUNTIME_ABI`;
 - component manifests/checksums for frontend, RetroArch, libretro cores,
-  PicoArch, standalone launchers, and audio routing;
+  PicoArch, standalone launchers, audio routing, and Pyxel;
 - Pixel2 frontend binary, scanner, text UI, hardware-key daemon, safe shutdown,
   input-map files, RetroArch, PicoArch, available standalone launchers, and
-  canonical libretro cores.
+  canonical libretro cores;
+- bundled Pixel2 Python/Pyxel runtime plus `Pyxel Setup`, which may install
+  project-specific Pyxel requirements into mutable state without replacing the
+  packaged baseline.
 
 Strict assembly must emit `complete=true` and `missing_components=[]`.
 
@@ -57,6 +61,12 @@ intentionally emits a filtered standalone component. Before assembling the final
 app-layer or SD image, rebuild `./scripts/docker-build.sh standalone` without a
 filter so built standalone binaries such as OpenBOR, DraStic, and PPSSPP are
 present together.
+
+Pyxel is also a required app-layer component. If `pyxel:pixel2` remains in the
+frontend catalog, `./scripts/verify-app-layer.sh` must be able to find the
+launcher, bundled Python runtime, Pyxel package, component manifest, and
+checksums. Do not disable or hide Pyxel in the FE as a substitute for fixing a
+missing runtime.
 
 ## SYSTEM
 

@@ -1,5 +1,15 @@
 {
   "version": 1,
   "device": "pixel2",
-  "apps": []
+  "apps": [
+    {
+      "id": "pyxel_setup",
+      "display_name": "Pyxel Setup",
+      "kind": "tool",
+      "launch_profile": "shell:$PLUMOS_ROOT/bin/plumos-pyxel-setup install",
+      "show_results": true,
+      "visible": true,
+      "menu": "apps"
+    }
+  ]
 }

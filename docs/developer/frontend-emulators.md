@@ -21,8 +21,9 @@ The START menu follows the shared plumOS handheld top-level contract:
 6. Reboot
 7. Shutdown
 
-Apps is intentionally empty until app components are ported. Do not expose
-launchers that are not present in the Pixel2 app-layer.
+Apps only exposes tools whose app-layer component is present. The current
+Pixel2 app list includes `Pyxel Setup`; do not expose launchers that are not
+present in the Pixel2 app-layer.
 
 ## Launch Profile Contract
 
@@ -32,6 +33,7 @@ The implemented launch route families are:
 retroarch:<core-id>
 picoarch:<core-id>
 standalone:<emulator-id>
+pyxel:pixel2
 ```
 
 The FE catalog must only expose systems whose runtime/core exists in the
@@ -72,7 +74,7 @@ axis entries and binds `BTN_SELECT`/`BTN_START` as hotkey/exit. Do not use a
 `linuxraw` Pixel2 default unless `/dev/input/js0` button numbering has been
 captured and validated on the real device.
 
-## Pending Emulator Work
+## Runtime Families
 
 PicoArch is packaged as a Pixel2 app-layer component. It reuses the generated
 libretro core set through the shared `/mnt/plumos/cores/*_libretro.so` route
@@ -107,6 +109,14 @@ Remaining standalone emulator binaries are intentionally marked
 `pending-binary` until each binary is built, packaged, and physically validated
 on Pixel2.
 
-Pyxel, PortMaster, File Manager, and Music Player are not yet Pixel2 runtime
+Pyxel is packaged as a Pixel2 app-layer component with a bundled Python 3.11
+runtime, pinned baseline Pyxel/pygame/numpy/Pillow wheels, SDL2 KMSDRM/GLES
+libraries, a Pixel2 display-fit shim, and the Pixel2 ALSA `plumos_output` path.
+The FE route is `pyxel:pixel2` and must resolve to
+`bin/plumos-pyxel-pixel2-launch`. `Pyxel Setup` installs optional project
+requirements from `/roms/pyxel/requirements.txt` into mutable app-layer state;
+it must not overwrite packaged runtime files.
+
+PortMaster, File Manager, and Music Player are not yet Pixel2 runtime
 guarantees. Add them only when each component is built, routed, checksummed, and
 physically validated on Pixel2.

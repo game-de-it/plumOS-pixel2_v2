@@ -1,0 +1,4 @@
+pyxel==2.9.3
+pygame>=2.6,<3
+numpy>=2.0,<3
+Pillow>=10,<13

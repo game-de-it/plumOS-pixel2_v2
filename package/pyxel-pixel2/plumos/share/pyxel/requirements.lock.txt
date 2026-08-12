@@ -1,0 +1,4 @@
+pyxel==2.9.3
+pygame==2.6.1
+numpy==2.4.6
+Pillow==12.3.0

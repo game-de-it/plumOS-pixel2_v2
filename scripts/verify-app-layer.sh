@@ -17,6 +17,8 @@ for path in \
     bin/plumos-display-control bin/plumos-volume-control \
     bin/plumos-network-control bin/plumos-network-services \
     bin/plumos-audio-output lib/alsa-lib/libasound_module_pcm_plumos_hotplug.so \
+    bin/plumos-python-pixel2 bin/plumos-pyxel-pixel2-launch bin/plumos-pyxel-setup \
+    apps/python/bin/python3.11 apps/pyxel/site/pyxel/__init__.py \
     emulator/lib/libpthread.so.0 \
     factory-defaults/alsa/alsa.conf \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
@@ -25,6 +27,7 @@ for path in \
     components/frontend/manifest.json components/retroarch/manifest.json \
     components/picoarch/manifest.json components/standalone/manifest.json \
     components/audio-router/manifest.json \
+    components/pyxel/manifest.json \
     components/libretro-cores/manifest.json; do
     [ -f "$ROOT/$path" ] || { printf 'error: app-layer file missing: %s\n' "$path" >&2; exit 1; }
 done
@@ -34,6 +37,7 @@ done
 (cd "$ROOT" && sha256sum -c components/picoarch/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/standalone/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/audio-router/checksums.sha256 >/dev/null)
+(cd "$ROOT" && sha256sum -c components/pyxel/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/libretro-cores/checksums.sha256 >/dev/null)
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
@@ -78,8 +82,27 @@ grep -q 'pcm.plumos_output' "$ROOT/bin/plumos-audio-output"
 grep -q '"component": "audio-router"' "$ROOT/components/audio-router/manifest.json"
 grep -q '"component": "picoarch"' "$ROOT/components/picoarch/manifest.json"
 grep -q '"component": "standalone"' "$ROOT/components/standalone/manifest.json"
+grep -q '"component": "pyxel"' "$ROOT/components/pyxel/manifest.json"
 grep -q '"device": "pixel2"' "$ROOT/components/picoarch/manifest.json"
 grep -q '"device": "pixel2"' "$ROOT/components/standalone/manifest.json"
+grep -q '"device": "pixel2"' "$ROOT/components/pyxel/manifest.json"
+grep -q '"id": "pyxel"' "$ROOT/config/frontend/systems.json"
+python3 - "$ROOT/config/frontend/systems.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+systems = json.loads(Path(sys.argv[1]).read_text())["systems"]
+pyxel = next((system for system in systems if system.get("id") == "pyxel"), None)
+if not pyxel:
+    raise SystemExit("pyxel system missing")
+if pyxel.get("enabled") is False:
+    raise SystemExit("pyxel system disabled")
+if pyxel.get("default_launch_profile") != "pyxel:pixel2":
+    raise SystemExit("pyxel default launch profile is not pyxel:pixel2")
+if "pyxel:pixel2" not in pyxel.get("launch_profiles", []):
+    raise SystemExit("pyxel:pixel2 launch profile missing")
+PY
 grep -q '^PLUMOS_INPUT_AB_LAYOUT=east-confirm$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_A_CODE=305$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_CODE=304$' "$ROOT/config/system/input-map.env"
@@ -96,7 +119,7 @@ grep -q '"action": "internal:network-settings"' \
     "$ROOT/config/frontend/menus.json"
 grep -q '"action": "menu:apps"' \
     "$ROOT/config/frontend/menus.json"
-if grep -Eq 'plumos-(nextcommander|music-player|retroarch-menu|pyxel|portmaster)' \
+if grep -Eq 'plumos-(nextcommander|music-player|retroarch-menu|portmaster)' \
     "$ROOT/config/frontend/apps.json"; then
     printf 'error: unavailable application exposed by Pixel2 frontend\n' >&2
     exit 1
@@ -190,6 +213,18 @@ for system in systems:
                     missing.append(profile)
                 elif emulator not in standalone_ids:
                     missing.append(profile)
+            elif profile.startswith("pyxel:"):
+                pyxel_profile = profile.split(":", 1)[1]
+                if pyxel_profile != "pixel2":
+                    missing.append(profile)
+                elif not (root / "bin/plumos-pyxel-pixel2-launch").exists():
+                    missing.append(profile)
+                elif not (root / "apps/pyxel/site/pyxel/__init__.py").exists():
+                    missing.append(profile)
+                elif not (root / "apps/python/bin/python3.11").exists():
+                    missing.append(profile)
+            else:
+                missing.append(profile)
             continue
         core = profile.split(":", 1)[1]
         binary = root / "cores" / f"{core}_libretro.so"
@@ -209,15 +244,22 @@ if [ "$(uname -m)" = aarch64 ]; then
 
     runtime_tmp=$(mktemp -d /tmp/plumos-pixel2-app-verify.XXXXXX)
     trap 'rm -rf "$runtime_tmp"' EXIT
-    mkdir -p "$runtime_tmp/app/state" "$runtime_tmp/roms/nes"
+    mkdir -p "$runtime_tmp/app/state" "$runtime_tmp/roms/nes" "$runtime_tmp/roms/pyxel"
     ln -s "$ROOT/bin" "$runtime_tmp/app/bin"
+    ln -s "$ROOT/apps" "$runtime_tmp/app/apps"
     ln -s "$ROOT/cores" "$runtime_tmp/app/cores"
     ln -s "$ROOT/config" "$runtime_tmp/app/config"
+    ln -s "$ROOT/lib" "$runtime_tmp/app/lib"
+    ln -s "$ROOT/share" "$runtime_tmp/app/share"
     PLUMOS_FRONTEND_MODE=manual \
         PLUMOS_ROOT="$runtime_tmp/app" \
         PLUMOS_SDCARD_ROOT="$runtime_tmp" \
         "$ROOT/bin/plumos-frontend-diagnostics" >/dev/null
+    PLUMOS_ROOT="$runtime_tmp/app" \
+        "$ROOT/bin/plumos-python-pixel2" \
+        -c 'import pyxel, pygame, numpy, PIL' >/dev/null
     printf 'NES-test-fixture' >"$runtime_tmp/roms/nes/test.nes"
+    printf 'print("Pyxel test fixture")\n' >"$runtime_tmp/roms/pyxel/test.pyxapp"
     PLUMOS_ROOT="$runtime_tmp/app" \
         PLUMOS_SDCARD_ROOT="$runtime_tmp" \
         PLUMOS_ROM_ROOT="$runtime_tmp/roms" \
@@ -229,6 +271,13 @@ if [ "$(uname -m)" = aarch64 ]; then
         >"$runtime_tmp/launch-plan.txt"
     grep -q '^launch_profile: retroarch:quicknes$' "$runtime_tmp/launch-plan.txt"
     grep -q '^can_execute: yes$' "$runtime_tmp/launch-plan.txt"
+    PLUMOS_ROOT="$runtime_tmp/app" \
+        PLUMOS_SDCARD_ROOT="$runtime_tmp" \
+        PLUMOS_ROM_ROOT="$runtime_tmp/roms" \
+        "$ROOT/bin/plumos-text-ui" launch pyxel pyxel/test.pyxapp --no-scan \
+        >"$runtime_tmp/pyxel-launch-plan.txt"
+    grep -q '^launch_profile: pyxel:pixel2$' "$runtime_tmp/pyxel-launch-plan.txt"
+    grep -q '^can_execute: yes$' "$runtime_tmp/pyxel-launch-plan.txt"
     rm -rf "$runtime_tmp"
     trap - EXIT
 fi

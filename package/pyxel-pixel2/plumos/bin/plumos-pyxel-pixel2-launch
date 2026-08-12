@@ -1,0 +1,63 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+BB="${PLUMOS_BUSYBOX:-/bin/busybox}"
+PYTHON_ROOT="${PLUMOS_PIXEL2_PYTHON_ROOT:-$PLUMOS_ROOT/apps/python}"
+PYXEL_ROOT="${PLUMOS_PIXEL2_PYXEL_ROOT:-$PLUMOS_ROOT/apps/pyxel}"
+USER_SITE="${PLUMOS_PYXEL_USER_SITE:-$PLUMOS_ROOT/state/pyxel-site}"
+BASE_SITE="$PYXEL_ROOT/site"
+FIT_LIBRARY="${PLUMOS_PYXEL_FIT_LIBRARY:-$PYXEL_ROOT/lib/plumos-pyxel-fit.so}"
+LOG_DIR="${PLUMOS_PYXEL_LOG_DIR:-$PLUMOS_ROOT/logs/pyxel}"
+STATE_ROOT="${PLUMOS_PYXEL_STATE_ROOT:-$PLUMOS_ROOT/state/pyxel}"
+CACHE_ROOT="${PLUMOS_PYXEL_CACHE_ROOT:-$RUNTIME_ROOT/cache/pyxel}"
+
+[ -x "$BB" ] || BB=/bin/sh
+mkdir -p "$LOG_DIR" "$STATE_ROOT" "$CACHE_ROOT" 2>/dev/null || true
+
+audio_output="$PLUMOS_ROOT/bin/plumos-audio-output"
+[ -x "$audio_output" ] || {
+  printf 'plumos-pyxel-pixel2-launch: audio router is missing\n' >&2
+  exit 1
+}
+"$BB" sh "$audio_output" prepare >>"$LOG_DIR/audio.log" 2>&1 || {
+  printf 'plumos-pyxel-pixel2-launch: audio route preparation failed\n' >&2
+  exit 1
+}
+if [ -x "$PLUMOS_ROOT/bin/plumos-volume-control" ]; then
+  "$BB" sh "$PLUMOS_ROOT/bin/plumos-volume-control" apply \
+    >>"$LOG_DIR/audio.log" 2>&1 || true
+fi
+
+export PLUMOS_ROOT PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT"
+export HOME="${PLUMOS_PYXEL_HOME:-$STATE_ROOT/home}"
+export XDG_CONFIG_HOME="${PLUMOS_PYXEL_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${PLUMOS_PYXEL_DATA_HOME:-$STATE_ROOT/data}"
+export XDG_STATE_HOME="${PLUMOS_PYXEL_XDG_STATE_HOME:-$STATE_ROOT/state}"
+export XDG_CACHE_HOME="${PLUMOS_PYXEL_CACHE_HOME:-$CACHE_ROOT}"
+mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" \
+  "$XDG_STATE_HOME" "$XDG_CACHE_HOME" 2>/dev/null || true
+
+export PLUMOS_PYTHON_EXTRA_PATH="$USER_SITE:$BASE_SITE"
+export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+export SDL_RENDER_DRIVER="${SDL_RENDER_DRIVER:-opengles2}"
+export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
+export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$RUNTIME_ROOT/audio/asound.conf}"
+export ALSA_PLUGIN_DIR="${ALSA_PLUGIN_DIR:-$PLUMOS_ROOT/lib/alsa-lib}"
+export AUDIODEV="${AUDIODEV:-plumos_output}"
+export SDL_VIDEO_KMSDRM_DEVICE_INDEX="${SDL_VIDEO_KMSDRM_DEVICE_INDEX:-0}"
+export SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-$PLUMOS_ROOT/lib/libEGL.so.1}"
+export SDL_VIDEO_GL_DRIVER="${SDL_VIDEO_GL_DRIVER:-$PLUMOS_ROOT/lib/libGLESv2.so.2}"
+export LD_LIBRARY_PATH="$PYXEL_ROOT/lib:$PYTHON_ROOT/lib:$PLUMOS_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export PYGAME_HIDE_SUPPORT_PROMPT=1
+
+if [ -r "$FIT_LIBRARY" ] && [ "${PLUMOS_PYXEL_FIT:-1}" != "0" ]; then
+  export PLUMOS_PYXEL_FIT=1
+  export PLUMOS_PYXEL_FIT_WIDTH="${PLUMOS_PYXEL_FIT_WIDTH:-640}"
+  export PLUMOS_PYXEL_FIT_HEIGHT="${PLUMOS_PYXEL_FIT_HEIGHT:-480}"
+  export LD_PRELOAD="$FIT_LIBRARY${LD_PRELOAD:+:$LD_PRELOAD}"
+fi
+
+exec "$BB" sh "$PLUMOS_ROOT/bin/plumos-python-pixel2" "$@" \
+  >>"$LOG_DIR/runtime.log" 2>&1

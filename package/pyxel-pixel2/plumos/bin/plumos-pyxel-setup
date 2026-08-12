@@ -1,0 +1,111 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+ROM_DIR="${PLUMOS_PYXEL_ROM_DIR:-/roms/pyxel}"
+PROJECT_REQUIREMENTS="$ROM_DIR/requirements.txt"
+DEFAULT_REQUIREMENTS="${PLUMOS_PYXEL_DEFAULT_REQUIREMENTS:-$PLUMOS_ROOT/share/pyxel/requirements.txt}"
+USER_SITE="${PLUMOS_PYXEL_USER_SITE:-$PLUMOS_ROOT/state/pyxel-site}"
+STAGING="${USER_SITE}.installing"
+PREVIOUS="${USER_SITE}.previous"
+LOCK_DIR="${PLUMOS_PYXEL_SETUP_LOCK:-/run/plumos/pyxel-setup.lock}"
+PIP_CACHE="${PLUMOS_PYXEL_PIP_CACHE:-$PLUMOS_ROOT/cache/pip}"
+TIMEOUT="${PLUMOS_PYXEL_INSTALL_TIMEOUT:-900}"
+PYTHON="$PLUMOS_ROOT/bin/plumos-python-pixel2"
+BASE_SITE="$PLUMOS_ROOT/apps/pyxel/site"
+
+if [ -r "$PROJECT_REQUIREMENTS" ]; then
+  REQUIREMENTS="$PROJECT_REQUIREMENTS"
+  REQUIREMENTS_SOURCE=project
+else
+  REQUIREMENTS="$DEFAULT_REQUIREMENTS"
+  REQUIREMENTS_SOURCE=plumos-default
+fi
+
+log() { printf '%s\n' "$*"; }
+fail() { log "ERROR: $*"; exit 1; }
+release_lock() { rm -rf "$LOCK_DIR" 2>/dev/null || true; }
+
+verify_site() {
+  PLUMOS_PYTHON_EXTRA_PATH="$1:$BASE_SITE" "$PYTHON" - <<'PY'
+from importlib import import_module, metadata
+for distribution, module in (
+    ("pyxel", "pyxel"),
+    ("pygame", "pygame"),
+    ("numpy", "numpy"),
+    ("Pillow", "PIL"),
+):
+    import_module(module)
+    print(f"verified {distribution}={metadata.version(distribution)}")
+PY
+}
+
+print_status() {
+  log "Pyxel Setup status"
+  log "requirements=$REQUIREMENTS"
+  log "requirements_source=$REQUIREMENTS_SOURCE"
+  log "site=$USER_SITE"
+  [ -x "$PYTHON" ] || fail "Pixel2 Python runtime is missing"
+  if [ -d "$USER_SITE" ]; then
+    verify_site "$USER_SITE"
+  else
+    log "site=using packaged baseline"
+    verify_site "$BASE_SITE"
+  fi
+}
+
+install_site() {
+  case "$TIMEOUT" in ''|*[!0-9]*) fail "invalid timeout: $TIMEOUT" ;; esac
+  [ -x "$PYTHON" ] || fail "Pixel2 Python runtime is missing"
+  [ -r "$REQUIREMENTS" ] || fail "requirements.txt not found: $REQUIREMENTS"
+  mkdir -p "$(dirname "$LOCK_DIR")" "$(dirname "$USER_SITE")" "$PIP_CACHE" ||
+    fail "cannot create Pyxel setup directories"
+  mkdir "$LOCK_DIR" 2>/dev/null ||
+    fail "another Pyxel setup is already running"
+  trap 'release_lock' EXIT
+  trap 'release_lock; exit 130' HUP INT TERM
+
+  rm -rf "$STAGING" "$PREVIOUS" ||
+    fail "cannot remove stale Pyxel setup state"
+  mkdir -p "$STAGING" || fail "cannot create staging site"
+  log "Pyxel Setup"
+  log "requirements=$REQUIREMENTS"
+  log "requirements_source=$REQUIREMENTS_SOURCE"
+  log "requirements_sha256=$(sha256sum "$REQUIREMENTS" | awk '{print $1}')"
+  export PIP_CACHE_DIR="$PIP_CACHE"
+  export PIP_DISABLE_PIP_VERSION_CHECK=1
+  export PIP_NO_INPUT=1
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$TIMEOUT" "$PYTHON" -m pip install \
+      --progress-bar off --only-binary=:all: --target "$STAGING" \
+      --requirement "$REQUIREMENTS"
+  else
+    "$PYTHON" -m pip install \
+      --progress-bar off --only-binary=:all: --target "$STAGING" \
+      --requirement "$REQUIREMENTS"
+  fi
+  rc=$?
+  [ "$rc" -eq 0 ] || {
+    rm -rf "$STAGING"
+    [ "$rc" -eq 124 ] && fail "pip timed out after ${TIMEOUT}s"
+    fail "pip install failed rc=$rc"
+  }
+  verify_site "$STAGING" || {
+    rm -rf "$STAGING"
+    fail "module import verification failed"
+  }
+  [ ! -d "$USER_SITE" ] || mv "$USER_SITE" "$PREVIOUS" ||
+    fail "cannot preserve current Pyxel site"
+  if ! mv "$STAGING" "$USER_SITE"; then
+    [ ! -d "$PREVIOUS" ] || mv "$PREVIOUS" "$USER_SITE" 2>/dev/null || true
+    fail "cannot activate the new Pyxel site"
+  fi
+  rm -rf "$PREVIOUS"
+  log "RESULT: Pyxel environment installed successfully"
+}
+
+case "${1:-install}" in
+  install) install_site ;;
+  status) print_status ;;
+  *) log "usage: plumos-pyxel-setup [install|status]"; exit 2 ;;
+esac

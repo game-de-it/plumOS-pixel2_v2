@@ -41,26 +41,26 @@ Managed replaceable files include binaries, libraries, cores, frontend catalogs,
 themes, factory defaults, notices, manifests, checksums, and `SYSTEM`.
 
 Device-owned mutable files include active settings, ROMs, BIOS files, artwork,
-saves, states, logs, Wi-Fi credentials, SSH state, and future app state such as
-PortMaster or Pyxel. Updates and live deploys must preserve these paths.
+saves, states, logs, Wi-Fi credentials, SSH state, Pyxel project state, and
+future app state such as PortMaster. Updates and live deploys must preserve
+these paths.
 
 ## Current Implementation Boundary
 
 Implemented:
 
 - stock boot substrate plus plumOS-owned `SYSTEM`;
-- app-layer frontend, text UI, scanner, RetroArch, QuickNES, manifests, and
-  strict checksum gate;
+- app-layer frontend, text UI, scanner, RetroArch, full libretro catalog,
+  PicoArch, OpenBOR, DraStic, PPSSPP, Pyxel runtime, manifests, and strict
+  checksum gate;
 - ADB maintenance path;
 - minimal USB Wi-Fi runtime path;
 - Pixel2 input map contract and global hardware-key daemon;
-- FE reboot path and RK817 shutdown helper.
+- FE reboot path, RK817 shutdown helper, and RK817-aware audio routing.
 
 Not yet complete:
 
 - final System A/B and transactional updater;
-- full baseline libretro core set beyond QuickNES;
-- PicoArch, standalone emulators, PortMaster, Pyxel, File Manager, and Music
-  Player;
+- PortMaster, File Manager, and Music Player;
 - production ADB authentication or explicit opt-in;
-- final RK817 ALSA mixer/audio-router implementation.
+- final transactional update/rollback path.

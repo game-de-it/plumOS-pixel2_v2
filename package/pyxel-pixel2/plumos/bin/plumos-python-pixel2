@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PYTHON_ROOT="${PLUMOS_PIXEL2_PYTHON_ROOT:-$PLUMOS_ROOT/apps/python}"
+PYXEL_ROOT="${PLUMOS_PIXEL2_PYXEL_ROOT:-$PLUMOS_ROOT/apps/pyxel}"
+PYTHON="$PYTHON_ROOT/bin/python3.11"
+LOADER="$PYTHON_ROOT/lib/ld-linux-aarch64.so.1"
+
+[ -x "$PYTHON" ] || {
+  printf 'error: Pixel2 Python runtime is missing: %s\n' "$PYTHON" >&2
+  exit 127
+}
+[ -x "$LOADER" ] || {
+  printf 'error: Pixel2 Python loader is missing: %s\n' "$LOADER" >&2
+  exit 127
+}
+
+export PYTHONHOME="$PYTHON_ROOT"
+export PYTHONNOUSERSITE=1
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONPATH="$PYTHON_ROOT/site-packages${PLUMOS_PYTHON_EXTRA_PATH:+:$PLUMOS_PYTHON_EXTRA_PATH}:$PYXEL_ROOT/site"
+export SSL_CERT_FILE="${SSL_CERT_FILE:-$PYTHON_ROOT/ca-certificates.crt}"
+export REQUESTS_CA_BUNDLE="${REQUESTS_CA_BUNDLE:-$SSL_CERT_FILE}"
+
+python_library_path="$PYXEL_ROOT/lib:$PYTHON_ROOT/lib:$PLUMOS_ROOT/lib:/usr/lib"
+if [ -n "${PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH:-}" ]; then
+  python_library_path="${PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH}:$python_library_path"
+fi
+
+exec "$LOADER" \
+  --library-path "$python_library_path" \
+  --argv0 "$PLUMOS_ROOT/bin/python3" \
+  "$PYTHON" "$@"

@@ -2928,7 +2928,7 @@
       "short_name": "Pyxel",
       "sort_order": 485,
       "hardware": "app",
-      "enabled": false,
+      "enabled": true,
       "pinned": true,
       "directory_aliases": [
         {
@@ -2961,7 +2961,7 @@
       "default_cpu_policy": "ondemand",
       "scraper": {
         "enabled": false,
-        "reason": "pixel2-pyxel-runtime-pending"
+        "reason": "not_single_rom_crc"
       }
     },
     {
