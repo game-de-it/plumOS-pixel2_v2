@@ -21,13 +21,13 @@ hardware check. The ordered second-unit capture is the authoritative contract:
 
 The resulting evdev and GPIO evidence was:
 
-| Physical control | GPIO | Linux event code | Frontend action | RetroArch joydev |
+| Physical control | GPIO | Linux event code | Frontend action | RetroArch udev binding |
 | --- | --- | --- | --- | --- |
-| A | GPIO3 PD1 | `BTN_SOUTH` (`0x130`) | A / confirm | `input_a_btn = "0"` |
-| B | GPIO3 PD2 | `BTN_EAST` (`0x131`) | B / back | `input_b_btn = "1"` |
-| X | GPIO3 PA5 | `BTN_NORTH` (`0x133`) | X | `input_x_btn = "3"` |
-| Y | GPIO3 PA6 | `BTN_WEST` (`0x134`) | Y | `input_y_btn = "4"` |
-| Function | GPIO3 PC5 | `BTN_TRIGGER_HAPPY1` (`0x2c0`) | Function | not routed yet |
+| A | GPIO3 PD2 | `BTN_EAST` (`0x131`) | A / confirm | `input_a_btn = "1"` |
+| B | GPIO3 PD1 | `BTN_SOUTH` (`0x130`) | B / back | `input_b_btn = "0"` |
+| X | GPIO3 PA5 | `BTN_NORTH` (`0x133`) | X | `input_x_btn = "2"` |
+| Y | GPIO3 PA6 | `BTN_WEST` (`0x134`) | Y | `input_y_btn = "3"` |
+| Function | GPIO3 PC5 | `BTN_TRIGGER_HAPPY1` (`0x2c0`) | Function | `input_*_btn = "10"` if routed |
 
 The key ordered log was pulled to:
 
@@ -37,8 +37,11 @@ with SHA-256:
 
 `9b798e28a6560d6c68a63531d83b03a0f9fbad2674df1608c469e3e5cda5e3b1`
 
-It records the A sequence as `code=304 action=A` and the B sequence as
-`code=305 action=B`. The paired GPIO sample was pulled to:
+The ordered log and paired GPIO sample were used to prove that both physical
+switches generate events. Later frontend validation established the current
+Pixel2 user-facing contract as `east-confirm`: physical A is `BTN_EAST`
+(`305`) and physical B is `BTN_SOUTH` (`304`). The paired GPIO sample was
+pulled to:
 
 `output/live/2026-08-12-input-map/unit2/input-map-unit2/ab-gpio-sample.log`
 
@@ -47,8 +50,8 @@ with SHA-256:
 `6e245507456762568b8ef5d1b276826f11ca5b655056d688f6aea1f92a22297b`
 
 The paired IRQ counts moved from A=46/B=0 to A=83/B=17 during that ordered run.
-This proves both switches work on the second unit and that the latest
-east-confirm mapping was the wrong direction for Pixel2.
+This proves both switches work on the second unit; the current FE and emulator
+contract is recorded in `/mnt/plumos/config/system/input-map.env`.
 
 ## Implementation
 
@@ -59,14 +62,16 @@ east-confirm mapping was the wrong direction for Pixel2.
 - `rootfs/pixel2/usr/lib/plumos/init.d/40-frontend` now prefers the stock
   Pixel2 joypad evdev names `pixel2_joypad` and `gamekiddy-joypad` before
   falling back to generic `gpio-keys`.
-- `rootfs/pixel2/usr/lib/plumos/init.d/40-frontend` exports
-  `PLUMOS_INPUT_AB_LAYOUT=south-confirm`.
-- `vendor/plumos-frontend/src/plumos_controller_ui.c` forces Pixel2 to use
-  south-confirm mapping, while preserving `east-confirm` for non-Pixel2
-  callers that explicitly request it.
-- `package/retroarch-pixel2/pixel2-joypad-linuxraw.cfg` and
-  `package/retroarch-pixel2/pixel2-joypad-udev.cfg` map joydev button 0 to A
-  and joydev button 1 to B, matching the physical capture.
+- `package/app-layer-pixel2/config/system/input-map.env` exports
+  `PLUMOS_INPUT_AB_LAYOUT=east-confirm`, `PLUMOS_INPUT_A_CODE=305`, and
+  `PLUMOS_INPUT_B_CODE=304`.
+- `vendor/plumos-frontend/src/plumos_controller_ui.c` uses the shared
+  `PLUMOS_INPUT_AB_LAYOUT` contract so the FE and emulator launchers agree on
+  physical A/B semantics.
+- `package/retroarch-pixel2/pixel2-joypad-udev.cfg` maps RetroArch's udev
+  button index 1 to A and index 0 to B, matching the FE `east-confirm`
+  contract and the physical report that B must not trigger RetroPad A. D-pad is
+  not a button range on Pixel2; it is bound through `ABS_X`/`ABS_Y` axes.
 
 ## Generated-artifact validation
 

@@ -29,14 +29,22 @@ grep -q 'menu:apps' \
 grep -q '"apps": \[\]' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
-grep -q 'input_joypad_driver = "linuxraw"' \
+grep -q 'video_force_aspect = "true"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
-grep -q '^input_a_btn = "0"$' \
-    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-linuxraw.cfg"
-grep -q '^input_b_btn = "1"$' \
-    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-linuxraw.cfg"
+grep -q 'aspect_ratio_index = "0"' \
+    "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
+grep -q 'input_joypad_driver = "udev"' \
+    "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
+grep -q '^input_a_btn = "1"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
+grep -q '^input_b_btn = "0"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
+grep -q '^input_start_btn = "9"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
+grep -q '^input_down_axis = "+1"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
 grep -q '^input_device = "pixel2_joypad"$' \
-    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-linuxraw.cfg"
+    "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
 grep -q 'SOURCE_COMMIT=69a4f0ea' "$ROOT_DIR/scripts/build-retroarch.sh"
 grep -q 'drm_set_rotation' \
     "$ROOT_DIR/patches/retroarch/014-pixel2-drm-software-rotation.patch"
@@ -49,6 +57,12 @@ grep -q 'emulator/lib/libpthread.so.0' \
 grep -q '^PLUMOS_INPUT_A_CODE=305$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_CODE=304$' \
+    "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_A_UDEV_BTN=1$' \
+    "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_B_UDEV_BTN=0$' \
+    "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_DOWN_UDEV_AXIS=+1$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q 'input-map.env' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"

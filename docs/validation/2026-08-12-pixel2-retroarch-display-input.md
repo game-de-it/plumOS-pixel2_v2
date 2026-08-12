@@ -189,6 +189,52 @@ savestate_directory = "/mnt/plumos/states/nes"
 system_directory = "/mnt/plumos-user/bios"
 ```
 
+## Follow-up Aspect and udev Input Repair
+
+After physical testing confirmed the LCD orientation was correct, two remaining
+issues were reported:
+
+- NES aspect ratio was wrong on the rotated DRM output;
+- controls were scrambled, including D-pad DOWN acting as START and physical B
+  acting as A.
+
+The input root cause is that the previous Pixel2 default used RetroArch's
+`linuxraw` joypad driver. `linuxraw` reads `/dev/input/js0` joystick button
+numbers, while the Pixel2 evidence and stock kernel contract are evdev based.
+The Pixel2 D-pad is exposed as `ABS_X`/`ABS_Y`, not as discrete button indices,
+so a button-only js0-style map can collide with START/face-button bindings.
+
+The repaired Pixel2 contract is:
+
+```text
+input_driver = "udev"
+input_joypad_driver = "udev"
+input_a_btn = "1"        # BTN_EAST, physical A
+input_b_btn = "0"        # BTN_SOUTH, physical B
+input_x_btn = "2"        # BTN_NORTH
+input_y_btn = "3"        # BTN_WEST
+input_l_btn = "4"        # BTN_TL
+input_r_btn = "5"        # BTN_TR
+input_l2_btn = "6"       # BTN_TL2
+input_r2_btn = "7"       # BTN_TR2
+input_select_btn = "8"   # BTN_SELECT
+input_start_btn = "9"    # BTN_START
+input_left_axis = "-0"   # ABS_X
+input_right_axis = "+0"  # ABS_X
+input_up_axis = "-1"     # ABS_Y
+input_down_axis = "+1"   # ABS_Y
+```
+
+The display follow-up keeps `video_rotation = "3"` and disables core-auto
+aspect for Pixel2's logical `640x480` surface:
+
+```text
+video_force_aspect = "true"
+video_aspect_ratio_auto = "false"
+aspect_ratio_index = "0"
+video_aspect_ratio = "1.333333"
+```
+
 ## Host Validation
 
 ```text

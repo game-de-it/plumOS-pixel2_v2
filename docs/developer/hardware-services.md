@@ -12,15 +12,17 @@ at:
 
 Known face-button contract:
 
-| Physical | evdev code | joy button |
+| Physical | evdev code | RetroArch udev button |
 | --- | ---: | ---: |
 | A | 305 | 1 |
 | B | 304 | 0 |
-| X | 307 | 3 |
-| Y | 308 | 4 |
+| X | 307 | 2 |
+| Y | 308 | 3 |
 
 `PLUMOS_INPUT_AB_LAYOUT=east-confirm` makes the physical A button confirm in
 the FE while keeping RetroArch and standalone launchers on the shared contract.
+The D-pad is exposed as `ABS_X`/`ABS_Y` and is recorded in the contract as
+udev axes (`left=-0`, `right=+0`, `up=-1`, `down=+1`), not button numbers.
 
 ## Global Volume and Brightness
 

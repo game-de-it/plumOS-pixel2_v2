@@ -39,13 +39,25 @@ device launch-plan verifier.
 ## RetroArch
 
 RetroArch and QuickNES are packaged for AArch64. Factory defaults include the
-Pixel2 joypad autoconfig and the current display rotation contract.
+Pixel2 joypad autoconfig and the current display/aspect contract.
 
 Pixel2's stock kernel exposes the LCD as a native `480x640` DRM mode, while
 plumOS presents the frontend and emulators as a logical `640x480` landscape
 surface. The RetroArch plain DRM backend is patched to implement software
 rotation; Pixel2 defaults to `video_rotation = "3"` (`ccw`) to match the
 frontend's validated panel correction.
+
+Pixel2 also fixes RetroArch to a 4:3 viewport (`aspect_ratio_index = "0"`,
+`video_force_aspect = "true"`) instead of core auto aspect. This keeps NES and
+other 4:3 cores from stretching after the DRM software rotation has converted
+the native portrait panel into the logical `640x480` landscape surface.
+
+RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the
+D-pad as `ABS_X`/`ABS_Y` axes and the remaining controls as evdev keys on
+`pixel2_joypad`; the generated autoconfig therefore binds D-pad directions with
+axis entries and binds `BTN_SELECT`/`BTN_START` as hotkey/exit. Do not use a
+`linuxraw` Pixel2 default unless `/dev/input/js0` button numbering has been
+captured and validated on the real device.
 
 ## Pending Emulator Work
 

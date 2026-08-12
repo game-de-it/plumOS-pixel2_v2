@@ -15,7 +15,6 @@ for path in \
     factory-defaults/alsa/alsa.conf \
     config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
     factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg \
-    factory-defaults/retroarch/autoconfig/linuxraw/pixel2_joypad.cfg \
     config/system/input-map.env config/system/input-map.json \
     components/frontend/manifest.json components/retroarch/manifest.json \
     components/libretro-cores/manifest.json; do
@@ -29,10 +28,14 @@ grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
 grep -q '^input_device = "pixel2_joypad"$' \
-    "$ROOT/factory-defaults/retroarch/autoconfig/linuxraw/pixel2_joypad.cfg"
-grep -q '^input_joypad_driver = "linuxraw"$' \
+    "$ROOT/factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg"
+grep -q '^input_joypad_driver = "udev"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^video_rotation = "3"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^video_force_aspect = "true"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^aspect_ratio_index = "0"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^config_save_on_exit = "false"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
@@ -40,7 +43,11 @@ grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
 grep -q '^PLUMOS_INPUT_AB_LAYOUT=east-confirm$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_A_CODE=305$' "$ROOT/config/system/input-map.env"
 grep -q '^PLUMOS_INPUT_B_CODE=304$' "$ROOT/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_A_UDEV_BTN=1$' "$ROOT/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_B_UDEV_BTN=0$' "$ROOT/config/system/input-map.env"
+grep -q '^PLUMOS_INPUT_DOWN_UDEV_AXIS=+1$' "$ROOT/config/system/input-map.env"
 grep -q '"ab_layout": "east-confirm"' "$ROOT/config/system/input-map.json"
+grep -q '"udev": {' "$ROOT/config/system/input-map.json"
 grep -q '"action": "internal:system-settings"' \
     "$ROOT/config/frontend/menus.json"
 grep -q '"action": "internal:network-settings"' \
