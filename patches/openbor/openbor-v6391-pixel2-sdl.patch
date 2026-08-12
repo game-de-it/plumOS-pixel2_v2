@@ -1,0 +1,127 @@
+diff --git a/engine/Makefile b/engine/Makefile
+index 0cd107b..f63f3a0 100644
+--- a/engine/Makefile
++++ b/engine/Makefile
+@@ -443,7 +443,7 @@ OBJS            += $(addprefix $(BUILD_LINUX)/, $(addsuffix .o, $(SRC_FILES)))
+ #----------------------------------------------------------------------------------------------------
+ 
+ CFLAGS 	       += $(addprefix -I", $(addsuffix ", $(INCS))) $(ARCHFLAGS) -D$(TARGET_PLATFORM)
+-CFLAGS 	       += -g -Wall -Werror -fsigned-char -std=gnu99
++CFLAGS 	       += -g -Wall -fsigned-char -std=gnu99
+ 
+ 
+ ifndef BUILD_DARWIN
+diff --git a/engine/sdl/control.h b/engine/sdl/control.h
+index 9450fdb..be4d790 100644
+--- a/engine/sdl/control.h
++++ b/engine/sdl/control.h
+@@ -17,7 +17,23 @@
+ #endif
+ #include "joysticks.h"
+ 
+-#ifdef OPENDINGUX
++#ifdef PLUMOS_PIXEL2
++	/* pixel2_joypad SDL joystick order follows the shared plumOS input map. */
++	#define CONTROL_ESC                 (JOY_LIST_FIRST + 8)
++	#define CONTROL_DEFAULT1_UP         (JOY_LIST_FIRST + 10)
++	#define CONTROL_DEFAULT1_RIGHT      (JOY_LIST_FIRST + 13)
++	#define CONTROL_DEFAULT1_DOWN       (JOY_LIST_FIRST + 11)
++	#define CONTROL_DEFAULT1_LEFT       (JOY_LIST_FIRST + 12)
++	#define CONTROL_DEFAULT1_FIRE1      (JOY_LIST_FIRST + 0)
++	#define CONTROL_DEFAULT1_FIRE2      (JOY_LIST_FIRST + 1)
++	#define CONTROL_DEFAULT1_FIRE3      (JOY_LIST_FIRST + 2)
++	#define CONTROL_DEFAULT1_FIRE4      (JOY_LIST_FIRST + 3)
++	#define CONTROL_DEFAULT1_FIRE5      (JOY_LIST_FIRST + 4)
++	#define CONTROL_DEFAULT1_FIRE6      (JOY_LIST_FIRST + 5)
++	#define CONTROL_DEFAULT1_START      (JOY_LIST_FIRST + 9)
++	#define CONTROL_DEFAULT1_SCREENSHOT (JOY_LIST_FIRST + 14)
++	#define CONTROL_DEFAULT1_ESC        (JOY_LIST_FIRST + 8)
++#elif defined(OPENDINGUX)
+ 	#define	CONTROL_ESC                 OPENDINGUX_BUTTON_SELECT
+ 	#define	CONTROL_DEFAULT1_START		OPENDINGUX_BUTTON_START
+ 	#define	CONTROL_DEFAULT1_UP         OPENDINGUX_BUTTON_UP
+diff --git a/engine/sdl/video.c b/engine/sdl/video.c
+index ff4b37e..68891ea 100644
+--- a/engine/sdl/video.c
++++ b/engine/sdl/video.c
+@@ -159,6 +159,11 @@ int video_set_mode(s_videomodes videomodes)
+ 	stored_videomodes = videomodes;
+ 	yuv_mode = 0;
+ 
++#ifdef PLUMOS_PIXEL2
++	savedata.fullscreen = 1;
++	savedata.stretch = 1;
++#endif
++
+ 	if(videomodes.hRes==0 && videomodes.vRes==0)
+ 	{
+ 		Term_Gfx();
+@@ -193,6 +198,7 @@ int video_set_mode(s_videomodes videomodes)
+ 	                            videomodes.hRes, videomodes.vRes);
+ 
+ 	SDL_ShowCursor(SDL_DISABLE);
++	SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
+ 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+ 	video_stretch(savedata.stretch);
+ 
+@@ -209,15 +215,20 @@ void video_fullscreen_flip()
+ 
+ void blit()
+ {
+-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
++	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+ 	SDL_RenderClear(renderer);
+ 	SDL_RenderCopy(renderer, texture, NULL, NULL);
+ 
+ 	if (brightness > 0)
++	{
+ 		SDL_SetRenderDrawColor(renderer, 255, 255, 255, brightness-1);
++		SDL_RenderFillRect(renderer, NULL);
++	}
+ 	else if (brightness < 0)
++	{
+ 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, (-brightness)-1);
+-	SDL_RenderFillRect(renderer, NULL);
++		SDL_RenderFillRect(renderer, NULL);
++	}
+ 
+ 	SDL_RenderPresent(renderer);
+ }
+@@ -243,7 +254,7 @@ void video_clearscreen()
+ {
+ 	if(opengl) { video_gl_clearscreen(); return; }
+ 
+-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
++	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+ 	SDL_RenderClear(renderer);
+ 	SDL_RenderPresent(renderer);
+ }
+diff --git a/engine/openbor.c b/engine/openbor.c
+index 5aaa7e6..43fdca5 100644
+--- a/engine/openbor.c
++++ b/engine/openbor.c
+@@ -2547,6 +2547,24 @@ void loadsettings()
+     {
+         clearsettings();
+     }
++#ifdef PLUMOS_PIXEL2
++    else if(savedata.keys[0][SDID_MOVEUP] == SDL_SCANCODE_UP &&
++            savedata.keys[0][SDID_MOVEDOWN] == SDL_SCANCODE_DOWN &&
++            savedata.keys[0][SDID_MOVELEFT] == SDL_SCANCODE_LEFT &&
++            savedata.keys[0][SDID_MOVERIGHT] == SDL_SCANCODE_RIGHT &&
++            savedata.keys[0][SDID_ATTACK] == SDL_SCANCODE_A &&
++            savedata.keys[0][SDID_ATTACK2] == SDL_SCANCODE_S &&
++            savedata.keys[0][SDID_ATTACK3] == SDL_SCANCODE_Z &&
++            savedata.keys[0][SDID_ATTACK4] == SDL_SCANCODE_X &&
++            savedata.keys[0][SDID_JUMP] == SDL_SCANCODE_D &&
++            savedata.keys[0][SDID_SPECIAL] == SDL_SCANCODE_F &&
++            savedata.keys[0][SDID_START] == SDL_SCANCODE_RETURN &&
++            savedata.keys[0][SDID_SCREENSHOT] == SDL_SCANCODE_F12)
++    {
++        clearbuttons(0);
++        savesettings();
++    }
++#endif
+ #else
+     clearsettings();
+ #endif

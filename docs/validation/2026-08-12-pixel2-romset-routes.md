@@ -7,8 +7,8 @@ App root: `output/app-layer/pixel2/plumos`
 
 - enabled systems: 87
 - systems with representative ROM: 29
-- route OK: 25
-- standalone pending binary: 4
+- route OK: 26
+- standalone pending binary: 3
 - systems without matching ROM: 58
 - unmapped ROM directories: 01, 3ds, ATARI, _etc, ports, pyxel
 
@@ -38,7 +38,7 @@ App root: `output/app-layer/pixel2/plumos`
 | fbneo | `fbneo/airduelm72.zip` | `retroarch:fbneo` | ok | `cores/fbneo_libretro.so` |
 | dos | `pc/DOSBOX_ALIENBREED.ZIP` | `retroarch:dosbox_pure` | ok | `cores/dosbox_pure_libretro.so` |
 | pico8 | `pico-8/51752.p8` | `retroarch:fake08` | ok | `cores/fake08_libretro.so` |
-| openbor | `openbor/Crisis Evil 1.pak` | `standalone:openbor` | pending-binary | `openbor` |
+| openbor | `openbor/Crisis Evil 1.pak` | `standalone:openbor` | ok | `openbor` |
 | msx | `msx2/XGR1Trial.rom` | `retroarch:bluemsx` | ok | `cores/bluemsx_libretro.so` |
 | pc88 | `pc88/XeGrader100001.d88` | `retroarch:quasi88` | ok | `cores/quasi88_libretro.so` |
 | atari2600 | `ATARI/2600/3DTicTacToe.bin` | `retroarch:stella2014` | ok | `cores/stella2014_libretro.so` |

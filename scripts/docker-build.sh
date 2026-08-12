@@ -53,11 +53,16 @@ case "$host_boot_prefix" in
     "$ROOT_DIR"/*) container_boot_prefix="/work/${host_boot_prefix#"$ROOT_DIR"/}" ;;
     *) printf 'error: boot prefix must be under the repository\n' >&2; exit 2 ;;
 esac
+docker_env=(
+    -e "PLUMOS_PIXEL2_VERSION=${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
+    -e "PLUMOS_PIXEL2_BOOT_PREFIX=$container_boot_prefix"
+)
+if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+    docker_env+=(-e "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH")
+fi
 container="$(
     docker create --platform linux/arm64 \
-    -e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-}" \
-    -e PLUMOS_PIXEL2_VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}" \
-    -e PLUMOS_PIXEL2_BOOT_PREFIX="$container_boot_prefix" \
+    "${docker_env[@]}" \
     -v "$ROOT_DIR:/work" -w /work "$IMAGE" \
     ./scripts/docker-build.sh --inside "$@"
 )"
