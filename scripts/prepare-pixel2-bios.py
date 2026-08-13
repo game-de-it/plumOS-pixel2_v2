@@ -16,6 +16,7 @@ from pathlib import Path, PurePosixPath
 import shutil
 import tempfile
 from typing import Any
+import zipfile
 
 
 STANDALONE_FIRMWARE = {
@@ -193,6 +194,64 @@ def copy_one(
     )
 
 
+def expand_bluemsx_distribution(
+    archives: list[Path],
+    staging: Path,
+    requirements: dict[str, dict[str, Any]],
+    rom_root: Path,
+    records: list[dict[str, Any]],
+) -> None:
+    """Expand user-provided blueMSX machine data required by the core.
+
+    Common ROM collections keep the full standalone data tree in
+    blueMSXv282full.zip.  The libretro core needs the contents of Machines and
+    Databases, not the archive itself.  Only those two safe relative trees are
+    accepted here; BIOS content remains in the ignored external staging tree.
+    """
+    folder_consumers: dict[str, set[str]] = {}
+    for expected, detail in requirements.items():
+        if not detail["folder"] or not expected.startswith(("Machines/", "Databases/")):
+            continue
+        if "libretro:bluemsx" not in detail["consumers"]:
+            continue
+        folder_consumers.setdefault(PurePosixPath(expected).parts[0], set()).update(
+            detail["consumers"]
+        )
+    if not folder_consumers or not archives:
+        return
+
+    archive = sorted(archives, key=lambda path: path.as_posix().casefold())[0]
+    with zipfile.ZipFile(archive) as bundle:
+        for member in sorted(bundle.infolist(), key=lambda item: item.filename.casefold()):
+            if member.is_dir():
+                continue
+            relative = PurePosixPath(member.filename.replace("\\", "/"))
+            if (
+                relative.is_absolute()
+                or ".." in relative.parts
+                or not relative.parts
+                or relative.parts[0] not in folder_consumers
+            ):
+                continue
+            destination = staging.joinpath(*relative.parts)
+            if destination.exists():
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with bundle.open(member) as source, destination.open("wb") as target:
+                shutil.copyfileobj(source, target)
+            records.append(
+                {
+                    "destination": relative.as_posix(),
+                    "source": f"{source_relative(archive, rom_root)}!{member.filename}",
+                    "sha256": sha256_file(destination),
+                    "size": destination.stat().st_size,
+                    "optional": False,
+                    "match": "archive",
+                    "consumers": sorted(folder_consumers[relative.parts[0]]),
+                }
+            )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app-root", type=Path, required=True)
@@ -222,7 +281,17 @@ def main() -> None:
         missing: list[dict[str, Any]] = []
         expanded_folders: set[str] = set()
 
+        expand_bluemsx_distribution(
+            by_name.get("bluemsxv282full.zip", []),
+            staging,
+            requirements,
+            rom_root,
+            records,
+        )
+
         for expected, detail in sorted(requirements.items()):
+            if (staging / expected).is_file():
+                continue
             source, match = choose_source(expected, roots, by_relative, by_name)
             consumers = set(detail["consumers"])
             optional = bool(detail["optional"])
