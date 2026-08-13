@@ -84,7 +84,13 @@ panel correction last. This follows the existing plumOS A30 WonderSwan
 contract without importing any A30 runtime identity. These two profiles also
 use `aspect_ratio_index = "22"` (core provided), instead of the global Pixel2
 4:3 policy, because the WonderSwan display is 224x144 (14:9) and its geometry
-changes with the SELECT-controlled orientation.
+changes with the SELECT-controlled orientation. RetroArch folds the fixed
+odd Pixel2 panel rotation into its core-aspect lookup. That is correct for a
+driver that rotates the final display coordinates, but the Pixel2 plain DRM
+presenter rotates after calculating the logical viewport. The Pixel2 DRM
+patch therefore cancels that one aspect inversion only for
+`ASPECT_RATIO_CORE`; fixed-ratio systems are unchanged. This preserves both
+the initial 224x144 layout and the SELECT-switched 144x224 layout.
 
 RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the
 D-pad as `ABS_X`/`ABS_Y` axes and the remaining controls as evdev keys on

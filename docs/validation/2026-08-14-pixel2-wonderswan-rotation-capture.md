@@ -122,8 +122,47 @@ result=runtime_healthy
 status=healthy
 ```
 
-The managed Runtime capture produced a `411x640` RGB565 plane, or `640x411` in
-the physical viewing direction. Its 1.557 ratio matches native WonderSwan, and
-the capture is retained outside Git at
-`output/live/2026-08-14-wonderswan-aspect/wonderswan-managed.display.png`.
-Physical confirmation of both SELECT-switched layouts remains the final gate.
+The first managed Runtime capture produced a `411x640` RGB565 plane, or
+`640x411` in the physical viewing direction. That numerical comparison was a
+false positive: the operator correctly rejected the visibly compressed image.
+It captured the SELECT-switched 144x224 core frame after RetroArch had inverted
+the core-provided aspect a second time for Pixel2's odd display rotation.
+
+## SELECT-switched aspect repair
+
+Beetle WonderSwan changes its software-rendered frame from 224x144 to 144x224
+after SELECT when `video_allow_rotate = "false"`. RetroArch's generic
+core-aspect lookup also inverts the reported 9:14 aspect because Pixel2 has
+`video_rotation = "3"`. The Pixel2 DRM presenter already applies that fixed
+panel rotation after calculating its logical viewport, so the generic
+inversion incorrectly turns the SELECT-switched aspect back into 14:9.
+
+Commit `f7bd277` adds a Pixel2 DRM correction restricted to
+`ASPECT_RATIO_CORE`: when the DRM software rotation is odd, it cancels the
+generic lookup inversion before calculating the viewport. Fixed 4:3 systems
+and non-core aspect entries are unaffected.
+
+The signed Runtime update was applied from `0.1.0-dev-e327fb9`:
+
+```text
+package=plumos-pixel2-runtime-0.1.0-dev-f7bd277.tar.gz
+sha256=58eceac3149a41b0b37d68d7e428b6acadac22315730c15eff29919c35f9ecb2
+payload_files=8
+deleted_files=0
+result=runtime_healthy
+```
+
+After one physical SELECT press during gameplay, the managed core emitted a
+144x224 portrait frame and the official DRM overlay was `480x309`. Rotating
+that plane into the physical viewing direction gives `309x480`;
+`309 / 480 = 0.64375`, matching `144 / 224 = 0.64286` within framebuffer
+rounding. The decoded capture is retained outside Git at:
+
+```text
+output/live/2026-08-14-wonderswan-post-select-aspect/
+  wswan-managed-f7bd277-2.display.png
+```
+
+This capture is specifically the post-SELECT state; an initial boot frame is
+not used as evidence for the repair. Final acceptance of the physical LCD
+appearance remains the operator's visual gate.
