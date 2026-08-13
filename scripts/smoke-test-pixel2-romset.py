@@ -101,6 +101,17 @@ def referenced_content(sample: Path) -> list[Path]:
     return sorted(found)
 
 
+def report_sample_path(sample: Path, rom_root: Path) -> str:
+    """Return a stable report label even when a test root uses symlinks."""
+    try:
+        return str(sample.relative_to(rom_root))
+    except ValueError:
+        try:
+            return str(sample.resolve().relative_to(rom_root.resolve()))
+        except ValueError:
+            return sample.name
+
+
 class Device:
     def __init__(self, adb: Path) -> None:
         self.adb_path = str(adb)
@@ -304,7 +315,7 @@ def main() -> int:
                     {
                         "system": system_id,
                         "profile": profile,
-                        "sample_rom": str(sample.relative_to(rom_root)),
+                        "sample_rom": report_sample_path(sample, rom_root),
                         "status": "pass" if passed else "fail",
                         "runtime_exe": match.group(1) if match else "",
                         "output": outcome.stdout[-8000:],

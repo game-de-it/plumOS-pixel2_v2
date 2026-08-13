@@ -486,6 +486,11 @@ build_drastic() {
   install -m 0755 "$DRASTIC_SOURCE_DIR/runner/runner" \
     "$DRASTIC_DST/bin/runner"
   install -m 0755 /usr/bin/setarch "$DRASTIC_DST/bin/setarch"
+  # The display runner is a native aarch64 process, unlike the closed armhf
+  # DraStic core below.  Package its complete native dependency closure into
+  # the shared app-layer library area; do not let it accidentally resolve the
+  # armhf libraries kept in standalone/drastic/lib.
+  copy_runtime_deps "$DRASTIC_DST/bin/runner"
   install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libcommon.so" \
     "$DRASTIC_DST/lib/libcommon.so"
   install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libdtr.so" \
