@@ -74,7 +74,10 @@ export LD_LIBRARY_PATH="$SONAME_DIR:$PLUMOS_ROOT/emulator/lib:$PYXEL_ROOT/lib:$P
 export PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH="$PYXEL_ROOT/lib:$SONAME_DIR:$PLUMOS_ROOT/emulator/lib:$PLUMOS_ROOT/lib"
 export PYGAME_HIDE_SUPPORT_PROMPT=1
 
-if [ -r "$FIT_LIBRARY" ] && [ "${PLUMOS_PYXEL_FIT:-1}" != "0" ]; then
+# The GL symbol interposer can prevent Mesa's RK3326 EGL display selection on
+# the stock Pixel2 kernel.  Keep it as an explicit diagnostic option; native
+# Pyxel sizing is the safe default until the hardware presenter is validated.
+if [ -r "$FIT_LIBRARY" ] && [ "${PLUMOS_PYXEL_FIT:-0}" != "0" ]; then
   export PLUMOS_PYXEL_FIT=1
   export PLUMOS_PYXEL_FIT_WIDTH="${PLUMOS_PYXEL_FIT_WIDTH:-640}"
   export PLUMOS_PYXEL_FIT_HEIGHT="${PLUMOS_PYXEL_FIT_HEIGHT:-480}"
