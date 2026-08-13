@@ -142,6 +142,7 @@
 - [x] FE System Update画面とsafe reboot flowを統合する
   - 2026-08-13: `tests/test-pixel2-update.sh`とARM64 System chroot検証は合格。公開鍵だけをSystemへ同梱し秘密鍵混入gateを追加。ADBからrequestしたsigned Runtime/Systemの実機成功経路は合格。FEからのrequest、進捗/失敗表示、実機failure rollbackはacceptanceとして継続する。
 - [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
+  - 2026-08-14: 現行64 GB実機SDで最終境界（p2=8192 MiB、p3=残り49.7 GiB）、既存user data復元、cold boot mountには合格。release seedから同じ処理を中断再開可能に行うfirst-boot provisionerは未実装のため項目は継続。
 
 ## Boot artifact boundary
 
@@ -210,6 +211,8 @@
   - 2026-08-13: Saturn廃止後は87 enabled、109 libretro core、standalone 4 built / 4 pending。ROM setのトップレベル、`_etc`、共有ATARI/MAME directoryを探索し、互換contentがある74 system・165 profileを抽出した。
   - [x] ROMセットに代表contentがある29 system・97 profileを実機で3秒起動し、97/97 early-start passを記録する
   - [x] archival/shared/directory-backed contentを追加検出し、現行routeで73 system・164 profileのearly-start passを記録する
+  - [x] early-start passに使用した73 system・78代表セットを通常FEディレクトリへ復元し、目視確認へ引き継ぐ
+    - 2026-08-14: 一時smoke contentの自動削除だけで終了していた手順を是正。p2=8 GiB、p3=残り49.7 GiBへ実機SDを拡張し、旧p3の651 fileを651/651 SHA一致で復元。pass report由来1,447 source file + 2 markerを恒久配置し、再適用で0 transfer / 1,447 identical skip、cold boot後73 system・83 FE entry、frontend readyを確認。
   - [ ] Channel Fの必須BIOS `sl31253.bin`、`sl31254.bin`、`sl90025.bin`を正規に用意し、残る1 profileを起動確認する
   - [ ] ROMセットにmatching contentが無い13 enabled systemへ代表contentを用意し、実機起動を記録する
     - `ngp`, `wonderswancolor`, `x68000`, `tic80`, `vectrex`, `sg1000`, `sharpx1`, `wolf3d`, `zx81`, `arduboy`, `megaduck`, `puzzlescript`, `superbroswar`
