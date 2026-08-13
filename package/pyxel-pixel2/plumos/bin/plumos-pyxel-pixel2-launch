@@ -62,6 +62,7 @@ export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-$PLUMOS
 # Prefer the Debian SDL2 KMSDRM build shared by the emulator runtime. The Pyxel
 # wheel's bundled SDL2 has no KMSDRM backend on Linux/aarch64.
 export LD_LIBRARY_PATH="$SONAME_DIR:$PLUMOS_ROOT/emulator/lib:$PYXEL_ROOT/lib:$PYTHON_ROOT/lib:$PLUMOS_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH="$SONAME_DIR:$PLUMOS_ROOT/emulator/lib"
 export PYGAME_HIDE_SUPPORT_PROMPT=1
 
 if [ -r "$FIT_LIBRARY" ] && [ "${PLUMOS_PYXEL_FIT:-1}" != "0" ]; then

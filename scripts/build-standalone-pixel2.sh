@@ -444,6 +444,13 @@ build_drastic() {
     TOOLCHAIN_BIN="$(dirname "$(command -v arm-linux-gnueabihf-gcc)")" \
     NDS_INCLUDE_ROOT=/usr/include \
     NDS_LIBRARY_ROOT="$DRASTIC_RELEASE_DIR/drastic/lib" >>"$DRASTIC_LOG" 2>&1
+  gcc -O3 -DGKD_PIXEL2 -DRUNNER \
+    -I"$DRASTIC_SOURCE_DIR/runner" -I"$DRASTIC_SOURCE_DIR/common" \
+    "$DRASTIC_SOURCE_DIR/runner/runner.c" \
+    "$DRASTIC_SOURCE_DIR/common/common.c" \
+    -o "$DRASTIC_SOURCE_DIR/runner/runner" \
+    -lSDL2 -lSDL2_image -lEGL -lGLESv2 -ljson-c \
+    >>"$DRASTIC_LOG" 2>&1
 
   rm -rf "$DRASTIC_DST"
   mkdir -p "$DRASTIC_DST/bin" "$DRASTIC_DST/lib" "$DRASTIC_DST/runtime/lib32"
@@ -473,6 +480,8 @@ build_drastic() {
   }
   install -m 0755 "$DRASTIC_RELEASE_DIR/drastic/drastic" \
     "$DRASTIC_DST/bin/drastic"
+  install -m 0755 "$DRASTIC_SOURCE_DIR/runner/runner" \
+    "$DRASTIC_DST/bin/runner"
   install -m 0755 /usr/bin/setarch "$DRASTIC_DST/bin/setarch"
   install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libcommon.so" \
     "$DRASTIC_DST/lib/libcommon.so"

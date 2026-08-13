@@ -237,12 +237,14 @@ if [ "$id" = drastic ]; then
   runtime="$workdir"
   loader="$runtime/runtime/ld-linux-armhf.so.3"
   compat="$runtime/lib/libdrastic_mmap_compat.so"
+  runner="$runtime/bin/runner"
   log="$LOG_ROOT/drastic.log"
   drastic_mounts=""
+  runner_pid=""
   setarch_bin=""
   setarch_mode=""
 
-  [ -x "$loader" ] && [ -x "$exe" ] &&
+  [ -x "$loader" ] && [ -x "$exe" ] && [ -x "$runner" ] &&
     [ -f "$runtime/lib/libSDL2-2.0.so.0" ] &&
     [ -f "$compat" ] || {
     fail "DraStic runtime is missing" 127
@@ -310,6 +312,12 @@ if [ "$id" = drastic ]; then
 
   restore_drastic_runtime() {
     rc=$?
+    if [ -n "$runner_pid" ]; then
+      kill "$runner_pid" >/dev/null 2>&1 || true
+      wait "$runner_pid" >/dev/null 2>&1 || true
+      runner_pid=""
+    fi
+    rm -f /dev/shm/NDS_SHM 2>/dev/null || true
     for mount_target in $drastic_mounts; do
       umount "$mount_target" >/dev/null 2>&1 || true
     done
@@ -326,6 +334,20 @@ if [ "$id" = drastic ]; then
   if [ -x "$PLUMOS_ROOT/bin/plumos-volume-control" ]; then
     "$PLUMOS_ROOT/bin/plumos-volume-control" apply >>"$log" 2>&1 || true
   fi
+
+  rm -f /dev/shm/NDS_SHM
+  (
+    cd "$runtime" || exit 127
+    exec "$runner"
+  ) >>"$log" 2>&1 &
+  runner_pid=$!
+  runner_wait=0
+  while [ ! -e /dev/shm/NDS_SHM ] && [ "$runner_wait" -lt 50 ]; do
+    kill -0 "$runner_pid" 2>/dev/null || fail "DraStic display runner exited" 1
+    sleep 0.1
+    runner_wait=$((runner_wait + 1))
+  done
+  [ -e /dev/shm/NDS_SHM ] || fail "DraStic display runner timeout" 1
 
   PID_ROOT="${PLUMOS_RUNTIME_ROOT}/standalone"
   pid_file="${PID_ROOT}/${id}.pid"
