@@ -774,7 +774,6 @@ cat >> "$COMPONENT_DIR/manifest.json" <<'EOF'
     {"id": "scummvm", "status": "pending-binary"},
     {"id": "easyrpg", "status": "pending-binary"},
     {"id": "flycast", "status": "pending-binary"},
-    {"id": "mupen64plus", "status": "pending-binary"},
     {"id": "nxengine-evo", "status": "pending-binary"}
   ]
 }

@@ -125,11 +125,6 @@ case "$id" in
     workdir="${EMU_ROOT}/flycast"
     set -- -config window:fullscreen=yes "$@"
     ;;
-  mupen64plus)
-    exe="${EMU_ROOT}/mupen64plus/bin/mupen64plus"
-    workdir="${EMU_ROOT}/mupen64plus"
-    set -- --fullscreen --resolution 640x480 "$@"
-    ;;
   drastic)
     exe="${EMU_ROOT}/drastic/bin/drastic"
     workdir="${EMU_ROOT}/drastic"

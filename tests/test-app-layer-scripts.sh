@@ -67,6 +67,13 @@ recipes = (root / "docker/pixel2-tools/libretro-core-recipes.tsv").read_text().s
 ids = {line.split("|", 1)[0] for line in recipes if line and not line.startswith("#")}
 assert "beetle_saturn" not in ids
 assert "yabasanshiro" not in ids
+assert "mupen64plus_next" not in ids
+n64 = next(item for item in systems if item["id"] == "n64")
+assert n64["launch_profiles"] == ["retroarch:parallel_n64"]
+standalone_build = (root / "scripts/build-standalone-pixel2.sh").read_text()
+standalone_launch = (root / "package/standalone-pixel2/plumos/bin/plumos-standalone-launch").read_text()
+assert '"id": "mupen64plus"' not in standalone_build
+assert "mupen64plus)" not in standalone_launch
 PY
 grep -q 'internal:system-settings' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
