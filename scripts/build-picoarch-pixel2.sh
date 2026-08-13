@@ -119,6 +119,8 @@ mkdir -p "$PLUMOS_DIR/picoarch/bin" "$PLUMOS_DIR/picoarch/lib" \
 install -m 0755 "$SRC/picoarch" "$PLUMOS_DIR/picoarch/bin/picoarch"
 install -m 0644 "$SDL12_SRC/build-pixel2/libSDL-1.2.so.1.2.72" \
   "$PLUMOS_DIR/picoarch/lib/libSDL-1.2.so.0"
+install -m 0644 "$(ldconfig -p | awk '/libSDL2-2\.0\.so\.0 \(/{print $NF; exit}')" \
+  "$PLUMOS_DIR/picoarch/lib/libSDL2-2.0.so.0"
 install -m 0644 "$(ldconfig -p | awk '/libpng16\.so\.16 \(/{print $NF; exit}')" \
   "$PLUMOS_DIR/picoarch/lib/libpng16.so.16"
 install -m 0644 "$(ldconfig -p | awk '/libz\.so\.1 \(/{print $NF; exit}')" \
@@ -140,6 +142,7 @@ cat > "$COMPONENT_DIR/manifest.json" <<EOF
   "picoarch_ref": "$PICOARCH_REF",
   "sdl12_compat_repo": "$SDL12_REPO",
   "sdl12_compat_ref": "$SDL12_REF",
+  "sdl2_runtime": "picoarch/lib/libSDL2-2.0.so.0",
   "render_contract": "Pixel2 fbdev RGB565-to-BGRA8888 presenter with SDL12 dummy surface",
   "input_contract": "Pixel2 evdev dpad, ABXY east-confirm, shoulders, start/select, menu",
   "audio_contract": "plumOS ALSA plumos_output",

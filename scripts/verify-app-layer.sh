@@ -11,6 +11,7 @@ for path in \
     bin/plumos-standalone-launch bin/plumos-standalone-stop \
     bin/retroarch cores/quicknes_libretro.so \
     picoarch/bin/picoarch picoarch/lib/libSDL-1.2.so.0 \
+    picoarch/lib/libSDL2-2.0.so.0 \
     config/standalone/picoarch.env config/standalone/pixel2.env \
     bin/plumos-safe-shutdown bin/plumos-run-with-input-map \
     bin/plumos-hardware-keys bin/plumos-hardware-keys-service \

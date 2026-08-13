@@ -26,6 +26,11 @@ for script in \
     bash -n "$ROOT_DIR/$script"
 done
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
+sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"
+grep -q 'PICOARCH_ROOT/lib' \
+    "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
+grep -q 'libSDL2-2\.0\.so\.0' "$ROOT_DIR/scripts/build-picoarch-pixel2.sh"
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
     python3 -m py_compile \
         "$ROOT_DIR/scripts/generate-pixel2-system-logos.py" \
