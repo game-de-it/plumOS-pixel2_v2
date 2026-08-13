@@ -34,6 +34,18 @@ EXTRA_DIR_ALIASES = {
     "virtualboy": ["viretualboy"],
 }
 
+# Prefer content revisions/layouts that were proven by the device smoke run.
+# The validator remains read-only and falls back to the first matching file
+# when a preferred sample is absent.
+SYSTEM_SAMPLE_NAMES = {
+    "neogeocd": "Fatal Fury WAV.cue",
+    "cps1": "1942a.zip",
+    "cps2": "ssf2u.zip",
+    "cps3": "sfiii3nr1.zip",
+    "pcfx": "simplebattle.cue",
+    "cavestory": "Doukutsu.exe",
+}
+
 
 def load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
@@ -92,6 +104,17 @@ def find_representative_rom(dirs: list[Path], extensions: set[str]) -> Path | No
                 suffix = Path(filename).suffix.lower().lstrip(".")
                 if suffix in extensions:
                     return Path(current) / filename
+    return None
+
+
+def find_named_rom(dirs: list[Path], filename: str) -> Path | None:
+    wanted = filename.casefold()
+    for directory in dirs:
+        for current, subdirs, files in os.walk(directory):
+            subdirs.sort()
+            for candidate in sorted(files):
+                if candidate.casefold() == wanted:
+                    return Path(current) / candidate
     return None
 
 
@@ -183,13 +206,16 @@ def main() -> int:
         system_id = system["id"]
         dirs = candidate_dirs(system, rom_dirs)
         extensions = {ext.lower().lstrip(".") for ext in system.get("extensions", [])}
-        rom = (
-            find_representative_content(
-                dirs, extensions, bool(system.get("scan_directories"))
+        preferred_sample = SYSTEM_SAMPLE_NAMES.get(system_id)
+        rom = find_named_rom(dirs, preferred_sample) if dirs and preferred_sample else None
+        if rom is None:
+            rom = (
+                find_representative_content(
+                    dirs, extensions, bool(system.get("scan_directories"))
+                )
+                if dirs
+                else None
             )
-            if dirs
-            else None
-        )
         profile = system.get("default_launch_profile")
         if not profile and system.get("launch_profiles"):
             profile = system["launch_profiles"][0]
