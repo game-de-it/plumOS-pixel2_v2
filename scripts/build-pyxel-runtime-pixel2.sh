@@ -15,6 +15,11 @@ PACKAGE_DIR="$ROOT_DIR/package/pyxel-pixel2/plumos"
 LOCK_FILE="${PLUMOS_PIXEL2_PYXEL_LOCK:-$PACKAGE_DIR/share/pyxel/requirements.lock.txt}"
 DEFAULT_REQUIREMENTS="${PLUMOS_PIXEL2_PYXEL_REQUIREMENTS:-$PACKAGE_DIR/share/pyxel/requirements.txt}"
 FIT_SOURCE="$ROOT_DIR/package/pyxel-pixel2/src/plumos_pyxel_fit.c"
+SDL_VERSION="${PLUMOS_PIXEL2_PYXEL_SDL_VERSION:-2.28.4}"
+SDL_ARCHIVE="$ROOT_DIR/output/downloads/SDL2-${SDL_VERSION}.tar.gz"
+SDL_URL="${PLUMOS_PIXEL2_PYXEL_SDL_URL:-https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-${SDL_VERSION}.tar.gz}"
+SDL_SHA256="${PLUMOS_PIXEL2_PYXEL_SDL_SHA256:-888b8c39f36ae2035d023d1b14ab0191eb1d26403c3cf4d4d5ede30e66a4942c}"
+SDL_BUILD_ROOT="$ROOT_DIR/output/build/pyxel-sdl2-pixel2"
 PYTHON_VERSION="${PLUMOS_PIXEL2_PYTHON_VERSION:-3.11}"
 PYTHON_BIN="${PLUMOS_PIXEL2_PYTHON_BIN:-/usr/bin/python3.11}"
 PIP_VERSION="${PLUMOS_PIXEL2_PIP_VERSION:-23.0.1}"
@@ -110,6 +115,13 @@ materialize_links() {
     fail "Pyxel default requirements are missing: $DEFAULT_REQUIREMENTS"
 [ -r "$FIT_SOURCE" ] || fail "Pixel2 Pyxel display fit source is missing: $FIT_SOURCE"
 
+mkdir -p "$(dirname "$SDL_ARCHIVE")"
+if [ ! -f "$SDL_ARCHIVE" ]; then
+    curl -L --fail --retry 3 -o "$SDL_ARCHIVE" "$SDL_URL"
+fi
+[ "$(sha256sum "$SDL_ARCHIVE" | awk '{ print $1 }')" = "$SDL_SHA256" ] ||
+    fail "unexpected SDL2 source SHA-256"
+
 rm -rf "$OUT_ROOT"
 PYTHON_ROOT="$PLUMOS_DIR/apps/python"
 PYXEL_ROOT="$PLUMOS_DIR/apps/pyxel"
@@ -183,7 +195,6 @@ done < <(
 )
 
 for library in \
-    libSDL2-2.0.so.0 \
     libEGL.so.1 \
     libGLESv2.so.2 \
     libGLdispatch.so.0 \
@@ -195,6 +206,30 @@ for library in \
     libpcre2-8.so.0; do
     copy_named_library "$library" "$PYXEL_LIB"
 done
+
+# pygame 2.6.1 was compiled against SDL 2.28.4, while Pyxel needs KMSDRM on
+# this console.  The wheel's bundled SDL has no KMSDRM and Debian's 2.26.5 is
+# rejected by pygame as a downgrade.  Build one shared SDL 2.28.4 satisfying
+# both consumers, then place it ahead of both wheel-private copies.
+rm -rf "$SDL_BUILD_ROOT"
+mkdir -p "$SDL_BUILD_ROOT/source" "$SDL_BUILD_ROOT/build" "$SDL_BUILD_ROOT/prefix"
+tar -xzf "$SDL_ARCHIVE" -C "$SDL_BUILD_ROOT/source" --strip-components=1
+cmake -S "$SDL_BUILD_ROOT/source" -B "$SDL_BUILD_ROOT/build" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$SDL_BUILD_ROOT/prefix" \
+    -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TEST=OFF \
+    -DSDL_KMSDRM=ON -DSDL_WAYLAND=OFF -DSDL_X11=OFF \
+    -DSDL_ALSA=ON -DSDL_PULSEAUDIO=OFF -DSDL_PIPEWIRE=OFF
+cmake --build "$SDL_BUILD_ROOT/build" -j"$(nproc 2>/dev/null || echo 4)"
+cmake --install "$SDL_BUILD_ROOT/build"
+sdl_library="$(find "$SDL_BUILD_ROOT/prefix/lib" -type f -name 'libSDL2-2.0.so.*' -print | sort | tail -n 1)"
+[ -n "$sdl_library" ] || fail "Pixel2 SDL2 KMSDRM library was not installed"
+install -m 0644 "$sdl_library" "$PYXEL_LIB/libSDL2-2.0.so.0"
+copy_dependency_tree "$PYXEL_LIB/libSDL2-2.0.so.0" "$PYXEL_LIB"
+strings "$PYXEL_LIB/libSDL2-2.0.so.0" | grep KMSDRM >/dev/null ||
+    fail "Pixel2 SDL2 build has no KMSDRM driver"
+install -m 0644 "$SDL_BUILD_ROOT/source/LICENSE.txt" \
+    "$PLUMOS_DIR/licenses/SDL2-${SDL_VERSION}-LICENSE.txt"
 
 "$CC" -O2 -fPIC -Wall -Wextra -Werror -shared \
     -Wl,-soname,plumos-pyxel-fit.so \
@@ -233,6 +268,7 @@ cat >"$COMPONENT_DIR/manifest.json" <<EOF
   "pip": "$PIP_VERSION",
   "requirements_sha256": "$lock_sha256",
   "display_fit_sha256": "$fit_sha256",
+  "sdl2": {"version": "$SDL_VERSION", "source_sha256": "$SDL_SHA256", "kmsdrm": true},
   "source_ref": "$SOURCE_REF",
   "source_date_epoch": $SOURCE_EPOCH,
   "runtime_contract": "Pixel2 bundled Python, Pyxel, pygame, SDL2 KMSDRM/GLES, ALSA plumos_output",
