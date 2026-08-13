@@ -40,7 +40,11 @@ frontend_stop() {
 }
 
 frontend_start() {
-    /usr/lib/plumos/init.d/40-frontend start || return 1
+    # The frontend is intentionally long lived.  Detach its inherited stdout
+    # and stderr from the streamed ADB shell, otherwise adbd keeps the pipe
+    # open after the init script itself has returned and the host-side smoke
+    # runner never reaches report generation.
+    /usr/lib/plumos/init.d/40-frontend start >/dev/null 2>&1 || return 1
     pid=$($bb cat "$runtime/frontend.pid" 2>/dev/null || true)
     case "$pid" in ''|*[!0-9]*) return 1 ;; esac
     $bb kill -0 "$pid" 2>/dev/null
