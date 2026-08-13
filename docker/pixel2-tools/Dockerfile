@@ -12,7 +12,7 @@ RUN dpkg --add-architecture armhf \
         libboost-filesystem-dev libboost-locale-dev libboost-system-dev libbrotli-dev libbz2-dev \
         libcap-dev libcurl4-openssl-dev \
         libdrm-dev libdrm-dev:armhf libegl1-mesa-dev libegl-dev:armhf libelf-dev libexpat1-dev libfmt-dev libfreetype6-dev libgbm-dev libgbm-dev:armhf \
-        libgles2-mesa-dev libgles2-mesa-dev:armhf libharfbuzz-dev libicu-dev libinih-dev libjpeg-dev libjson-c-dev:armhf liblhasa-dev \
+        libgles2-mesa-dev libgles2-mesa-dev:armhf libharfbuzz-dev libicu-dev libinih-dev libjpeg-dev libjson-c-dev libjson-c-dev:armhf liblhasa-dev \
         libltdl-dev liblzma-dev libmad0-dev libmpg123-dev libncurses-dev libogg-dev \
         libopus-dev libopusfile-dev libpixman-1-dev libpng-dev libpulse-dev libreadline-dev \
         libsamplerate0-dev libsdl1.2-dev libsdl2-dev libsdl2-gfx-dev libsdl2-image-dev \
