@@ -68,7 +68,7 @@ frame=481.0x641.0 orig_ratio=0.9926
 aspect=0.5625 out=481.0x484.6 rotation=1
 ```
 
-The corrected DRM capture is
+The initial corrected DRM capture is
 `output/live/2026-08-14-ppsspp-aspect-ui/ppsspp-aspect-ui-fixed-title.display.png`.
 Its game region is approximately `640x363`, matching the native PSP aspect
 within scanout rounding. Host source gates pass:
@@ -78,6 +78,32 @@ PASS: Pixel2 emulator FUNCTION menu contract
 app_layer_scripts=result-ok
 ```
 
-The corrected menu font still requires a physical pause-menu observation after
-the managed Runtime is rebuilt and deployed. This is intentionally separate
-from the DRM game-aspect proof.
+Commit `612822f` was rebuilt as Runtime `0.1.0-dev-612822f`. The standalone
+component checksum inventory and strict app-layer assembly passed. The signed
+delta contained 15 managed files, no deletions, and was read back from the
+device with matching SHA-256:
+
+```text
+package=plumos-pixel2-runtime-0.1.0-dev-612822f.tar.gz
+source_version=0.1.0-dev-44051cc
+sha256=8160770eb7930e26db9394ef7be143da6762c0fd9891516906be2fafcab29fbe
+result=runtime_healthy
+status=healthy
+```
+
+After the managed update, PPSSPP was launched again with
+`Telegraph Crosswords.cso`. The final primary-plane capture is retained at
+`output/live/2026-08-14-ppsspp-aspect-ui/ppsspp-final-title.display.png`.
+ImageMagick measured the non-black game region as exactly `640x363`, a ratio
+of 1.7631. The source ROM SHA-256 remained
+`eb155f0f8812ac9fdde6b8a882d564c5d55bea2aded18f36d448446de51138a3`
+before and after the update, and the mutable PPSSPP configuration retained the
+corrected values.
+
+The physical Function button opened PPSSPP's pause menu on the managed Runtime.
+The resulting DRM capture is retained at
+`output/live/2026-08-14-ppsspp-aspect-ui/ppsspp-final-menu.display.png`; it
+shows the larger save-state labels and right-side menu entries without clipping.
+The operator confirmed that both the game presentation and menu text size were
+acceptable. PPSSPP was then stopped through `plumos-standalone-stop`, and one
+frontend process was restored on `/dev/input/event2`.
