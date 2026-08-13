@@ -68,12 +68,16 @@ SYSTEM_PROFILE_SAMPLE_NAMES = {
 # These engines resolve assets relative to the selected entry point.  Preserve
 # the complete source directory in the temporary device staging tree instead
 # of producing a false failure by copying only the marker/executable.
-PARENT_TREE_SYSTEMS = {"easyrpg", "cannonball", "cavestory", "dinothawr"}
+PARENT_TREE_SYSTEMS = {"easyrpg", "scummvm", "cannonball", "cavestory", "dinothawr"}
 
 # Cannonball's upstream content contract uses an empty .game marker alongside
 # the user-owned OutRun Revision B ROM files.  The supplied set has the ROM
 # files but no marker, so create it only inside the disposable smoke directory.
-SYNTHETIC_LAUNCH_NAMES = {"cannonball": "cannonball.game"}
+SYNTHETIC_LAUNCH_NAMES = {
+    "cannonball": "cannonball.game",
+    "scummvm": "sky.scummvm",
+}
+SYNTHETIC_LAUNCH_CONTENT = {"scummvm": "sky\n"}
 
 
 def load_route_validator() -> Any:
@@ -151,9 +155,10 @@ def referenced_content(sample: Path) -> list[Path]:
 def staged_content(system_id: str, sample: Path) -> list[tuple[Path, Path]]:
     """Return source files and safe paths relative to the smoke directory."""
     if system_id in PARENT_TREE_SYSTEMS:
+        source_root = sample if sample.is_dir() else sample.parent
         return [
-            (source, source.relative_to(sample.parent))
-            for source in sorted(sample.parent.rglob("*"))
+            (source, source.relative_to(source_root))
+            for source in sorted(source_root.rglob("*"))
             if source.is_file()
         ]
     return [(source, Path(source.name)) for source in referenced_content(sample)]
@@ -306,7 +311,13 @@ def main() -> int:
     for system in enabled:
         dirs = route.candidate_dirs(system, rom_dirs)
         extensions = {ext.lower().lstrip(".") for ext in system.get("extensions", [])}
-        sample = route.find_representative_rom(dirs, extensions) if dirs else None
+        sample = (
+            route.find_representative_content(
+                dirs, extensions, bool(system.get("scan_directories"))
+            )
+            if dirs
+            else None
+        )
         if sample is None:
             without_rom.append(system["id"])
             continue
@@ -401,7 +412,11 @@ def main() -> int:
 
             synthetic_name = SYNTHETIC_LAUNCH_NAMES.get(system_id)
             if synthetic_name:
-                device.shell(f": > {shlex.quote(f'{remote_system}/{synthetic_name}')}")
+                content = SYNTHETIC_LAUNCH_CONTENT.get(system_id, "")
+                device.shell(
+                    f"printf %s {shlex.quote(content)} > "
+                    f"{shlex.quote(f'{remote_system}/{synthetic_name}')}"
+                )
 
             scan = device.helper_action("scan", SMOKE_SYSTEM=system_id)
             print(scan.stdout, end="")

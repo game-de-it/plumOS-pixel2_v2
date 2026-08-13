@@ -39,9 +39,11 @@ grep -q '"retroarch:neocd": "Fatal Fury WAV.cue"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'SYSTEM_PROFILE_SAMPLE_NAMES' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q 'PARENT_TREE_SYSTEMS.*"easyrpg".*"cannonball".*"cavestory".*"dinothawr"' \
+grep -q 'PARENT_TREE_SYSTEMS.*"easyrpg".*"scummvm".*"cannonball".*"cavestory".*"dinothawr"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q 'SYNTHETIC_LAUNCH_NAMES.*"cannonball": "cannonball.game"' \
+grep -q '"cannonball": "cannonball.game"' \
+    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q '"scummvm": "sky.scummvm"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'retroarch-launch.log' \
     "$ROOT_DIR/scripts/pixel2-device-launch-smoke.sh"

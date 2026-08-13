@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -536,6 +537,31 @@ static int path_extension_lower(const char *path, char *out, size_t out_size) {
   }
   out[i] = '\0';
   return i > 0;
+}
+
+static int first_file_with_extension(const char *directory, const char *extension,
+                                     char *out, size_t out_size) {
+  DIR *dir;
+  struct dirent *entry;
+  char candidate[PATH_MAX];
+  char found_extension[32];
+
+  if (!directory || !extension || !out || out_size == 0 ||
+      !(dir = opendir(directory))) {
+    return 0;
+  }
+  while ((entry = readdir(dir)) != NULL) {
+    if (entry->d_name[0] == '.' ||
+        !join_path(candidate, sizeof(candidate), directory, entry->d_name) ||
+        !path_extension_lower(candidate, found_extension, sizeof(found_extension)) ||
+        strcmp(found_extension, extension) != 0 || !file_exists(candidate)) {
+      continue;
+    }
+    closedir(dir);
+    return copy_string(out, out_size, candidate);
+  }
+  closedir(dir);
+  return 0;
 }
 
 static void current_utc_timestamp(char *out, size_t out_size) {
@@ -2956,6 +2982,17 @@ static int build_launch_plan(struct launch_plan *plan, const char *plumos_root,
     if (strcmp(core_id, "easyrpg") == 0 && directory_exists(plan->rom_path)) {
       if (!join_path(content_path, sizeof(content_path), plan->rom_path,
                      "RPG_RT.ldb") ||
+          !copy_string(plan->rom_path, sizeof(plan->rom_path), content_path)) {
+        return 0;
+      }
+      plan->rom_exists = rom_path_exists(plan->rom_path);
+    }
+    /* ScummVM's standard per-game marker stores the engine game id.  The FE
+     * presents one project directory, then resolves its .scummvm marker for
+     * the libretro core just as it resolves EasyRPG's database entry point. */
+    if (strcmp(core_id, "scummvm") == 0 && directory_exists(plan->rom_path)) {
+      if (!first_file_with_extension(plan->rom_path, "scummvm", content_path,
+                                     sizeof(content_path)) ||
           !copy_string(plan->rom_path, sizeof(plan->rom_path), content_path)) {
         return 0;
       }

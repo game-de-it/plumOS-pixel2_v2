@@ -95,6 +95,19 @@ def find_representative_rom(dirs: list[Path], extensions: set[str]) -> Path | No
     return None
 
 
+def find_representative_content(
+    dirs: list[Path], extensions: set[str], scan_directories: bool
+) -> Path | None:
+    rom = find_representative_rom(dirs, extensions)
+    if rom is not None or not scan_directories:
+        return rom
+    for directory in dirs:
+        for child in sorted(directory.iterdir()):
+            if child.is_dir() and any(path.is_file() for path in child.rglob("*")):
+                return child
+    return None
+
+
 def profile_status(app_root: Path, profile: str, standalone_ids: set[str]) -> tuple[str, str]:
     if profile.startswith("retroarch:"):
         core = profile.split(":", 1)[1]
@@ -170,7 +183,13 @@ def main() -> int:
         system_id = system["id"]
         dirs = candidate_dirs(system, rom_dirs)
         extensions = {ext.lower().lstrip(".") for ext in system.get("extensions", [])}
-        rom = find_representative_rom(dirs, extensions) if dirs else None
+        rom = (
+            find_representative_content(
+                dirs, extensions, bool(system.get("scan_directories"))
+            )
+            if dirs
+            else None
+        )
         profile = system.get("default_launch_profile")
         if not profile and system.get("launch_profiles"):
             profile = system["launch_profiles"][0]
