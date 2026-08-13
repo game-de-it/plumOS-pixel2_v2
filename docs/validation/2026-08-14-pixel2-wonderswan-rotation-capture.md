@@ -90,3 +90,40 @@ the physical-direction capture at
 shows readable, correctly directed text without the previous 180-degree
 inversion. The SELECT-switched horizontal state remains a physical input and
 capture gate; it was not triggered during the automated observation interval.
+
+## Aspect-ratio follow-up
+
+The direction repair exposed the global Pixel2 4:3 policy on WonderSwan. With
+`aspect_ratio_index = "0"` and `video_aspect_ratio = "1.333333"`, the
+core-rotated frame was expanded across a `480x640` game plane and appeared
+stretched. WonderSwan's native display is `224x144`, or 14:9, and the selected
+geometry also changes when SELECT rotates the content.
+
+Commit `e327fb9` changes only `wonderswan` and `wonderswancolor` to RetroArch's
+core-provided aspect entry:
+
+```text
+video_rotation = "3"
+video_allow_rotate = "false"
+aspect_ratio_index = "22"
+```
+
+A live comparison changed the game plane from the forced `480x640` layout to
+`480x309`; `480/309 = 1.553`, within framebuffer rounding of `224/144 = 1.556`.
+The signed Runtime `0.1.0-dev-e327fb9` was then applied from
+`0.1.0-dev-465b957`:
+
+```text
+package=plumos-pixel2-runtime-0.1.0-dev-e327fb9.tar.gz
+sha256=1450fc692eefe2767649b7fa305b654a08a362ad3d16a46624027b27c3118dbe
+payload_files=8
+deleted_files=0
+result=runtime_healthy
+status=healthy
+```
+
+The managed Runtime capture produced a `411x640` RGB565 plane, or `640x411` in
+the physical viewing direction. Its 1.557 ratio matches native WonderSwan, and
+the capture is retained outside Git at
+`output/live/2026-08-14-wonderswan-aspect/wonderswan-managed.display.png`.
+Physical confirmation of both SELECT-switched layouts remains the final gate.
