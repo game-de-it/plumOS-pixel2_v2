@@ -134,12 +134,24 @@ set_cpu_governor
 
 append="$runtime_root/retroarch/append.cfg"
 video_driver=drm
+video_allow_rotate=true
 case "${core##*/}" in
     km_duckswanstation_xtreme_amped_libretro.so)
         # DuckSwanStation requests an EGL/GLES context.  RetroArch's plain DRM
         # path crashes this core on the stock RK3326 kernel, while the KMS/GBM
         # GLES driver uses the same packaged Panfrost Mesa stack successfully.
         video_driver=gl
+        ;;
+esac
+case "$system_id" in
+    wonderswan|wonderswancolor)
+        # Beetle WonderSwan disables its own software rotation when the
+        # frontend accepts RETRO_ENVIRONMENT_SET_ROTATION. Pixel2 already
+        # applies the fixed CCW panel correction in the DRM presenter, so let
+        # the core rotate its horizontal/vertical content before presentation.
+        # Keep content rotation inside the core so the fixed Pixel2 panel
+        # correction is never replaced with the core-only rotation value.
+        video_allow_rotate=false
         ;;
 esac
 audio_device="${PLUMOS_RETROARCH_AUDIO_DEVICE:-plumos_output}"
@@ -166,6 +178,7 @@ fi
     printf 'audio_latency = "%s"\n' "$audio_latency"
     printf 'video_driver = "%s"\n' "$video_driver"
     printf 'video_rotation = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}"
+    printf 'video_allow_rotate = "%s"\n' "$video_allow_rotate"
     printf 'video_refresh_rate = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_REFRESH_RATE:-60.000000}"
     printf 'vrr_runloop_enable = "%s"\n' "${PLUMOS_RETROARCH_VRR_RUNLOOP_ENABLE:-false}"
     printf 'video_force_aspect = "true"\n'

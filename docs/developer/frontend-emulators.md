@@ -74,6 +74,15 @@ Pixel2 also fixes RetroArch to a 4:3 viewport (`aspect_ratio_index = "0"`,
 other 4:3 cores from stretching after the DRM software rotation has converted
 the native portrait panel into the logical `640x480` landscape surface.
 
+WonderSwan and WonderSwan Color are the exception to frontend-managed content
+rotation. Beetle WonderSwan disables its internal rotation when
+`RETRO_ENVIRONMENT_SET_ROTATION` succeeds, but Pixel2's DRM rotation also owns
+the fixed native-panel correction. Their launch profiles therefore append
+`video_allow_rotate = "false"`: the core rotates SELECT-switched horizontal or
+vertical content first, and the Pixel2 DRM presenter applies its unchanged CCW
+panel correction last. This follows the existing plumOS A30 WonderSwan
+contract without importing any A30 runtime identity.
+
 RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the
 D-pad as `ABS_X`/`ABS_Y` axes and the remaining controls as evdev keys on
 `pixel2_joypad`; the generated autoconfig therefore binds D-pad directions with

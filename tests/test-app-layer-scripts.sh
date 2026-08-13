@@ -167,6 +167,12 @@ grep -q '^PLUMOS_INPUT_ANALOG_DPAD_MODE=none$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q 'input-map.env' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'wonderswan|wonderswancolor)' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'video_allow_rotate=false' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'video_allow_rotate = "%s"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
