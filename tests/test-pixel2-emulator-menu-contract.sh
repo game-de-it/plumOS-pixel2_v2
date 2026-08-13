@@ -13,6 +13,7 @@ OPENBOR_PATCH="$ROOT_DIR/patches/openbor/openbor-v6391-pixel2-sdl.patch"
 SA_BUILD="$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 SA_LAUNCHER="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 PPSSPP_CONTROLS="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/controls.ini"
+PPSSPP_CONFIG="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/ppsspp.ini"
 PPSSPP_CONTROLLER_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
 PPSSPP_DISPLAY_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-display-rotation.patch"
 
@@ -97,6 +98,22 @@ grep -Eq '^Pause[[:space:]]*=.*(^|,)10-4(,|$)' "$PPSSPP_CONTROLS" ||
     fail 'PPSSPP factory FUNCTION pause binding is missing'
 grep -Fq "s/$/,10-4/" "$SA_LAUNCHER" ||
     fail 'PPSSPP existing config migration is missing'
+grep -Fqx 'UIScaleFactor = -2' "$PPSSPP_CONFIG" ||
+    fail 'PPSSPP Pixel2 readable UI scale is missing'
+ppsspp_landscape_aspect="$(awk '
+    /^\[DisplayLayout.Landscape\]$/ { in_section=1; next }
+    /^\[/ && in_section { exit }
+    in_section && /^DisplayAspectRatio = / { sub(/^.* = /, ""); print; exit }
+' "$PPSSPP_CONFIG")"
+[ "$ppsspp_landscape_aspect" = 0.562500 ] ||
+    fail 'PPSSPP Pixel2 landscape aspect correction is missing'
+for contract in \
+    'config_migration=pixel2-aspect-ui-v1' \
+    'DisplayAspectRatio = 0.562500' \
+    'UIScaleFactor = -2'; do
+    grep -Fq "$contract" "$SA_LAUNCHER" ||
+        fail "PPSSPP existing display config migration missing: $contract"
+done
 for contract in \
     'pixel2_joypad,a:b1,b:b0,x:b2,y:b3' \
     'back:b8,guide:b14,start:b9' \

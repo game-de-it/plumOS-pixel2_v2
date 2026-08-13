@@ -108,11 +108,14 @@ standalone binary. The app-layer includes PPSSPP assets and factory
 `ppsspp.ini`/`controls.ini` under
 `factory-defaults/standalone/ppsspp/PSP/SYSTEM`; the launcher seeds those files
 to the mutable PPSSPP config directory on first launch and keeps user changes
-out of the immutable app-layer. The factory config disables touch controls,
-uses the Pixel2 state directory, and starts with `InternalScreenRotation = 0`
-for the current logical landscape runtime. Physical Pixel2 display, controls,
-audio, and exit-hotkey validation are still required before treating PPSSPP as
-a release-proven runtime.
+out of the immutable app-layer. The factory config disables touch controls and
+uses the Pixel2 state directory. Pixel2's physical 480x640 portrait panel is
+presented as a logical 640x480 landscape display: the landscape layout uses
+`DisplayAspectRatio = 0.562500` before the final CCW scanout rotation, while
+`UIScaleFactor = -2` keeps the pause-menu text readable. The launcher migrates
+only the exact older Pixel2 values (`1.000000` and `-8`) and preserves all
+unrelated user settings. Physical controls, audio, menu/exit, and save-state
+validation remain separate acceptance gates.
 
 PCSX-ReARMed is built from pinned upstream r26l commit
 `9f8b6f248e073f03c530efda7c4cc60a7e2ecafc` with libpicofe commit

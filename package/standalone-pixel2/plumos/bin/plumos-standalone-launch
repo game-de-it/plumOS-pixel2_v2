@@ -115,6 +115,44 @@ case "$id" in
     if ! pidof PPSSPPSDL >/dev/null 2>&1; then
       rm -f /dev/shm/PPSSPP_ID /run/shm/PPSSPP_ID 2>/dev/null || true
     fi
+    # Migrate only the exact settings shipped by the first Pixel2 PPSSPP
+    # package. The portrait LCD presenter needs a 9/16 correction before its
+    # final CCW rotation, while the A30-proven -2 UI scale remains readable on
+    # the 640x480 logical screen. Other user settings are preserved.
+    if [ -f "$ppsspp_config" ]; then
+      ppsspp_config_tmp="${ppsspp_config}.tmp.$$"
+      awk '
+        /^\[/ { section=$0 }
+        $0 == "UIScaleFactor = -8" {
+          print "UIScaleFactor = -2"
+          next
+        }
+        section == "[DisplayLayout.Landscape]" &&
+          $0 == "DisplayAspectRatio = 1.000000" {
+          print "DisplayAspectRatio = 0.562500"
+          next
+        }
+        section == "[DisplayLayout.Landscape]" &&
+          $0 == "InternalScreenRotation = 0" {
+          print "InternalScreenRotation = 1"
+          next
+        }
+        section == "[DisplayLayout.Portrait]" &&
+          $0 == "InternalScreenRotation = 0" {
+          print "InternalScreenRotation = 2"
+          next
+        }
+        { print }
+      ' "$ppsspp_config" >"$ppsspp_config_tmp" ||
+        fail "failed to migrate PPSSPP display config" 78
+      if cmp "$ppsspp_config" "$ppsspp_config_tmp" >/dev/null 2>&1; then
+        rm -f "$ppsspp_config_tmp"
+      else
+        mv -f "$ppsspp_config_tmp" "$ppsspp_config" ||
+          fail "failed to install PPSSPP display config migration" 78
+        printf 'id=ppsspp config_migration=pixel2-aspect-ui-v1\n' >>"$LOG_ROOT/launcher.log"
+      fi
+    fi
     ppsspp_controls="${ppsspp_config_dir}/controls.ini"
     if [ -f "$ppsspp_controls" ] &&
        ! grep -Eq '^Pause[[:space:]]*=.*(^|,)10-4(,|$)' "$ppsspp_controls"; then
