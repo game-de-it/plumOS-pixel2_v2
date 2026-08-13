@@ -194,8 +194,9 @@
 - [x] MBR、Rockchip boot領域、`PLUMOS_BOOT`、`PLUMOS_SYS`、`PLUMOS_USER`を生成する
 - [x] image内のpartition境界、hash、SquashFS内容をhost検証する
 - [x] 同一source refから生成したSD imageのSHA-256再現性をhost検証する
-- [ ] 通常起動のruntime integrity gateを高速化する
-  - 2026-08-14: [実機boot profile](docs/validation/2026-08-14-pixel2-boot-profile.md)でkernel開始からFE renderer-readyまで約67.3秒を計測。1.2 GiB・3490 fileのroot checksumが52.60秒（約78%）、request無しPython updaterがcold時4.30秒、System slot checksumが1.16秒、ROM scanは174 msだった。署名update/deploy時の完全検証を維持し、healthy generationのcritical同期検証、FE起動後full audit、updater shell fast pathへ分離する。
+- [x] 通常起動のruntime integrity gateを高速化する
+  - 2026-08-14: [実機boot profile](docs/validation/2026-08-14-pixel2-boot-profile.md)でkernel開始からFE renderer-readyまで約67.3秒を計測。1.2 GiB・3490 fileのroot checksumが52.60秒（約78%）、request無しPython updaterがcold時4.30秒、System slot checksumが1.16秒、ROM scanは174 msだった。
+  - 2026-08-14: `25d1af5`で通常bootのfull hashとidle Python updaterを除外し、`46fb284`で明示`verify-runtime`をBusyBox対応。署名System A/B更新、slot readback、health昇格、active slot再起動に合格。最終通常bootはfrontend process開始8.28秒、renderer-readyは8.67秒以内、ADB 6.97秒、ROM scan 162 ms。完全3490 checksumは更新前と明示保守時だけ合格確認した。
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [x] app-layer manifest/checksumを実機deploy単位で検証する
   - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。

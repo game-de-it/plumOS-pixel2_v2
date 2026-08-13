@@ -92,23 +92,66 @@ layer in the synchronous frontend path. MF/V90S perform complete checks during
 build/deployment/update validation. Pixel2 therefore added a stricter normal
 boot gate that became disproportionately expensive as its app layer grew.
 
-## Recommended correction
+## Implemented correction
 
-Do not remove integrity verification without replacing its trust boundary.
-The Pixel2 update contract already requires a signed package, transactional
-apply, complete checksum verification before reboot, and renderer-ready health
-promotion. A compatible correction should:
+Integrity verification was removed from the unchanged normal-boot critical
+path without removing its trust boundary. The implemented contract now:
 
-1. keep complete root/component checksum verification at build, deployment,
+1. keeps complete root/component checksum verification at build, deployment,
    and signed update apply time;
-2. on an unchanged healthy generation, synchronously validate only critical
-   metadata and frontend/bootstrap files before drawing the UI;
-3. run the complete 1.1 GiB audit after renderer-ready or on explicit Storage /
-   Runtime Health request, recording a failure for the next controlled recovery;
-4. add a shell fast path that skips Python updater startup when no request,
+2. selects an unchanged healthy generation using constant-time metadata
+   presence checks before drawing the UI;
+3. provides `/usr/sbin/plumos-system-update verify-runtime` for an explicit
+   complete 1.1 GiB audit;
+4. uses a shell fast path that skips Python updater startup when no request,
    runtime-pending state, or interrupted journal exists;
-5. retain the small System-slot checksum before mounting it;
-6. add monotonic timestamps around every init service and frontend readiness so
-   subsequent boot regressions are automatically attributable.
+5. retains the small System-slot checksum before mounting it.
 
-This investigation diagnoses the delay only; no boot behavior has been changed.
+## Physical-device result
+
+Final System: `0.1.0-dev-46fb284`
+
+Signed System package SHA-256:
+`bb5f461e760bfc886e41a1418fe90ce29a71ac11c42b411e0e88cc8befe4c893`
+
+Installed slot A SHA-256:
+`615fce7b2da44876f8999a6271ff7e9204dec7b303beabdcdf493fa1b2638872`
+
+The signed package passed target/source/ABI/signature checks, inactive-slot
+write and readback, pending boot, renderer-ready health promotion, and a second
+normal active-slot reboot. Before each System update, all 3490 installed
+Runtime checksum entries passed.
+
+The final normal boot produced:
+
+| Point | Elapsed from kernel start |
+| --- | ---: |
+| stock initramfs enters `/init` | 1.431 s |
+| active System selected | 3.769 s |
+| plumOS `/sbin/init` starts | 4.258 s |
+| Panfrost ready | 4.596 s |
+| ADB configured | 6.970 s |
+| frontend process starts | 8.280 s |
+| renderer-ready observed by host poll | no later than 8.67 s |
+
+This reduces kernel-to-FE readiness from approximately 67.3 seconds to less
+than 8.7 seconds, saving about 58.6 seconds (approximately 87%). Power-on time
+inside the stock bootloader remains outside this measurement.
+
+The normal boot log contains
+`update=apply-pending result=skipped reason=no-pending-state`; it performs no
+full Runtime hash and does not start Python. The ROM scan took 162 ms.
+
+The explicit maintenance check was then exercised separately on the final
+System:
+
+```text
+runtime_verify=result-ok
+real 55.25
+user 48.62
+sys  3.39
+```
+
+It is therefore available when required without charging every normal boot for
+the full verification cost. One frontend process and ADB were present after the
+final reboot, with `active=a`, `booted=a`, and no pending System state.
