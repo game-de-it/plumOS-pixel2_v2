@@ -5,12 +5,15 @@ App root: `output/app-layer/pixel2/plumos`
 
 ## Summary
 
-- enabled systems: 88
-- systems with representative ROM: 30
-- route OK: 30
+- enabled systems: 87
+- launch profiles: 183
+- profile routes OK: 183
+- profile routes failed: 0
+- systems with representative ROM: 29
+- route OK: 29
 - standalone pending binary: 0
 - systems without matching ROM: 58
-- unmapped ROM directories: 01, 3ds, ATARI, _etc, ports
+- unmapped ROM directories: 01, 3ds, ATARI, _etc, ports, saturn
 
 ## Systems with ROMs
 
@@ -31,7 +34,6 @@ App root: `output/app-layer/pixel2/plumos`
 | n64 | `n64/AeroGauge [V1.1].z64` | `retroarch:parallel_n64` | ok | `cores/parallel_n64_libretro.so` |
 | nds | `nds/99のなみだ バンダイナムコゲームス.nds` | `standalone:drastic` | ok | `drastic` |
 | dreamcast | `dreamcast/Crazy Taxi (Japan).chd` | `retroarch:flycast_xtreme` | ok | `cores/flycast_xtreme_libretro.so` |
-| saturn | `saturn/BLACK_MATRIX.BIN` | `retroarch:yabasanshiro` | ok | `cores/yabasanshiro_libretro.so` |
 | ngpc | `ngpc/Bakumatsu Rouman Tokubetsu Hen - Gekka no Kenshi - Tsuki ni Saku Hana, Chiri Yuku Hana (Japan).ngc` | `retroarch:mednafen_ngp` | ok | `cores/mednafen_ngp_libretro.so` |
 | wonderswan | `wonderswan/Puzzle Bobble.ws` | `retroarch:mednafen_wswan` | ok | `cores/mednafen_wswan_libretro.so` |
 | arcade | `mame/1942a.zip` | `retroarch:mame2003_plus` | ok | `cores/mame2003_plus_libretro.so` |
@@ -50,3 +52,7 @@ App root: `output/app-layer/pixel2/plumos`
 ## Systems without matching ROM
 
 fds, sega32x, segacd, supergrafx, neogeo, neogeocd, ngp, wonderswancolor, lynx, virtualboy, cps1, cps2, cps3, easyrpg, scummvm, pc98, x68000, tic80, vectrex, supervision, odyssey2, gameandwatch, pokemini, doom, 3do, amiga, atarist, c64, cannonball, cavestory, chailove, channelf, colecovision, cpc, dinothawr, intellivision, j2me, jaguar, lowresnx, lutro, microw8, music, pcfx, quake, sg1000, sharpx1, thomson, ti83, uzebox, vic20, vmu, wolf3d, zx81, zxspectrum, arduboy, megaduck, puzzlescript, superbroswar
+
+## Failed launch-profile routes
+
+none

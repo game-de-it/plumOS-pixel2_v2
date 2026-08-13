@@ -9,7 +9,7 @@
 ## Implementation audit and release blockers
 
 - [x] build target、FE導線、runtime helper、Apps、standalone、storage/update、release準備を横断監査する
-  - 2026-08-13: [実装リスト](docs/developer/implementation-status.md)を作成。97 system中88 enabled、7 required component中7 present、114 libretro core、standalone 3 built / 7 pending、公開済み未実装のrelease blocker 22件を記録。
+  - 2026-08-13: [実装リスト](docs/developer/implementation-status.md)を更新。SaturnをRK3326性能要件で非対応化し、97 system中87 enabled、111 libretro core、standalone 4 built / 4 pendingを現行baselineとする。
 - [x] FE catalogと生成app-layerの不整合を検出する自動監査を追加する
   - `./scripts/docker-build.sh audit`は開発中のreport、`audit --release-gate`は公開済み未実装があれば失敗する。`release-image`へrelease gateを統合。
 - [ ] P0 user surface blockerを0件にする
@@ -37,12 +37,13 @@
     - 2026-08-13: en/jaを含む6言語すべてが364 keyで一致し、Pixel2以外のdevice/distro identityがないことをhost検証。実機glyph/折返しは未検証。
   - [x] arduboy、megaduck、puzzlescript、superbroswarのtheme logoを追加する
     - 2026-08-13: 190x156 RGBのPixel2 theme badgeを再現可能なgeneratorから生成し、frontend component/checksumへ統合。
-  - [ ] 公開中の`standalone:pcsx_rearmed`と`standalone:yabasanshiro`を実装・実機検証する
+  - [ ] 公開中の`standalone:pcsx_rearmed`を実装・実機検証する
     - [x] PCSX-ReARMed r26l、sdl12-compat、Pixel2回転fbdev、入力、48 kHz音声、factory configを再現可能にhost buildする
     - [ ] PCSX-ReARMedを実機で起動し、画面、全入力、音声、menu/exit、FE復帰を確認する
       - 2026-08-13: 実機でFunction menuが開かないことを再現。SDL番号依存を廃止し、raw `BTN_TRIGGER_HAPPY1`のlibpicofe evdev menuへ修正。build/deploy後の実機再確認が必要。
       - 2026-08-13: PCSX menu中のraw captureで十字が`BTN_DPAD_UP/DOWN`（544/545）、A/Bが305/304と確定。`BTN_DPAD_*`のgame/menu bindを追加した`3234b0d`を署名Runtimeで適用し、Function menuの十字移動・A決定・B戻るを実機確認。音声、menuからのexit、FE復帰、second launch、save保持は継続。
-    - [ ] YabaSanshiroをPixel2向けにbuild・実機検証する
+    - [x] Saturn/YabaSanshiroをRK3326性能要件により非対応化し、FE導線・core recipe・standalone manifestから除外する
+      - 2026-08-13: `b66f3c8`で`unsupported_performance_rk3326`を明示し、Saturn 2 coreと全routeを削除。
 - [ ] shared plumOS AppsをPixel2 componentとして実装する
   - [x] Scraping
   - [ ] File Manager / NextCommander
@@ -71,8 +72,7 @@
 - [x] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
   - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
 - [x] canonical all-core libretro buildを完走させる
-  - 2026-08-12: `./scripts/docker-build.sh cores --filter all --jobs 4 --fail-on-error 1` で114 coreがbuild成功、component manifest/checksumを生成。
-  - 2026-08-12: MF/V90S同様に並列catalog wrapper `./scripts/docker-build.sh core-catalog --filter all --concurrency 4` を追加し、114 coreをper-core cache付きでaggregate。`built=114`、`failed=0`、DeSmuME系の混入なしを確認。
+  - 2026-08-13: Saturn 2 coreと実機で全構成segfaultしたMupen64Plus-Nextを対象外にした現行111 coreを、並列catalog wrapper `./scripts/docker-build.sh core-catalog --filter all --concurrency 4`で再生成・検証する。
 - [x] PicoArch componentをPixel2 build/app-layerへ統合する
   - 2026-08-12: `./scripts/docker-build.sh picoarch` でPixel2 PicoArch/SDL12 compatをbuildし、component manifest/checksumを生成。
 - [x] standalone launcher componentをPixel2 build/app-layerへ統合する
@@ -81,7 +81,7 @@
   - 2026-08-13: `./scripts/docker-build.sh pyxel-runtime` でPixel2向けPython 3.11、Pyxel、pygame、numpy、Pillow、SDL2 KMSDRM/GLES依存、display-fit shim、`plumos-pyxel-pixel2-launch`、`Pyxel Setup`をcomponent manifest/checksum付きで生成。`verify-app-layer.sh`とROM route validationは`pyxel:pixel2`のlauncher/runtime欠落を失敗扱いにする。
 - [ ] standalone emulator binaryをPixel2向けに順次build・実機検証する
   - 2026-08-12: OpenBOR standaloneをPixel2向けにsource buildし、`standalone/openbor/bin/OpenBOR`、runtime deps、license、component checksumへ統合。ROM set route validationでopenborは`ok`へ移行。実機起動・入力・画面向き・終了hotkeyは未検証。
-  - 2026-08-12: Saturnは実装済み`retroarch:yabasanshiro`をdefault routeにし、FEから未実装standaloneを選ばない構成へ変更。standalone YabaSanshiro binary自体は未実装のまま別途検証対象。
+  - 2026-08-13: N64のMupen64Plus-Nextはdynarec無効、cached/pure interpreter、GLideN64/Angrylion/ParaLLElの全実機試験でsegfaultしたため、壊れたalternateを残さずParallel N64だけを公開する。
   - 2026-08-12: Nintendo DSはPixel2向けDraStic standaloneを追加。armhf DraStic core、source-built Pixel2 integration library、package-local armhf runtime、armhf ALSA `plumos_output` pluginをapp-layerへ統合し、FE routeを`standalone:drastic`へ固定。DraStic BIOSは配布物へ含めず、実機では`/mnt/plumos-user/bios/drastic`、`/mnt/plumos-user/bios/nds`、`/mnt/plumos-user/bios`からmutable workdirへ取り込む。
   - 2026-08-12: PPSSPP v1.20.4をpinned source buildし、Pixel2向けSDL2/GLES/EGL binary、assets、factory `ppsspp.ini`/`controls.ini`、manifest/checksumへ統合。ROM set route validationでPSP `standalone:ppsspp`は`ok`へ移行し、代表ROMがある29 systemのpending binaryは0。実機での画面向き・入力・音声・終了hotkeyは未検証。
   - [ ] PCSX-ReARMed
@@ -90,11 +90,9 @@
     - [x] clean `8b54b97` app-layer、署名Runtime差分、実機health promotion、3468 root checksumを検証する
     - [x] ROM setの`PSX/chroQW.img`を実機へSHA一致で配置し、`standalone:pcsx_rearmed` launch planを解決する
     - [ ] 代表PSX ROMで実機acceptanceを完了する
-  - [ ] YabaSanshiro
   - [ ] ScummVM
   - [ ] EasyRPG
   - [ ] Flycast
-  - [ ] Mupen64Plus
   - [ ] NXEngine-Evo
 - [x] Docker runtime復旧後、clean commitからPicoArch/standalone統合済みapp-layerでSD imageを再生成する
   - 2026-08-12: 4 GiB seed layout（p1=512 MiB, p2=2048 MiB, p3=remainder）でdirty-tree生成は完了し、host checksum/MBR/hdiutil partition recognitionは確認済みだったが、Docker Desktopがcontainer metadata I/O error後にAPI socketを失ったため、clean commit source_refでの再生成が必要になった。
@@ -117,15 +115,16 @@
 - [ ] enabled systemのBIOS/firmware inventoryを完備する
   - [x] 有効routeのlibretro `.info`とstandalone要求からPixel2 BIOS staging/manifestを生成する
   - [ ] ROMセットに無い必須firmwareを補完し、missing requiredを0件にする
-  - [x] ROMセットに存在する340 firmware fileを実機`/mnt/plumos-user/bios`へmerge-only配置し、実機SHA-256を340/340一致で確認する
+  - [x] ROMセットに存在するBlueMSX archiveを含む486 firmware fileを実機`/mnt/plumos-user/bios`へmerge-only配置する
   - [ ] enabled systemごとにBIOS検出と代表content起動を実機確認する
-- [ ] enabled 88 systemのcontent policyを確定する
+- [ ] enabled 87 systemのcontent policyを確定する
   - [ ] arcade ROM set policy: arcade、cps1、cps2、cps3、fbneo、neogeo
   - [ ] disk image policy: amiga、atari800、atarist、c64、cpc、pc88、pc98、sharpx1、thomson、vic20、x68000、zx81、zxspectrum
   - [ ] data layout policy: cannonball、cavestory、chailove、dinothawr、lowresnx、lutro、microw8、quake、wolf3d
   - [ ] frontend policy: j2me、music、ti83、vmu
   - [ ] scraper source policy: uzebox
-- [ ] disabled 9 system（mame2003plus、ports、2048、bk、daphne、flashback、mrboom、palm、rickdangerous）を実装または非対応理由確定する
+- [ ] disabled 10 system（saturn、mame2003plus、ports、2048、bk、daphne、flashback、mrboom、palm、rickdangerous）を実装または非対応理由確定する
+  - [x] Saturnは`unsupported_performance_rk3326`として非対応理由を確定する
 
 ## Final partition and update contract
 
@@ -201,5 +200,7 @@
 - [ ] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
   - 2026-08-12: PPSSPP統合後のhost route validationは代表ROMがある29 system中29 routeが`ok`、pending binaryは0。実機での全system起動・終了は未実施。
   - 2026-08-13: Pyxel統合後のhost route validationは代表ROMがある30 system中30 routeが`ok`、pending binaryは0。Pyxelを含む全systemの実機起動・終了は未実施。
-  - 2026-08-13: `3234b0d`で再監査し、88 enabled、114 libretro core、standalone 4 built / 6 pending、代表ROM30 systemのhost route 30/30、pending binary 0を確認。実機はNESの表示/入力/音声/音量とPCSXの起動/表示/ゲーム入力/Function menu操作まで進行。30 system一巡は未完了。
+  - 2026-08-13: Saturn廃止後は87 enabled、111 libretro core、standalone 4 built / 4 pending、代表ROM29 system。ROMがある全profileの自動実機起動smokeを完走し、操作・表示・音声は別途物理acceptanceする。
+  - [x] ROMセットに代表contentがある29 system・97 profileを実機で3秒起動し、97/97 early-start passを記録する
+  - [ ] ROMセットにmatching contentが無い58 enabled systemへ代表contentを用意し、実機起動を記録する
 - [ ] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する

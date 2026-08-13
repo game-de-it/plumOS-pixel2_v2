@@ -28,13 +28,13 @@
 
 | 対象 | 結果 |
 | --- | ---: |
-| frontend systems | 97 total / 88 enabled / 9 disabled |
+| frontend systems | 97 total / 87 enabled / 10 disabled |
 | required app-layer components | 7 / 7 present |
-| libretro cores | 114 built |
-| standalone emulator | 4 built / 6 pending |
+| libretro cores | 111 built |
+| standalone emulator | 4 built / 4 pending |
 | visible Apps entries | 2 |
 | enabled systems with pending content policy | 33 |
-| release blockers detected by audit | 1 |
+| release blockers detected by audit | 0 |
 
 ## Implemented build surface
 
@@ -44,7 +44,7 @@ Device verifiedを意味しない。
 - stock Rockchip prefix、stock kernel/DTB/initramfs substrate、plumOS `SYSTEM` handoff;
 - plumOS init、ADB bring-up、USB Wi-Fi、Dropbear SSH、persistent logs;
 - frontend、text UI、ROM scanner、START menu、Pixel2 input contract;
-- RetroArch 1.22.2と114 libretro core catalog;
+- RetroArch 1.22.2と111 libretro core catalog;
 - PicoArchと共有libretro core route;
 - OpenBOR、DraStic、PPSSPP standalone;
 - PCSX-ReARMed standalone（host build済み、実機acceptance待ち）;
@@ -64,7 +64,6 @@ Device verifiedを意味しない。
 | Factory Reset | `factory-defaults/{ra,pico,sa}`とbackup/atomic restore/dry-runを実装 | 実機対象別restoreと再起動後確認 |
 | Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
 | PSX alternate SA | pinned PCSX-ReARMed r26l、sdl12-compat、Pixel2 CCW fbdev presenter、入力、48 kHz音声、factory configをhost build済み | 実機で起動、画面、全入力、音声、menu/exit、FE復帰を検証 |
-| Saturn alternate SA | `standalone:yabasanshiro`を公開、binary pending | Pixel2 build/runtimeを実装・検証してから公開状態を合格にする |
 
 Pixel2では存在しないAudio Output切替、Lid Suspend、FTP/SFTP/Sambaをdevice
 capabilityにより表示しない。これは未実装項目を隠す処置ではなく、物理hardwareと
@@ -88,22 +87,20 @@ host test、実機acceptanceを揃えてから完了にする。
 4. PortMaster
 5. Update PortMaster
 
-standalone manifestで`pending-binary`なのは次の6件である。PCSX-ReARMedは
+standalone manifestで`pending-binary`なのは次の4件である。PCSX-ReARMedは
 host build済みだが、実機acceptance完了まではP0 release blockerとして扱う。
 
-- YabaSanshiro;
 - ScummVM;
 - EasyRPG;
 - Flycast;
-- Mupen64Plus;
 - NXEngine-Evo。
 
-ScummVM、EasyRPG、Flycast、Mupen64Plus、NXEngineにはlibretro default routeが
+ScummVM、EasyRPG、Flycast、NXEngineにはlibretro default routeが
 すでに存在する。standalone実装はdefault routeの動作確認とは別の追加作業である。
 
 ## P1: emulator and content validation
 
-88 enabled systemsのうち33 systemはruntime/coreが存在する一方、arcade ROM set、
+87 enabled systemsのうち33 systemはruntime/coreが存在する一方、arcade ROM set、
 disk image、multi-file data layout、frontend policy、scraper sourceのいずれかが
 未確定である。
 
@@ -115,12 +112,13 @@ disk image、multi-file data layout、frontend policy、scraper sourceのいず�
 | frontend policy | j2me, music, ti83, vmu |
 | scraper source | uzebox |
 
-disabledの9 systemは、mame2003plus、ports、2048、bk、daphne、flashback、mrboom、
-palm、rickdangerousである。`ports`はPortMaster実装に依存する。他はcontentless、
+disabledの10 systemは、saturn、mame2003plus、ports、2048、bk、daphne、flashback、
+mrboom、palm、rickdangerousである。SaturnはRK3326性能要件により明示的に非対応、
+`ports`はPortMaster実装に依存する。他はcontentless、
 data layout、frontend policyを決めたうえで再評価する。
 
-ROM set route testは代表ROMが存在する30 systemのhost routeを解決しているだけで、
-全88 systemの実機動作保証ではない。各systemで以下を記録する。
+ROM set route testは代表ROMが存在する29 systemのhost routeを解決しているだけで、
+全87 systemの実機動作保証ではない。各systemで以下を記録する。
 
 - content/BIOS layoutと代表ROM hash;
 - launch profile、core/emulator build revision;
@@ -151,7 +149,7 @@ acceptanceする。
 - clean SD cold boot、LCD、全physical input、audio、volume、brightness;
 - FE -> emulator/app -> FEでforeground ownerが常に1つであること;
 - OpenBOR、DraStic、PPSSPP、Pyxelの表示、入力、音声、終了、state保持;
-- representative ROM 30 systemと、ROMが準備できる残りsystem;
+- representative ROM 29 systemと、ROMが準備できる残りsystem;
 - FE menuからのactual shutdownと、充電中reboot;
 - ADB再接続、USB Wi-Fi dongle、SSH public-key login;
 - save/stateとactive settingsがupdate/deploy後も保持されること;
@@ -172,8 +170,8 @@ GitHub公開前に、実装とは別に次を整える。
 
 1. P0の公開済み未実装surfaceをすべて実装し、audit blockerを0にする。
 2. Scraping、File Manager、Music Player、RetroArch menu、PortMasterをcomponent化する。
-3. 6 standalone pending binaryを順にbuildし、default/alternate routeを実機検証する。
-4. 33 content policyと9 disabled systemをROM setに基づき解決する。
+3. 4 standalone pending binaryを順にbuildし、default/alternate routeを実機検証する。
+4. 33 content policyと10 disabled systemをROM setに基づき解決する。
 5. 実装済みSystem A/B・signed updaterを維持しつつ、first-boot provisioningを完成する。
 6. clean imageを複製SDへ書き、全physical-device acceptanceを完走する。
 7. repository/release gateを通し、配布物を再取得して最終checksumを確認する。

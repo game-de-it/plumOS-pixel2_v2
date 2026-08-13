@@ -46,12 +46,19 @@ RetroArch and the Pixel2 libretro sets are packaged for AArch64.
 `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1`
 builds 41 catalog cores and emits the `libretro-cores` component manifest and
 checksums. `./scripts/docker-build.sh cores --filter all --jobs 4
---fail-on-error 1` builds the full 114-core catalog used for full-system route
+--fail-on-error 1` builds the full 111-core catalog used for full-system route
 coverage. `./scripts/docker-build.sh core-catalog --filter all --concurrency 4`
 is the preferred full rebuild path because it runs independent per-core workers
 and then aggregates the canonical Pixel2 component. The FE system catalog is
 generated around those managed launch profiles rather than a single
 QuickNES-only route.
+
+Saturn is disabled on Pixel2 with `unsupported_performance_rk3326`; its two
+libretro cores and YabaSanshiro route are not built or exposed. Mupen64Plus-Next
+is also not part of the Pixel2 catalog: the pinned AArch64 core segfaulted on
+the stock kernel with dynarec disabled and with cached/pure interpreters across
+GLideN64, Angrylion, and ParaLLEl RDP paths. Nintendo 64 remains enabled through
+the device-verified `retroarch:parallel_n64` route.
 
 Factory defaults include the Pixel2 joypad autoconfig and the current
 display/aspect contract.
