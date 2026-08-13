@@ -165,6 +165,10 @@ grep -q 'video_threaded = "true"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'video_refresh_rate = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'mupen64plus-cpucore cached_interpreter' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'core_options_path = "%s"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'vrr_runloop_enable = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q '#define VOLUME_PROBE_INTERVAL 0' \
