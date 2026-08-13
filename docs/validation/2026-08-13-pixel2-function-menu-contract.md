@@ -117,3 +117,21 @@ host PCSX binary SHA-256
 `143c9d97e627a622cb61bf925f94fd4e398a4343193fc2225ca0ad0356fcc44b`.
 All 3470 root app-layer checksum entries passed. Physical PCSX menu navigation,
 confirm, back, resume, and exit remain an operator gate.
+
+## PCSX physical D-pad correction
+
+An on-device capture taken while the PCSX menu owned the foreground recorded
+physical D-pad Up/Down as Linux key codes 544/545 (`BTN_DPAD_UP` and
+`BTN_DPAD_DOWN`), not `KEY_UP`/`KEY_DOWN` or `ABS_X`/`ABS_Y`. Physical A and B
+were correctly reported as 305/304. The PCSX evdev defaults and menu key map now
+include all four `BTN_DPAD_*` codes while retaining the prior `KEY_*` path for
+compatibility.
+
+Commit `3234b0d` was built as the complete four-emulator standalone component,
+assembled into strict app-layer `0.1.0-dev-3234b0d`, and applied as a signed
+12-file Runtime delta with no deletions. The update reached `healthy`; the
+device PCSX SHA-256 was
+`bf9fb6e898c4d45895b975b53a04650ec5b2f80d41e6e86aa34fc1f2dd7249b9`,
+and all 3470 app-layer checksums passed. The operator then confirmed that the
+PCSX Function menu can be navigated and controlled. Menu exit, clean FE return,
+second launch, audio, and save persistence remain separate acceptance checks.
