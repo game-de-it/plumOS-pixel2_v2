@@ -1,14 +1,15 @@
 {
   "version": 1,
-  "id": "default-horizontal",
+  "id": "default",
   "target": "graphic",
-  "display_name": "Default Horizontal",
-  "description": "Default plumOS Graphic horizontal theme. Text mode ignores theme colors, layout, and assets.",
-  "layout_preset": "strip_preview",
+  "display_name": "Default Graphic",
+  "description": "Default plumOS Graphic theme. Text mode ignores theme colors, layout, and assets.",
+  "layout_preset": "grid_preview",
   "assets": {
     "font_ui": null,
     "font_fallback": "system_cjk",
     "background": null,
+    "gallery_background": null,
     "system_logo_root": "logos/systems",
     "system_icon_root": "icons/systems",
     "placeholder_thumbnail": null,
@@ -27,11 +28,11 @@
     "danger": "#ff140a"
   },
   "graphic_mode": {
-    "top_layout": "tile_strip",
+    "top_layout": "tile_grid",
     "rom_layout": "list_preview",
     "transition": "slide",
     "transition_ms": 1000,
-    "transition_axis": "horizontal",
+    "transition_axis": "vertical",
     "transition_easing": "smoothstep",
     "thumbnail_fit": "contain",
     "thumbnail_frame": "simple",

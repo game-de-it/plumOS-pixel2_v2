@@ -77,6 +77,13 @@ import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
+theme = json.loads(
+    (root / "vendor/plumos-frontend/seed/themes/default/theme.json").read_text()
+)
+assert theme["id"] == "default"
+assert theme["layout_preset"] == "grid_preview"
+assert theme["graphic_mode"]["top_layout"] == "tile_grid"
+assert theme["graphic_mode"]["transition_axis"] == "vertical"
 systems = json.loads((root / "package/frontend-pixel2/systems.json").read_text())["systems"]
 saturn = next(item for item in systems if item["id"] == "saturn")
 assert saturn["enabled"] is False
