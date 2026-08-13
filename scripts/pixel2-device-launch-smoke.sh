@@ -97,9 +97,17 @@ runtime_pid_for_profile() {
             for proc in /proc/[0-9]*/exe; do
                 [ -r "$proc" ] || continue
                 exe=$($bb readlink "$proc" 2>/dev/null || true)
-                [ "$exe" = "$root/apps/python/bin/python3.11" ] || continue
                 pid=${proc#/proc/}
-                printf '%s\n' "${pid%/exe}"
+                pid=${pid%/exe}
+                case "$exe" in
+                    "$root/apps/python/bin/python3.11") ;;
+                    "$root/apps/python/lib/ld-linux-aarch64.so.1")
+                        $bb tr '\000' ' ' <"/proc/$pid/cmdline" 2>/dev/null |
+                            $bb grep -q "$root/apps/python/bin/python3.11" || continue
+                        ;;
+                    *) continue ;;
+                esac
+                printf '%s\n' "$pid"
                 return 0
             done
             ;;
