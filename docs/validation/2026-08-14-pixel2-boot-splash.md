@@ -110,3 +110,28 @@ The repository hook now redraws the plumOS asset at the last event and emits
 `plumos-stock-initramfs=boot-splash result=plumos` on success. Direct LCD
 confirmation remains the final gate because `/dev/fb0` exposes a stale buffer
 rather than reliable live-display evidence on this device.
+
+## Post-mount redraw deployment
+
+Commit `dfd3b46` changed the existing-card `/flash/post-flash.sh` through a
+temporary boot-FAT file. The host, temporary-device, and final-device SHA-256
+all matched:
+
+```text
+420ec2e0c12426e4a72919d17441ccd0569ec36cbc0d80f5c472d4703e25a049
+```
+
+The previous 345-byte diagnostic-only hook remains available on the test card
+as `/flash/post-flash.sh.before-dfd3b46`. The Pixel2 safe-shutdown sysrq reboot
+path then produced a fresh boot with the expected redraw result:
+
+```text
+[    1.537731] init: ### Loading bootsplash
+[    1.608476] init: ### Mounting flash
+[    1.996108] plumos-stock-initramfs=post-flash flash-mounted=1
+[    2.098087] plumos-stock-initramfs=boot-splash result=plumos
+```
+
+ADB returned at device uptime 8.07 seconds, the frontend process was running,
+and `/flash` was read-only. This proves asset selection and renderer success;
+the operator's direct LCD observation remains the visual acceptance gate.
