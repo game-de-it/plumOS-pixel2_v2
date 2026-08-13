@@ -24,6 +24,7 @@ PREFIX="${PLUMOS_PIXEL2_BOOT_PREFIX:-/work/artifacts/vendor/pixel2-stock-source/
 PREFIX_MANIFEST="$ROOT_DIR/artifacts/manifests/pixel2-stock-prefix.manifest"
 STOCK_BOOT_DIR="$ROOT_DIR/artifacts/vendor/pixel2-stock/boot"
 STOCK_BOOT_MANIFEST="$ROOT_DIR/artifacts/vendor/pixel2-stock/manifest.tsv"
+BOOT_SPLASH="$ROOT_DIR/package/boot-assets-pixel2/oemsplash-1080.png"
 SYSTEM_DIR="$ROOT_DIR/output/system-rootfs/pixel2/payload"
 APP_DIR="$ROOT_DIR/output/app-layer/pixel2/plumos"
 BOOT_HOOK_DIR="$ROOT_DIR/boot-hooks/pixel2"
@@ -62,6 +63,11 @@ done
     printf 'error: stock boot artifact manifest missing\n' >&2
     exit 2
 }
+[ -f "$BOOT_SPLASH" ] || {
+    printf 'error: Pixel2 boot splash missing: %s\n' "$BOOT_SPLASH" >&2
+    exit 2
+}
+python3 "$ROOT_DIR/scripts/verify-pixel2-boot-splash.py" "$BOOT_SPLASH"
 [ -f "$SYSTEM_DIR/SYSTEM" ] || {
     printf 'error: SYSTEM missing; run ./scripts/build-system-rootfs.sh first\n' >&2
     exit 2
@@ -140,6 +146,7 @@ done
 install -m 0644 "$STOCK_BOOT_DIR/Image" "$WORK/boot/Image"
 install -m 0644 "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" \
     "$WORK/boot/rk3326s-gkd-pixel2.dtb"
+install -m 0644 "$BOOT_SPLASH" "$WORK/boot/oemsplash-1080.png"
 cp -a "$SYSTEM_DIR/." "$WORK/boot/"
 for hook in post-flash.sh post-sysroot.sh; do
     [ -f "$BOOT_HOOK_DIR/$hook" ] || {
@@ -151,6 +158,7 @@ done
 prefix_sha=$actual_prefix_sha
 stock_image_sha=$(sha256sum "$STOCK_BOOT_DIR/Image" | awk '{print $1}')
 stock_dtb_sha=$(sha256sum "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" | awk '{print $1}')
+boot_splash_sha=$(sha256sum "$BOOT_SPLASH" | awk '{print $1}')
 cat >"$WORK/boot/plumos-image.manifest" <<EOF
 format=plumos-pixel2-image-v1
 device=pixel2
@@ -162,6 +170,9 @@ boot_prefix_sha256=$prefix_sha
 boot_substrate=stock-pixel2
 stock_image_sha256=$stock_image_sha
 stock_dtb_sha256=$stock_dtb_sha
+boot_splash=oemsplash-1080.png
+boot_splash_geometry=480x640
+boot_splash_sha256=$boot_splash_sha
 layout=boot-prefix-16MiB,boot-fat-512MiB,plumos-sys-ext4-2048MiB,plumos-user-fat32-remainder
 runtime_abi=plumos-pixel2-app-layer-v1
 system_layout=fixed-dispatcher,system-a,system-b

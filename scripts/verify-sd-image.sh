@@ -57,7 +57,7 @@ fsck.vfat -n "$WORK/plumos-user.fat" >/dev/null
 e2fsck -fn "$WORK/plumos-sys.ext4" >/dev/null
 [ "$(blkid -s LABEL -o value "$WORK/plumos-sys.ext4")" = PLUMOS_SYS ]
 [ "$(blkid -s LABEL -o value "$WORK/plumos-user.fat")" = PLUMOS_USER ]
-for file in Image SYSTEM rk3326s-gkd-pixel2.dtb plumos-image.manifest \
+for file in Image SYSTEM rk3326s-gkd-pixel2.dtb oemsplash-1080.png plumos-image.manifest \
     post-flash.sh post-sysroot.sh; do
     MTOOLS_SKIP_CHECK=1 mcopy -i "$WORK/boot.fat" "::/$file" "$WORK/$file"
 done
@@ -70,7 +70,17 @@ done
 cmp "$WORK/Image" "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/Image"
 cmp "$WORK/rk3326s-gkd-pixel2.dtb" \
     "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/rk3326s-gkd-pixel2.dtb"
+python3 "$ROOT_DIR/scripts/verify-pixel2-boot-splash.py" \
+    "$WORK/oemsplash-1080.png"
+cmp "$WORK/oemsplash-1080.png" \
+    "$ROOT_DIR/package/boot-assets-pixel2/oemsplash-1080.png"
 grep -q '^boot_substrate=stock-pixel2$' "$WORK/plumos-image.manifest"
+grep -q '^boot_splash=oemsplash-1080.png$' "$WORK/plumos-image.manifest"
+grep -q '^boot_splash_geometry=480x640$' "$WORK/plumos-image.manifest"
+expected_splash_sha=$(awk -F= '$1 == "boot_splash_sha256" { print $2 }' \
+    "$WORK/plumos-image.manifest")
+actual_splash_sha=$(sha256sum "$WORK/oemsplash-1080.png" | awk '{print $1}')
+[ "$actual_splash_sha" = "$expected_splash_sha" ]
 grep -q '^system_layout=fixed-dispatcher,system-a,system-b$' \
     "$WORK/plumos-image.manifest"
 grep -q '^stock_initramfs_hooks=post-flash.sh,post-sysroot.sh$' \
