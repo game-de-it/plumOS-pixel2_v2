@@ -33,6 +33,14 @@ grep -q 'PROFILE_SAMPLE_NAMES' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q '"retroarch:mba_mini": "varthj.zip"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q '"retroarch:frodo": "inbread.d64"' \
+    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q 'PARENT_TREE_SYSTEMS.*"easyrpg".*"cannonball".*"cavestory".*"dinothawr"' \
+    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q 'SYNTHETIC_LAUNCH_NAMES.*"cannonball": "cannonball.game"' \
+    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q 'retroarch-launch.log' \
+    "$ROOT_DIR/scripts/pixel2-device-launch-smoke.sh"
 grep -q 'f"_etc/{name}"' \
     "$ROOT_DIR/scripts/validate-romset-routes.py"
 grep -q 'SONAME_MAP=' \
@@ -77,6 +85,10 @@ standalone_launch = (root / "package/standalone-pixel2/plumos/bin/plumos-standal
 assert '"id": "mupen64plus"' not in standalone_build
 assert "mupen64plus)" not in standalone_launch
 PY
+grep -q 'strcmp(core_id, "easyrpg") == 0 && directory_exists(plan->rom_path)' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_text_ui.c"
+grep -q '"RPG_RT.ldb"' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_text_ui.c"
 grep -q 'internal:system-settings' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
 grep -q 'internal:network-settings' \

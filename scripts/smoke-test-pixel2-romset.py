@@ -42,10 +42,23 @@ PROFILE_SAMPLE_NAMES = {
     "retroarch:mba_mini": "varthj.zip",
     "retroarch:bluemsx": "Ys2-p.dsk",
     "retroarch:fmsx": "XGR1Trial.rom",
+    "retroarch:frodo": "inbread.d64",
+    "retroarch:mednafen_pcfx": "simplebattle.cue",
+    "retroarch:nxengine": "Doukutsu.exe",
     "retroarch:km_duckswanstation_xtreme_amped": "chroQW.img",
     "retroarch:parallel_n64": "SUPERMARIO64.Z64",
     "pyxel:pixel2": "LastEmulator.pyxapp",
 }
+
+# These engines resolve assets relative to the selected entry point.  Preserve
+# the complete source directory in the temporary device staging tree instead
+# of producing a false failure by copying only the marker/executable.
+PARENT_TREE_SYSTEMS = {"easyrpg", "cannonball", "cavestory", "dinothawr"}
+
+# Cannonball's upstream content contract uses an empty .game marker alongside
+# the user-owned OutRun Revision B ROM files.  The supplied set has the ROM
+# files but no marker, so create it only inside the disposable smoke directory.
+SYNTHETIC_LAUNCH_NAMES = {"cannonball": "cannonball.game"}
 
 
 def load_route_validator() -> Any:
@@ -118,6 +131,17 @@ def referenced_content(sample: Path) -> list[Path]:
                 if candidate.suffix.lower() in {".img", ".ccd", ".sub", ".cue"}:
                     found.add(candidate.resolve())
     return sorted(found)
+
+
+def staged_content(system_id: str, sample: Path) -> list[tuple[Path, Path]]:
+    """Return source files and safe paths relative to the smoke directory."""
+    if system_id in PARENT_TREE_SYSTEMS:
+        return [
+            (source, source.relative_to(sample.parent))
+            for source in sorted(sample.parent.rglob("*"))
+            if source.is_file()
+        ]
+    return [(source, Path(source.name)) for source in referenced_content(sample)]
 
 
 def report_sample_path(sample: Path, rom_root: Path) -> str:
@@ -326,34 +350,53 @@ def main() -> int:
                 raise RuntimeError("unsafe smoke staging path")
             device.shell(f"mkdir -p {shlex.quote(remote_system)}")
             staged_paths.append(remote_system)
-            companions = sorted(
+            staged_files = sorted(
                 {
-                    companion
+                    (source.resolve(), relative)
                     for sample, _profiles in sample_groups
-                    for companion in referenced_content(sample)
-                }
+                    for source, relative in staged_content(system_id, sample)
+                },
+                key=lambda item: item[1].as_posix(),
             )
-            total_bytes = sum(path.stat().st_size for path in companions)
+            total_bytes = sum(source.stat().st_size for source, _relative in staged_files)
             free_line = device.shell("df -k /mnt/plumos-user | tail -n 1").stdout.split()
             free_bytes = int(free_line[3]) * 1024 if len(free_line) >= 4 else 0
             if free_bytes and total_bytes + 64 * 1024 * 1024 > free_bytes:
                 raise RuntimeError(
                     f"insufficient device space for {system_id}: need {total_bytes}, free {free_bytes}"
                 )
-            for source in companions:
-                local_relative = Path(source.name)
-                remote_parent = remote_system
+            for source, local_relative in staged_files:
+                if local_relative.is_absolute() or ".." in local_relative.parts:
+                    raise RuntimeError(f"unsafe staged relative path: {local_relative}")
+                remote_parent_relative = local_relative.parent.as_posix()
+                remote_parent = (
+                    remote_system
+                    if remote_parent_relative == "."
+                    else f"{remote_system}/{remote_parent_relative}"
+                )
                 device.shell(f"mkdir -p {shlex.quote(remote_parent)}")
                 remote_path = f"{remote_system}/{local_relative.as_posix()}"
-                print(f"PUSH system={system_id} file={source.name} bytes={source.stat().st_size}")
+                print(
+                    f"PUSH system={system_id} file={local_relative.as_posix()} "
+                    f"bytes={source.stat().st_size}"
+                )
                 device.run_adb("push", str(source), remote_path)
+
+            synthetic_name = SYNTHETIC_LAUNCH_NAMES.get(system_id)
+            if synthetic_name:
+                device.shell(f": > {shlex.quote(f'{remote_system}/{synthetic_name}')}")
 
             scan = device.helper_action("scan", SMOKE_SYSTEM=system_id)
             print(scan.stdout, end="")
             if scan.returncode != 0 or f"SMOKE_RESULT=scanned system={system_id}" not in scan.stdout:
                 raise RuntimeError(f"device scan failed for {system_id}")
             for sample, profiles in sample_groups:
-                sample_relative = f"{stage_relative}/{sample.name}"
+                if system.get("scan_directories"):
+                    sample_relative = stage_relative
+                elif synthetic_name:
+                    sample_relative = f"{stage_relative}/{synthetic_name}"
+                else:
+                    sample_relative = f"{stage_relative}/{sample.name}"
                 for profile in profiles:
                     print(f"LAUNCH system={system_id} profile={profile} sample={sample.name}")
                     outcome = device.helper_action(

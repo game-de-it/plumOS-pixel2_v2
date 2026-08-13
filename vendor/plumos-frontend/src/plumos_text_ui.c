@@ -349,6 +349,11 @@ static int file_exists(const char *path) {
   return stat(path, &st) == 0 && S_ISREG(st.st_mode);
 }
 
+static int directory_exists(const char *path) {
+  struct stat st;
+  return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
 static int split_content_suffix(const char *path, char *base_out, size_t base_out_size,
                                 const char **suffix_out);
 
@@ -2940,9 +2945,22 @@ static int build_launch_plan(struct launch_plan *plan, const char *plumos_root,
   if (strncmp(launch_profile, "retroarch:", 10) == 0) {
     const char *core_id = launch_profile + 10;
     char launcher_dir[PATH_MAX];
+    char content_path[PATH_MAX];
     int pixel2_compat_runtime = retroarch_pixel2_compat_runtime_enabled(plumos_root);
 
     copy_string(plan->kind, sizeof(plan->kind), "retroarch");
+    /* EasyRPG is presented as one FE entry per project directory.  The
+     * libretro core, however, expects the RPG Maker database file as content.
+     * Resolve that contract here so both controller UI and text-UI launches
+     * use the same real project entry point. */
+    if (strcmp(core_id, "easyrpg") == 0 && directory_exists(plan->rom_path)) {
+      if (!join_path(content_path, sizeof(content_path), plan->rom_path,
+                     "RPG_RT.ldb") ||
+          !copy_string(plan->rom_path, sizeof(plan->rom_path), content_path)) {
+        return 0;
+      }
+      plan->rom_exists = rom_path_exists(plan->rom_path);
+    }
     if (!join_path(launcher_dir, sizeof(launcher_dir), plumos_root, "bin") ||
         !join_path(plan->retroarch_path, sizeof(plan->retroarch_path), launcher_dir,
                    "plumos-retroarch-launch") ||

@@ -141,7 +141,7 @@ failure_log_for_profile() {
     family=${profile%%:*}
     id=${profile#*:}
     case "$family" in
-        retroarch) log="$root/logs/retroarch.log" ;;
+        retroarch) log="$root/logs/retroarch-launch.log" ;;
         picoarch) log="$root/logs/picoarch.log" ;;
         standalone) log="$root/logs/standalone/$id.log" ;;
         pyxel) log="$root/logs/pyxel/runtime.log" ;;
