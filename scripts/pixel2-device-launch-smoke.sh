@@ -124,6 +124,22 @@ runtime_stop_for_profile() {
     $bb kill -0 "$pid" 2>/dev/null && $bb kill -KILL "$pid" 2>/dev/null || true
 }
 
+failure_log_for_profile() {
+    profile=$1
+    family=${profile%%:*}
+    id=${profile#*:}
+    case "$family" in
+        retroarch) log="$root/logs/retroarch.log" ;;
+        picoarch) log="$root/logs/picoarch.log" ;;
+        standalone) log="$root/logs/standalone/$id.log" ;;
+        pyxel) log="$root/logs/pyxel/runtime.log" ;;
+        *) return 0 ;;
+    esac
+    [ -f "$log" ] || return 0
+    printf 'SMOKE_DIAGNOSTIC_LOG=%s\n' "$log"
+    $bb tail -n 80 "$log" 2>/dev/null || true
+}
+
 case "$action" in
     prepare)
         backup_frontend_state
@@ -179,6 +195,7 @@ case "$action" in
         while [ "$count" -lt "$seconds" ]; do
             if ! $bb kill -0 "$launch_pid" 2>/dev/null; then
                 $bb tail -n 40 "$output" 2>/dev/null || true
+                failure_log_for_profile "$profile"
                 fail "early-exit:$profile"
                 exit 1
             fi
@@ -189,6 +206,7 @@ case "$action" in
         runtime_pid=$(runtime_pid_for_profile "$profile" || true)
         if [ -z "$runtime_pid" ] || [ ! -r "/proc/$runtime_pid/exe" ]; then
             $bb tail -n 40 "$output" 2>/dev/null || true
+            failure_log_for_profile "$profile"
             $bb kill -TERM "$launch_pid" 2>/dev/null || true
             $bb sleep 1
             $bb kill -0 "$launch_pid" 2>/dev/null && \
