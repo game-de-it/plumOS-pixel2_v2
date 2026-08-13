@@ -1,0 +1,20 @@
+#!/bin/sh
+set -u
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+LOG=/state/plumos/logs/gpu.log
+
+mkdir -p "${LOG%/*}"
+if modprobe panfrost >>"$LOG" 2>&1; then
+    mdev -s 2>/dev/null || true
+    chmod 0660 /dev/dri/card1 /dev/dri/renderD129 2>/dev/null || true
+    printf '%s service=gpu result=ready driver=panfrost render=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        "$(test -c /dev/dri/renderD129 && echo /dev/dri/renderD129 || echo missing)" \
+        >>"$LOG"
+    exit 0
+fi
+
+printf '%s service=gpu result=failed driver=panfrost\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$LOG"
+exit 1

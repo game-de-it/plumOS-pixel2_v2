@@ -6,5 +6,6 @@ artifacts/vendor/
 artifacts/update-signing/
 build/
 output/
+dist/
 *.img
 *.img.xz

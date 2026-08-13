@@ -22,11 +22,12 @@ fi
 is_mounted /proc || $bb mount -t proc proc /proc
 is_mounted /sys || $bb mount -t sysfs sysfs /sys
 is_mounted /dev || $bb mount -t devtmpfs devtmpfs /dev
-$bb mkdir -p /dev/pts /run /tmp /boot /state /roms /root \
+$bb mkdir -p /dev/pts /dev/shm /run /tmp /boot /state /roms /root \
     /flash /storage /mnt/plumos /mnt/plumos-user
 is_mounted /dev/pts || $bb mount -t devpts devpts /dev/pts
 $bb mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run 2>/dev/null || true
 $bb mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /tmp 2>/dev/null || true
+$bb chmod 1777 /dev/shm
 $bb hostname "$HOSTNAME"
 
 mkdir -p /run/plumos
