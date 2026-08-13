@@ -184,6 +184,7 @@ def main() -> int:
     parser.add_argument("--adb", default=str(DEFAULT_ADB))
     parser.add_argument("--seconds", type=int, default=8)
     parser.add_argument("--system", action="append", default=[])
+    parser.add_argument("--profile", action="append", default=[])
     parser.add_argument("--default-only", action="store_true")
     parser.add_argument("--report-json", default="output/validation/pixel2-device-romset-smoke.json")
     parser.add_argument("--report-markdown", default="output/validation/pixel2-device-romset-smoke.md")
@@ -209,6 +210,15 @@ def main() -> int:
         missing = requested - {system["id"] for system in enabled}
         if missing:
             parser.error("unknown or disabled system: " + ", ".join(sorted(missing)))
+    requested_profiles = set(args.profile)
+    available_profiles = {
+        profile
+        for system in enabled
+        for profile in system.get("launch_profiles", [])
+    }
+    missing_profiles = requested_profiles - available_profiles
+    if missing_profiles:
+        parser.error("profile not enabled for selected systems: " + ", ".join(sorted(missing_profiles)))
 
     all_profile_failures: list[str] = []
     for system in enabled:
@@ -233,6 +243,10 @@ def main() -> int:
             continue
         profiles = [system.get("default_launch_profile", "")] if args.default_only else list(system.get("launch_profiles", []))
         profiles = [profile for profile in profiles if profile]
+        if requested_profiles:
+            profiles = [profile for profile in profiles if profile in requested_profiles]
+        if not profiles:
+            continue
         selected.append((system, sample.resolve(), profiles))
 
     device = Device(adb)
