@@ -227,6 +227,10 @@ def markdown_report(result: dict[str, Any]) -> str:
         f"ROM root: `{result['rom_root']}`",
         f"Device app version: `{result.get('device_version', '')}`",
         "",
+        "Temporary smoke content is removed after each launch. Before physical visual",
+        "acceptance, restore every passing sample with",
+        "`scripts/restore-pixel2-smoke-roms.py`.",
+        "",
         "## Summary",
         "",
         f"- enabled systems: {summary['enabled_systems']}",
@@ -479,6 +483,8 @@ def main() -> int:
         "app_root": str(app_root),
         "device_version": device_version,
         "startup_seconds": args.seconds,
+        "persistent_content_retained": False,
+        "visual_restore_required": True,
         "summary": summary,
         "systems_without_rom": without_rom,
         "launches": launches,
@@ -490,6 +496,10 @@ def main() -> int:
     json_path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     markdown_path.write_text(markdown_report(result), encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    print(
+        "SMOKE_CONTENT=persistent-retained:no visual-restore:required "
+        "helper=scripts/restore-pixel2-smoke-roms.py"
+    )
     return 1 if summary["profiles_failed"] else 0
 
 
