@@ -13,6 +13,7 @@ PID_FILE="$PLUMOS_RUNTIME_ROOT/picoarch/runtime.pid"
 LOG_DIR="$PLUMOS_ROOT/logs/picoarch"
 RUNTIME_LIB_DIR="$PLUMOS_RUNTIME_ROOT/picoarch/lib"
 LIBRETRO_RUNTIME_DIR="${PLUMOS_PICOARCH_LIBRETRO_RUNTIME_DIR:-$PLUMOS_ROOT/lib/libretro}"
+SONAME_MAP="$PLUMOS_ROOT/config/standalone/soname-links.tsv"
 
 fail() {
   printf 'plumos-picoarch-launch: %s\n' "$*" >&2
@@ -62,9 +63,17 @@ fi
 mkdir -p "$LOG_DIR" "$PLUMOS_RUNTIME_ROOT/picoarch" \
   "$PLUMOS_ROOT/state/picoarch/$SYSTEM_ID" \
   "$PLUMOS_ROOT/saves/$SYSTEM_ID" "$PLUMOS_USER_ROOT/bios" "$RUNTIME_LIB_DIR"
+find "$RUNTIME_LIB_DIR" -type l -delete 2>/dev/null || true
 ln -sf "$PICOARCH_ROOT/lib/libSDL-1.2.so.0" "$RUNTIME_LIB_DIR/libSDL-1.2.so.0"
+ln -sf "$PICOARCH_ROOT/lib/libSDL2-2.0.so.0" "$RUNTIME_LIB_DIR/libSDL2-2.0.so.0"
 ln -sf "$PICOARCH_ROOT/lib/libpng16.so.16" "$RUNTIME_LIB_DIR/libpng16.so.16"
 ln -sf "$PICOARCH_ROOT/lib/libz.so.1" "$RUNTIME_LIB_DIR/libz.so.1"
+if [ -f "$SONAME_MAP" ]; then
+  while IFS="$(printf '\t')" read -r soname real_name; do
+    [ -n "$soname" ] && [ -f "$PLUMOS_ROOT/lib/$real_name" ] || continue
+    ln -sf "$PLUMOS_ROOT/lib/$real_name" "$RUNTIME_LIB_DIR/$soname"
+  done <"$SONAME_MAP"
+fi
 
 CONFIG="$PLUMOS_ROOT/config/standalone/picoarch.env"
 [ ! -r "$CONFIG" ] || . "$CONFIG"
@@ -86,7 +95,7 @@ export SDL_AUDIODRIVER="${PLUMOS_PICOARCH_SDL_AUDIODRIVER:-alsa}"
 export SDL_RENDER_DRIVER="${PLUMOS_PICOARCH_SDL_RENDER_DRIVER:-software}"
 export SDL12COMPAT_SYNC_TO_VBLANK="${PLUMOS_PICOARCH_SYNC_TO_VBLANK:-0}"
 export SDL_NOMOUSE=1
-export LD_LIBRARY_PATH="$LIBRETRO_RUNTIME_DIR:$RUNTIME_LIB_DIR:$PICOARCH_ROOT/lib:$PLUMOS_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$RUNTIME_LIB_DIR:$PICOARCH_ROOT/lib:$LIBRETRO_RUNTIME_DIR:$PLUMOS_ROOT/lib:$PLUMOS_ROOT/emulator/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 cpu_index=1
 while [ "$cpu_index" -le 3 ]; do

@@ -29,7 +29,9 @@ sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"
 sh -n "$ROOT_DIR/scripts/pixel2-device-launch-smoke.sh"
-grep -q 'PICOARCH_ROOT/lib' \
+grep -q 'SONAME_MAP=' \
+    "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
+grep -q 'RUNTIME_LIB_DIR/libSDL2-2.0.so.0' \
     "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 grep -q 'libSDL2-2\.0\.so\.0' "$ROOT_DIR/scripts/build-picoarch-pixel2.sh"
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
