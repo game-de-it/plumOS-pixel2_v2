@@ -67,8 +67,6 @@ crocods|O|https://github.com/libretro/libretro-crocods.git|f1b4b91291ba1e8e7c0be
 daphne|O|https://github.com/libretro/daphne.git|b5481bab34a51369b6749cd95f5f889e43aaa23f||Makefile|platform=unix
 dinothawr|O|https://github.com/libretro/Dinothawr.git|33fb82a8df4e440f96d19bba38668beaa1b414fc||Makefile|platform=unix
 ecwolf|O|https://github.com/libretro/ecwolf.git|f098da0d003c4780adf6a9503801081f1f25cc27|src/libretro|Makefile|platform=unix
-fbalpha2012_cps1|O|https://github.com/libretro/fbalpha2012_cps1.git|8bfb264ecf977c14efe762f0951dfdce76077f97||makefile.libretro|platform=unix
-fbalpha2012_cps2|O|https://github.com/libretro/fbalpha2012_cps2.git|33191f1b463b6dcf9a36d7a6ca660f63ddd7e08e||makefile.libretro|platform=unix
 fbalpha2012_cps3|O|https://github.com/libretro/fbalpha2012_cps3.git|da45f665a85a4546fd8dda6b876083d2647eee7e|svn-current/trunk|makefile.libretro|platform=unix
 fbalpha2012_neogeo|O|https://github.com/libretro/fbalpha2012_neogeo.git|dc973ec25c6929e3ac47a0aac54fcde75b4b9bd4||Makefile|platform=unix
 freechaf|O|https://github.com/libretro/FreeChaF.git|4d1d5cb83b93728a63f03454e472a23055d9bbfc||Makefile|platform=unix

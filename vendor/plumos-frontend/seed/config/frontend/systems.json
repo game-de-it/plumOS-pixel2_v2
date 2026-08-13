@@ -906,7 +906,7 @@
           {"root": "sdcard", "path": "Images/cps1"}
         ]
       },
-      "launch_profiles": ["retroarch:fbneo", "retroarch:fbalpha2012", "retroarch:fbalpha2012_cps1"],
+      "launch_profiles": ["retroarch:fbneo", "retroarch:fbalpha2012"],
       "default_launch_profile": "retroarch:fbneo",
       "default_cpu_policy": "ondemand",
       "scraper": {
@@ -933,7 +933,7 @@
           {"root": "sdcard", "path": "Images/cps2"}
         ]
       },
-      "launch_profiles": ["retroarch:fbneo", "retroarch:fbalpha2012", "retroarch:fbalpha2012_cps2"],
+      "launch_profiles": ["retroarch:fbneo", "retroarch:fbalpha2012"],
       "default_launch_profile": "retroarch:fbneo",
       "default_cpu_policy": "ondemand",
       "scraper": {

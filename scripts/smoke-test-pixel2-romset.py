@@ -58,10 +58,8 @@ PROFILE_SAMPLE_NAMES = {
 SYSTEM_PROFILE_SAMPLE_NAMES = {
     ("cps1", "retroarch:fbneo"): "1942a.zip",
     ("cps1", "retroarch:fbalpha2012"): "1942a.zip",
-    ("cps1", "retroarch:fbalpha2012_cps1"): "1942a.zip",
     ("cps2", "retroarch:fbneo"): "ssf2u.zip",
     ("cps2", "retroarch:fbalpha2012"): "ssf2u.zip",
-    ("cps2", "retroarch:fbalpha2012_cps2"): "ssf2u.zip",
     ("cps3", "retroarch:fbneo"): "sfiii3nr1.zip",
     ("cps3", "retroarch:fbalpha2012"): "sfiii3nr1.zip",
     ("cps3", "retroarch:fbalpha2012_cps3"): "sfiii3nr1.zip",

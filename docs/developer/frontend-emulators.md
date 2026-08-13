@@ -46,7 +46,7 @@ RetroArch and the Pixel2 libretro sets are packaged for AArch64.
 `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1`
 builds 41 catalog cores and emits the `libretro-cores` component manifest and
 checksums. `./scripts/docker-build.sh cores --filter all --jobs 4
---fail-on-error 1` builds the full 111-core catalog used for full-system route
+--fail-on-error 1` builds the full 109-core catalog used for full-system route
 coverage. `./scripts/docker-build.sh core-catalog --filter all --concurrency 4`
 is the preferred full rebuild path because it runs independent per-core workers
 and then aggregates the canonical Pixel2 component. The FE system catalog is

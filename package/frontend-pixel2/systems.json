@@ -1852,8 +1852,7 @@
       },
       "launch_profiles": [
         "retroarch:fbneo",
-        "retroarch:fbalpha2012",
-        "retroarch:fbalpha2012_cps1"
+        "retroarch:fbalpha2012"
       ],
       "default_launch_profile": "retroarch:fbneo",
       "default_cpu_policy": "ondemand",
@@ -1902,8 +1901,7 @@
       },
       "launch_profiles": [
         "retroarch:fbneo",
-        "retroarch:fbalpha2012",
-        "retroarch:fbalpha2012_cps2"
+        "retroarch:fbalpha2012"
       ],
       "default_launch_profile": "retroarch:fbneo",
       "default_cpu_policy": "ondemand",
