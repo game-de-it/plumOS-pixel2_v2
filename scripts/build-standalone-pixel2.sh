@@ -451,7 +451,8 @@ build_drastic() {
     "$DRASTIC_SOURCE_DIR/runner/runner.c" \
     "$DRASTIC_SOURCE_DIR/common/common.c" \
     -o "$DRASTIC_SOURCE_DIR/runner/runner" \
-    -lSDL2 -lSDL2_image -lEGL -lGLESv2 -ljson-c \
+    -L"$DRASTIC_SOURCE_DIR/assets/gkd_pixel2/lib" \
+    -lSDL2 -lSDL2_image -lEGL -lGLESv2 -l:libjson-c.so.5 \
     >>"$DRASTIC_LOG" 2>&1
 
   rm -rf "$DRASTIC_DST"
