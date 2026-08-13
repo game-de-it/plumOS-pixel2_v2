@@ -16,6 +16,10 @@ cpu_governor=${PLUMOS_RETROARCH_CPU_GOVERNOR:-}
 audio_output="$root/bin/plumos-audio-output"
 fast_forward_state=
 
+export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-$root/emulator/dri}"
+export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-$root/emulator/egl_vendor.d/50_mesa.json}"
+export LD_LIBRARY_PATH="$root/emulator/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
 if [ -r "$input_env" ]; then
     set -a
     . "$input_env"

@@ -40,7 +40,9 @@ if [ -f "$SONAME_MAP" ]; then
   done <"$SONAME_MAP"
 fi
 
-export LD_LIBRARY_PATH="${SONAME_DIR}:${PLUMOS_ROOT}/lib:${LD_LIBRARY_PATH:-}"
+export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-${PLUMOS_ROOT}/emulator/dri}"
+export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-${PLUMOS_ROOT}/emulator/egl_vendor.d/50_mesa.json}"
+export LD_LIBRARY_PATH="${SONAME_DIR}:${PLUMOS_ROOT}/emulator/lib:${PLUMOS_ROOT}/lib:${LD_LIBRARY_PATH:-}"
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
 export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
 export ALSA_CONFIG_PATH="${PLUMOS_ALSA_CONFIG_PATH:-${PLUMOS_RUNTIME_ROOT}/audio/asound.conf}"
@@ -248,7 +250,12 @@ if [ "$id" = drastic ]; then
   [ -c /dev/dri/card0 ] || fail "DraStic DRM device is unavailable" 1
   [ -c /dev/input/event2 ] || fail "DraStic Pixel2 input device is unavailable" 1
 
+  if [ -x "$runtime/bin/setarch" ]; then
+    setarch_bin="$runtime/bin/setarch"
+    setarch_mode=util-linux
+  fi
   for candidate in "$BB" /bin/busybox busybox; do
+    [ -z "$setarch_bin" ] || break
     command -v "$candidate" >/dev/null 2>&1 || [ -x "$candidate" ] || continue
     if "$candidate" --list 2>/dev/null | grep -qx setarch; then
       setarch_bin="$candidate"

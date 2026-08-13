@@ -473,6 +473,7 @@ build_drastic() {
   }
   install -m 0755 "$DRASTIC_RELEASE_DIR/drastic/drastic" \
     "$DRASTIC_DST/bin/drastic"
+  install -m 0755 /usr/bin/setarch "$DRASTIC_DST/bin/setarch"
   install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libcommon.so" \
     "$DRASTIC_DST/lib/libcommon.so"
   install -m 0644 "$DRASTIC_SOURCE_DIR/drastic/lib/libdtr.so" \

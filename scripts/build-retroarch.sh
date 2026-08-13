@@ -45,6 +45,7 @@ done
 
 rm -rf "$OUT_ROOT"
 mkdir -p "$PLUMOS_DIR/bin" "$PLUMOS_DIR/emulator/lib" \
+    "$PLUMOS_DIR/emulator/dri" "$PLUMOS_DIR/emulator/egl_vendor.d" \
     "$PLUMOS_DIR/factory-defaults/retroarch/autoconfig/udev" \
     "$PLUMOS_DIR/factory-defaults/alsa" \
     "$PLUMOS_DIR/licenses" "$COMPONENT_DIR"
@@ -58,17 +59,43 @@ install -m 0644 "$ROOT_DIR/package/retroarch-pixel2/alsa.conf" \
     "$PLUMOS_DIR/factory-defaults/alsa/alsa.conf"
 install -m 0644 "$WORK/COPYING" "$PLUMOS_DIR/licenses/RetroArch-COPYING"
 
-ldd "$PLUMOS_DIR/bin/retroarch" 2>/dev/null | awk '/=> \// {print $3} /^\// {print $1}' |
-    sort -u | while IFS= read -r library; do
-        [ -f "$library" ] || continue
-        base=${library##*/}
-        # libc, libm, and the ELF interpreter are part of the plumOS System ABI.
-        # The compatibility DSOs below are still explicit DT_NEEDED entries on
-        # Debian bookworm and must travel with the app layer: the minimal Pixel2
-        # System intentionally does not install them.
-        case "$base" in libc.so.*|libm.so.*|ld-linux-*.so.*) continue ;; esac
-        install -m 0644 "$library" "$PLUMOS_DIR/emulator/lib/$base"
-    done
+copy_runtime_tree() {
+    local object="$1" library base
+    ldd "$object" 2>/dev/null | awk '/=> \// {print $3} /^\// {print $1}' |
+        sort -u | while IFS= read -r library; do
+            [ -f "$library" ] || continue
+            base=${library##*/}
+            # These are provided by the stock Pixel2 System ABI. Everything
+            # else belongs to this managed graphics/emulator runtime.
+            case "$base" in libc.so.*|libm.so.*|ld-linux-*.so.*) continue ;; esac
+            if [ ! -f "$PLUMOS_DIR/emulator/lib/$base" ]; then
+                install -m 0644 "$library" "$PLUMOS_DIR/emulator/lib/$base"
+                copy_runtime_tree "$library"
+            fi
+        done
+}
+
+copy_runtime_tree "$PLUMOS_DIR/bin/retroarch"
+
+# The stock boot substrate exposes Rockchip DRM but intentionally carries no
+# Mesa userspace. Libretro GLES cores, PPSSPP and Pyxel therefore share the
+# app-layer-owned Mesa runtime instead of modifying the stock System.
+MESA_DRI=/usr/lib/aarch64-linux-gnu/dri/rockchip_dri.so
+MESA_EGL=/usr/lib/aarch64-linux-gnu/libEGL_mesa.so.0
+MESA_EGL_JSON=/usr/share/glvnd/egl_vendor.d/50_mesa.json
+for required in "$MESA_DRI" "$MESA_EGL" "$MESA_EGL_JSON"; do
+    [ -r "$required" ] || {
+        printf 'error: Mesa Pixel2 runtime input is missing: %s\n' "$required" >&2
+        exit 1
+    }
+done
+install -m 0644 "$MESA_DRI" "$PLUMOS_DIR/emulator/dri/rockchip_dri.so"
+install -m 0644 "$(readlink -f "$MESA_EGL")" \
+    "$PLUMOS_DIR/emulator/lib/libEGL_mesa.so.0"
+install -m 0644 "$MESA_EGL_JSON" \
+    "$PLUMOS_DIR/emulator/egl_vendor.d/50_mesa.json"
+copy_runtime_tree "$MESA_DRI"
+copy_runtime_tree "$(readlink -f "$MESA_EGL")"
 
 for required_library in libpthread.so.0; do
     [ -f "$PLUMOS_DIR/emulator/lib/$required_library" ] || {
@@ -90,6 +117,7 @@ cat >"$COMPONENT_DIR/manifest.json" <<EOF
   "source_ref": "$SOURCE_REF",
   "source_date_epoch": $SOURCE_EPOCH,
   "video_driver": "plain_drm",
+  "graphics_runtime": "app-layer-mesa-rockchip-dri",
   "display_rotation": "ccw",
   "audio_driver": "alsa",
   "input_driver": "udev"
