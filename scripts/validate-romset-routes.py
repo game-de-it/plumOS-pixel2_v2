@@ -2,9 +2,9 @@
 """Validate Pixel2 frontend routes against a user-provided ROM set.
 
 This is a host-side, non-mutating validator. It does not copy ROMs and it does
-not execute emulators. It checks that each enabled frontend system can find a
-representative ROM and that its default launch profile resolves to a packaged
-runtime in the app-layer.
+not execute emulators. It checks every launch profile exposed by each enabled
+frontend system against the packaged runtime, and separately records whether a
+representative ROM exists for exercising the default route on hardware.
 """
 
 from __future__ import annotations
@@ -146,6 +146,7 @@ def main() -> int:
     rom_dirs = directory_index(rom_root)
 
     rows: list[dict[str, Any]] = []
+    profile_rows: list[dict[str, str]] = []
     for system in systems:
         if system.get("enabled") is False:
             continue
@@ -157,6 +158,19 @@ def main() -> int:
         if not profile and system.get("launch_profiles"):
             profile = system["launch_profiles"][0]
         status, detail = profile_status(app_root, profile or "", standalone_ids)
+        profiles = system.get("launch_profiles", [])
+        for listed_profile in profiles:
+            listed_status, listed_detail = profile_status(
+                app_root, listed_profile, standalone_ids
+            )
+            profile_rows.append(
+                {
+                    "system": system_id,
+                    "profile": listed_profile,
+                    "route_status": listed_status,
+                    "route_detail": listed_detail,
+                }
+            )
         rows.append(
             {
                 "system": system_id,
@@ -165,6 +179,9 @@ def main() -> int:
                 "default_launch_profile": profile or "",
                 "route_status": status,
                 "route_detail": detail,
+                "profile_routes": [
+                    row for row in profile_rows if row["system"] == system_id
+                ],
             }
         )
 
@@ -183,6 +200,13 @@ def main() -> int:
 
     summary = {
         "enabled_systems": len(rows),
+        "launch_profiles": len(profile_rows),
+        "profile_routes_ok": sum(
+            1 for row in profile_rows if row["route_status"] == "ok"
+        ),
+        "profile_routes_failed": sum(
+            1 for row in profile_rows if row["route_status"] != "ok"
+        ),
         "systems_with_rom": sum(1 for row in rows if row["sample_rom"]),
         "route_ok": sum(1 for row in rows if row["sample_rom"] and row["route_status"] == "ok"),
         "route_pending_binary": sum(
@@ -191,7 +215,7 @@ def main() -> int:
         "systems_without_rom": sum(1 for row in rows if not row["sample_rom"]),
         "unmapped_rom_dirs": unmapped_rom_dirs,
     }
-    result = {"summary": summary, "systems": rows}
+    result = {"summary": summary, "profile_routes": profile_rows, "systems": rows}
 
     if args.json:
         json_path = Path(args.json)
@@ -209,6 +233,9 @@ def main() -> int:
             "## Summary",
             "",
             f"- enabled systems: {summary['enabled_systems']}",
+            f"- launch profiles: {summary['launch_profiles']}",
+            f"- profile routes OK: {summary['profile_routes_ok']}",
+            f"- profile routes failed: {summary['profile_routes_failed']}",
             f"- systems with representative ROM: {summary['systems_with_rom']}",
             f"- route OK: {summary['route_ok']}",
             f"- standalone pending binary: {summary['route_pending_binary']}",
@@ -231,13 +258,29 @@ def main() -> int:
         lines.extend(["", "## Systems without matching ROM", ""])
         missing = [row["system"] for row in rows if not row["sample_rom"]]
         lines.append(", ".join(missing) if missing else "none")
+        lines.extend(["", "## Failed launch-profile routes", ""])
+        failed_profiles = [
+            row for row in profile_rows if row["route_status"] != "ok"
+        ]
+        if failed_profiles:
+            lines.extend(
+                [
+                    "| system | profile | status | detail |",
+                    "| --- | --- | --- | --- |",
+                ]
+            )
+            for row in failed_profiles:
+                lines.append(
+                    "| {system} | `{profile}` | {route_status} | `{route_detail}` |".format(
+                        **row
+                    )
+                )
+        else:
+            lines.append("none")
         markdown_path.write_text("\n".join(lines) + "\n")
 
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
-    return 1 if any(
-        row["sample_rom"] and row["route_status"] not in {"ok", "pending-binary"}
-        for row in rows
-    ) else 0
+    return 1 if any(row["route_status"] != "ok" for row in profile_rows) else 0
 
 
 if __name__ == "__main__":
