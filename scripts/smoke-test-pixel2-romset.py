@@ -53,6 +53,20 @@ PROFILE_SAMPLE_NAMES = {
     "pyxel:pixel2": "LastEmulator.pyxapp",
 }
 
+# A profile such as FBNeo is shared by multiple arcade families, so the ROM
+# revision must sometimes be selected by both system and profile.
+SYSTEM_PROFILE_SAMPLE_NAMES = {
+    ("cps1", "retroarch:fbneo"): "1942a.zip",
+    ("cps1", "retroarch:fbalpha2012"): "1942a.zip",
+    ("cps1", "retroarch:fbalpha2012_cps1"): "1942a.zip",
+    ("cps2", "retroarch:fbneo"): "ssf2u.zip",
+    ("cps2", "retroarch:fbalpha2012"): "ssf2u.zip",
+    ("cps2", "retroarch:fbalpha2012_cps2"): "ssf2u.zip",
+    ("cps3", "retroarch:fbneo"): "sfiii3nr1.zip",
+    ("cps3", "retroarch:fbalpha2012"): "sfiii3nr1.zip",
+    ("cps3", "retroarch:fbalpha2012_cps3"): "sfiii3nr1.zip",
+}
+
 # These engines resolve assets relative to the selected entry point.  Preserve
 # the complete source directory in the temporary device staging tree instead
 # of producing a false failure by copying only the marker/executable.
@@ -306,7 +320,9 @@ def main() -> int:
             continue
         grouped: dict[Path, list[str]] = {}
         for profile in profiles:
-            hinted_name = PROFILE_SAMPLE_NAMES.get(profile)
+            hinted_name = SYSTEM_PROFILE_SAMPLE_NAMES.get(
+                (system["id"], profile), PROFILE_SAMPLE_NAMES.get(profile)
+            )
             profile_sample = (
                 find_named_sample(dirs, hinted_name) if hinted_name else None
             )

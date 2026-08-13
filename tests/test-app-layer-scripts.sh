@@ -37,6 +37,8 @@ grep -q '"retroarch:frodo": "inbread.d64"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q '"retroarch:neocd": "Fatal Fury WAV.cue"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q 'SYSTEM_PROFILE_SAMPLE_NAMES' \
+    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'PARENT_TREE_SYSTEMS.*"easyrpg".*"cannonball".*"cavestory".*"dinothawr"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'SYNTHETIC_LAUNCH_NAMES.*"cannonball": "cannonball.game"' \
@@ -46,6 +48,8 @@ grep -q 'retroarch-launch.log' \
 grep -q 'root/lib/libretro:\$root/emulator/lib:\$root/frontend/lib:\$root/lib' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'f"_etc/{name}"' \
+    "$ROOT_DIR/scripts/validate-romset-routes.py"
+grep -q '"lynx": \["ATARI/Lynx"\]' \
     "$ROOT_DIR/scripts/validate-romset-routes.py"
 grep -q 'SONAME_MAP=' \
     "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
