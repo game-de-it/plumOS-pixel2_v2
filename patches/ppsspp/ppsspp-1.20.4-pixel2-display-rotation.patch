@@ -1,0 +1,502 @@
+diff --git a/Common/System/Display.cpp b/Common/System/Display.cpp
+index aae1776..b42309c 100644
+--- a/Common/System/Display.cpp
++++ b/Common/System/Display.cpp
+@@ -1,4 +1,6 @@
+ #include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ 
+ #include "Common/System/Display.h"
+ #include "Common/Math/math_util.h"
+@@ -6,7 +8,21 @@
+ 
+ DisplayProperties g_display;
+ 
++static bool PlumOSPixel2ForceLandscape() {
++	const char *value = getenv("PLUMOS_PIXEL2_DISPLAY_FORCE_LANDSCAPE");
++	if (value == nullptr || value[0] == '\0') {
++		return false;
++	}
++	if (!strcmp(value, "1") || !strcmp(value, "yes") || !strcmp(value, "true") || !strcmp(value, "on")) {
++		return true;
++	}
++	return false;
++}
++
+ DeviceOrientation DisplayProperties::GetDeviceOrientation() const {
++	if (PlumOSPixel2ForceLandscape()) {
++		return DeviceOrientation::Landscape;
++	}
+ 	return (dp_yres > dp_xres * 1.1f) ? DeviceOrientation::Portrait : DeviceOrientation::Landscape;
+ }
+ 
+diff --git a/Common/UI/Context.cpp b/Common/UI/Context.cpp
+index d6e8702..826e8f3 100644
+--- a/Common/UI/Context.cpp
++++ b/Common/UI/Context.cpp
+@@ -1,6 +1,8 @@
+ #include "ppsspp_config.h"
+ 
+ #include <algorithm>
++#include <cstdlib>
++#include <cstring>
+ 
+ #include "Common/System/Display.h"
+ #include "Common/System/System.h"
+@@ -30,6 +32,44 @@ UIContext::~UIContext() {
+ 		fontTexture_->Release();
+ }
+ 
++static DisplayRotation PlumOSRotationFromEnv(const char *value) {
++	if (value == nullptr || value[0] == '\0' || !strcmp(value, "none") || !strcmp(value, "0")) {
++		return DisplayRotation::ROTATE_0;
++	}
++	if (!strcmp(value, "ccw") || !strcmp(value, "90")) {
++		return DisplayRotation::ROTATE_90;
++	}
++	if (!strcmp(value, "cw") || !strcmp(value, "270")) {
++		return DisplayRotation::ROTATE_270;
++	}
++	if (!strcmp(value, "180")) {
++		return DisplayRotation::ROTATE_180;
++	}
++	return DisplayRotation::ROTATE_0;
++}
++
++static DisplayRotation PlumOSUIRotation() {
++	DisplayRotation uiRotation = PlumOSRotationFromEnv(getenv("PLUMOS_PIXEL2_UI_ROTATION"));
++	if (uiRotation != DisplayRotation::ROTATE_0) {
++		return uiRotation;
++	}
++	return PlumOSRotationFromEnv(getenv("PLUMOS_PIXEL2_DISPLAY_ROTATION"));
++}
++
++static Bounds PlumOSRotateUIBounds(const Bounds &bounds, const Bounds &screenBounds) {
++	switch (PlumOSUIRotation()) {
++	case DisplayRotation::ROTATE_90:
++		return Bounds(bounds.y, screenBounds.w - bounds.x2(), bounds.h, bounds.w);
++	case DisplayRotation::ROTATE_270:
++		return Bounds(screenBounds.h - bounds.y2(), bounds.x, bounds.h, bounds.w);
++	case DisplayRotation::ROTATE_180:
++		return Bounds(screenBounds.w - bounds.x2(), screenBounds.h - bounds.y2(), bounds.w, bounds.h);
++	case DisplayRotation::ROTATE_0:
++	default:
++		return bounds;
++	}
++}
++
+ void UIContext::Init(Draw::DrawContext *thin3d, Draw::Pipeline *uipipe, Draw::Pipeline *uipipenotex, DrawBuffer *uidrawbuffer) {
+ 	using namespace Draw;
+ 	draw_ = thin3d;
+@@ -203,11 +243,16 @@ Bounds UIContext::GetLayoutBounds(ViewLayoutMode layoutMode, bool immersiveMode)
+ }
+ 
+ void UIContext::ActivateTopScissor() {
++	if (PlumOSUIRotation() != DisplayRotation::ROTATE_0) {
++		draw_->SetScissorRect(0, 0, g_display.pixel_xres, g_display.pixel_yres);
++		return;
++	}
++
+ 	Bounds bounds;
+ 	if (scissorStack_.size()) {
+ 		float scale_x = g_display.pixel_in_dps_x;
+ 		float scale_y = g_display.pixel_in_dps_y;
+-		bounds = scissorStack_.back();
++		bounds = PlumOSRotateUIBounds(scissorStack_.back(), bounds_);
+ 		int x = floorf(scale_x * bounds.x);
+ 		int y = floorf(scale_y * bounds.y);
+ 		int w = std::max(0.0f, ceilf(scale_x * bounds.w));
+diff --git a/GPU/Common/PresentationCommon.cpp b/GPU/Common/PresentationCommon.cpp
+index 37bf677..80d566e 100644
+--- a/GPU/Common/PresentationCommon.cpp
++++ b/GPU/Common/PresentationCommon.cpp
+@@ -17,6 +17,9 @@
+ 
+ #include <algorithm>
+ #include <cmath>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ #include <set>
+ #include <cstdint>
+ #include "Common/GPU/thin3d.h"
+@@ -47,6 +50,14 @@ struct Vertex {
+ static bool g_overrideScreenBounds;
+ static Bounds g_screenBounds;
+ 
++static bool PlumOSTraceDisplayRect() {
++	const char *value = getenv("PLUMOS_PIXEL2_DISPLAY_RECT_TRACE");
++	if (value == nullptr || value[0] == '\0' || !strcmp(value, "0") || !strcmp(value, "no") || !strcmp(value, "false") || !strcmp(value, "off")) {
++		return false;
++	}
++	return true;
++}
++
+ void SetOverrideScreenFrame(const Bounds *bounds) {
+ 	g_overrideScreenBounds = bounds != nullptr;
+ 	if (bounds) {
+@@ -179,6 +190,14 @@ void CalculateDisplayOutputRect(const DisplayLayoutConfig &config, FRect *rc, fl
+ 		rc->w = floorf(outW);
+ 		rc->h = floorf(outH);
+ 	}
++
++	static int traceCount = 0;
++	if (PlumOSTraceDisplayRect() && traceCount++ < 120) {
++		const char *orientation = g_display.GetDeviceOrientation() == DeviceOrientation::Landscape ? "landscape" : "portrait";
++		fprintf(stderr, "[plumOS] display_rect frame=%0.1fx%0.1f+%0.1f+%0.1f orig=%0.1fx%0.1f orig_ratio=%0.4f frame_ratio=%0.4f out=%0.1fx%0.1f rc=%0.1fx%0.1f+%0.1f+%0.1f rotation=%d stretch=%d aspect=%0.4f scale=%0.3f orient=%s pixel=%dx%d dp=%dx%d\n",
++		        frame.w, frame.h, frame.x, frame.y, origW, origH, origRatio, frameRatio, outW, outH, rc->w, rc->h, rc->x, rc->y,
++		        rotation, stretch ? 1 : 0, aspectRatioAdjust, scale, orientation, g_display.pixel_xres, g_display.pixel_yres, g_display.dp_xres, g_display.dp_yres);
++	}
+ }
+ 
+ PresentationCommon::PresentationCommon(Draw::DrawContext *draw) : draw_(draw) {
+diff --git a/SDL/SDLMain.cpp b/SDL/SDLMain.cpp
+index 6853525..13bf6c1 100644
+--- a/SDL/SDLMain.cpp
++++ b/SDL/SDLMain.cpp
+@@ -226,6 +226,131 @@ static void UpdateScreenDPI(SDL_Window *window) {
+ 	g_DesktopDPI = ((float) drawable_width + 1.0f) / window_width;
+ }
+ 
++static bool PlumOSEnvEnabled(const char *value, bool defaultValue) {
++	if (value == nullptr || value[0] == '\0') {
++		return defaultValue;
++	}
++	if (!strcmp(value, "1") || !strcmp(value, "yes") || !strcmp(value, "true") || !strcmp(value, "on")) {
++		return true;
++	}
++	if (!strcmp(value, "0") || !strcmp(value, "no") || !strcmp(value, "false") || !strcmp(value, "off")) {
++		return false;
++	}
++	fprintf(stderr, "[plumOS] Ignoring unknown boolean value: %s\n", value);
++	return defaultValue;
++}
++
++static bool PlumOSParseSizeEnv(const char *value, int *width, int *height) {
++	if (value == nullptr || value[0] == '\0') {
++		return false;
++	}
++
++	char *end = nullptr;
++	long parsedWidth = strtol(value, &end, 10);
++	if (end == value || (*end != 'x' && *end != 'X' && *end != ',' && *end != ':')) {
++		fprintf(stderr, "[plumOS] Ignoring invalid display size: %s\n", value);
++		return false;
++	}
++
++	char *heightStart = end + 1;
++	long parsedHeight = strtol(heightStart, &end, 10);
++	if (end == heightStart || *end != '\0' || parsedWidth <= 0 || parsedHeight <= 0 || parsedWidth > 8192 || parsedHeight > 8192) {
++		fprintf(stderr, "[plumOS] Ignoring invalid display size: %s\n", value);
++		return false;
++	}
++
++	*width = (int)parsedWidth;
++	*height = (int)parsedHeight;
++	return true;
++}
++
++static bool PlumOSApplyLogicalDisplaySize(const char *value, float customScale) {
++	int logicalWidth = 0;
++	int logicalHeight = 0;
++	if (!PlumOSParseSizeEnv(value, &logicalWidth, &logicalHeight)) {
++		return false;
++	}
++
++	if (customScale <= 0.0f) {
++		customScale = 1.0f;
++	}
++
++	if (g_display.pixel_xres > 0) {
++		g_display.dpi_scale_real_x = (float)logicalWidth / (float)g_display.pixel_xres;
++		g_display.dpi_scale_x = g_display.dpi_scale_real_x / customScale;
++		g_display.dp_xres = (int)(g_display.pixel_xres * g_display.dpi_scale_x + 0.5f);
++		g_display.pixel_in_dps_x = 1.0f / g_display.dpi_scale_x;
++	} else {
++		g_display.dp_xres = logicalWidth;
++	}
++	if (g_display.pixel_yres > 0) {
++		g_display.dpi_scale_real_y = (float)logicalHeight / (float)g_display.pixel_yres;
++		g_display.dpi_scale_y = g_display.dpi_scale_real_y / customScale;
++		g_display.dp_yres = (int)(g_display.pixel_yres * g_display.dpi_scale_y + 0.5f);
++		g_display.pixel_in_dps_y = 1.0f / g_display.dpi_scale_y;
++	} else {
++		g_display.dp_yres = logicalHeight;
++	}
++	return true;
++}
++
++static void ApplyPlumOSPixel2DisplayRotation() {
++	const char *value = getenv("PLUMOS_PIXEL2_DISPLAY_ROTATION");
++	DisplayRotation rotation = DisplayRotation::ROTATE_0;
++	const char *label = "none";
++	bool rotationSwapsAxes = false;
++
++	if (value == nullptr || value[0] == '\0' || !strcmp(value, "none") || !strcmp(value, "0")) {
++		rotation = DisplayRotation::ROTATE_0;
++		label = "none";
++	} else if (!strcmp(value, "ccw") || !strcmp(value, "90")) {
++		rotation = DisplayRotation::ROTATE_90;
++		label = "ccw";
++		rotationSwapsAxes = true;
++	} else if (!strcmp(value, "cw") || !strcmp(value, "270")) {
++		rotation = DisplayRotation::ROTATE_270;
++		label = "cw";
++		rotationSwapsAxes = true;
++	} else if (!strcmp(value, "180")) {
++		rotation = DisplayRotation::ROTATE_180;
++		label = "180";
++	} else {
++		fprintf(stderr, "[plumOS] Ignoring unknown PLUMOS_PIXEL2_DISPLAY_ROTATION=%s\n", value);
++		rotation = DisplayRotation::ROTATE_0;
++	}
++
++	g_display.rotation = rotation;
++	switch (rotation) {
++	case DisplayRotation::ROTATE_90:
++		g_display.rot_matrix.setRotationZ90();
++		break;
++	case DisplayRotation::ROTATE_180:
++		g_display.rot_matrix.setRotationZ180();
++		break;
++	case DisplayRotation::ROTATE_270:
++		g_display.rot_matrix.setRotationZ270();
++		break;
++	case DisplayRotation::ROTATE_0:
++	default:
++		g_display.rot_matrix.setIdentity();
++		break;
++	}
++
++	const bool swapDimensions = rotationSwapsAxes && PlumOSEnvEnabled(getenv("PLUMOS_PIXEL2_DISPLAY_SWAP"), false);
++	if (swapDimensions) {
++		std::swap(g_display.pixel_xres, g_display.pixel_yres);
++		std::swap(g_display.dp_xres, g_display.dp_yres);
++	}
++
++	const float customScale = UIScaleFactorToMultiplier(g_Config.iUIScaleFactor);
++	const bool logicalOverride = PlumOSApplyLogicalDisplaySize(getenv("PLUMOS_PIXEL2_DISPLAY_LOGICAL"), customScale);
++	const bool forceLandscape = PlumOSEnvEnabled(getenv("PLUMOS_PIXEL2_DISPLAY_FORCE_LANDSCAPE"), false);
++	fprintf(stderr, "[plumOS] Pixel2 display rotation=%s swap=%d logical=%d force_landscape=%d ui_scale=%0.3f pixel=%dx%d dp=%dx%d dpi=%0.3fx%0.3f dpi_real=%0.3fx%0.3f\n",
++	        label, swapDimensions ? 1 : 0, logicalOverride ? 1 : 0, forceLandscape ? 1 : 0, customScale,
++	        g_display.pixel_xres, g_display.pixel_yres, g_display.dp_xres, g_display.dp_yres,
++	        g_display.dpi_scale_x, g_display.dpi_scale_y, g_display.dpi_scale_real_x, g_display.dpi_scale_real_y);
++}
++
+ // Simple implementations of System functions
+ 
+ void System_Toast(std::string_view text) {
+@@ -962,7 +1087,9 @@ static void ProcessSDLEvent(SDL_Window *window, const SDL_Event &event, InputSta
+ 			bool fullscreen = (window_flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP));
+ 
+ 			// This one calls NativeResized if the size changed.
+-			Native_UpdateScreenScale(new_width_px, new_height_px, UIScaleFactorToMultiplier(g_Config.iUIScaleFactor));
++			if (Native_UpdateScreenScale(new_width_px, new_height_px, UIScaleFactorToMultiplier(g_Config.iUIScaleFactor))) {
++				ApplyPlumOSPixel2DisplayRotation();
++			}
+ 
+ 			// Set variable here in case fullscreen was toggled by hotkey
+ 			if (g_Config.bFullScreen != fullscreen) {
+@@ -1731,6 +1858,7 @@ int main(int argc, char *argv[]) {
+ 	float dpi_scale = 1.0f / (g_ForcedDPI == 0.0f ? g_DesktopDPI : g_ForcedDPI);
+ 
+ 	Native_UpdateScreenScale(w * g_DesktopDPI, h * g_DesktopDPI, UIScaleFactorToMultiplier(g_Config.iUIScaleFactor));
++	ApplyPlumOSPixel2DisplayRotation();
+ 
+ 	bool mainThreadIsRender = g_Config.iGPUBackend == (int)GPUBackend::OPENGL;
+ 
+diff --git a/UI/EmuScreen.cpp b/UI/EmuScreen.cpp
+index b294842..f3f2875 100644
+--- a/UI/EmuScreen.cpp
++++ b/UI/EmuScreen.cpp
+@@ -17,6 +17,9 @@
+ 
+ #include "ppsspp_config.h"
+ 
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ #include <functional>
+ 
+ using namespace std::placeholders;
+@@ -111,6 +114,48 @@ static AVIDump avi;
+ 
+ extern bool g_TakeScreenshot;
+ 
++static bool PlumOSParseDisplayOutputSize(int *width, int *height) {
++	const char *value = getenv("PLUMOS_PIXEL2_DISPLAY_OUTPUT");
++	if (value == nullptr || value[0] == '\0') {
++		return false;
++	}
++
++	char *end = nullptr;
++	long parsedWidth = strtol(value, &end, 10);
++	if (end == value || (*end != 'x' && *end != 'X' && *end != ',' && *end != ':')) {
++		fprintf(stderr, "[plumOS] Ignoring invalid PLUMOS_PIXEL2_DISPLAY_OUTPUT=%s\n", value);
++		return false;
++	}
++
++	char *heightStart = end + 1;
++	long parsedHeight = strtol(heightStart, &end, 10);
++	if (end == heightStart || *end != '\0' || parsedWidth <= 0 || parsedHeight <= 0 || parsedWidth > 8192 || parsedHeight > 8192) {
++		fprintf(stderr, "[plumOS] Ignoring invalid PLUMOS_PIXEL2_DISPLAY_OUTPUT=%s\n", value);
++		return false;
++	}
++
++	*width = (int)parsedWidth;
++	*height = (int)parsedHeight;
++	return true;
++}
++
++static bool PlumOSApplyDisplayOutputSize(int *width, int *height, const char *source) {
++	int outputWidth = 0;
++	int outputHeight = 0;
++	if (!PlumOSParseDisplayOutputSize(&outputWidth, &outputHeight)) {
++		return false;
++	}
++
++	*width = outputWidth;
++	*height = outputHeight;
++
++	static int logCount = 0;
++	if (logCount++ < 12) {
++		fprintf(stderr, "[plumOS] Pixel2 display output=%dx%d source=%s\n", *width, *height, source);
++	}
++	return true;
++}
++
+ static void AssertCancelCallback(const char *message, void *userdata) {
+ 	NOTICE_LOG(Log::CPU, "Broke after assert: %s", message);
+ 	Core_Break(BreakReason::AssertChoice);
+@@ -323,17 +368,21 @@ void EmuScreen::ProcessGameBoot(const Path &filename) {
+ 	coreParam.startBreak = !g_Config.bAutoRun;
+ 	coreParam.headLess = false;
+ 
++	int outputWidth = g_display.pixel_xres;
++	int outputHeight = g_display.pixel_yres;
++	PlumOSApplyDisplayOutputSize(&outputWidth, &outputHeight, "emu-boot");
++
+ 	if (g_Config.iInternalResolution == 0) {
+-		coreParam.renderWidth = g_display.pixel_xres;
+-		coreParam.renderHeight = g_display.pixel_yres;
++		coreParam.renderWidth = outputWidth;
++		coreParam.renderHeight = outputHeight;
+ 	} else {
+ 		if (g_Config.iInternalResolution < 0)
+ 			g_Config.iInternalResolution = 1;
+ 		coreParam.renderWidth = 480 * g_Config.iInternalResolution;
+ 		coreParam.renderHeight = 272 * g_Config.iInternalResolution;
+ 	}
+-	coreParam.pixelWidth = g_display.pixel_xres;
+-	coreParam.pixelHeight = g_display.pixel_yres;
++	coreParam.pixelWidth = outputWidth;
++	coreParam.pixelHeight = outputHeight;
+ 
+ 	// PSP_InitStart can't really fail anymore, unless it's called at the wrong time. It just starts the loader thread.
+ 	if (!PSP_InitStart(coreParam)) {
+@@ -1461,8 +1510,11 @@ void EmuScreen::update() {
+ 
+ #ifndef _WIN32
+ 	const Bounds &bounds = screenManager()->getUIContext()->GetBounds();
+-	PSP_CoreParameter().pixelWidth = g_display.pixel_xres * bounds.w / g_display.dp_xres;
+-	PSP_CoreParameter().pixelHeight = g_display.pixel_yres * bounds.h / g_display.dp_yres;
++	int outputWidth = g_display.pixel_xres * bounds.w / g_display.dp_xres;
++	int outputHeight = g_display.pixel_yres * bounds.h / g_display.dp_yres;
++	PlumOSApplyDisplayOutputSize(&outputWidth, &outputHeight, "emu-frame");
++	PSP_CoreParameter().pixelWidth = outputWidth;
++	PSP_CoreParameter().pixelHeight = outputHeight;
+ #endif
+ 
+ 	if (PSP_IsInited()) {
+diff --git a/UI/NativeApp.cpp b/UI/NativeApp.cpp
+index 4a26924..d267dc2 100644
+--- a/UI/NativeApp.cpp
++++ b/UI/NativeApp.cpp
+@@ -31,7 +31,9 @@
+ 
+ #include <clocale>
+ #include <algorithm>
++#include <cstdio>
+ #include <cstdlib>
++#include <cstring>
+ #include <memory>
+ #include <mutex>
+ #include <thread>
+@@ -192,6 +194,48 @@ static int g_restartGraphics;
+ static bool g_windowHidden = false;
+ std::vector<std::function<void()>> g_pendingClosures;
+ 
++static bool PlumOSParseDisplayOutputSize(int *width, int *height) {
++	const char *value = getenv("PLUMOS_PIXEL2_DISPLAY_OUTPUT");
++	if (value == nullptr || value[0] == '\0') {
++		return false;
++	}
++
++	char *end = nullptr;
++	long parsedWidth = strtol(value, &end, 10);
++	if (end == value || (*end != 'x' && *end != 'X' && *end != ',' && *end != ':')) {
++		fprintf(stderr, "[plumOS] Ignoring invalid PLUMOS_PIXEL2_DISPLAY_OUTPUT=%s\n", value);
++		return false;
++	}
++
++	char *heightStart = end + 1;
++	long parsedHeight = strtol(heightStart, &end, 10);
++	if (end == heightStart || *end != '\0' || parsedWidth <= 0 || parsedHeight <= 0 || parsedWidth > 8192 || parsedHeight > 8192) {
++		fprintf(stderr, "[plumOS] Ignoring invalid PLUMOS_PIXEL2_DISPLAY_OUTPUT=%s\n", value);
++		return false;
++	}
++
++	*width = (int)parsedWidth;
++	*height = (int)parsedHeight;
++	return true;
++}
++
++static bool PlumOSApplyDisplayOutputSize(int *width, int *height, const char *source) {
++	int outputWidth = 0;
++	int outputHeight = 0;
++	if (!PlumOSParseDisplayOutputSize(&outputWidth, &outputHeight)) {
++		return false;
++	}
++
++	*width = outputWidth;
++	*height = outputHeight;
++
++	static int logCount = 0;
++	if (logCount++ < 12) {
++		fprintf(stderr, "[plumOS] Pixel2 display output=%dx%d source=%s\n", *width, *height, source);
++	}
++	return true;
++}
++
+ AudioBackend *g_audioBackend = nullptr;
+ 
+ std::thread *graphicsLoadThread;
+@@ -854,8 +898,11 @@ bool NativeInitGraphics(GraphicsContext *graphicsContext) {
+ 	g_gameInfoCache = new GameInfoCache();
+ 
+ 	if (gpu) {
+-		PSP_CoreParameter().pixelWidth = g_display.pixel_xres;
+-		PSP_CoreParameter().pixelHeight = g_display.pixel_yres;
++		int outputWidth = g_display.pixel_xres;
++		int outputHeight = g_display.pixel_yres;
++		PlumOSApplyDisplayOutputSize(&outputWidth, &outputHeight, "native-restore");
++		PSP_CoreParameter().pixelWidth = outputWidth;
++		PSP_CoreParameter().pixelHeight = outputHeight;
+ 		gpu->DeviceRestore(g_draw);
+ 	}
+ 
+@@ -1129,8 +1176,11 @@ void NativeFrame(GraphicsContext *graphicsContext) {
+ 
+ 		// TODO: Move this to the GraphicsContext objects for each backend.
+ #if !PPSSPP_PLATFORM(WINDOWS) && !defined(ANDROID)
+-		PSP_CoreParameter().pixelWidth = g_display.pixel_xres;
+-		PSP_CoreParameter().pixelHeight = g_display.pixel_yres;
++		int outputWidth = g_display.pixel_xres;
++		int outputHeight = g_display.pixel_yres;
++		PlumOSApplyDisplayOutputSize(&outputWidth, &outputHeight, "native-resize");
++		PSP_CoreParameter().pixelWidth = outputWidth;
++		PSP_CoreParameter().pixelHeight = outputHeight;
+ 		System_PostUIMessage(UIMessage::GPU_DISPLAY_RESIZED);
+ #endif
+ 	} else {

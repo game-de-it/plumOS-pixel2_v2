@@ -87,6 +87,13 @@ case "$id" in
   ppsspp)
     exe="${EMU_ROOT}/ppsspp/bin/PPSSPPSDL"
     workdir="${EMU_ROOT}/ppsspp"
+    # Pixel2 has a native 480x640 portrait panel.  PPSSPP renders a logical
+    # 640x480 landscape surface and the Pixel2 presenter rotates it CCW.
+    export PLUMOS_PIXEL2_DISPLAY_ROTATION=ccw
+    export PLUMOS_PIXEL2_DISPLAY_SWAP=0
+    export PLUMOS_PIXEL2_DISPLAY_LOGICAL=640x480
+    export PLUMOS_PIXEL2_DISPLAY_FORCE_LANDSCAPE=1
+    export PLUMOS_PIXEL2_UI_ROTATION=none
     ppsspp_factory_dir="${PLUMOS_ROOT}/factory-defaults/standalone/ppsspp/PSP/SYSTEM"
     ppsspp_config_dir="${XDG_CONFIG_HOME}/ppsspp/PSP/SYSTEM"
     ppsspp_config="${ppsspp_config_dir}/ppsspp.ini"

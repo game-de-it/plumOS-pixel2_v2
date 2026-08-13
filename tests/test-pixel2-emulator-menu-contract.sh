@@ -13,6 +13,8 @@ OPENBOR_PATCH="$ROOT_DIR/patches/openbor/openbor-v6391-pixel2-sdl.patch"
 SA_BUILD="$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 SA_LAUNCHER="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 PPSSPP_CONTROLS="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/controls.ini"
+PPSSPP_CONTROLLER_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
+PPSSPP_DISPLAY_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-display-rotation.patch"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -95,5 +97,28 @@ grep -Eq '^Pause[[:space:]]*=.*(^|,)10-4(,|$)' "$PPSSPP_CONTROLS" ||
     fail 'PPSSPP factory FUNCTION pause binding is missing'
 grep -Fq "s/$/,10-4/" "$SA_LAUNCHER" ||
     fail 'PPSSPP existing config migration is missing'
+for contract in \
+    'pixel2_joypad,a:b1,b:b0,x:b2,y:b3' \
+    'back:b8,guide:b14,start:b9' \
+    'dpup:b10,dpdown:b11,dpleft:b12,dpright:b13' \
+    'leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7'; do
+    grep -Fq "$contract" "$PPSSPP_CONTROLLER_PATCH" ||
+        fail "PPSSPP Pixel2 controller mapping missing: $contract"
+done
+grep -Fq 'PLUMOS_PIXEL2_DISPLAY_ROTATION' "$PPSSPP_DISPLAY_PATCH" ||
+    fail 'PPSSPP Pixel2 display presenter patch is missing'
+for contract in \
+    'PLUMOS_PIXEL2_DISPLAY_ROTATION=ccw' \
+    'PLUMOS_PIXEL2_DISPLAY_LOGICAL=640x480' \
+    'PLUMOS_PIXEL2_DISPLAY_FORCE_LANDSCAPE=1'; do
+    grep -Fq "$contract" "$SA_LAUNCHER" ||
+        fail "PPSSPP Pixel2 display launch contract missing: $contract"
+done
+for patch_name in \
+    ppsspp-1.20.4-pixel2-display-rotation.patch \
+    ppsspp-1.20.4-pixel2-controller.patch; do
+    grep -Fq "$patch_name" "$SA_BUILD" ||
+        fail "PPSSPP build does not consume patch: $patch_name"
+done
 
 printf 'PASS: Pixel2 emulator FUNCTION menu contract\n'

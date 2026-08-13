@@ -84,6 +84,7 @@
   - 2026-08-13: N64のMupen64Plus-Nextはdynarec無効、cached/pure interpreter、GLideN64/Angrylion/ParaLLElの全実機試験でsegfaultしたため、壊れたalternateを残さずParallel N64だけを公開する。
   - 2026-08-12: Nintendo DSはPixel2向けDraStic standaloneを追加。armhf DraStic core、source-built Pixel2 integration library、package-local armhf runtime、armhf ALSA `plumos_output` pluginをapp-layerへ統合し、FE routeを`standalone:drastic`へ固定。DraStic BIOSは配布物へ含めず、実機では`/mnt/plumos-user/bios/drastic`、`/mnt/plumos-user/bios/nds`、`/mnt/plumos-user/bios`からmutable workdirへ取り込む。
   - 2026-08-12: PPSSPP v1.20.4をpinned source buildし、Pixel2向けSDL2/GLES/EGL binary、assets、factory `ppsspp.ini`/`controls.ini`、manifest/checksumへ統合。ROM set route validationでPSP `standalone:ppsspp`は`ok`へ移行し、代表ROMがある29 systemのpending binaryは0。実機での画面向き・入力・音声・終了hotkeyは未検証。
+  - 2026-08-14: PPSSPPの縦画面とFunction無反応を実機再現。Pixel2の480x640 panelを論理640x480からCCW回転するpresenterと、実測した15-button mapping（Function=SDL Guide button 14）をsource buildへ統合。再build・署名Runtime適用・物理確認は継続。
   - [ ] PCSX-ReARMed
     - [x] pinned sourceからAArch64 binaryとpackage-local sdl12-compatをbuildし、component manifest/checksumへ統合する
     - [x] Pixel2の480x640 framebufferへCCW回転した論理640x480/4:3 presenter、物理button/hat、`plumos_output` 48 kHz routeを実装する

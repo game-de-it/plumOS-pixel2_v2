@@ -1,0 +1,41 @@
+diff --git a/SDL/SDLJoystick.cpp b/SDL/SDLJoystick.cpp
+index 746e3dd..42c647a 100644
+--- a/SDL/SDLJoystick.cpp
++++ b/SDL/SDLJoystick.cpp
+@@ -1,3 +1,4 @@
++#include <cstring>
+ #include <string>
+ 
+ #include "Common/File/FileUtil.h"
+@@ -48,7 +49,30 @@ void SDLJoystick::setUpControllers() {
+ 
+ void SDLJoystick::setUpController(int deviceIndex) {
+ 	static constexpr int cbGUID = 33;
+-	char pszGUID[cbGUID];
++	char pszGUID[cbGUID] = {};
++
++	// Pixel2 exposes a compact 15-button joystick without an SDL database
++	// entry.  PPSSPP's generic PS3 fallback assigns button 14 to D-pad Down
++	// and uses invalid D-pad button indices, so install the measured hardware
++	// contract before SDL decides whether this is a game controller.
++	SDL_Joystick *pixel2Joystick = SDL_JoystickOpen(deviceIndex);
++	if (pixel2Joystick) {
++		SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(pixel2Joystick), pszGUID, cbGUID);
++		const char *deviceName = SDL_JoystickName(pixel2Joystick);
++		if (deviceName && !strcmp(deviceName, "pixel2_joypad")) {
++			const std::string mapping = std::string(pszGUID) +
++				",pixel2_joypad,a:b1,b:b0,x:b2,y:b3,back:b8,guide:b14,start:b9,"
++				"dpup:b10,dpdown:b11,dpleft:b12,dpright:b13,"
++				"leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,platform:Linux,";
++			const int result = SDL_GameControllerAddMapping(mapping.c_str());
++			if (result >= 0) {
++				INFO_LOG(Log::System, "Installed Pixel2 controller mapping: %s", mapping.c_str());
++			} else {
++				ERROR_LOG(Log::System, "Failed to install Pixel2 controller mapping: %s", SDL_GetError());
++			}
++		}
++		SDL_JoystickClose(pixel2Joystick);
++	}
+ 
+ 	if (!SDL_IsGameController(deviceIndex)) {
+ 		WARN_LOG(Log::System, "Control pad device %d not supported by SDL game controller database, attempting to create default mapping...", deviceIndex);

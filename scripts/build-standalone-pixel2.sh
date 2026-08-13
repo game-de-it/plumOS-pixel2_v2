@@ -44,6 +44,8 @@ PPSSPP_REPO="${PLUMOS_PIXEL2_PPSSPP_REPO:-https://github.com/hrydgard/ppsspp.git
 PPSSPP_REF="${PLUMOS_PIXEL2_PPSSPP_REF:-v1.20.4}"
 PPSSPP_COMMIT="${PLUMOS_PIXEL2_PPSSPP_COMMIT:-fa50bb1976065c4f8b1b47af227d367fe9771555}"
 PPSSPP_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-no-sdl2-ttf.patch"
+PPSSPP_DISPLAY_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-display-rotation.patch"
+PPSSPP_CONTROLLER_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
 COMMON_CFLAGS="${PLUMOS_PIXEL2_STANDALONE_CFLAGS:--O2 -pipe -march=armv8-a+crc -mtune=cortex-a35 -fomit-frame-pointer -fcommon}"
 VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
 PROJECT_SOURCE_REF="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
@@ -578,10 +580,12 @@ build_ppsspp() {
   for command in cmake file git ninja readelf rsync sha256sum; do
     require_command "$command"
   done
-  [ -s "$PPSSPP_PATCH" ] || {
-    printf 'error: PPSSPP patch is missing: %s\n' "$PPSSPP_PATCH" >&2
-    return 1
-  }
+  for patch in "$PPSSPP_PATCH" "$PPSSPP_DISPLAY_PATCH" "$PPSSPP_CONTROLLER_PATCH"; do
+    [ -s "$patch" ] || {
+      printf 'error: PPSSPP patch is missing: %s\n' "$patch" >&2
+      return 1
+    }
+  done
 
   PPSSPP_BUILD_DIR="$BUILD_ROOT/ppsspp"
   PPSSPP_SOURCE_DIR="$PPSSPP_BUILD_DIR/source"
@@ -614,9 +618,11 @@ build_ppsspp() {
     >>"$PPSSPP_LOG" 2>&1 || return 1
   git -C "$PPSSPP_SOURCE_DIR" submodule update --init --recursive \
     >>"$PPSSPP_LOG" 2>&1 || return 1
-  git -C "$PPSSPP_SOURCE_DIR" apply --check "$PPSSPP_PATCH" \
-    >>"$PPSSPP_LOG" 2>&1
-  git -C "$PPSSPP_SOURCE_DIR" apply "$PPSSPP_PATCH" >>"$PPSSPP_LOG" 2>&1
+  for patch in "$PPSSPP_PATCH" "$PPSSPP_DISPLAY_PATCH" "$PPSSPP_CONTROLLER_PATCH"; do
+    git -C "$PPSSPP_SOURCE_DIR" apply --check "$patch" \
+      >>"$PPSSPP_LOG" 2>&1
+    git -C "$PPSSPP_SOURCE_DIR" apply "$patch" >>"$PPSSPP_LOG" 2>&1
+  done
 
   rm -rf "$PPSSPP_CMAKE_DIR"
   cmake -S "$PPSSPP_SOURCE_DIR" -B "$PPSSPP_CMAKE_DIR" -G Ninja \
@@ -692,6 +698,8 @@ build_ppsspp() {
       awk '{ print $1 }'
   )"
   patch_sha256=$(sha256_file "$PPSSPP_PATCH")
+  display_patch_sha256=$(sha256_file "$PPSSPP_DISPLAY_PATCH")
+  controller_patch_sha256=$(sha256_file "$PPSSPP_CONTROLLER_PATCH")
   cat >"$PPSSPP_DST/build-manifest.json" <<EOF
 {
   "device": "pixel2",
@@ -704,7 +712,9 @@ build_ppsspp() {
   },
   "asset_tree_sha256": "$asset_tree_sha256",
   "patches": {
-    "ppsspp-1.20.4-pixel2-no-sdl2-ttf": "$patch_sha256"
+    "ppsspp-1.20.4-pixel2-no-sdl2-ttf": "$patch_sha256",
+    "ppsspp-1.20.4-pixel2-display-rotation": "$display_patch_sha256",
+    "ppsspp-1.20.4-pixel2-controller": "$controller_patch_sha256"
   },
   "target_cpu": "cortex-a35",
   "compiler_flags": "$COMMON_CFLAGS",
