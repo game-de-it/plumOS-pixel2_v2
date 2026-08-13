@@ -29,6 +29,10 @@ sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"
 sh -n "$ROOT_DIR/scripts/pixel2-device-launch-smoke.sh"
+grep -q 'PROFILE_SAMPLE_NAMES' \
+    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q '"retroarch:mba_mini": "varthj.zip"' \
+    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'SONAME_MAP=' \
     "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 grep -q 'RUNTIME_LIB_DIR/libSDL2-2.0.so.0' \

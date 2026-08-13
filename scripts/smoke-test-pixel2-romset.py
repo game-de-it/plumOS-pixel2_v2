@@ -28,6 +28,26 @@ HELPER = ROOT / "scripts/pixel2-device-launch-smoke.sh"
 ROUTE_VALIDATOR = ROOT / "scripts/validate-romset-routes.py"
 DEFAULT_ADB = Path.home() / "Library/Android/sdk/platform-tools/adb"
 
+# Some cores require a ROM revision that matches their own database.  Selecting
+# one alphabetically-first file for every profile produces false failures for
+# arcade sets and can miss format-specific paths such as BlueMSX disk images.
+# These are file-name hints only: content still comes exclusively from the
+# user-supplied ROM root and a missing hint falls back to the system sample.
+PROFILE_SAMPLE_NAMES = {
+    "retroarch:fbneo": "1942a.zip",
+    "retroarch:fbalpha2012": "1942a.zip",
+    "retroarch:mame2003_plus": "ddragon.zip",
+    "retroarch:km_mame2003_xtreme": "ddragon.zip",
+    "retroarch:mame2000": "ddragon.zip",
+    "retroarch:mba_mini": "varthj.zip",
+    "retroarch:bluemsx": "Ys2-p.dsk",
+    "retroarch:fmsx": "XGR1Trial.rom",
+    "retroarch:km_duckswanstation_xtreme_amped": "chroQW.img",
+    "retroarch:parallel_n64": "SUPERMARIO64.Z64",
+    "retroarch:mupen64plus_next": "SUPERMARIO64.Z64",
+    "pyxel:pixel2": "LastEmulator.pyxapp",
+}
+
 
 def load_route_validator() -> Any:
     spec = importlib.util.spec_from_file_location("pixel2_routes", ROUTE_VALIDATOR)
@@ -110,6 +130,17 @@ def report_sample_path(sample: Path, rom_root: Path) -> str:
             return str(sample.resolve().relative_to(rom_root.resolve()))
         except ValueError:
             return sample.name
+
+
+def find_named_sample(dirs: list[Path], name: str) -> Path | None:
+    wanted = name.casefold()
+    for directory in dirs:
+        for current, subdirs, files in os.walk(directory):
+            subdirs.sort()
+            for filename in sorted(files):
+                if filename.casefold() == wanted:
+                    return Path(current) / filename
+    return None
 
 
 class Device:
@@ -232,7 +263,7 @@ def main() -> int:
         return 2
 
     rom_dirs = route.directory_index(rom_root)
-    selected: list[tuple[dict[str, Any], Path, list[str]]] = []
+    selected: list[tuple[dict[str, Any], list[tuple[Path, list[str]]]]] = []
     without_rom: list[str] = []
     for system in enabled:
         dirs = route.candidate_dirs(system, rom_dirs)
@@ -247,7 +278,14 @@ def main() -> int:
             profiles = [profile for profile in profiles if profile in requested_profiles]
         if not profiles:
             continue
-        selected.append((system, sample.resolve(), profiles))
+        grouped: dict[Path, list[str]] = {}
+        for profile in profiles:
+            hinted_name = PROFILE_SAMPLE_NAMES.get(profile)
+            profile_sample = (
+                find_named_sample(dirs, hinted_name) if hinted_name else None
+            )
+            grouped.setdefault((profile_sample or sample).resolve(), []).append(profile)
+        selected.append((system, list(grouped.items())))
 
     device = Device(adb)
     devices = device.run_adb("devices", capture=True)
@@ -272,7 +310,7 @@ def main() -> int:
             raise RuntimeError("device preparation failed")
         prepared = True
 
-        for system, sample, profiles in selected:
+        for system, sample_groups in selected:
             system_id = system["id"]
             aliases = [
                 alias.get("name", "")
@@ -289,7 +327,13 @@ def main() -> int:
                 raise RuntimeError("unsafe smoke staging path")
             device.shell(f"mkdir -p {shlex.quote(remote_system)}")
             staged_paths.append(remote_system)
-            companions = referenced_content(sample)
+            companions = sorted(
+                {
+                    companion
+                    for sample, _profiles in sample_groups
+                    for companion in referenced_content(sample)
+                }
+            )
             total_bytes = sum(path.stat().st_size for path in companions)
             free_line = device.shell("df -k /mnt/plumos-user | tail -n 1").stdout.split()
             free_bytes = int(free_line[3]) * 1024 if len(free_line) >= 4 else 0
@@ -298,11 +342,8 @@ def main() -> int:
                     f"insufficient device space for {system_id}: need {total_bytes}, free {free_bytes}"
                 )
             for source in companions:
-                try:
-                    local_relative = source.relative_to(sample.parent)
-                except ValueError as exc:
-                    raise RuntimeError(f"descriptor escapes sample directory: {source}") from exc
-                remote_parent = f"{remote_system}/{local_relative.parent.as_posix()}"
+                local_relative = Path(source.name)
+                remote_parent = remote_system
                 device.shell(f"mkdir -p {shlex.quote(remote_parent)}")
                 remote_path = f"{remote_system}/{local_relative.as_posix()}"
                 print(f"PUSH system={system_id} file={source.name} bytes={source.stat().st_size}")
@@ -312,29 +353,30 @@ def main() -> int:
             print(scan.stdout, end="")
             if scan.returncode != 0 or f"SMOKE_RESULT=scanned system={system_id}" not in scan.stdout:
                 raise RuntimeError(f"device scan failed for {system_id}")
-            sample_relative = f"{stage_relative}/{sample.name}"
-            for profile in profiles:
-                print(f"LAUNCH system={system_id} profile={profile} sample={sample.name}")
-                outcome = device.helper_action(
-                    "launch",
-                    SMOKE_SYSTEM=system_id,
-                    SMOKE_RELATIVE=sample_relative,
-                    SMOKE_PROFILE=profile,
-                    SMOKE_SECONDS=str(args.seconds),
-                )
-                print(outcome.stdout, end="")
-                match = re.search(r"^SMOKE_RUNTIME_EXE=(.*)$", outcome.stdout, re.MULTILINE)
-                passed = outcome.returncode == 0 and f"SMOKE_RESULT=pass profile={profile}" in outcome.stdout
-                launches.append(
-                    {
-                        "system": system_id,
-                        "profile": profile,
-                        "sample_rom": report_sample_path(sample, rom_root),
-                        "status": "pass" if passed else "fail",
-                        "runtime_exe": match.group(1) if match else "",
-                        "output": outcome.stdout[-8000:],
-                    }
-                )
+            for sample, profiles in sample_groups:
+                sample_relative = f"{stage_relative}/{sample.name}"
+                for profile in profiles:
+                    print(f"LAUNCH system={system_id} profile={profile} sample={sample.name}")
+                    outcome = device.helper_action(
+                        "launch",
+                        SMOKE_SYSTEM=system_id,
+                        SMOKE_RELATIVE=sample_relative,
+                        SMOKE_PROFILE=profile,
+                        SMOKE_SECONDS=str(args.seconds),
+                    )
+                    print(outcome.stdout, end="")
+                    match = re.search(r"^SMOKE_RUNTIME_EXE=(.*)$", outcome.stdout, re.MULTILINE)
+                    passed = outcome.returncode == 0 and f"SMOKE_RESULT=pass profile={profile}" in outcome.stdout
+                    launches.append(
+                        {
+                            "system": system_id,
+                            "profile": profile,
+                            "sample_rom": report_sample_path(sample, rom_root),
+                            "status": "pass" if passed else "fail",
+                            "runtime_exe": match.group(1) if match else "",
+                            "output": outcome.stdout[-8000:],
+                        }
+                    )
             device.shell(f"rm -rf {shlex.quote(remote_system)}")
             staged_paths.remove(remote_system)
     finally:
@@ -350,7 +392,11 @@ def main() -> int:
         "enabled_systems": len(enabled),
         "systems_with_rom": len(selected),
         "systems_without_rom": len(without_rom),
-        "profiles_selected": sum(len(profiles) for _, _, profiles in selected),
+        "profiles_selected": sum(
+            len(profiles)
+            for _, sample_groups in selected
+            for _, profiles in sample_groups
+        ),
         "profiles_passed": sum(row["status"] == "pass" for row in launches),
         "profiles_failed": sum(row["status"] != "pass" for row in launches),
     }
