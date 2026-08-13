@@ -43,3 +43,27 @@ This changes the initramfs-stage IUX splash only. The earlier bootloader Pixel
 logo and the charging UI may use separate artifacts in the Rockchip prefix and
 are intentionally unchanged. Physical validation must confirm the plumOS logo
 orientation during normal boot without changing charging/reboot behavior.
+
+## Host validation
+
+The following checks passed from clean commit `aa0fafc`:
+
+```text
+./tests/test-sd-image-scripts.sh
+./tests/test-stock-capture-scripts.sh
+./scripts/docker-build.sh sd-image
+
+pixel2-boot-splash: PASS geometry=480x640 format=png-rgb8
+sd_image=result-ok
+```
+
+The complete generated image identity is:
+
+```text
+output/image/pixel2/plumOS-Pixel2-0.1.0-dev.img
+size=4294967296
+sha256=fb1a0d40b3039236c2cfb73cc26e905f14fed5b80a74daf9e0d4539878ebac10
+source_ref=aa0fafc
+```
+
+Physical normal-boot orientation remains the final acceptance gate.
