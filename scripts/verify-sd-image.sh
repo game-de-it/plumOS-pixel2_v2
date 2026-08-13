@@ -85,7 +85,8 @@ grep -q '^system_layout=fixed-dispatcher,system-a,system-b$' \
     "$WORK/plumos-image.manifest"
 grep -q '^stock_initramfs_hooks=post-flash.sh,post-sysroot.sh$' \
     "$WORK/plumos-image.manifest"
-grep -q 'post-flash' "$WORK/post-flash.sh"
+grep -q '/usr/bin/ply-image /flash/oemsplash-1080.png' "$WORK/post-flash.sh"
+grep -q 'boot-splash result=plumos' "$WORK/post-flash.sh"
 grep -q 'post-sysroot' "$WORK/post-sysroot.sh"
 cmp "$WORK/SYSTEM" "$ROOT_DIR/output/system-rootfs/pixel2/payload/SYSTEM"
 "$ROOT_DIR/scripts/verify-system-dispatcher.sh" "$WORK/SYSTEM"

@@ -145,8 +145,8 @@
 
 ## Boot artifact boundary
 
-- [x] stock initramfsのOEM overrideでIUX boot logoをplumOSへ置換する
-  - 2026-08-14: stock `Image`内蔵initramfsが`/flash/oemsplash-1080.png`を埋め込みIUX画像より優先することを確認。Pixel2のportrait memory orientationに合わせた480x640 RGB PNGを`PLUMOS_BOOT`へ組み込み、`aa0fafc`からの4 GiB image生成で形式・image内byte一致・manifest SHA-256を検証。実機の通常boot表示方向は未確認。
+- [ ] stock initramfsのIUX boot logoをplumOSへ置換する
+  - 2026-08-14: `load_splash()`が`mount_flash()`より先に実行されるため、boot FATのOEM画像だけでは置換できないことを実機timestampで確定。stock Image/DTBを維持し、`post-flash.sh`がinitramfsの`ply-image`でマウント直後にplumOS画像を再描画する方式へ修正。実機LCD確認後に完了とする。IUXの初期約0.7秒も完全に除去する場合はstock Image内蔵initramfs画像の再packが必要。
 - [x] stock SDのパーティション、kernel、DTB、initramfsを読み取り専用で解析する
 - [x] stock userspaceを廃止し、保持するboot artifactの境界を決定する
 - [x] SD先頭16 MiBのRockchip boot領域を管理者権限で読み取り採取する

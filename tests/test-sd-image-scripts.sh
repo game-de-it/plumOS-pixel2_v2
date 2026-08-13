@@ -23,4 +23,8 @@ grep -q 'post-sysroot.sh' "$ROOT_DIR/scripts/build-sd-image.sh"
 grep -q 'stock_initramfs_hooks' "$ROOT_DIR/scripts/verify-sd-image.sh"
 grep -q 'oemsplash-1080.png' "$ROOT_DIR/scripts/build-sd-image.sh"
 grep -q 'verify-pixel2-boot-splash.py' "$ROOT_DIR/scripts/verify-sd-image.sh"
+grep -q '/usr/bin/ply-image /flash/oemsplash-1080.png' \
+    "$ROOT_DIR/boot-hooks/pixel2/post-flash.sh"
+grep -q 'boot-splash result=plumos' \
+    "$ROOT_DIR/boot-hooks/pixel2/post-flash.sh"
 printf 'sd_image_scripts=result-ok\n'

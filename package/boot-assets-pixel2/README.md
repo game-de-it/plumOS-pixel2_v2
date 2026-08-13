@@ -15,9 +15,11 @@ magick bootlogo.png -background black -alpha remove -alpha off \
   PNG24:oemsplash-1080.png
 ```
 
-The retained stock initramfs checks `/flash/oemsplash-1080.png` before its
-embedded `/splash/splash-1080.png`. The SD image builder installs this file at
-the root of `PLUMOS_BOOT`; no kernel or initramfs modification is required.
+The retained stock initramfs lists `/flash/oemsplash-1080.png` before its
+embedded `/splash/splash-1080.png`, but calls `load_splash()` before it mounts
+`/flash`. The SD image builder installs this file at the root of `PLUMOS_BOOT`;
+its `post-flash.sh` hook redraws it immediately after the boot volume is
+mounted. No kernel or initramfs modification is required.
 
 Validate the boot-ready file with:
 
