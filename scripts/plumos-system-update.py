@@ -532,6 +532,10 @@ def apply_runtime(package: Path, manifest: dict[str, Any]) -> int:
                 operation["installed"] = True
                 fsync_directory(target.parent)
                 journal_write(journal)
+        # A Runtime update is one of the explicit integrity-check points. The
+        # normal boot path trusts this completed generation and does not repeat
+        # the full 1+ GiB hash pass before drawing the frontend.
+        verify_runtime()
     except Exception as exc:
         rollback_runtime(f"transaction failed: {exc}")
         raise UpdateError(f"runtime transaction failed: {exc}") from exc
@@ -721,6 +725,26 @@ def apply_pending() -> int:
     return apply_system(package, manifest, manifest_bytes, signature)
 
 
+def verify_runtime() -> None:
+    checksum_file = PLUMOS_ROOT / "checksums.sha256"
+    if not checksum_file.is_file():
+        raise UpdateError("installed Runtime checksum manifest is missing")
+    command = os.environ.get("PLUMOS_UPDATE_SHA256SUM", "sha256sum")
+    result = subprocess.run(
+        [command, "-c", checksum_file.name],
+        cwd=PLUMOS_ROOT,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip().splitlines()
+        suffix = f": {detail[-1]}" if detail else ""
+        raise UpdateError(f"installed Runtime checksum verification failed{suffix}")
+
+
 def mark_healthy() -> None:
     changed = False
     if RUNTIME_PENDING.is_file():
@@ -786,6 +810,7 @@ def main() -> int:
     subparsers.add_parser("scan")
     subparsers.add_parser("request-latest")
     subparsers.add_parser("apply-pending")
+    subparsers.add_parser("verify-runtime")
     subparsers.add_parser("mark-healthy")
     args = parser.parse_args()
     try:
@@ -807,6 +832,10 @@ def main() -> int:
         elif args.command == "apply-pending":
             with update_lock():
                 return apply_pending()
+        elif args.command == "verify-runtime":
+            with update_lock():
+                verify_runtime()
+            print("runtime_verify=result-ok")
         elif args.command == "mark-healthy":
             with update_lock():
                 mark_healthy()

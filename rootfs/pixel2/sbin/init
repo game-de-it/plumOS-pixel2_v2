@@ -106,7 +106,25 @@ printf 'plumos-init=mounts-ready boot=%s runtime=%s user=%s\n' \
 apply_pending_update() {
     updater=/usr/sbin/plumos-system-update
     log=/mnt/plumos/logs/system-update-boot.log
+    state=/mnt/plumos/update-state
     [ -x "$updater" ] || return 0
+    # Starting the Python updater costs several seconds on RK3326 even when
+    # there is no work. Only enter it for an explicit request, an unconfirmed
+    # Runtime generation, or a journal that is not already healthy/rolled back.
+    update_needed=0
+    [ -f "$state/request.json" ] && update_needed=1
+    [ -f "$state/runtime-pending.json" ] && update_needed=1
+    if [ "$update_needed" -eq 0 ] && [ -f "$state/runtime-transaction.json" ]; then
+        if ! $bb grep -Eq '"status"[[:space:]]*:[[:space:]]*"(healthy|rolled_back)"' \
+            "$state/runtime-transaction.json" 2>/dev/null; then
+            update_needed=1
+        fi
+    fi
+    if [ "$update_needed" -eq 0 ]; then
+        printf '%s update=apply-pending result=skipped reason=no-pending-state\n' \
+            "$($bb date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$log"
+        return 0
+    fi
     printf '%s update=apply-pending stage=start\n' \
         "$($bb date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$log"
     PLUMOS_ROOT=/mnt/plumos PLUMOS_USERDATA_ROOT=/mnt/plumos-user \

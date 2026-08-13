@@ -32,8 +32,20 @@ write_runtime_fixture() {
     printf '%s\n' "$RUNTIME_ABI" >"$root/RUNTIME_ABI"
     printf '%s\n' "$tool_value" >"$root/bin/test-tool"
     printf '%s\n' '{"device":"pixel2"}' >"$root/manifest.json"
-    printf '%s\n' 'fixture  manifest.json' >"$root/checksums.sha256"
     printf '%s\n' 'managed-input-map' >"$root/config/system/input-map.env"
+    python3 - "$root" <<'PY'
+from hashlib import sha256
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+with (root / "checksums.sha256").open("w", encoding="ascii") as output:
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        if path.name == "checksums.sha256":
+            continue
+        digest = sha256(path.read_bytes()).hexdigest()
+        output.write(f"{digest}  {path.relative_to(root).as_posix()}\n")
+PY
 }
 
 run_updater() {
@@ -75,6 +87,13 @@ write_runtime_fixture "$runtime_102" 1.0.2 newer
 cp -a "$base_100" "$runtime_root"
 mkdir -p "$runtime_root/config/user"
 printf '%s\n' 'preserve-me' >"$runtime_root/config/user/settings.ini"
+run_updater verify-runtime >/dev/null
+printf '%s\n' corrupt >"$runtime_root/bin/test-tool"
+if run_updater verify-runtime >/dev/null 2>&1; then
+    fail 'Explicit Runtime verification accepted corrupted content'
+fi
+printf '%s\n' old >"$runtime_root/bin/test-tool"
+run_updater verify-runtime >/dev/null
 
 base_checksums="$temp_root/runtime-1.0.0-checksums.sha256"
 python3 - "$base_100" "$base_checksums" <<'PY'
@@ -99,7 +118,9 @@ import tarfile
 with tarfile.open(Path(sys.argv[1]), "r:gz") as archive:
     manifest = json.load(archive.extractfile("META/manifest.json"))
 assert manifest["full_payload"] is False
-assert {entry["path"] for entry in manifest["files"]} == {"VERSION", "bin/test-tool"}
+assert {entry["path"] for entry in manifest["files"]} == {
+    "VERSION", "bin/test-tool", "checksums.sha256"
+}
 PY
 cp "$dist/plumos-pixel2-runtime-1.0.1.tar.gz" "$user_root/updates/"
 run_updater request-latest >/dev/null

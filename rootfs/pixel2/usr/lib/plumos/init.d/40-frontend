@@ -35,9 +35,14 @@ find_input() {
 start_frontend() {
     ROOT=$APP_ROOT
     $bb mkdir -p /run/plumos /mnt/plumos/logs
-    if [ -s "$APP_ROOT/manifest.json" ] && [ -s "$APP_ROOT/checksums.sha256" ] &&
-       (cd "$APP_ROOT" && $bb sha256sum -c checksums.sha256 >/dev/null 2>>"$LOG"); then
-        printf 'frontend=app-layer-verified root=%s\n' "$APP_ROOT" >>"$LOG"
+    # Runtime packages are fully verified when they are built, deployed, and
+    # applied. Re-hashing the complete 1+ GiB app layer here delayed every
+    # normal RK3326 boot by more than 50 seconds. Keep only a constant-time
+    # metadata presence guard in the synchronous frontend path; an operator can
+    # run `plumos-system-update verify-runtime` when a full audit is required.
+    if [ -s "$APP_ROOT/manifest.json" ] && [ -s "$APP_ROOT/checksums.sha256" ]; then
+        printf 'frontend=app-layer-selected root=%s integrity=verified-at-install\n' \
+            "$APP_ROOT" >>"$LOG"
     else
         ROOT=$FALLBACK_ROOT
         LOG=/mnt/plumos/logs/frontend-recovery.log

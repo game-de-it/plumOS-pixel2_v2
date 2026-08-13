@@ -58,7 +58,9 @@ grep -q '/mnt/plumos-user/plumos-enable-adb' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'pixel2_usb_present' "$ROOT_DIR/scripts/pixel2-adb.sh"
 grep -q 'PLUMOS_SYS' "$ROOT_DIR/rootfs/pixel2/sbin/init"
-grep -q 'app-layer-verified' \
+grep -q 'app-layer-selected' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+! grep -q 'sha256sum -c' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'system-booted' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
@@ -66,6 +68,10 @@ grep -q 'plumos-system-update mark-healthy' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
 grep -q 'apply_pending_update' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q '"$updater" apply-pending' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'reason=no-pending-state' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'runtime-pending.json' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'runtime-transaction.json' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'verify-runtime' "$ROOT_DIR/scripts/plumos-system-update.py"
 grep -q 'build-pixel2-update-package.py' "$ROOT_DIR/scripts/docker-build.sh"
 
 ! grep -q '\$bb mountpoint' "$ROOT_DIR/rootfs/pixel2/sbin/init"

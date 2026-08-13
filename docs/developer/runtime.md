@@ -15,11 +15,25 @@
 10-adbd      USB FunctionFS/configfs ADB maintenance path
 20-usb-wifi  saved USB Wi-Fi configuration, if a dongle exists
 30-ssh       Dropbear when authorized_keys exists
-40-frontend  app-layer verification, hardware keys, ROM scan, FE
+40-frontend  app-layer selection, hardware keys, ROM scan, FE
 ```
 
-`40-frontend` verifies `/mnt/plumos/checksums.sha256` before using the app
-layer. If verification fails, it falls back to the rootfs seed frontend.
+`40-frontend` does not hash the complete app layer during a normal boot. Signed
+updates and live deployment verify the complete Runtime before reboot; a
+healthy unchanged generation is selected using constant-time metadata presence
+checks. If required metadata is absent, boot falls back to the rootfs seed
+frontend.
+
+A complete operator-requested audit remains available without putting it in the
+normal startup path:
+
+```sh
+/usr/sbin/plumos-system-update verify-runtime
+```
+
+An update request, unconfirmed Runtime, or interrupted transaction still enters
+the Python updater before services start. With none of those states present,
+init skips the updater entirely.
 
 ## Foreground Lifecycle
 
