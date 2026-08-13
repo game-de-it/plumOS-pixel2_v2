@@ -43,6 +43,9 @@ PROFILE_SAMPLE_NAMES = {
     "retroarch:bluemsx": "Ys2-p.dsk",
     "retroarch:fmsx": "XGR1Trial.rom",
     "retroarch:frodo": "inbread.d64",
+    # NeoCD rejects the legacy MP3-track dump but the supplied ROM set also
+    # contains a complete WAV-track dump that matches the core's CUE support.
+    "retroarch:neocd": "Fatal Fury WAV.cue",
     "retroarch:mednafen_pcfx": "simplebattle.cue",
     "retroarch:nxengine": "Doukutsu.exe",
     "retroarch:km_duckswanstation_xtreme_amped": "chroQW.img",

@@ -35,12 +35,16 @@ grep -q '"retroarch:mba_mini": "varthj.zip"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q '"retroarch:frodo": "inbread.d64"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q '"retroarch:neocd": "Fatal Fury WAV.cue"' \
+    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'PARENT_TREE_SYSTEMS.*"easyrpg".*"cannonball".*"cavestory".*"dinothawr"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'SYNTHETIC_LAUNCH_NAMES.*"cannonball": "cannonball.game"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'retroarch-launch.log' \
     "$ROOT_DIR/scripts/pixel2-device-launch-smoke.sh"
+grep -q 'root/emulator/lib:\$root/frontend/lib:\$root/lib' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'f"_etc/{name}"' \
     "$ROOT_DIR/scripts/validate-romset-routes.py"
 grep -q 'SONAME_MAP=' \
