@@ -34,6 +34,8 @@ grep -q 'SONAME_MAP=' \
 grep -q 'RUNTIME_LIB_DIR/libSDL2-2.0.so.0' \
     "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 grep -q 'libSDL2-2\.0\.so\.0' "$ROOT_DIR/scripts/build-picoarch-pixel2.sh"
+grep -q 'physical=%ux%u logical=%ux%u ccw' \
+    "$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch_pixel2_fbdev.h"
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
     python3 -m py_compile \
         "$ROOT_DIR/scripts/generate-pixel2-system-logos.py" \
