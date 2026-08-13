@@ -23,6 +23,10 @@ EXTRA_DIR_ALIASES = {
     "atari7800": ["ATARI/7800"],
     "atari800": ["ATARI/800"],
     "msx": ["msx2"],
+    "cpc": ["amstradcpc"],
+    "colecovision": ["coleco"],
+    "pc98": ["pc-9800"],
+    "virtualboy": ["viretualboy"],
 }
 
 
@@ -57,6 +61,14 @@ def candidate_dirs(system: dict[str, Any], rom_dirs: dict[str, Path]) -> list[Pa
             names.append(name)
     names.append(system["id"])
     names.extend(EXTRA_DIR_ALIASES.get(system["id"], []))
+    # The supplied archival ROM set keeps less frequently used systems below
+    # `_etc/<system>`. Treat those directories as additional read-only aliases;
+    # the device staging path remains the canonical Pixel2 FE directory.
+    names.extend(
+        f"_etc/{name}"
+        for name in list(names)
+        if not name.lower().startswith("_etc/")
+    )
     seen: set[Path] = set()
     out: list[Path] = []
     for name in names:

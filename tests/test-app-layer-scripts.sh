@@ -33,6 +33,8 @@ grep -q 'PROFILE_SAMPLE_NAMES' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q '"retroarch:mba_mini": "varthj.zip"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+grep -q 'f"_etc/{name}"' \
+    "$ROOT_DIR/scripts/validate-romset-routes.py"
 grep -q 'SONAME_MAP=' \
     "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 grep -q 'RUNTIME_LIB_DIR/libSDL2-2.0.so.0' \
