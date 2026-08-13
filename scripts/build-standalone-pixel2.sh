@@ -444,7 +444,9 @@ build_drastic() {
     TOOLCHAIN_BIN="$(dirname "$(command -v arm-linux-gnueabihf-gcc)")" \
     NDS_INCLUDE_ROOT=/usr/include \
     NDS_LIBRARY_ROOT="$DRASTIC_RELEASE_DIR/drastic/lib" >>"$DRASTIC_LOG" 2>&1
-  gcc -O3 -DGKD_PIXEL2 -DRUNNER \
+  runner_rel="$(git -C "$DRASTIC_SOURCE_DIR" rev-parse --short=8 HEAD)"
+  gcc -O3 -DGKD_PIXEL2 -DRUNNER -DREL_VER="0x${runner_rel}" \
+    -I/usr/include/SDL2 \
     -I"$DRASTIC_SOURCE_DIR/runner" -I"$DRASTIC_SOURCE_DIR/common" \
     "$DRASTIC_SOURCE_DIR/runner/runner.c" \
     "$DRASTIC_SOURCE_DIR/common/common.c" \
