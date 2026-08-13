@@ -134,4 +134,8 @@ path then produced a fresh boot with the expected redraw result:
 
 ADB returned at device uptime 8.07 seconds, the frontend process was running,
 and `/flash` was read-only. This proves asset selection and renderer success;
-the operator's direct LCD observation remains the visual acceptance gate.
+the operator then confirmed on the physical LCD that IUX appears only briefly
+and is replaced by the correctly oriented plumOS logo. The post-mount redraw
+path is therefore accepted. Removing the brief initial IUX interval remains an
+optional initramfs-repack change rather than a requirement for this stock boot
+substrate.

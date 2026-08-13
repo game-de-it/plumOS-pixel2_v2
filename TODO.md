@@ -145,8 +145,8 @@
 
 ## Boot artifact boundary
 
-- [ ] stock initramfsのIUX boot logoをplumOSへ置換する
-  - 2026-08-14: `load_splash()`が`mount_flash()`より先に実行されるため、boot FATのOEM画像だけでは置換できないことを実機timestampで確定。stock Image/DTBを維持し、`post-flash.sh`がinitramfsの`ply-image`でマウント直後にplumOS画像を再描画する方式へ修正。実機LCD確認後に完了とする。IUXの初期約0.7秒も完全に除去する場合はstock Image内蔵initramfs画像の再packが必要。
+- [x] stock initramfsのIUX boot logoをplumOSへ置換する
+  - 2026-08-14: `load_splash()`が`mount_flash()`より先に実行されるため、boot FATのOEM画像だけでは置換できないことを実機timestampで確定。stock Image/DTBを維持し、`post-flash.sh`がinitramfsの`ply-image`でマウント直後にplumOS画像を再描画する方式へ修正。IUXが一瞬表示された後に正しいplumOSロゴへ切り替わることを実機LCDで確認。初期IUXも完全に除去する場合だけstock Image内蔵initramfs画像の再packが必要。
 - [x] stock SDのパーティション、kernel、DTB、initramfsを読み取り専用で解析する
 - [x] stock userspaceを廃止し、保持するboot artifactの境界を決定する
 - [x] SD先頭16 MiBのRockchip boot領域を管理者権限で読み取り採取する
