@@ -81,7 +81,10 @@ the fixed native-panel correction. Their launch profiles therefore append
 `video_allow_rotate = "false"`: the core rotates SELECT-switched horizontal or
 vertical content first, and the Pixel2 DRM presenter applies its unchanged CCW
 panel correction last. This follows the existing plumOS A30 WonderSwan
-contract without importing any A30 runtime identity.
+contract without importing any A30 runtime identity. These two profiles also
+use `aspect_ratio_index = "22"` (core provided), instead of the global Pixel2
+4:3 policy, because the WonderSwan display is 224x144 (14:9) and its geometry
+changes with the SELECT-controlled orientation.
 
 RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the
 D-pad as `ABS_X`/`ABS_Y` axes and the remaining controls as evdev keys on

@@ -135,6 +135,7 @@ set_cpu_governor
 append="$runtime_root/retroarch/append.cfg"
 video_driver=drm
 video_allow_rotate=true
+aspect_ratio_index=0
 case "${core##*/}" in
     km_duckswanstation_xtreme_amped_libretro.so)
         # DuckSwanStation requests an EGL/GLES context.  RetroArch's plain DRM
@@ -152,6 +153,10 @@ case "$system_id" in
         # Keep content rotation inside the core so the fixed Pixel2 panel
         # correction is never replaced with the core-only rotation value.
         video_allow_rotate=false
+        # WonderSwan uses a 224x144 (14:9) display and changes geometry when
+        # SELECT switches orientation. The global Pixel2 4:3 policy would
+        # distort both layouts, so use RetroArch's core-provided aspect entry.
+        aspect_ratio_index=22
         ;;
 esac
 audio_device="${PLUMOS_RETROARCH_AUDIO_DEVICE:-plumos_output}"
@@ -183,7 +188,7 @@ fi
     printf 'vrr_runloop_enable = "%s"\n' "${PLUMOS_RETROARCH_VRR_RUNLOOP_ENABLE:-false}"
     printf 'video_force_aspect = "true"\n'
     printf 'video_aspect_ratio_auto = "false"\n'
-    printf 'aspect_ratio_index = "0"\n'
+    printf 'aspect_ratio_index = "%s"\n' "$aspect_ratio_index"
     printf 'video_aspect_ratio = "1.333333"\n'
     printf 'video_threaded = "true"\n'
     printf 'input_driver = "udev"\n'
