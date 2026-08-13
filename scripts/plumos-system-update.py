@@ -729,9 +729,15 @@ def verify_runtime() -> None:
     checksum_file = PLUMOS_ROOT / "checksums.sha256"
     if not checksum_file.is_file():
         raise UpdateError("installed Runtime checksum manifest is missing")
-    command = os.environ.get("PLUMOS_UPDATE_SHA256SUM", "sha256sum")
+    configured = os.environ.get("PLUMOS_UPDATE_SHA256SUM")
+    if configured:
+        command = [configured]
+    elif Path("/bin/busybox").is_file():
+        command = ["/bin/busybox", "sha256sum"]
+    else:
+        command = ["sha256sum"]
     result = subprocess.run(
-        [command, "-c", checksum_file.name],
+        [*command, "-c", checksum_file.name],
         cwd=PLUMOS_ROOT,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
