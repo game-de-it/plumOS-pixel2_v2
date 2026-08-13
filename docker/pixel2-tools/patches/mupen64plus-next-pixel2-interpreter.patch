@@ -1,0 +1,18 @@
+diff --git a/Makefile b/Makefile
+index 2585252..2f3668e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -349,11 +349,14 @@ else ifneq (,$(findstring arm64_cortex_a53_gles2,$(platform)))
+    TARGET := $(TARGET_NAME)_libretro.so
+    LDFLAGS += -shared -Wl,--version-script=$(LIBRETRO_DIR)/link.T -Wl,--no-undefined -ldl
+    GL_LIB := -lGLESv2
+-   WITH_DYNAREC := aarch64
++   # The vendor RK3326 kernel faults in this AArch64 new-dynarec before the
++   # selected interpreter option can take effect. Keep the Pixel2 build on
++   # the portable cached and pure interpreters.
++   WITH_DYNAREC :=
+    CPUFLAGS += -mcpu=cortex-a53 -mtune=cortex-a53
+    GLES = 1
+-   COREFLAGS += -DOS_LINUX
++   COREFLAGS += -DNO_ASM -DOS_LINUX
+    ASFLAGS = -f elf64 -d ELF_TYPE

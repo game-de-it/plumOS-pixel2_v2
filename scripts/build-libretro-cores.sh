@@ -479,17 +479,23 @@ patch_core_source() {
 
   if [ "$id" = "mupen64plus_next" ]; then
     local powervr_buffer_patch="$patch_dir/mupen64plus-next-powervr-buffer-storage.patch"
+    local interpreter_patch="$patch_dir/mupen64plus-next-pixel2-interpreter.patch"
 
-    if [ ! -f "$powervr_buffer_patch" ]; then
-      printf '\n[plumOS] missing required Mupen64Plus-Next PowerVR buffer-storage patch\n' >> "$log"
-      return 1
-    fi
-    if ! patch --dry-run -d "$src" -p1 < "$powervr_buffer_patch" >/dev/null 2>> "$log"; then
-      printf '\n[plumOS] required Mupen64Plus-Next PowerVR buffer-storage patch does not apply\n' >> "$log"
-      return 1
-    fi
-    patch -d "$src" -p1 < "$powervr_buffer_patch" >> "$log" 2>&1
+    for required_patch in "$powervr_buffer_patch" "$interpreter_patch"; do
+      if [ ! -f "$required_patch" ]; then
+        printf '\n[plumOS] missing required Mupen64Plus-Next patch: %s\n' \
+          "$required_patch" >> "$log"
+        return 1
+      fi
+      if ! patch --dry-run -d "$src" -p1 < "$required_patch" >/dev/null 2>> "$log"; then
+        printf '\n[plumOS] required Mupen64Plus-Next patch does not apply: %s\n' \
+          "$required_patch" >> "$log"
+        return 1
+      fi
+      patch -d "$src" -p1 < "$required_patch" >> "$log" 2>&1
+    done
     printf '\n[plumOS] disabled broken persistent buffer storage on PowerVR for Mupen64Plus-Next\n' >> "$log"
+    printf '[plumOS] disabled Mupen64Plus-Next dynarec for the stock Pixel2 kernel\n' >> "$log"
   fi
 
   case "$id" in
