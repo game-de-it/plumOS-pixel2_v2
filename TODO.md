@@ -112,6 +112,7 @@
   - 2026-08-13: PCSX内蔵menuでevdevとSDL joystickが同じ`event2`を二重登録する状態を実機FDで確認。Pixel2のPCSXはraw evdevだけをcontroller入力元とする`002e250`へ修正し、全4 SAを並列build、署名Runtime `0.1.0-dev-002e250`を適用。health昇格、実機root checksum 3470件/失敗0。PCSX menuの十字/A決定/B戻るは物理再確認待ち。
   - 2026-08-13: `3234b0d`でPCSX menuの物理Function、十字、A決定、B戻るを実機合格。RA、PicoArch、DraStic、PPSSPP、OpenBORは引き続き個別物理確認が必要。
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
+  - 2026-08-14: WonderSwan `Puzzle Bobble.ws` (`mednafen_wswan`)でSELECTによる縦/横切替後の表示が180度逆さになることをDRM overlay planeのRGB565 captureで確認。現行は`video_rotation=3`。core要求rotationとPixel2 panel補正の合成は未修正。
 - [ ] `plumos_output`経由のaudio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
 - [ ] save/stateが再起動後も保持されることを実機確認する
 - [ ] enabled systemのBIOS/firmware inventoryを完備する
