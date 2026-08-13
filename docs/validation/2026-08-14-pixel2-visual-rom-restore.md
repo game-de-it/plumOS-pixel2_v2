@@ -85,3 +85,21 @@ The 14 enabled systems without visible content are the 13 systems for which the
 supplied set has no compatible sample plus Channel F, whose three mandatory
 BIOS files are absent. The restored 73-system set is now ready for operator-led
 screen, input, audio, menu, exit, and second-launch checks.
+
+## Additional PSP visual sample
+
+At the operator's request, `rom2/psp/Telegraph Crosswords.cso` was copied from
+the supplied ROM set to the existing Pixel2 user volume as
+`/mnt/plumos-user/roms/PSP/Telegraph Crosswords.cso`. The transfer used a
+temporary destination and was renamed only after host/device SHA-256 matched:
+
+```text
+size=8395260
+sha256=eb155f0f8812ac9fdde6b8a882d564c5d55bea2aded18f36d448446de51138a3
+```
+
+No existing ROM was removed. A targeted `psp` library refresh completed in 29
+ms with two visible entries and recorded the new CSO in
+`state/frontend/systems/psp.json`. The frontend was then restored as one
+process. The ROM remains device-side operator content and is not included in
+Git, the app-layer, or a release image.
