@@ -177,6 +177,10 @@ grep -q 'video_allow_rotate = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'aspect_ratio_index = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'drm_pixel2_core_aspect' \
+    "$ROOT_DIR/patches/retroarch/015-pixel2-drm-core-aspect.patch"
+grep -q 'aspect_ratio_idx == ASPECT_RATIO_CORE' \
+    "$ROOT_DIR/patches/retroarch/015-pixel2-drm-core-aspect.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \

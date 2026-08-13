@@ -1,0 +1,34 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+index 98ed759..13c6628 100644
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -1373,5 +1373,18 @@ static bool drm_set_shader(void *data,
+       enum rarch_shader_type type, const char *path) { return false; }
+ 
++static float drm_pixel2_core_aspect(float aspect,
++      unsigned aspect_ratio_idx, unsigned rotation)
++{
++   /* RetroArch converts core-provided aspect into final display coordinates
++    * using the configured video rotation. Pixel2's plain DRM path already
++    * performs that fixed panel rotation after it calculates the logical
++    * landscape viewport, so applying both conversions inverts dynamic core
++    * geometry (notably WonderSwan 224x144 -> 144x224). */
++   if (aspect_ratio_idx == ASPECT_RATIO_CORE && (rotation & 1) && aspect > 0.0f)
++      return 1.0f / aspect;
++   return aspect;
++}
++
+ static void drm_apply_state_changes(void *data)
+ {
+    struct drm_video *_drmvars = data;
+@@ -1410,6 +1423,10 @@ static void drm_set_aspect_ratio (void *data, unsigned aspect_ratio_idx)
+    /* Here we obtain the new aspect ratio. */
+    float new_aspect = aspectratio_lut[aspect_ratio_idx].value;
+ 
++   if (_drmvars)
++      new_aspect = drm_pixel2_core_aspect(new_aspect,
++            aspect_ratio_idx, _drmvars->rotation);
++
+    if (_drmvars && _drmvars->current_aspect != new_aspect)
+    {
+       _drmvars->current_aspect = new_aspect;
