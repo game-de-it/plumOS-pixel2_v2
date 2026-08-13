@@ -18,10 +18,10 @@ fast_forward_state=
 
 export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-$root/emulator/dri}"
 export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-$root/emulator/egl_vendor.d/50_mesa.json}"
-# A small set of data-engine cores (notably EasyRPG) share ICU and related
-# libraries with the frontend component.  Keep that component library root in
-# the official launch environment instead of relying on init's inherited path.
-export LD_LIBRARY_PATH="$root/emulator/lib:$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# Some cores (notably EasyRPG) have component-private shared libraries such as
+# ICU below lib/libretro.  Include every managed runtime library root instead
+# of relying on init's inherited path.
+export LD_LIBRARY_PATH="$root/lib/libretro:$root/emulator/lib:$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 if [ -r "$input_env" ]; then
     set -a
@@ -203,7 +203,7 @@ export XDG_CACHE_HOME="$root/state/retroarch/cache"
 if [ -z "${ALSA_CONFIG_PATH:-}" ] && [ -s "$alsa_config" ]; then
     export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$alsa_config}"
 fi
-export LD_LIBRARY_PATH="$root/emulator/lib:$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$root/lib/libretro:$root/emulator/lib:$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 $bb mkdir -p "$HOME" "$XDG_CACHE_HOME"
 printf 'retroarch=result-start system=%s core=%s rom=%s\n' \
     "$system_id" "${core##*/}" "${rom##*/}" >>"$root/logs/retroarch-launch.log"

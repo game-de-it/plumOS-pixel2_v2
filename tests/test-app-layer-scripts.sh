@@ -43,7 +43,7 @@ grep -q 'SYNTHETIC_LAUNCH_NAMES.*"cannonball": "cannonball.game"' \
     "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
 grep -q 'retroarch-launch.log' \
     "$ROOT_DIR/scripts/pixel2-device-launch-smoke.sh"
-grep -q 'root/emulator/lib:\$root/frontend/lib:\$root/lib' \
+grep -q 'root/lib/libretro:\$root/emulator/lib:\$root/frontend/lib:\$root/lib' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'f"_etc/{name}"' \
     "$ROOT_DIR/scripts/validate-romset-routes.py"
