@@ -749,9 +749,6 @@ EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<EOF
     {"id": "drastic", "status": "$DRASTIC_STATUS"},
 EOF
-cat >> "$COMPONENT_DIR/manifest.json" <<'EOF'
-    {"id": "yabasanshiro", "status": "pending-binary"},
-EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<EOF
     {"id": "openbor", "status": "$OPENBOR_STATUS"},
 EOF

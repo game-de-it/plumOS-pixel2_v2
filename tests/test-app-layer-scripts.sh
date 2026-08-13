@@ -34,6 +34,24 @@ grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:gambatte' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:pcsx_rearmed' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'picoarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+python3 - "$ROOT_DIR" <<'PY'
+import csv
+import json
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+systems = json.loads((root / "package/frontend-pixel2/systems.json").read_text())["systems"]
+saturn = next(item for item in systems if item["id"] == "saturn")
+assert saturn["enabled"] is False
+assert saturn["launch_profiles"] == []
+assert saturn["default_launch_profile"] == ""
+assert saturn["scraper"]["reason"] == "unsupported_performance_rk3326"
+recipes = (root / "docker/pixel2-tools/libretro-core-recipes.tsv").read_text().splitlines()
+ids = {line.split("|", 1)[0] for line in recipes if line and not line.startswith("#")}
+assert "beetle_saturn" not in ids
+assert "yabasanshiro" not in ids
+PY
 grep -q 'internal:system-settings' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
 grep -q 'internal:network-settings' \

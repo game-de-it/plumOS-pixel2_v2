@@ -27,7 +27,7 @@ if [ ! -f "$ROM_PATH" ] && [ ! -d "$ROM_PATH" ]; then
 fi
 
 case "$CORE_ID" in
-  flycast|flycast_xtreme|mupen64plus_next|parallel_n64|beetle_saturn|yabasanshiro)
+  flycast|flycast_xtreme|mupen64plus_next|parallel_n64)
     fail "$CORE_ID requires a renderer that is outside the Pixel2 PicoArch contract"
     ;;
 esac

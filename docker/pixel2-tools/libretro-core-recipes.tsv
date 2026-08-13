@@ -92,7 +92,6 @@ mba_mini|O|https://github.com/wonder199999/MBA.mini-libretro.git|705854e6be548c6
 mednafen_gba|O|https://github.com/libretro/beetle-gba-libretro.git|38182572571a48cb58057cde64b915237c4e2d58||Makefile|platform=unix
 mednafen_pce|O|https://github.com/libretro/beetle-pce-libretro.git|3e64232b1cc42a14dd1282339efc31f84c1a908a||Makefile|platform=unix
 mednafen_pcfx|O|https://github.com/libretro/beetle-pcfx-libretro.git|08632fcbc039f70dbd6da5810db9dcc304d7fbde||Makefile|platform=unix
-beetle_saturn|O|https://github.com/libretro/beetle-saturn-libretro.git|8d4fc28bdc41c76659292737f2ba12d46d3d565f||Makefile|platform=unix HAVE_OPENGL=0 LTO=0
 mednafen_supafaust|O|https://github.com/libretro/supafaust.git|75c658cce454e58ae04ea252f53a31c60d61548e||Makefile|platform=unix
 meteor|O|https://github.com/libretro/meteor-libretro.git|e533d300d0561564451bde55a2b73119c768453c|libretro|Makefile|platform=unix
 mrboom|O|https://github.com/libretro/mrboom-libretro.git|1bc0933b71051411404cdc092b14ade17efb2027||Makefile|platform=unix
@@ -125,6 +124,3 @@ vice_xvic|O|https://github.com/libretro/vice-libretro.git|5a18264beed0c498e5fcd7
 virtualjaguar|O|https://github.com/libretro/virtualjaguar-libretro.git|263c979be4ca757c43fb525bd6f0887998e57041||Makefile|platform=unix
 x1|O|https://github.com/libretro/xmil-libretro.git|4cb1e4eaab37321904144d1f1a23b2830268e8df|libretro|Makefile.libretro|platform=unix
 xrick|O|https://github.com/libretro/xrick-libretro.git|7ee449e12062ea8d7ca0c945c3a4b63ca0c04268||Makefile|platform=unix
-# YabaSanshiro 2.10.4, selected for its established performance characteristics.
-# The build script selects Clang because this release's AArch64 Makefile documents GCC crashes.
-yabasanshiro|O|https://github.com/libretro/yabause.git|8406a5c11d7b6186a44c7fe48f493e6de5f8cb18|yabause/src/libretro|Makefile|platform=arm64 FORCE_GLES=1

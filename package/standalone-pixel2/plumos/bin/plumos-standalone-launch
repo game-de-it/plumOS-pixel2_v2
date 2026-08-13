@@ -128,14 +128,6 @@ case "$id" in
     workdir="${EMU_ROOT}/mupen64plus"
     set -- --fullscreen --resolution 640x480 "$@"
     ;;
-  yabasanshiro)
-    exe="${EMU_ROOT}/yabasanshiro/bin/yabasanshiro"
-    workdir="${EMU_ROOT}/yabasanshiro"
-    rom=${1:-}
-    [ -n "$rom" ] || fail "missing Saturn content path" 2
-    shift
-    set -- --iso "$rom" --resolution_mode 0 --keep_aspect_rate "$@"
-    ;;
   drastic)
     exe="${EMU_ROOT}/drastic/bin/drastic"
     workdir="${EMU_ROOT}/drastic"

@@ -299,8 +299,7 @@ jq -s \
                .id == "flycast_xtreme" or
                .id == "km_duckswanstation_xtreme_amped" or
                .id == "mupen64plus_next" or
-               .id == "parallel_n64" or
-               .id == "yabasanshiro"
+               .id == "parallel_n64"
             then "hardware-gles"
             else "software"
             end

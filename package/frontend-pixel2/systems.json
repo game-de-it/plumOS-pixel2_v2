@@ -1180,7 +1180,7 @@
       "short_name": "SAT",
       "sort_order": 180,
       "hardware": "console",
-      "enabled": true,
+      "enabled": false,
       "pinned": false,
       "directory_aliases": [
         {
@@ -1210,16 +1210,12 @@
           }
         ]
       },
-      "launch_profiles": [
-        "retroarch:yabasanshiro",
-        "retroarch:beetle_saturn",
-        "standalone:yabasanshiro"
-      ],
-      "default_launch_profile": "retroarch:yabasanshiro",
+      "launch_profiles": [],
+      "default_launch_profile": "",
       "default_cpu_policy": "ondemand",
       "scraper": {
         "enabled": false,
-        "reason": "cd_media_crc_expensive"
+        "reason": "unsupported_performance_rk3326"
       }
     },
     {

@@ -15,7 +15,7 @@ userspace and frontend are not used.
 
 - plumOS `SYSTEM` SquashFS, init, ADB, USB Wi-Fi, SSH, and persistent logs;
 - Pixel2 frontend, START menu, ROM scanner, and physical input contract;
-- RetroArch with 114 libretro cores and PicoArch;
+- RetroArch with 112 Pixel2-supported libretro cores and PicoArch;
 - OpenBOR, DraStic, and PPSSPP standalone runtimes;
 - bundled Python 3.11, Pyxel, and pygame runtime;
 - plumOS audio routing for RK817/USB plus global volume and brightness;

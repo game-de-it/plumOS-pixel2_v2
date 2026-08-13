@@ -14,7 +14,7 @@ stockの通常userland、frontend、service、設定、テーマは実行時に�
 
 - plumOS `SYSTEM` SquashFS、init、ADB、USB Wi-Fi、SSH、persistent logs;
 - Pixel2 frontend、START menu、ROM scanner、physical input contract;
-- RetroArchと114 libretro core、PicoArch;
+- RetroArchとPixel2対応112 libretro core、PicoArch;
 - OpenBOR、DraStic、PPSSPP standalone;
 - Python 3.11、Pyxel、pygame runtime;
 - RK817/USB向けplumOS audio routing、音量・輝度service;
