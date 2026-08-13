@@ -44,7 +44,6 @@ PROFILE_SAMPLE_NAMES = {
     "retroarch:fmsx": "XGR1Trial.rom",
     "retroarch:km_duckswanstation_xtreme_amped": "chroQW.img",
     "retroarch:parallel_n64": "SUPERMARIO64.Z64",
-    "retroarch:mupen64plus_next": "SUPERMARIO64.Z64",
     "pyxel:pixel2": "LastEmulator.pyxapp",
 }
 

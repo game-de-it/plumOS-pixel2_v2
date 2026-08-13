@@ -1366,7 +1366,7 @@ static int picoarch_core_id_allowed(const char *core_id) {
    */
   if (strcmp(core_id, "flycast") == 0 || strcmp(core_id, "flycast_xtreme") == 0 ||
       strcmp(core_id, "km_duckswanstation_xtreme_amped") == 0 ||
-      strcmp(core_id, "mupen64plus_next") == 0 || strcmp(core_id, "parallel_n64") == 0 ||
+      strcmp(core_id, "parallel_n64") == 0 ||
       strcmp(core_id, "yabasanshiro") == 0) {
     return 0;
   }

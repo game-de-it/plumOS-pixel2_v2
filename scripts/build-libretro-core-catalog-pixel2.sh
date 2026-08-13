@@ -298,7 +298,6 @@ jq -s \
             if .id == "flycast" or
                .id == "flycast_xtreme" or
                .id == "km_duckswanstation_xtreme_amped" or
-               .id == "mupen64plus_next" or
                .id == "parallel_n64"
             then "hardware-gles"
             else "software"

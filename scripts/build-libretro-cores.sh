@@ -22,7 +22,7 @@ PLUMOS_CORE_FILTER="${PLUMOS_CORE_FILTER:-all}"
 FAIL_ON_CORE_ERROR="${FAIL_ON_CORE_ERROR:-1}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
 BUILD_JOB_FALLBACKS="${BUILD_JOB_FALLBACKS:-1}"
-LIBRETRO_SERIAL_CORES="${LIBRETRO_SERIAL_CORES:-nestopia quicknes gambatte gpsp picodrive mednafen_pce_fast mednafen_supergrafx mednafen_ngp mednafen_lynx handy prosystem gw pokemini mednafen_vb dinothawr mrboom tgbdual flycast flycast_xtreme mupen64plus_next parallel_n64}"
+LIBRETRO_SERIAL_CORES="${LIBRETRO_SERIAL_CORES:-nestopia quicknes gambatte gpsp picodrive mednafen_pce_fast mednafen_supergrafx mednafen_ngp mednafen_lynx handy prosystem gw pokemini mednafen_vb dinothawr mrboom tgbdual flycast flycast_xtreme parallel_n64}"
 COMMON_CFLAGS="${COMMON_CFLAGS:--O3 -pipe -DNDEBUG -fPIC -fomit-frame-pointer}"
 COMMON_CXXFLAGS="${COMMON_CXXFLAGS:-$COMMON_CFLAGS}"
 COMMON_LDFLAGS="${COMMON_LDFLAGS:-}"
@@ -477,27 +477,6 @@ patch_core_source() {
     printf '\n[plumOS] patched NeoCD UniBIOS 3.3 to use the Pixel2-compatible top-loader drive path\n' >> "$log"
   fi
 
-  if [ "$id" = "mupen64plus_next" ]; then
-    local powervr_buffer_patch="$patch_dir/mupen64plus-next-powervr-buffer-storage.patch"
-    local interpreter_patch="$patch_dir/mupen64plus-next-pixel2-interpreter.patch"
-
-    for required_patch in "$powervr_buffer_patch" "$interpreter_patch"; do
-      if [ ! -f "$required_patch" ]; then
-        printf '\n[plumOS] missing required Mupen64Plus-Next patch: %s\n' \
-          "$required_patch" >> "$log"
-        return 1
-      fi
-      if ! patch --dry-run -d "$src" -p1 < "$required_patch" >/dev/null 2>> "$log"; then
-        printf '\n[plumOS] required Mupen64Plus-Next patch does not apply: %s\n' \
-          "$required_patch" >> "$log"
-        return 1
-      fi
-      patch -d "$src" -p1 < "$required_patch" >> "$log" 2>&1
-    done
-    printf '\n[plumOS] disabled broken persistent buffer storage on PowerVR for Mupen64Plus-Next\n' >> "$log"
-    printf '[plumOS] disabled Mupen64Plus-Next dynarec for the stock Pixel2 kernel\n' >> "$log"
-  fi
-
   case "$id" in
     mgba)
       if [ -f "$src/src/core/CMakeLists.txt" ]; then
@@ -633,7 +612,7 @@ $(find "$src" -maxdepth 4 -type f \( \
 EOF_PARALLEL_N64_LTO
       printf '\n[plumOS] patched LTO-sensitive Makefiles for native Pixel2 feedback builds\n' >> "$log"
       ;;
-    mednafen_ngp|beetle_saturn|flycast|flycast_xtreme|mupen64plus_next|yabasanshiro)
+    mednafen_ngp|beetle_saturn|flycast|flycast_xtreme|yabasanshiro)
       while IFS= read -r lua_makefile; do
         [ -f "$lua_makefile" ] || continue
         sed -i -E \
@@ -1367,7 +1346,7 @@ while IFS= read -r core_file; do
   ref="$(printf '%s' "$row" | awk -F'|' '{ print $4 }')"
   rendering="software"
   case "$id" in
-    flycast|flycast_xtreme|km_duckswanstation_xtreme_amped|mupen64plus_next|parallel_n64|yabasanshiro)
+    flycast|flycast_xtreme|km_duckswanstation_xtreme_amped|parallel_n64|yabasanshiro)
       rendering="hardware-gles"
       ;;
   esac

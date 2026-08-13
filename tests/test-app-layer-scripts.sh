@@ -169,8 +169,6 @@ grep -q 'video_threaded = "true"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'video_refresh_rate = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
-grep -q 'mupen64plus-cpucore cached_interpreter' \
-    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'core_options_path = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'vrr_runloop_enable = "%s"' \
@@ -212,10 +210,8 @@ grep -q 'rk817-dev-off' \
 grep -q 'i2cset -f -y 0 0x20 0xf4' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'docker/pixel2-tools/libretro-core-recipes.tsv' "$ROOT_DIR/scripts/build-libretro-cores.sh"
-grep -q 'mupen64plus-next-pixel2-interpreter.patch' \
-    "$ROOT_DIR/scripts/build-libretro-cores.sh"
-grep -q 'WITH_DYNAREC :=' \
-    "$ROOT_DIR/docker/pixel2-tools/patches/mupen64plus-next-pixel2-interpreter.patch"
+! grep -q '^mupen64plus_next|' \
+    "$ROOT_DIR/docker/pixel2-tools/libretro-core-recipes.tsv"
 grep -q 'quicknes|A|https://github.com/libretro/QuickNES_Core.git|058d6651' \
     "$ROOT_DIR/docker/pixel2-tools/libretro-core-recipes.tsv"
 grep -q 'pcsx_rearmed|A|https://github.com/libretro/pcsx_rearmed.git|d26eaee5' \

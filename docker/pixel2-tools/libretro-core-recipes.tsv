@@ -95,7 +95,6 @@ mednafen_pcfx|O|https://github.com/libretro/beetle-pcfx-libretro.git|08632fcbc03
 mednafen_supafaust|O|https://github.com/libretro/supafaust.git|75c658cce454e58ae04ea252f53a31c60d61548e||Makefile|platform=unix
 meteor|O|https://github.com/libretro/meteor-libretro.git|e533d300d0561564451bde55a2b73119c768453c|libretro|Makefile|platform=unix
 mrboom|O|https://github.com/libretro/mrboom-libretro.git|1bc0933b71051411404cdc092b14ade17efb2027||Makefile|platform=unix
-mupen64plus_next|O|https://github.com/libretro/mupen64plus-libretro-nx.git|98c1b0d877542b01314b3b04272282ba223b65b3||Makefile|platform=arm64_cortex_a53_gles2 HAVE_LTCG=0
 mu|O|https://github.com/libretro/Mu.git|1361da04014d77b8bec13e050a71bf7bf8ce5543|libretroBuildSystem|Makefile|platform=unix
 nekop2|O|https://github.com/libretro/libretro-meowPC98.git|cd389b3490d5048873c40edd949a1b0631e0606d|libretro|Makefile.libretro|platform=unix
 numero|O|https://github.com/nbarkhina/numero.git|19354c9bfe06a3e4fd936961ee8414b040a3d1c6||Makefile|platform=unix

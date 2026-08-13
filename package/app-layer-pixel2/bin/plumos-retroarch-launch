@@ -88,24 +88,6 @@ if [ ! -s "$alsa_config" ] && [ -s "$alsa_factory" ]; then
     $bb mv "$alsa_config.next" "$alsa_config"
 fi
 
-# Mupen64Plus-Next's aarch64 dynarec faults on the stock Pixel2 kernel.  Keep
-# the route available with its cached interpreter, while preserving any value
-# the user has explicitly selected in the shared RetroArch core-options file.
-ensure_core_option() {
-    option_key=$1
-    option_value=$2
-    if ! $bb grep -q "^${option_key}[[:space:]]*=" "$core_options" 2>/dev/null; then
-        printf '%s = "%s"\n' "$option_key" "$option_value" >>"$core_options"
-    fi
-}
-case "${core##*/}" in
-    mupen64plus_next_libretro.so)
-        ensure_core_option mupen64plus-cpucore cached_interpreter
-        ensure_core_option mupen64plus-rdp-plugin gliden64
-        ensure_core_option mupen64plus-rsp-plugin hle
-        ensure_core_option mupen64plus-ThreadedRenderer False
-        ;;
-esac
 if [ -x "$root/bin/plumos-ensure-udev-input-db" ]; then
     "$root/bin/plumos-ensure-udev-input-db" >>"$root/logs/retroarch-launch.log" 2>&1 || true
 fi
