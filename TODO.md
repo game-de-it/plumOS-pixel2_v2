@@ -9,7 +9,7 @@
 ## Implementation audit and release blockers
 
 - [x] build target、FE導線、runtime helper、Apps、standalone、storage/update、release準備を横断監査する
-  - 2026-08-13: [実装リスト](docs/developer/implementation-status.md)を更新。SaturnをRK3326性能要件で非対応化し、97 system中87 enabled、111 libretro core、standalone 4 built / 4 pendingを現行baselineとする。
+  - 2026-08-13: [実装リスト](docs/developer/implementation-status.md)を更新。SaturnをRK3326性能要件で非対応化し、97 system中87 enabled、109 libretro core、standalone 4 built / 4 pendingを現行baselineとする。
 - [x] FE catalogと生成app-layerの不整合を検出する自動監査を追加する
   - `./scripts/docker-build.sh audit`は開発中のreport、`audit --release-gate`は公開済み未実装があれば失敗する。`release-image`へrelease gateを統合。
 - [ ] P0 user surface blockerを0件にする
@@ -72,7 +72,7 @@
 - [x] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
   - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
 - [x] canonical all-core libretro buildを完走させる
-  - 2026-08-13: Saturn 2 coreと実機で全構成segfaultしたMupen64Plus-Nextを対象外にした現行111 coreを、並列catalog wrapper `./scripts/docker-build.sh core-catalog --filter all --concurrency 4`で再生成・検証する。
+  - 2026-08-13: Saturn 2 core、実機で全構成segfaultしたMupen64Plus-Next、互換ROM revisionで起動しなかったCPS1/CPS2専用FBA2012重複coreを対象外にし、現行109 coreを並列catalog wrapper `./scripts/docker-build.sh core-catalog --filter all --concurrency 4`で再生成。109成功・0失敗を確認。
 - [x] PicoArch componentをPixel2 build/app-layerへ統合する
   - 2026-08-12: `./scripts/docker-build.sh picoarch` でPixel2 PicoArch/SDL12 compatをbuildし、component manifest/checksumを生成。
 - [x] standalone launcher componentをPixel2 build/app-layerへ統合する
@@ -200,7 +200,10 @@
 - [ ] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
   - 2026-08-12: PPSSPP統合後のhost route validationは代表ROMがある29 system中29 routeが`ok`、pending binaryは0。実機での全system起動・終了は未実施。
   - 2026-08-13: Pyxel統合後のhost route validationは代表ROMがある30 system中30 routeが`ok`、pending binaryは0。Pyxelを含む全systemの実機起動・終了は未実施。
-  - 2026-08-13: Saturn廃止後は87 enabled、111 libretro core、standalone 4 built / 4 pending、代表ROM29 system。ROMがある全profileの自動実機起動smokeを完走し、操作・表示・音声は別途物理acceptanceする。
+  - 2026-08-13: Saturn廃止後は87 enabled、109 libretro core、standalone 4 built / 4 pending。ROM setのトップレベル、`_etc`、共有ATARI/MAME directoryを探索し、互換contentがある74 system・165 profileを抽出した。
   - [x] ROMセットに代表contentがある29 system・97 profileを実機で3秒起動し、97/97 early-start passを記録する
-  - [ ] ROMセットにmatching contentが無い58 enabled systemへ代表contentを用意し、実機起動を記録する
+  - [x] archival/shared/directory-backed contentを追加検出し、現行routeで73 system・164 profileのearly-start passを記録する
+  - [ ] Channel Fの必須BIOS `sl31253.bin`、`sl31254.bin`、`sl90025.bin`を正規に用意し、残る1 profileを起動確認する
+  - [ ] ROMセットにmatching contentが無い13 enabled systemへ代表contentを用意し、実機起動を記録する
+    - `ngp`, `wonderswancolor`, `x68000`, `tic80`, `vectrex`, `sg1000`, `sharpx1`, `wolf3d`, `zx81`, `arduboy`, `megaduck`, `puzzlescript`, `superbroswar`
 - [ ] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する

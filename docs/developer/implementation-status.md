@@ -30,7 +30,7 @@
 | --- | ---: |
 | frontend systems | 97 total / 87 enabled / 10 disabled |
 | required app-layer components | 7 / 7 present |
-| libretro cores | 111 built |
+| libretro cores | 109 built |
 | standalone emulator | 4 built / 4 pending |
 | visible Apps entries | 2 |
 | enabled systems with pending content policy | 33 |
@@ -44,7 +44,7 @@ Device verifiedを意味しない。
 - stock Rockchip prefix、stock kernel/DTB/initramfs substrate、plumOS `SYSTEM` handoff;
 - plumOS init、ADB bring-up、USB Wi-Fi、Dropbear SSH、persistent logs;
 - frontend、text UI、ROM scanner、START menu、Pixel2 input contract;
-- RetroArch 1.22.2と111 libretro core catalog;
+- RetroArch 1.22.2と109 libretro core catalog;
 - PicoArchと共有libretro core route;
 - OpenBOR、DraStic、PPSSPP standalone;
 - PCSX-ReARMed standalone（host build済み、実機acceptance待ち）;
@@ -117,8 +117,11 @@ mrboom、palm、rickdangerousである。SaturnはRK3326性能要件により明
 `ports`はPortMaster実装に依存する。他はcontentless、
 data layout、frontend policyを決めたうえで再評価する。
 
-ROM set route testは代表ROMが存在する29 systemのhost routeを解決しているだけで、
-全87 systemの実機動作保証ではない。各systemで以下を記録する。
+ROM setをトップレベル、`_etc`、共有ATARI/MAME directoryまで探索した結果、
+74 system・165 profileに互換contentを発見した。実機early-start smokeは
+164 profileが合格し、Channel Fの1 profileだけがROM setに無い必須BIOS 3本で
+blockedとなった。残る13 systemには互換contentが無いため、全87 systemの
+実機動作保証ではない。各systemで以下を記録する。
 
 - content/BIOS layoutと代表ROM hash;
 - launch profile、core/emulator build revision;
@@ -149,7 +152,8 @@ acceptanceする。
 - clean SD cold boot、LCD、全physical input、audio、volume、brightness;
 - FE -> emulator/app -> FEでforeground ownerが常に1つであること;
 - OpenBOR、DraStic、PPSSPP、Pyxelの表示、入力、音声、終了、state保持;
-- representative ROM 29 systemと、ROMが準備できる残りsystem;
+- supplied ROMでearly-start合格済みの73 systemについて、表示・操作・音声・終了を物理確認;
+- compatible contentが無い13 systemと、必須BIOS不足のChannel Fを補完して起動確認;
 - FE menuからのactual shutdownと、充電中reboot;
 - ADB再接続、USB Wi-Fi dongle、SSH public-key login;
 - save/stateとactive settingsがupdate/deploy後も保持されること;
@@ -171,7 +175,7 @@ GitHub公開前に、実装とは別に次を整える。
 1. P0の公開済み未実装surfaceをすべて実装し、audit blockerを0にする。
 2. Scraping、File Manager、Music Player、RetroArch menu、PortMasterをcomponent化する。
 3. 4 standalone pending binaryを順にbuildし、default/alternate routeを実機検証する。
-4. 33 content policyと10 disabled systemをROM setに基づき解決する。
+4. early-start合格済み73 systemの物理acceptanceを行い、13 content gapとChannel F BIOS gapを解決する。
 5. 実装済みSystem A/B・signed updaterを維持しつつ、first-boot provisioningを完成する。
 6. clean imageを複製SDへ書き、全physical-device acceptanceを完走する。
 7. repository/release gateを通し、配布物を再取得して最終checksumを確認する。
