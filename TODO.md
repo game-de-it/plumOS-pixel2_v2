@@ -55,6 +55,7 @@
   - [x] Update PortMaster
   - [x] Ports systemからPortMaster install済みscriptを起動する導線
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
+  - 2026-08-15: 実機backend監査でScraping plan、File Manager、Music Player、RetroArch RGUI、Pyxel Setup、PortMasterを合格。RetroArch Appのudev準備漏れ、FE stop/launch helper欠落、zombie誤認を`85fffad`で修正。Update PortMasterのnetwork installと7 AppsのFE物理選択は継続。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する
@@ -111,6 +112,7 @@
 - [x] Pixel2 live launcherで`PLUMOS_ROM_ROOT=/roms`からNESがRetroArchへ到達することをADB検証する
 - [x] Pixel2 RetroArchが`pixel2_joypad`をport 1へautoconfigすることをADB検証する
 - [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
+  - 2026-08-15: `plumos-frontend-stop/launch`を追加し、RetroArch RGUI起動前の解放、終了後のFE/hardware-key daemon再取得をADBで確認。物理FEからの全emulator終了acceptanceは継続。
 - [ ] RA/PicoArch/SAの物理Function menuを実機確認する
   - 2026-08-13: RA、PicoArch、PCSX-ReARMed、DraStic、PPSSPP、OpenBORのFunction menu契約を実装し、source contract testを追加。`e9c8f38`から全対象をbuildし、署名Runtimeを実機へ適用。health昇格、対象22 SHA一致、root checksum 3470件合格。各runtimeの物理menu/exit確認が必要。
   - 2026-08-13: PCSX内蔵menuでevdevとSDL joystickが同じ`event2`を二重登録する状態を実機FDで確認。Pixel2のPCSXはraw evdevだけをcontroller入力元とする`002e250`へ修正し、全4 SAを並列build、署名Runtime `0.1.0-dev-002e250`を適用。health昇格、実機root checksum 3470件/失敗0。PCSX menuの十字/A決定/B戻るは物理再確認待ち。
@@ -154,6 +156,7 @@
 - [x] FE System Update画面とsafe reboot flowを統合する
   - 2026-08-13: `tests/test-pixel2-update.sh`とARM64 System chroot検証は合格。公開鍵だけをSystemへ同梱し秘密鍵混入gateを追加。ADBからrequestしたsigned Runtime/Systemの実機成功経路は合格。FEからのrequest、進捗/失敗表示、実機failure rollbackはacceptanceとして継続する。
   - 2026-08-14: updater側のframebuffer書込みは存在したが、Pixel2 Systemがprogress rawを未収録だった。`89fa6a4`でverify/runtime/system/finalize/rollback/errorの6画面を生成・収録し、欠落をSystem verifierで失敗させる。修正版SystemでのLCD目視は継続。
+  - 2026-08-15: wildcard-source旧packageのmtime自動選択を禁止し、明示update chainだけを自動対象にした。署名metadata先読みで約900 MiBの旧payload全走査も廃止し、実機no-candidateは30秒超から3秒へ短縮。System `6a9fdfe`をA/B適用しslot Aでhealth昇格。
 - [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
   - 2026-08-14: 現行64 GB実機SDで最終境界（p2=8192 MiB、p3=残り49.7 GiB）、既存user data復元、cold boot mountには合格。この時点ではrelease seed側が未実装だったため項目を継続した。
   - 2026-08-14: release seed provisionerを実装し、16 GB sparse-cardで最終MBR、ext4 8 GiB、残容量FAT32、directory seed、中断resume、idempotency、既存p3保護までhost合格。新規compact imageからの物理Pixel2初回bootのみ継続。
@@ -195,6 +198,7 @@
 - [x] 参照frontendをPixel2専用としてvendor化し、他機種・旧distribution名称を除去する
 - [x] FE全機能を共有plumOS contractと照合し、欠落をrelease blockerにする
   - 2026-08-14: MFと同じ89 setting ID、START 7項目、Apps 12定義/7 visible、NW Service 5項目を機械監査。欠落AppsをP1扱いしていた監査と、Pixel2だけserviceを隠す分岐を廃止した。詳細は`docs/developer/frontend-feature-audit.md`。
+  - 2026-08-15: [実機functional audit](docs/validation/2026-08-15-pixel2-frontend-functional-audit.md)で主要backendを再検証。Runtime `9da9bc7`、System `6a9fdfe`、FE/ADB、Runtime/System health、Network service stop後のcleanupに合格。物理menu acceptanceは継続。
 - [x] Pixel2 framebufferとgpio-key inputを自動選択してboot時にfrontendを起動する
 - [x] frontendとADBの診断logをSTATE partitionへ保存する
 - [x] 実機LCDでfrontend描画と90度回転を確認する
