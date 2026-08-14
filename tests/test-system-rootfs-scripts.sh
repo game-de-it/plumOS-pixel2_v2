@@ -106,6 +106,8 @@ grep -q 'build-pixel2-update-package.py' "$ROOT_DIR/scripts/docker-build.sh"
 grep -q 'ROOTFS_DIR/dev/pts' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'ROOTFS_DIR/mnt/plumos' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'mnt/plumos-user' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
+grep -q 'user-data=first-boot-provisioner' \
+    "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'ROOTFS_DIR/flash' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'usr/lib/systemd/systemd' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
 grep -q 'is_mounted /storage' "$ROOT_DIR/rootfs/pixel2/sbin/init"

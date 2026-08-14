@@ -84,6 +84,8 @@ grep -q 'show_progress verify' \
     "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
 grep -q 'show_progress start' \
     "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
+grep -q 'is_mounted /mnt/plumos-user' "$tmp/rootfs/sbin/init"
+grep -q 'user-data=first-boot-provisioner' "$tmp/rootfs/sbin/init"
 grep -q '^plumos-pixel2-v1$' "$tmp/rootfs/etc/plumos-system-abi"
 grep -q '^DEVICE_ID = "pixel2"$' "$tmp/rootfs/usr/sbin/plumos-system-update"
 grep -q '"runtime_abi": "plumos-pixel2-app-layer-v1"' \

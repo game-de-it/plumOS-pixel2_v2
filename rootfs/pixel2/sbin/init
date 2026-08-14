@@ -100,7 +100,9 @@ if [ -x "$provisioner" ]; then
             ;;
     esac
 fi
-if ! mount_partition /mnt/plumos-user PLUMOS_USER /dev/mmcblk0p3 rw 2>/dev/null; then
+if is_mounted /mnt/plumos-user; then
+    printf 'plumos-init=mount-source user-data=first-boot-provisioner\n'
+elif ! mount_partition /mnt/plumos-user PLUMOS_USER /dev/mmcblk0p3 rw 2>/dev/null; then
     if mount_partition /mnt/plumos-user PLUMOS_ROMS /dev/mmcblk0p3 rw 2>/dev/null; then
         printf 'plumos-init=warn mount=user-data legacy-label=PLUMOS_ROMS\n'
     else
