@@ -80,8 +80,29 @@ SquashFSの双方と一致する。Runtimeは既知のdevice baseを推測しな
 
 ## Hardware acceptance pending
 
-検証時点でMacからADB deviceと外付けSDのどちらも見えていないため、packageは実機へ
-未適用である。次はSystem、Runtimeの順で適用し、以下を実機確認する。
+初回のhost検証時点ではMacからADB deviceと外付けSDのどちらも見えていなかった。
+その後、同日中に物理SD `/dev/disk4`を接続し、System recoveryを実施した。
+
+### Offline System recovery
+
+- SD layout: 512 MiB `PLUMOS_BOOT`、8 GiB ext4 Runtime、残容量`PLUMOS_USER`
+- installed generation before recovery: dispatcher/A/Bすべて`d56bf29`
+- macOSのraw-device policyが管理者権限の`debugfs`も拒否したため、ext4へ通常updaterの
+  `request.json`を登録する方法は使用できなかった。
+- 旧dispatcher/A/B/metadataを
+  `/updates/offline-system-backup-d56bf29-20260814-2148`へ退避し、既存
+  `checksums.sha256`の7/7 entryに合格した。
+- 新dispatcher/A/B/metadataを一時名でFAT32へ書き、readback SHA一致後に確定名へ
+  切り替えた。最終boot payloadは新`checksums.sha256`の7/7 entryに合格した。
+- stock `Image` SHA-256は
+  `853eb041f1042a5f54ab66143cc8babb3942936f5c5209bc0c05d439ec3bd466`、DTBは
+  `a7a438f705f994a9f333b2f334a803d47bc00cae6ed4556d51c730604452757a`のまま保持した。
+- `/plumos-enable-adb` recovery markerとSystem/Runtime packageを`PLUMOS_USER`へ
+  merge-only配置した。ROM、BIOS、設定、既存user dataは削除していない。
+
+System A/Bは`0.1.0-dev-67c25aa`へ更新済みである。Runtimeは端末側のtransactional
+updaterを使うため未適用であり、System boot後にADBから明示requestする。続いて以下を
+実機確認する。
 
 - cold bootでADBが自動列挙され、shellへ接続できる。
 - NW Serviceに5項目、Appsに7項目、STARTに7項目が表示される。
