@@ -77,20 +77,18 @@ the native portrait panel into the logical `640x480` landscape surface.
 WonderSwan and WonderSwan Color are the exception to frontend-managed content
 rotation. Beetle WonderSwan disables its internal rotation when
 `RETRO_ENVIRONMENT_SET_ROTATION` succeeds, but Pixel2's DRM rotation also owns
-the fixed native-panel correction. Their launch profiles therefore append
-`video_allow_rotate = "false"`: the core rotates SELECT-switched horizontal or
-vertical content first, and the Pixel2 DRM presenter applies its unchanged CCW
-panel correction last. This follows the existing plumOS A30 WonderSwan
-contract without importing any A30 runtime identity. These two profiles also
-use `aspect_ratio_index = "22"` (core provided), instead of the global Pixel2
-4:3 policy, because the WonderSwan display is 224x144 (14:9) and its geometry
-changes with the SELECT-controlled orientation. RetroArch folds the fixed
-odd Pixel2 panel rotation into its core-aspect lookup. That is correct for a
-driver that rotates the final display coordinates, but the Pixel2 plain DRM
-presenter rotates after calculating the logical viewport. The Pixel2 DRM
-patch therefore cancels that one aspect inversion only for
-`ASPECT_RATIO_CORE`; fixed-ratio systems are unchanged. This preserves both
-the initial 224x144 layout and the SELECT-switched 144x224 layout.
+the fixed native-panel correction. Their launch profiles therefore use
+`video_rotation = "0"`, `video_allow_rotate = "false"`, and
+`PLUMOS_DRM_PANEL_ROTATION=3`. RetroArch calculates an unrotated logical
+viewport, Beetle WonderSwan performs the SELECT-controlled software rotation,
+and the DRM presenter applies only the fixed Pixel2 panel correction last.
+Rejected core rotation requests are not retained in RetroArch's frontend
+rotation state; otherwise the already-rotated 144x224 frame is inverted to
+14:9 a second time. This follows the proven plumOS portrait-panel separation
+without importing another device's runtime identity. These two profiles use
+`aspect_ratio_index = "22"` (core provided), instead of the global Pixel2 4:3
+policy, preserving both the initial 224x144 (14:9) layout and the
+SELECT-switched 144x224 (9:14) layout.
 
 RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the
 D-pad as `ABS_X`/`ABS_Y` axes and the remaining controls as evdev keys on

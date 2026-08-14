@@ -166,3 +166,55 @@ output/live/2026-08-14-wonderswan-post-select-aspect/
 This capture is specifically the post-SELECT state; an initial boot frame is
 not used as evidence for the repair. Final acceptance of the physical LCD
 appearance remains the operator's visual gate.
+
+## Final panel/content separation and physical acceptance
+
+The numerical `f7bd277` result above remained visually wrong. The core sends
+`SET_GEOMETRY` before `SET_ROTATION`, while RetroArch also folded Pixel2's fixed
+panel rotation into the core aspect calculation. Repeated aspect cancellation
+and frontend-managed content rotation could make the plane dimensions look
+correct while stretching the pixels inside it.
+
+Commit `5c99bd9` replaces that path with the portrait-panel separation used by
+the proven plumOS design:
+
+```text
+video_rotation = "0"
+video_allow_rotate = "false"
+aspect_ratio_index = "22"
+PLUMOS_DRM_PANEL_ROTATION=3
+```
+
+Beetle WonderSwan now owns only its software content rotation. A rejected
+`SET_ROTATION` is cleared from RetroArch's frontend rotation state, and the DRM
+presenter owns only the final Pixel2 panel correction. After physical SELECT,
+the core log and active overlay were:
+
+```text
+SET_GEOMETRY: 144x224, Aspect: 0.643
+plane=81 width=480 height=309 format=RG16 pitch=960
+physical_view=309x480
+```
+
+The decoded physical-direction capture is retained outside Git at:
+
+```text
+output/live/2026-08-14-wonderswan-final-acceptance/
+  wswan-final.display.png
+```
+
+The operator accepted both direction and aspect on the physical LCD as
+"perfect". The clean commit was rebuilt and installed as a signed Runtime:
+
+```text
+package=plumos-pixel2-runtime-0.1.0-dev-5c99bd9.tar.gz
+sha256=2b1ef22a77b599015003e52493a78e7dbd5d61d3897ffbd56f478ac3884364dd
+source_version=0.1.0-dev-f7bd277
+version=0.1.0-dev-5c99bd9
+payload_files=11
+result=runtime_healthy
+runtime_verify=3490/3490
+```
+
+The deployed launcher, RetroArch binary, root/component manifests, and
+checksum files matched the clean host app-layer by SHA-256 after reboot.
