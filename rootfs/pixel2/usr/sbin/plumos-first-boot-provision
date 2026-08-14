@@ -14,7 +14,7 @@ SFDISK=${PLUMOS_PROVISION_SFDISK:-/usr/sbin/sfdisk}
 PARTX=${PLUMOS_PROVISION_PARTX:-/usr/bin/partx}
 RESIZE2FS=${PLUMOS_PROVISION_RESIZE2FS:-/usr/sbin/resize2fs}
 MKFS_FAT=${PLUMOS_PROVISION_MKFS_FAT:-/usr/sbin/mkfs.fat}
-BLKID=${PLUMOS_PROVISION_BLKID:-/bin/blkid}
+BLKID=${PLUMOS_PROVISION_BLKID:-/usr/sbin/blkid}
 MOUNT=${PLUMOS_PROVISION_MOUNT:-/bin/mount}
 MMD=${PLUMOS_PROVISION_MMD:-mmd}
 MCOPY=${PLUMOS_PROVISION_MCOPY:-mcopy}
@@ -118,7 +118,27 @@ partition_node_exists() {
 }
 
 blkid_value() {
-    "$BLKID" -s "$1" -o value "$2" 2>/dev/null || true
+    key=$1
+    device=$2
+    value=$("$BLKID" -s "$key" -o value "$device" 2>/dev/null || true)
+    if [ -n "$value" ]; then
+        printf '%s\n' "$value"
+        return 0
+    fi
+
+    # Do not let a missing or incomplete blkid turn a valid provisioner-owned
+    # FAT32 volume into an apparently blank device. FAT32 keeps its type and
+    # volume label in fixed boot-sector fields, which BusyBox dd can read even
+    # in the minimal recovery System.
+    fat_type=$($BB dd if="$device" bs=1 skip=82 count=8 2>/dev/null | $BB tr -d ' ' || true)
+    [ "$fat_type" = FAT32 ] || return 0
+    case "$key" in
+        TYPE) printf '%s\n' vfat ;;
+        LABEL)
+            $BB dd if="$device" bs=1 skip=71 count=11 2>/dev/null | $BB tr -d ' '
+            printf '\n'
+            ;;
+    esac
 }
 
 expected_user_sectors=0

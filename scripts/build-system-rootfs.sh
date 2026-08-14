@@ -67,7 +67,7 @@ copy_elf() {
 
 install -D -m 0755 /bin/busybox "$ROOTFS_DIR/bin/busybox"
 ln -s busybox "$ROOTFS_DIR/bin/sh"
-for applet in basename blkid cat chmod chown cttyhack cut date dirname env grep \
+for applet in basename cat chmod chown cttyhack cut date dirname env grep \
     hostname ip kill ln logger ls mkdir mdev mount mv rm sed \
     setsid sleep sync touch tr udhcpc umount; do
     ln -s /bin/busybox "$ROOTFS_DIR/bin/$applet"
@@ -76,7 +76,7 @@ ln -s /bin/busybox "$ROOTFS_DIR/usr/bin/env"
 mkdir -p "$ROOTFS_DIR/usr/lib"
 ln -s /mnt/plumos/ssh/libexec/sftp-server "$ROOTFS_DIR/usr/lib/sftp-server"
 for binary in ip iw wpa_supplicant wpa_cli dropbear dropbearkey kmod python3 openssl \
-    sfdisk partx resize2fs mkfs.fat fsck.fat; do
+    blkid sfdisk partx resize2fs mkfs.fat fsck.fat; do
     copy_elf "$binary"
 done
 cp -a /usr/lib/python3.11 "$ROOTFS_DIR/usr/lib/"

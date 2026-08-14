@@ -61,7 +61,7 @@ run_provisioner() {
     PLUMOS_PROVISION_SFDISK="$(command -v sfdisk)" \
     PLUMOS_PROVISION_RESIZE2FS="$(command -v resize2fs)" \
     PLUMOS_PROVISION_MKFS_FAT="$(command -v mkfs.fat)" \
-    PLUMOS_PROVISION_BLKID="$(command -v blkid)" \
+    PLUMOS_PROVISION_BLKID="${PROVISION_BLKID:-$(command -v blkid)}" \
     PLUMOS_PROVISION_MMD="$(command -v mmd)" \
     PLUMOS_PROVISION_MCOPY="$(command -v mcopy)" \
         "$PROVISIONER"
@@ -105,6 +105,19 @@ before_p2=$(sample_hash "$p2")
 before_p3=$(sample_hash "$p3")
 before_state=$(find "$state" -type f -exec sha256sum {} + | sort | sha256sum | awk '{print $1}')
 run_provisioner
+[ "$provision_rc" -eq 0 ]
+[ "$before_p2" = "$(sample_hash "$p2")" ]
+[ "$before_p3" = "$(sample_hash "$p3")" ]
+[ "$before_state" = "$(find "$state" -type f -exec sha256sum {} + | sort | sha256sum | awk '{print $1}')" ]
+
+# A missing blkid was previously misread as an unformatted provisioner-owned
+# p3 and caused mkfs.fat to run on every boot. The boot-sector fallback must
+# recognize the completed FAT32 volume without changing either filesystem or
+# provisioning state.
+before_p2=$(sample_hash "$p2")
+before_p3=$(sample_hash "$p3")
+before_state=$(find "$state" -type f -exec sha256sum {} + | sort | sha256sum | awk '{print $1}')
+PROVISION_BLKID=/nonexistent/plumos-blkid run_provisioner
 [ "$provision_rc" -eq 0 ]
 [ "$before_p2" = "$(sample_hash "$p2")" ]
 [ "$before_p3" = "$(sample_hash "$p3")" ]

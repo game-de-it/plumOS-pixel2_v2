@@ -51,9 +51,12 @@ test -x "$tmp/rootfs/usr/sbin/sfdisk"
 test -x "$tmp/rootfs/usr/bin/partx"
 test -x "$tmp/rootfs/usr/sbin/resize2fs"
 test -x "$tmp/rootfs/usr/sbin/mkfs.fat"
+test -x "$tmp/rootfs/usr/sbin/blkid"
 grep -q 'existing-user-blocks-system-growth' \
     "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
 grep -q 'p3-owned-by-provisioner' \
+    "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
+grep -q 'skip=82 count=8' \
     "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
 test -x "$tmp/rootfs/usr/bin/python3"
 test -x "$tmp/rootfs/usr/bin/openssl"
