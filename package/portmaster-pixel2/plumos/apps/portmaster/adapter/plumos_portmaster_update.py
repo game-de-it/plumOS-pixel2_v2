@@ -46,6 +46,41 @@ EXECUTABLE_FILES = (
     "PortMaster/gptokeyb",
     "PortMaster/gptokeyb2",
 )
+FOREIGN_ADAPTER_DIRS = (
+    ".Backup",
+    "batocera",
+    "knulli",
+    "miyoo",
+    "muos",
+    "retrodeck",
+    "trimui",
+)
+FOREIGN_ADAPTER_FILES = (
+    "libgl_Batocera.txt",
+    "libgl_EmuELEC.txt",
+    "libgl_JELOS.txt",
+    "libgl_Miyoo.txt",
+    "libgl_REGLinux.txt",
+    "libgl_ROCKNIX.txt",
+    "libgl_UnofficialOS.txt",
+    "libgl_knulli.txt",
+    "libgl_muOS.txt",
+    "libgl_uConsole.txt",
+    "mod_ArkOS.txt",
+    "mod_ArkOS wuMMLe.txt",
+    "mod_Batocera.txt",
+    "mod_EmuELEC.txt",
+    "mod_JELOS.txt",
+    "mod_Miyoo.txt",
+    "mod_REGLinux.txt",
+    "mod_ROCKNIX.txt",
+    "mod_TrimUI.txt",
+    "mod_UnofficialOS.txt",
+    "mod_dArkOS.txt",
+    "mod_dArkOSRE.txt",
+    "mod_knulli.txt",
+    "mod_muOS.txt",
+)
 ADAPTER_VERSION = 12
 STALE_UPDATE_PREFIXES = (
     "portmaster-download-",
@@ -190,6 +225,21 @@ def enable_runtime_executables(stage: Path) -> None:
             fail(f"cannot enable runtime executable {relative}: {error}")
 
 
+def prune_foreign_adapters(stage: Path) -> None:
+    """Keep the official common runtime but expose only the plumOS adapter."""
+    portmaster = stage / "PortMaster"
+    for name in FOREIGN_ADAPTER_DIRS:
+        path = portmaster / name
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
+    for name in FOREIGN_ADAPTER_FILES:
+        path = portmaster / name
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+
+
 def hash_file(path: Path, algorithm: str) -> str:
     digest = hashlib.new(algorithm)
     with path.open("rb") as source:
@@ -234,6 +284,7 @@ def install(channel: str, force: bool) -> None:
         stage.mkdir()
         with zipfile.ZipFile(archive) as zf:
             zf.extractall(stage)
+        prune_foreign_adapters(stage)
         enable_runtime_executables(stage)
 
         staged_version = (stage / "PortMaster/version").read_text(

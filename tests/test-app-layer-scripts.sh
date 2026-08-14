@@ -344,6 +344,25 @@ grep -q 'scraper-sources.tsv' "$ROOT_DIR/scripts/build-frontend-component.sh"
 feature_tmp="$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-feature-test.XXXXXX")"
 trap 'rm -rf "$feature_tmp"' EXIT
 mkdir -p "$feature_tmp/card/roms/nes" "$feature_tmp/plumos"
+python3 - "$ROOT_DIR" "$feature_tmp" <<'PY'
+import importlib.util
+import sys
+from pathlib import Path
+
+repo = Path(sys.argv[1])
+temp = Path(sys.argv[2]) / "portmaster-stage"
+module_path = repo / "package/portmaster-pixel2/plumos/apps/portmaster/adapter/plumos_portmaster_update.py"
+spec = importlib.util.spec_from_file_location("plumos_portmaster_update", module_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+(temp / "PortMaster/batocera").mkdir(parents=True)
+(temp / "PortMaster/mod_ROCKNIX.txt").write_text("foreign adapter\n")
+(temp / "PortMaster/funcs.txt").write_text("shared runtime\n")
+module.prune_foreign_adapters(temp)
+assert not (temp / "PortMaster/batocera").exists()
+assert not (temp / "PortMaster/mod_ROCKNIX.txt").exists()
+assert (temp / "PortMaster/funcs.txt").is_file()
+PY
 
 mkdir -p "$feature_tmp/network/plumos/bin" "$feature_tmp/network/card"
 cat >"$feature_tmp/network/adbd-control" <<'EOF'
