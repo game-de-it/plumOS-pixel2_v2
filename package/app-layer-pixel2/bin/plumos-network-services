@@ -30,6 +30,7 @@ SMBD="${PLUMOS_ROOT}/network/samba/sbin/smbd"
 NMBD="${PLUMOS_ROOT}/network/samba/sbin/nmbd"
 ADBD_CONTROL="${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}"
 ADB_RECOVERY_MARKER="${PLUMOS_ADB_RECOVERY_MARKER:-${PLUMOS_SDCARD_ROOT}/plumos-enable-adb}"
+SSH_AUTHORIZED_KEYS="${PLUMOS_SSH_AUTHORIZED_KEYS:-/state/plumos/root/.ssh/authorized_keys}"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR" "$CONFIG_DIR"
 
@@ -53,6 +54,7 @@ pid_alive() {
   [ -s "$pid_file" ] || return 1
   pid="$(cat "$pid_file" 2>/dev/null || true)"
   [ -n "$pid" ] || return 1
+  [ "$(awk '{ print $3 }' "/proc/${pid}/stat" 2>/dev/null || true)" != Z ] || return 1
   kill -0 "$pid" 2>/dev/null
 }
 
@@ -162,6 +164,7 @@ process_exists_by_name() {
     [ "$pid" = "$$" ] && continue
     comm="$(cat "$proc/comm" 2>/dev/null || true)"
     cmdline="$(tr '\000' ' ' < "$proc/cmdline" 2>/dev/null || true)"
+    [ "$(awk '{ print $3 }' "$proc/stat" 2>/dev/null || true)" != Z ] || continue
     [ "$comm" = "$name" ] && return 0
     case "$cmdline" in
       "$name "*|"$name:"*|*"/$name "*|*"/$name") return 0 ;;
@@ -241,6 +244,10 @@ status_ssh() {
   if [ ! -x "$SSH_START" ]; then
     print_status ssh not_installed "SSH start script missing"
     return 1
+  fi
+  if service_enabled ssh && [ ! -s "$SSH_AUTHORIZED_KEYS" ]; then
+    print_status ssh waiting_credentials "SSH enabled; waiting for authorized_keys"
+    return 2
   fi
   print_status ssh stopped "SSH stopped"
   return 2
@@ -331,7 +338,14 @@ status_adb() {
   state="$(printf '%s\n' "$output" | sed -n 's/^state=//p' | tail -n 1)"
   summary="$(printf '%s\n' "$output" | sed -n 's/^summary=//p' | tail -n 1)"
   [ -n "$state" ] || state=stopped
-  [ -n "$summary" ] || summary="ADB stopped"
+  if [ -z "$summary" ]; then
+    case "$state" in
+      running) summary="ADB connected over USB" ;;
+      waiting_usb) summary="ADB enabled; waiting for USB host" ;;
+      not_installed) summary="ADB control script not installed" ;;
+      *) summary="ADB stopped" ;;
+    esac
+  fi
 
   print_status adb "$state" "$summary"
   case "$state" in
@@ -380,7 +394,11 @@ start_ssh() {
   fi
   log "start" ssh
   PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_SDCARD_ROOT="$PLUMOS_SDCARD_ROOT" "$SSH_START" >> "$LOG_FILE" 2>&1 || true
-  status_ssh
+  status_ssh || {
+    rc=$?
+    [ "$rc" -eq 2 ] && [ ! -s "$SSH_AUTHORIZED_KEYS" ] && return 0
+    return "$rc"
+  }
 }
 
 stop_ssh() {

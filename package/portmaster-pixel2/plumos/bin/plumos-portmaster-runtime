@@ -102,7 +102,8 @@ prepare() {
   done
   link_one libfluidsynth.so.3 "$fluidsynth_library"
   link_one libvorbisfile.so.3 \
-    "${EMULATOR_LIB}/libvorbisfile.so.3"
+    "${PLUMOS_ROOT}/lib/libretro/libvorbisfile.so.3" \
+    "${PLUMOS_ROOT}/lib/libvorbisfile.so.3.3.8"
   link_one libtheoradec.so.1 \
     "${ADAPTER_DIR}/lib/aarch64/libtheoradec.so.1"
   link_one libz.so.1 \
@@ -120,7 +121,7 @@ prepare() {
   link_one libmpg123.so.0 \
     "${NEXTCOMMANDER_LIB}/libmpg123.so.0"
   link_one libopusfile.so.0 \
-    "${EMULATOR_LIB}/libopusfile.so.0"
+    "${PLUMOS_ROOT}/lib/libretro/libopusfile.so.0"
   link_one libSDL2_ttf-2.0.so.0 \
     "${PLUMOS_ROOT}/apps/nextcommander/lib/libSDL2_ttf-2.0.so.0.2000.1"
   link_one libfreetype.so.6 \

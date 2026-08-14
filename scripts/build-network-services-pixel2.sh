@@ -130,9 +130,17 @@ exec /usr/lib/plumos/init.d/30-ssh start
 EOF
 cat >"$PLUMOS_DIR/ssh/stop-ssh.sh" <<'EOF'
 #!/bin/sh
+pid_file="${PLUMOS_SSH_RUN_DIR:-/run/plumos/ssh}/dropbear.pid"
+if [ -s "$pid_file" ]; then
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  cmdline="$(tr '\000' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)"
+  case "$cmdline" in *dropbear*) kill "$pid" 2>/dev/null || true ;; esac
+  rm -f "$pid_file"
+fi
 for proc in /proc/[0-9]*; do
   [ -r "$proc/cmdline" ] || continue
   pid="${proc##*/}"
+  [ "$(awk '{ print $3 }' "$proc/stat" 2>/dev/null || true)" != Z ] || continue
   cmdline="$(tr '\000' ' ' <"$proc/cmdline" 2>/dev/null || true)"
   case "$cmdline" in *dropbear*) kill "$pid" 2>/dev/null || true ;; esac
 done

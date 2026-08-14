@@ -5,6 +5,8 @@ KEYS=/state/plumos/root/.ssh/authorized_keys
 HOST_DIR=/state/plumos/ssh
 HOST_KEY=$HOST_DIR/dropbear_ed25519_host_key
 LOG=/state/plumos/logs/ssh.log
+RUN_DIR=/run/plumos/ssh
+PID_FILE=$RUN_DIR/dropbear.pid
 
 [ "${1:-}" = start ] || exit 2
 [ -s "$KEYS" ] || {
@@ -14,6 +16,16 @@ LOG=/state/plumos/logs/ssh.log
 }
 chmod 0700 /state/plumos/root/.ssh
 chmod 0600 "$KEYS"
-mkdir -p "$HOST_DIR"
+mkdir -p "$HOST_DIR" "$RUN_DIR"
 [ -s "$HOST_KEY" ] || dropbearkey -t ed25519 -f "$HOST_KEY" >>"$LOG" 2>&1
-exec dropbear -F -E -s -g -r "$HOST_KEY" -p 22 >>"$LOG" 2>&1 &
+if [ -s "$PID_FILE" ]; then
+    old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+    old_state="$(awk '{ print $3 }' "/proc/${old_pid}/stat" 2>/dev/null || true)"
+    old_cmdline="$(tr '\000' ' ' < "/proc/${old_pid}/cmdline" 2>/dev/null || true)"
+    case "$old_state:$old_cmdline" in
+        Z:*|:*) rm -f "$PID_FILE" ;;
+        *:*dropbear*) exit 0 ;;
+        *) rm -f "$PID_FILE" ;;
+    esac
+fi
+dropbear -E -s -g -P "$PID_FILE" -r "$HOST_KEY" -p 22 >>"$LOG" 2>&1

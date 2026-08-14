@@ -61,6 +61,10 @@ grep -q '/mnt/plumos/config/network/services.conf' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'plumos-network-services' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
+grep -q 'dropbear.pid' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh"
+grep -q 'dropbear -E -s -g -P' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh"
 grep -q 'start-enabled' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
 grep -q 'result=degraded' \

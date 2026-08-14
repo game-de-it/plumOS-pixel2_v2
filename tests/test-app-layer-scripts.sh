@@ -377,7 +377,10 @@ mkdir -p "$feature_tmp/network/plumos/bin" "$feature_tmp/network/card"
 cat >"$feature_tmp/network/adbd-control" <<'EOF'
 #!/bin/sh
 printf '%s\n' "$1" >>"$PLUMOS_TEST_ADBD_CALLS"
-printf '%s\n' 'state=stopped' 'summary=ADB applies at reboot'
+case "${PLUMOS_TEST_ADBD_STATE:-stopped}" in
+    running) printf '%s\n' 'state=running' ;;
+    *) printf '%s\n' 'state=stopped' 'summary=ADB applies at reboot' ;;
+esac
 EOF
 chmod 0755 "$feature_tmp/network/adbd-control"
 network_env=(
@@ -391,6 +394,22 @@ env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     status adb >"$feature_tmp/network/adb-default.status" || true
 grep -q '^enabled=1$' "$feature_tmp/network/adb-default.status"
+PLUMOS_TEST_ADBD_STATE=running env "${network_env[@]}" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
+    status adb >"$feature_tmp/network/adb-running.status"
+grep -q '^state=running$' "$feature_tmp/network/adb-running.status"
+grep -q '^summary=ADB connected over USB$' \
+    "$feature_tmp/network/adb-running.status"
+grep -q 'waiting for authorized_keys' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
+grep -q "awk '{ print \$3 }'" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
+grep -q 'PLUMOS_ROOT/emulator/lib' \
+    "$ROOT_DIR/scripts/build-nextcommander-pixel2.sh"
+grep -q 'lib/libretro/libvorbisfile.so.3' \
+    "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-runtime"
+grep -q 'lib/libretro/libopusfile.so.0' \
+    "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-runtime"
 env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     start adb >"$feature_tmp/network/adb-start.status" || true
