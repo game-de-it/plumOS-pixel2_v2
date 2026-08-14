@@ -1,0 +1,57 @@
+#!/bin/sh
+set -eu
+
+root="${PLUMOS_ROOT:-/mnt/plumos}"
+runtime_root="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+pid_file="$runtime_root/frontend.pid"
+
+read_live_pid() {
+    [ -r "$pid_file" ] || return 1
+    pid=$(sed -n '1p' "$pid_file" 2>/dev/null || true)
+    case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+    [ -r "/proc/$pid/stat" ] || return 1
+    state=$(sed 's/.*) //' "/proc/$pid/stat" 2>/dev/null | awk '{print $1}')
+    [ "$state" != Z ] || return 1
+    cmdline=$(tr '\000' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)
+    case "$cmdline" in *plumos-frontend-pixel2*) ;; *) return 1 ;; esac
+    printf '%s\n' "$pid"
+}
+
+case "${1:-stop}" in
+    status)
+        pid=$(read_live_pid 2>/dev/null || true)
+        if [ -n "$pid" ]; then
+            printf 'frontend=running pid=%s\n' "$pid"
+        else
+            rm -f "$pid_file"
+            printf 'frontend=stopped\n'
+        fi
+        ;;
+    stop)
+        pid=$(read_live_pid 2>/dev/null || true)
+        if [ -n "$pid" ]; then
+            kill -TERM "$pid" 2>/dev/null || true
+            count=0
+            while [ "$count" -lt 5 ]; do
+                live=$(read_live_pid 2>/dev/null || true)
+                [ "$live" = "$pid" ] || break
+                sleep 1
+                count=$((count + 1))
+            done
+            live=$(read_live_pid 2>/dev/null || true)
+            if [ "$live" = "$pid" ]; then
+                kill -KILL "$pid" 2>/dev/null || true
+            fi
+        fi
+        rm -f "$pid_file"
+        if [ -x "$root/bin/plumos-hardware-keys-service" ]; then
+            PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+                "$root/bin/plumos-hardware-keys-service" stop >/dev/null 2>&1 || true
+        fi
+        printf 'frontend=stopped\n'
+        ;;
+    *)
+        printf 'usage: %s [stop|status]\n' "$0" >&2
+        exit 2
+        ;;
+esac

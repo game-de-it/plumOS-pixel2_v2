@@ -28,18 +28,25 @@ discover_pid() {
 
 running_pid() {
   pid="$(read_pid 2>/dev/null || true)"
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+  if [ -n "$pid" ] && process_is_live "$pid"; then
     printf '%s\n' "$pid"
     return 0
   fi
   pid="$(discover_pid 2>/dev/null || true)"
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+  if [ -n "$pid" ] && process_is_live "$pid"; then
     mkdir -p "$RUN_DIR" 2>/dev/null || true
     printf '%s\n' "$pid" >"$PID_FILE" 2>/dev/null || true
     printf '%s\n' "$pid"
     return 0
   fi
   return 1
+}
+
+process_is_live() {
+  [ -r "/proc/$1/stat" ] || return 1
+  state="$(sed 's/.*) //' "/proc/$1/stat" 2>/dev/null | awk '{print $1}')"
+  [ "$state" != Z ] || return 1
+  kill -0 "$1" 2>/dev/null
 }
 
 is_running() {
@@ -79,7 +86,7 @@ start_service() {
   pid=$!
   tmp="$PID_FILE.tmp.$$"
   printf '%s\n' "$pid" >"$tmp" && mv -f "$tmp" "$PID_FILE"
-  if ! kill -0 "$pid" 2>/dev/null; then
+  if ! process_is_live "$pid"; then
     rm -f "$PID_FILE"
     printf 'plumos-hardware-keys-service: daemon failed to start\n' >&2
     return 1
@@ -96,11 +103,11 @@ stop_service() {
   pid="$(running_pid)"
   kill -TERM "$pid" 2>/dev/null || true
   wait_count=0
-  while kill -0 "$pid" 2>/dev/null && [ "$wait_count" -lt 5 ]; do
+  while process_is_live "$pid" && [ "$wait_count" -lt 5 ]; do
     sleep 1
     wait_count=$((wait_count + 1))
   done
-  if kill -0 "$pid" 2>/dev/null; then
+  if process_is_live "$pid"; then
     printf 'plumos-hardware-keys-service: pid %s did not stop\n' "$pid" >&2
     return 1
   fi

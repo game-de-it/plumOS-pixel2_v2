@@ -15,6 +15,15 @@ if [ ! -s "$config" ]; then
     mv "$config.next" "$config"
 fi
 
+# The stock boot substrate does not populate /run/udev for the Pixel2 pad.
+# Games already prepare the synthetic joystick classification in the normal
+# RetroArch launcher; the contentless menu needs the same contract or udev
+# falls back to linuxraw and RetroArch exits before the first frame.
+if [ -x "$root/bin/plumos-ensure-udev-input-db" ]; then
+    "$root/bin/plumos-ensure-udev-input-db" \
+        >>"$root/logs/retroarch-menu.log" 2>&1 || true
+fi
+
 if [ -x "$root/bin/plumos-audio-output" ]; then
     "$root/bin/plumos-audio-output" prepare >>"$root/logs/retroarch-menu.log" 2>&1
     export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$runtime_root/audio/asound.conf}"

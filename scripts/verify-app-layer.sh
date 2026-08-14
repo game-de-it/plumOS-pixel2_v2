@@ -14,6 +14,7 @@ for path in \
     picoarch/lib/libSDL2-2.0.so.0 \
     config/standalone/picoarch.env config/standalone/pixel2.env \
     bin/plumos-safe-shutdown bin/plumos-run-with-input-map \
+    bin/plumos-frontend-launch bin/plumos-frontend-stop \
     bin/plumos-hardware-keys bin/plumos-hardware-keys-service \
     bin/plumos-display-control bin/plumos-volume-control \
     bin/plumos-network-control bin/plumos-network-services \

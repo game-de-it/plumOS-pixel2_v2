@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+root="${PLUMOS_ROOT:-/mnt/plumos}"
+runtime_root="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+stop_helper="$root/bin/plumos-frontend-stop"
+init_script="${PLUMOS_FRONTEND_INIT:-/usr/lib/plumos/init.d/40-frontend}"
+
+if [ -x "$stop_helper" ] &&
+        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+        "$stop_helper" status 2>/dev/null | grep -q 'pid='; then
+    printf 'frontend=already-running\n'
+    exit 0
+fi
+
+rm -f "$runtime_root/frontend.pid"
+[ -r "$init_script" ] || {
+    printf 'plumos-frontend-launch: init script missing: %s\n' "$init_script" >&2
+    exit 1
+}
+PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+    /bin/busybox sh "$init_script" start
+
+if [ -x "$stop_helper" ] &&
+        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+        "$stop_helper" status 2>/dev/null | grep -q 'pid='; then
+    printf 'frontend=started\n'
+    exit 0
+fi
+printf 'plumos-frontend-launch: frontend failed to start\n' >&2
+exit 1

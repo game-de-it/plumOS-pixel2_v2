@@ -412,6 +412,14 @@ grep -q 'lib/libretro/libopusfile.so.0' \
     "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-runtime"
 grep -q 'retroarch" --menu -v' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"
+grep -q 'plumos-ensure-udev-input-db' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"
+grep -q '/proc/\$pid/stat' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-frontend-stop"
+grep -q '40-frontend' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-frontend-launch"
+grep -q 'process_is_live' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-hardware-keys-service"
 grep -q 'renderer->var.xres = renderer->physical_yres' \
     "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
 env "${network_env[@]}" \
