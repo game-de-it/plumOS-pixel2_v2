@@ -26,6 +26,10 @@ REQUIRED_COMPONENTS = (
     "standalone",
     "audio-router",
     "pyxel",
+    "network-services",
+    "nextcommander",
+    "music-player",
+    "portmaster",
 )
 SHARED_APPS = {
     "scraping": "Scraping and thumbnail fetch",
@@ -77,6 +81,10 @@ def shell_helper(profile: str) -> str | None:
 def audit(repo: Path, app_root: Path) -> dict[str, Any]:
     systems = load_json(repo / "package/frontend-pixel2/systems.json")["systems"]
     apps = load_json(repo / "package/frontend-pixel2/apps.json")["apps"]
+    menus = load_json(repo / "package/frontend-pixel2/menus.json")["menus"]
+    feature_contract = load_json(
+        repo / "package/frontend-pixel2/feature-contract.json"
+    )
     findings: list[Finding] = []
 
     enabled = [system for system in systems if system.get("enabled") is not False]
@@ -142,6 +150,35 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                 )
 
     visible_app_ids = {app["id"] for app in apps if app.get("visible", True)}
+    all_app_ids = {app["id"] for app in apps}
+    start_menu_ids = {
+        entry["id"]
+        for menu in menus
+        if menu.get("id") == "start"
+        for entry in menu.get("entries", [])
+    }
+    for menu_id in feature_contract["start_menu_ids"]:
+        if menu_id not in start_menu_ids:
+            findings.append(
+                Finding(
+                    "P0",
+                    "frontend-contract",
+                    f"start:{menu_id}",
+                    "required shared start-menu entry is absent",
+                    True,
+                )
+            )
+    for app_id in feature_contract["app_ids"]:
+        if app_id not in all_app_ids:
+            findings.append(
+                Finding(
+                    "P0",
+                    "frontend-contract",
+                    f"app:{app_id}",
+                    "required shared Apps catalog entry is absent",
+                    True,
+                )
+            )
     for app in apps:
         if not app.get("visible", True):
             continue
@@ -160,10 +197,11 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
         if app_id not in visible_app_ids:
             findings.append(
                 Finding(
-                    "P1",
+                    "P0",
                     "apps-parity",
                     app_id,
                     f"{label} is present in the shared handheld surface but not implemented on Pixel2",
+                    True,
                 )
             )
 
@@ -181,12 +219,45 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
 
     controller_source = repo / "vendor/plumos-frontend/src/plumos_controller_ui.c"
     controller_text = controller_source.read_text(encoding="utf-8", errors="replace")
+    for setting_id in feature_contract["required_setting_ids"]:
+        if f'"{setting_id}"' not in controller_text:
+            findings.append(
+                Finding(
+                    "P0",
+                    "frontend-contract",
+                    f"setting:{setting_id}",
+                    "required shared setting/action is absent from the controller",
+                    True,
+                )
+            )
+    for handler in feature_contract.get("required_handler_tokens", []):
+        if handler not in controller_text:
+            findings.append(
+                Finding(
+                    "P0",
+                    "frontend-contract",
+                    f"handler:{handler}",
+                    "required shared frontend action handler is absent",
+                    True,
+                )
+            )
     network_services = app_root / "bin/plumos-network-services"
     network_text = (
         network_services.read_text(encoding="utf-8", errors="replace")
         if network_services.is_file()
         else ""
     )
+    for service in feature_contract["network_service_ids"]:
+        if not re.search(rf"\b{re.escape(service)}\b", network_text):
+            findings.append(
+                Finding(
+                    "P0",
+                    "frontend-contract",
+                    f"network-service:{service}",
+                    "required shared network service is absent from its backend",
+                    True,
+                )
+            )
     if "Manual update: overwrite plumOS files on the SD card" in controller_text:
         findings.append(
             Finding(
@@ -231,14 +302,8 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                 True,
             )
         )
-    pixel2_absent_services_hidden = (
-        'if (!runtime_device_is_pixel2()) {\n    add_bool_setting_entry(ui, "network_ftp_enabled"'
-        in controller_text
-    )
     for service in ("ftp", "sftp", "samba"):
         if re.search(rf"{service}\).*not_installed|{service}[^\n]*not packaged", network_text):
-            if pixel2_absent_services_hidden:
-                continue
             findings.append(
                 Finding(
                     "P0",
@@ -254,31 +319,84 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
         if adbd_service.is_file()
         else ""
     )
-    adb_has_explicit_opt_in = (
-        "adb_opted_in()" in adbd_text
-        and "explicit-opt-in-required" in adbd_text
+    adb_has_maintenance_default = (
+        "adb_enabled_by_policy()" in adbd_text
+        and "default-on-no-explicit-setting" in adbd_text
         and "/mnt/plumos-user/plumos-enable-adb" in adbd_text
     )
-    if adbd_service.is_file() and not adb_has_explicit_opt_in:
+    if adbd_service.is_file() and not adb_has_maintenance_default:
         findings.append(
             Finding(
                 "P0",
-                "connectivity-security",
-                "ADB authentication",
-                "release image still boots development adbd with authentication disabled",
+                "connectivity-recovery",
+                "ADB boot policy",
+                "Pixel2 must boot ADB by default when no explicit user setting exists and retain an explicit OFF override",
+                True,
+            )
+        )
+    if (
+        "/mnt/plumos/config/network/services.conf" not in adbd_text
+        or 'CONFIG_DIR="${PLUMOS_ROOT}/config/network"' not in network_text
+        or 'SERVICES_CONF="${CONFIG_DIR}/services.conf"' not in network_text
+    ):
+        findings.append(
+            Finding(
+                "P0",
+                "connectivity-persistence",
+                "network service settings",
+                "frontend services and boot ADB must consume the same app-layer config",
+                True,
+            )
+        )
+    network_boot = repo / "rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
+    network_boot_text = (
+        network_boot.read_text(encoding="utf-8", errors="replace")
+        if network_boot.is_file()
+        else ""
+    )
+    if "start-enabled" not in network_boot_text or ") &" not in network_boot_text:
+        findings.append(
+            Finding(
+                "P0",
+                "connectivity-persistence",
+                "network service boot",
+                "saved optional services must resume outside the frontend boot critical path",
+                True,
+            )
+        )
+    if "2222" in controller_text:
+        findings.append(
+            Finding(
+                "P0",
+                "frontend-help",
+                "SSH port",
+                "frontend help disagrees with the Pixel2 Dropbear port 22 contract",
                 True,
             )
         )
 
     lang_root = app_root / "share/frontend/lang"
     for language in LANGUAGE_FILES:
-        if not (lang_root / language).is_file():
+        language_path = lang_root / language
+        if not language_path.is_file():
             findings.append(
                 Finding(
                     "P0",
                     "frontend-language",
                     language,
                     "language is selectable by the frontend but the translation file is absent",
+                    True,
+                )
+            )
+        elif "2222" in language_path.read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            findings.append(
+                Finding(
+                    "P0",
+                    "frontend-help",
+                    language,
+                    "translated SSH help disagrees with the Pixel2 port 22 contract",
                     True,
                 )
             )

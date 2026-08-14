@@ -25,8 +25,8 @@
   - [x] Audio OutputのSpeaker/Headphone選択をPixel2 hardware capabilityと一致させる
     - Pixel2はRK817 speaker単一路のため、存在しない出力切替をFEに表示しない。
   - [x] lidのないPixel2でLid Suspendを選択不能にする
-  - [x] FTP/SFTP/SambaをPixel2 service capabilityと一致させる
-    - Pixel2 imageが所有するSSH/ADBだけを表示する。未搭載daemonを機能するtoggleとして公開しない。
+  - [x] FTP/SFTP/SambaをPixel2 componentとして実装する
+    - 2026-08-14: 初期bring-upの「SSH/ADBだけを表示」を撤回し、V90S/MFと同じ5 serviceをpackage化。保存設定のboot再開、component checksum、release gateへ統合した。USB Wi-Fi実機でのFTP/SFTP/Samba接続は未検証。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
@@ -44,13 +44,14 @@
       - 2026-08-13: PCSX menu中のraw captureで十字が`BTN_DPAD_UP/DOWN`（544/545）、A/Bが305/304と確定。`BTN_DPAD_*`のgame/menu bindを追加した`3234b0d`を署名Runtimeで適用し、Function menuの十字移動・A決定・B戻るを実機確認。音声、menuからのexit、FE復帰、second launch、save保持は継続。
     - [x] Saturn/YabaSanshiroをRK3326性能要件により非対応化し、FE導線・core recipe・standalone manifestから除外する
       - 2026-08-13: `b66f3c8`で`unsupported_performance_rk3326`を明示し、Saturn 2 coreと全routeを削除。
-- [ ] shared plumOS AppsをPixel2 componentとして実装する
+- [x] shared plumOS AppsをPixel2 componentとして実装する
   - [x] Scraping
-  - [ ] File Manager / NextCommander
-  - [ ] Music Player
-  - [ ] RetroArch menu
-  - [ ] PortMaster
-  - [ ] Update PortMaster
+  - [x] File Manager / NextCommander
+  - [x] Music Player
+  - [x] RetroArch menu
+  - [x] PortMaster
+  - [x] Update PortMaster
+  - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する
@@ -186,6 +187,8 @@
 - [x] Pixel2の標準system pickerをV90S共通の3x2・6アイコンgridに揃える
   - 2026-08-14: 初期移植時の`default-horizontal` / `tile_strip`（2x1）を廃止し、標準`default` themeを`tile_grid`（3x2）、vertical page transitionへ変更。`c808952`の署名Runtime差分を実機適用し、3490 checksum、`runtime_healthy`、設定保持を確認。LCD上の6 tileと物理navigationは目視確認待ち。
 - [x] 参照frontendをPixel2専用としてvendor化し、他機種・旧distribution名称を除去する
+- [x] FE全機能を共有plumOS contractと照合し、欠落をrelease blockerにする
+  - 2026-08-14: MFと同じ89 setting ID、START 7項目、Apps 12定義/7 visible、NW Service 5項目を機械監査。欠落AppsをP1扱いしていた監査と、Pixel2だけserviceを隠す分岐を廃止した。詳細は`docs/developer/frontend-feature-audit.md`。
 - [x] Pixel2 framebufferとgpio-key inputを自動選択してboot時にfrontendを起動する
 - [x] frontendとADBの診断logをSTATE partitionへ保存する
 - [x] 実機LCDでfrontend描画と90度回転を確認する

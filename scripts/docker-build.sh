@@ -8,7 +8,7 @@ usage() {
     printf '%s\n' \
         'Usage: scripts/docker-build.sh TARGET [ARGS...]' \
         '' \
-        'Targets: image frontend retroarch cores core-catalog picoarch standalone audio-router pyxel-runtime app-layer audit update-package system-rootfs sd-image release-image'
+        'Targets: image frontend retroarch cores core-catalog picoarch standalone audio-router pyxel-runtime nextcommander music-player network-services portmaster shared-apps app-layer audit update-package system-rootfs sd-image release-image'
 }
 
 if [ "${1:-}" = --inside ]; then
@@ -25,6 +25,20 @@ if [ "${1:-}" = --inside ]; then
         standalone) exec ./scripts/build-standalone-pixel2.sh --inside "$@" ;;
         audio-router) exec ./scripts/build-audio-router-pixel2.sh "$@" ;;
         pyxel-runtime) exec ./scripts/build-pyxel-runtime-pixel2.sh --inside "$@" ;;
+        nextcommander) exec ./scripts/build-nextcommander-pixel2.sh "$@" ;;
+        music-player) exec ./scripts/build-music-player-pixel2.sh "$@" ;;
+        network-services) exec ./scripts/build-network-services-pixel2.sh "$@" ;;
+        portmaster) exec ./scripts/build-portmaster-pixel2.sh "$@" ;;
+        shared-apps)
+            pids=()
+            ./scripts/build-nextcommander-pixel2.sh "$@" & pids+=("$!")
+            ./scripts/build-music-player-pixel2.sh "$@" & pids+=("$!")
+            ./scripts/build-network-services-pixel2.sh "$@" & pids+=("$!")
+            ./scripts/build-portmaster-pixel2.sh "$@" & pids+=("$!")
+            rc=0
+            for pid in "${pids[@]}"; do wait "$pid" || rc=1; done
+            exit "$rc"
+            ;;
         app-layer) exec ./scripts/build-app-layer.sh --inside "$@" ;;
         audit) exec ./scripts/audit-pixel2-implementation.py "$@" ;;
         update-package) exec ./scripts/build-pixel2-update-package.py "$@" ;;
@@ -38,6 +52,14 @@ if [ "${1:-}" = --inside ]; then
             ./scripts/build-standalone-pixel2.sh --inside
             ./scripts/build-audio-router-pixel2.sh
             ./scripts/build-pyxel-runtime-pixel2.sh --inside
+            pids=()
+            ./scripts/build-nextcommander-pixel2.sh & pids+=("$!")
+            ./scripts/build-music-player-pixel2.sh & pids+=("$!")
+            ./scripts/build-network-services-pixel2.sh & pids+=("$!")
+            ./scripts/build-portmaster-pixel2.sh & pids+=("$!")
+            rc=0
+            for pid in "${pids[@]}"; do wait "$pid" || rc=1; done
+            [ "$rc" -eq 0 ] || exit "$rc"
             ./scripts/build-app-layer.sh --inside --strict
             ./scripts/audit-pixel2-implementation.py --release-gate
             ./scripts/build-system-rootfs.sh --inside

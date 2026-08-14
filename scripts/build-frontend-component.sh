@@ -22,7 +22,7 @@ SOURCE_EPOCH="${SOURCE_DATE_EPOCH:-}"
 
 rm -rf "$OUT_ROOT"
 mkdir -p "$BIN_DIR" "$LIB_DIR" "$SCRAPER_LIB_DIR" "$COMPONENT_DIR" \
-    "$PLUMOS_DIR/licenses/plumos-frontend"
+    "$PLUMOS_DIR/licenses/plumos-frontend" "$PLUMOS_DIR/fonts"
 cp -a "$ROOT_DIR/vendor/plumos-frontend/seed/." "$PLUMOS_DIR/"
 rsync -a "$ROOT_DIR/package/app-layer-pixel2/" "$PLUMOS_DIR/"
 install -m 0755 /usr/sbin/fsck.fat "$BIN_DIR/fsck.fat"
@@ -34,12 +34,22 @@ install -m 0644 "$ROOT_DIR/package/frontend-pixel2/menus.json" \
     "$PLUMOS_DIR/config/frontend/menus.json"
 install -m 0644 "$ROOT_DIR/package/frontend-pixel2/apps.json" \
     "$PLUMOS_DIR/config/frontend/apps.json"
+install -m 0644 "$ROOT_DIR/package/frontend-pixel2/feature-contract.json" \
+    "$PLUMOS_DIR/config/frontend/feature-contract.json"
 install -m 0644 "$ROOT_DIR/package/frontend-pixel2/scraper-sources.tsv" \
     "$PLUMOS_DIR/config/frontend/scraper-sources.tsv"
 install -m 0644 "$ROOT_DIR/vendor/plumos-frontend/LICENSE" \
     "$PLUMOS_DIR/licenses/plumos-frontend/LICENSE"
 install -m 0644 "$ROOT_DIR/vendor/plumos-frontend/SOURCE.manifest" \
     "$PLUMOS_DIR/licenses/plumos-frontend/SOURCE.manifest"
+install -m 0644 /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf \
+    "$PLUMOS_DIR/fonts/default.otf"
+install -m 0644 /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc \
+    "$PLUMOS_DIR/fonts/cjk-fallback.ttc"
+install -m 0644 /usr/share/doc/fonts-dejavu-core/copyright \
+    "$PLUMOS_DIR/licenses/plumos-frontend/fonts-dejavu-copyright"
+install -m 0644 /usr/share/doc/fonts-noto-cjk/copyright \
+    "$PLUMOS_DIR/licenses/plumos-frontend/fonts-noto-cjk-copyright"
 
 common=(-std=gnu99 -Os -pipe -Wall -Wextra -D_GNU_SOURCE)
 png_cflags=$(pkg-config --cflags libpng)
@@ -174,7 +184,7 @@ cat >"$COMPONENT_DIR/manifest.json" <<EOF
 EOF
 (
     cd "$PLUMOS_DIR"
-    find bin config factory-defaults frontend scraper share themes licenses/plumos-frontend \
+    find bin config factory-defaults fonts frontend scraper share themes licenses/plumos-frontend \
         -type f -print | sort | while IFS= read -r file; do sha256sum "$file"; done
     sha256sum components/frontend/manifest.json
 ) >"$COMPONENT_DIR/checksums.sha256"

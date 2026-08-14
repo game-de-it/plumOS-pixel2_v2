@@ -17,19 +17,26 @@ for path in \
     bin/plumos-hardware-keys bin/plumos-hardware-keys-service \
     bin/plumos-display-control bin/plumos-volume-control \
     bin/plumos-network-control bin/plumos-network-services \
+    bin/plumos-nextcommander-launch bin/plumos-music-player-launch \
+    bin/plumos-retroarch-menu-launch bin/plumos-portmaster-launch \
+    bin/plumos-portmaster-update \
     bin/plumos-audio-output lib/alsa-lib/libasound_module_pcm_plumos_hotplug.so \
     bin/plumos-python-pixel2 bin/plumos-pyxel-pixel2-launch bin/plumos-pyxel-setup \
     apps/python/bin/python3.11 apps/pyxel/site/pyxel/__init__.py \
     emulator/lib/libpthread.so.0 \
     factory-defaults/alsa/alsa.conf \
-    config/frontend/systems.json factory-defaults/retroarch/retroarch.cfg \
+    config/frontend/systems.json config/frontend/feature-contract.json factory-defaults/retroarch/retroarch.cfg \
     factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg \
     config/system/input-map.env config/system/input-map.json \
     components/frontend/manifest.json components/retroarch/manifest.json \
     components/picoarch/manifest.json components/standalone/manifest.json \
     components/audio-router/manifest.json \
     components/pyxel/manifest.json \
-    components/libretro-cores/manifest.json; do
+    components/libretro-cores/manifest.json \
+    components/nextcommander/manifest.json \
+    components/music-player/manifest.json \
+    components/network-services/manifest.json \
+    components/portmaster/manifest.json; do
     [ -f "$ROOT/$path" ] || { printf 'error: app-layer file missing: %s\n' "$path" >&2; exit 1; }
 done
 (cd "$ROOT" && sha256sum -c checksums.sha256 >/dev/null)
@@ -40,6 +47,10 @@ done
 (cd "$ROOT" && sha256sum -c components/audio-router/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/pyxel/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/libretro-cores/checksums.sha256 >/dev/null)
+(cd "$ROOT" && sha256sum -c components/nextcommander/checksums.sha256 >/dev/null)
+(cd "$ROOT" && sha256sum -c components/music-player/checksums.sha256 >/dev/null)
+(cd "$ROOT" && sha256sum -c components/network-services/checksums.sha256 >/dev/null)
+(cd "$ROOT" && sha256sum -c components/portmaster/checksums.sha256 >/dev/null)
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
@@ -144,11 +155,28 @@ grep -q '"action": "internal:network-settings"' \
     "$ROOT/config/frontend/menus.json"
 grep -q '"action": "menu:apps"' \
     "$ROOT/config/frontend/menus.json"
-if grep -Eq 'plumos-(nextcommander|music-player|retroarch-menu|portmaster)' \
-    "$ROOT/config/frontend/apps.json"; then
-    printf 'error: unavailable application exposed by Pixel2 frontend\n' >&2
-    exit 1
-fi
+python3 - "$ROOT/config/frontend/apps.json" "$ROOT" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+catalog = json.loads(Path(sys.argv[1]).read_text())
+root = Path(sys.argv[2])
+missing = []
+for app in catalog.get("apps", []):
+    if not app.get("visible"):
+        continue
+    profile = app.get("launch_profile", "")
+    if not profile.startswith("shell:$PLUMOS_ROOT/"):
+        continue
+    command = profile.removeprefix("shell:$PLUMOS_ROOT/").split()[0]
+    path = root / command
+    if not path.is_file() or not os.access(path, os.X_OK):
+        missing.append(f"{app.get('id')}:{command}")
+if missing:
+    raise SystemExit("visible Apps launcher missing: " + ", ".join(missing))
+PY
 foreign_models='M[F]|V9[0]S|M[M]F|A3[0]|Miy[o]o'
 if find "$ROOT/config" "$ROOT/share" "$ROOT/licenses" -type f \
     \( -name '*.json' -o -name '*.lang' -o -name '*.manifest' \
@@ -185,8 +213,10 @@ if [ -n "$rom_like_content" ]; then
     printf 'error: first match: %s\n' "$rom_like_content" >&2
     exit 1
 fi
-if grep -R -a -E -i -n 'rock[n]ix|emuel[e]c|batocer[a]|knull[i]|stock[o]s' \
-    "$ROOT" >/dev/null; then
+if find "$ROOT" \
+    -path "$ROOT/apps/portmaster/upstream" -prune -o \
+    -type f -print0 | xargs -0 grep -a -E -i -n \
+    'rock[n]ix|emuel[e]c|batocer[a]|knull[i]|stock[o]s' >/dev/null; then
     printf 'error: foreign distribution identity in app layer\n' >&2
     exit 1
 fi

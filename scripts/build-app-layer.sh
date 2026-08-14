@@ -21,12 +21,16 @@ PICOARCH="$ROOT_DIR/output/picoarch/pixel2/plumos"
 STANDALONE="$ROOT_DIR/output/standalone/pixel2/plumos"
 AUDIO_ROUTER="$ROOT_DIR/output/audio-router/pixel2/plumos"
 PYXEL="$ROOT_DIR/output/pyxel-runtime/pixel2/plumos"
+NEXTCOMMANDER="$ROOT_DIR/output/nextcommander/pixel2/plumos"
+MUSIC_PLAYER="$ROOT_DIR/output/music-player/pixel2/plumos"
+NETWORK_SERVICES="$ROOT_DIR/output/network-services/pixel2/plumos"
+PORTMASTER="$ROOT_DIR/output/portmaster/pixel2/plumos"
 VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
 SOURCE_REF="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
 SOURCE_EPOCH="${SOURCE_DATE_EPOCH:-}"
 [ -n "$SOURCE_EPOCH" ] || SOURCE_EPOCH="$(git -C "$ROOT_DIR" show -s --format=%ct HEAD)"
 
-for component in "$FRONTEND" "$RETROARCH" "$CORES" "$PICOARCH" "$STANDALONE" "$AUDIO_ROUTER" "$PYXEL"; do
+for component in "$FRONTEND" "$RETROARCH" "$CORES" "$PICOARCH" "$STANDALONE" "$AUDIO_ROUTER" "$PYXEL" "$NEXTCOMMANDER" "$MUSIC_PLAYER" "$NETWORK_SERVICES" "$PORTMASTER"; do
     [ -d "$component" ] || { printf 'error: missing component: %s\n' "$component" >&2; exit 1; }
 done
 (cd "$FRONTEND" && sha256sum -c components/frontend/checksums.sha256)
@@ -36,6 +40,10 @@ done
 (cd "$STANDALONE" && sha256sum -c components/standalone/checksums.sha256)
 (cd "$AUDIO_ROUTER" && sha256sum -c components/audio-router/checksums.sha256)
 (cd "$PYXEL" && sha256sum -c components/pyxel/checksums.sha256)
+(cd "$NEXTCOMMANDER" && sha256sum -c components/nextcommander/checksums.sha256)
+(cd "$MUSIC_PLAYER" && sha256sum -c components/music-player/checksums.sha256)
+(cd "$NETWORK_SERVICES" && sha256sum -c components/network-services/checksums.sha256)
+(cd "$PORTMASTER" && sha256sum -c components/portmaster/checksums.sha256)
 
 rm -rf "$OUT_ROOT"
 mkdir -p "$PLUMOS_DIR"
@@ -46,6 +54,10 @@ rsync -a "$PICOARCH/" "$PLUMOS_DIR/"
 rsync -a "$STANDALONE/" "$PLUMOS_DIR/"
 rsync -a "$AUDIO_ROUTER/" "$PLUMOS_DIR/"
 rsync -a "$PYXEL/" "$PLUMOS_DIR/"
+rsync -a "$NEXTCOMMANDER/" "$PLUMOS_DIR/"
+rsync -a "$MUSIC_PLAYER/" "$PLUMOS_DIR/"
+rsync -a "$NETWORK_SERVICES/" "$PLUMOS_DIR/"
+rsync -a "$PORTMASTER/" "$PLUMOS_DIR/"
 rsync -a "$ROOT_DIR/package/app-layer-pixel2/" "$PLUMOS_DIR/"
 chmod 0755 "$PLUMOS_DIR/bin/"*
 
@@ -101,7 +113,7 @@ cat >"$PLUMOS_DIR/manifest.json" <<EOF
   "source_ref": "$SOURCE_REF",
   "source_date_epoch": $SOURCE_EPOCH,
   "complete": $complete,
-  "components": ["frontend", "retroarch", "libretro-cores", "picoarch", "standalone", "audio-router", "pyxel"],
+  "components": ["frontend", "retroarch", "libretro-cores", "picoarch", "standalone", "audio-router", "pyxel", "nextcommander", "music-player", "network-services", "portmaster"],
   "launch_profiles": $launch_profiles_json,
   "missing_components": []
 }
