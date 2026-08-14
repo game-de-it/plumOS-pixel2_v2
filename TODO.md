@@ -58,6 +58,7 @@
   - 2026-08-15: 実機backend監査でScraping plan、File Manager、Music Player、RetroArch RGUI、Pyxel Setup、PortMasterを合格。RetroArch Appのudev準備漏れ、FE stop/launch helper欠落、zombie誤認を`85fffad`で修正。Update PortMasterのnetwork installと7 AppsのFE物理選択は継続。
   - 2026-08-15: File ManagerのMF button order誤流用と、回転rendererが論理640幅を物理480幅でclipする不具合を`9b4070d`、`0106a75`で修正。署名Runtime、全幅DRM capture、event2経由のD-pad/A/B/FUNCTION/Quit、FE再取得に合格。実物buttonのoperator目視は継続。
   - 2026-08-15: File Managerが外部commandを`execvp("cp")`等で起動する一方、Pixel2 Systemには個別の`/bin/cp`等が無く、copy/move/link/rename/delete/mkdirが失敗していた。`883fd1d`でPixel2だけBusyBox本体へapplet名を渡す実行方式に変更し、複数選択progress判定も修正。署名Runtime `0.1.0-dev-883fd1d`を適用し、実際のX/A操作によるcopy、コピー元/先SHA-256一致、FE復帰に合格。
+  - 2026-08-15: Music PlayerがLinuxの`BTN_A=304`、`BTN_B=305`を物理labelとして扱い、Pixel2の物理A=305/B=304と逆転していた。FUNCTION=704も未処理だった。`b370bfa`でA=再生、B/FUNCTION=終了へ修正し、D-pad、A/B/X/Y、START/SELECT、L/R、FUNCTIONの実機EV_KEY経路、3曲遷移、音声開始、clean exit、FE復帰に合格。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する
