@@ -169,3 +169,47 @@ sha256=4d579f0d465acbd7ddea9fe100c0ae3519575865ff9d892b7ac6dd081db826cc
 ```
 
 旧updaterで開始済みのRuntime transactionと、続く修正版Systemの物理acceptanceは継続中。
+
+## Compact image physical first boot
+
+`e1b05ed`から生成したcompact imageを64 GB実機SDへ書き、初回storage setup画面と
+frontend起動を確認した。provision logでは14:44:25から14:44:26までの約1秒で以下を
+完了していた。
+
+- p1: start 32768、1048576 sector、512 MiB `PLUMOS_BOOT`
+- p2: start 1081344、16777216 sector、8 GiB `PLUMOS_SYS`
+- p3: start 17858560、104280064 sector、49.7 GiB `PLUMOS_USER`
+- online ext4 resize: 524288 blockから2097152 block
+- `state=complete`、`userdata-seeded`、`.plumos-ready`
+
+短時間だった理由は、compact image終端より後ろに旧p3の有効なFAT32 signatureが残って
+いたためである。preserve policyに従ってformatを省略し、既存`PLUMOS_USER`を再利用した。
+このため`p3-formatted` markerとformat logが無いこと自体は異常ではない。
+
+ただし同じ初回boot内で、provisionerが既にp3を`/mnt/plumos-user`へmountした後、initが
+同じmountを再実行して失敗し、fallback tmpfsを上からmountしていた。p3の49.7 GiBは
+隠れ、初回sessionで書くROM/BIOSが再起動時に失われる状態だった。通常再起動後は
+provisionerのbounded complete pathがmountを行わないため、p3は1回だけmountされて正常化
+した。
+
+再起動後の実機acceptance結果:
+
+```text
+system=0.1.0-dev-e1b05ed
+runtime=0.1.0-dev-e1b05ed
+frontend_ready=yes
+mount_count(/mnt/plumos-user)=1
+tmpfs_overlay=no
+PLUMOS_USER=52127264 KiB, used 2%
+complete=yes
+state=complete
+user_ready=yes
+format_count=0
+complete_count=1
+required_user_directories=10/10
+boot_errors=0
+```
+
+`cf8e96f`で、provisioner後に`/mnt/plumos-user`が既にmount済みならinitがそのmountを採用し、
+二重mount/fallbackを行わないguardを追加した。次のcompact imageで初回sessionからp3が直接
+見えることを物理確認する。

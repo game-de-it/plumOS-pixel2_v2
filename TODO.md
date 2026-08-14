@@ -157,6 +157,7 @@
 - [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
   - 2026-08-14: 現行64 GB実機SDで最終境界（p2=8192 MiB、p3=残り49.7 GiB）、既存user data復元、cold boot mountには合格。この時点ではrelease seed側が未実装だったため項目を継続した。
   - 2026-08-14: release seed provisionerを実装し、16 GB sparse-cardで最終MBR、ext4 8 GiB、残容量FAT32、directory seed、中断resume、idempotency、既存p3保護までhost合格。新規compact imageからの物理Pixel2初回bootのみ継続。
+  - 2026-08-14: `e1b05ed` compact imageを64 GB実機SDで初回bootし、約1秒でp2=8 GiB、p3=49.7 GiB、complete/userdata markerまで完了。旧p3 FAT32 signatureをpreserveしてformatを省略したため短時間だった。初回sessionだけprovisioner mountへinitがfallback tmpfsを重ねる不具合を検出し、通常再起動後はp3 49.7 GiB、required directory 10/10、FE/ADB、mount count 1に合格。`cf8e96f`で既存mount採用guardを追加し、修正版imageの初回session確認を継続。
 
 ## Boot artifact boundary
 
