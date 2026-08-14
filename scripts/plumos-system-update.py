@@ -395,9 +395,16 @@ def request(path: Path) -> dict[str, Any]:
 
 
 def request_latest() -> dict[str, Any]:
-    valid = [item for item in scan_packages() if item.get("package_type")]
+    # Automatic selection must follow an explicit update chain. A wildcard
+    # source package is useful for manual recovery, but choosing one by FAT
+    # mtime can silently downgrade a development build when old packages are
+    # still present in the shared updates directory.
+    valid = [
+        item for item in scan_packages()
+        if item.get("package_type") and item.get("source_version") != "*"
+    ]
     if not valid:
-        raise UpdateError("no compatible update package found")
+        raise UpdateError("no chain-compatible automatic update package found")
     latest = max(valid, key=lambda item: int(item.get("mtime", 0)))
     return request(Path(latest["path"]))
 

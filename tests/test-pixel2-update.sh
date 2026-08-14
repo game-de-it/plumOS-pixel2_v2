@@ -83,6 +83,7 @@ system_version_file="$temp_root/plumos-system-version"
 base_100="$temp_root/runtime-1.0.0"
 runtime_101="$temp_root/runtime-1.0.1"
 runtime_102="$temp_root/runtime-1.0.2"
+runtime_090="$temp_root/runtime-0.9.0"
 dist="$temp_root/dist"
 mkdir -p "$user_root/updates" "$boot_root/system-slots" "$dist"
 printf '%s\n' "$SYSTEM_ABI" >"$system_abi_file"
@@ -90,6 +91,7 @@ printf '%s\n' '1.0.0' >"$system_version_file"
 write_runtime_fixture "$base_100" 1.0.0 old
 write_runtime_fixture "$runtime_101" 1.0.1 new
 write_runtime_fixture "$runtime_102" 1.0.2 newer
+write_runtime_fixture "$runtime_090" 0.9.0 downgrade
 cp -a "$base_100" "$runtime_root"
 mkdir -p "$runtime_root/config/user"
 printf '%s\n' 'preserve-me' >"$runtime_root/config/user/settings.ini"
@@ -178,6 +180,20 @@ grep -q '"status": "healthy"' \
     fail 'Runtime journal was not promoted healthy'
 assert_file_value \
     "$runtime_root/backups/update-previous/files/bin/test-tool" old
+
+# Recovery packages may intentionally accept any source version, but the FE's
+# automatic "latest" action must never select one by directory mtime. This is
+# especially important for development hashes, which have no natural ordering.
+wildcard_dist="$temp_root/wildcard-dist"
+mkdir -p "$wildcard_dist"
+python3 "$BUILDER" --type runtime --input "$runtime_090" \
+    --version 0.9.0 --signing-key "$private_key" \
+    --output-dir "$wildcard_dist" >/dev/null
+cp "$wildcard_dist/plumos-pixel2-runtime-0.9.0.tar.gz" "$user_root/updates/"
+if run_updater request-latest >/dev/null 2>&1; then
+    fail 'Automatic update selected a wildcard-source recovery package'
+fi
+rm -f "$user_root/updates/plumos-pixel2-runtime-0.9.0.tar.gz"
 
 python3 "$BUILDER" --type runtime --input "$runtime_102" \
     --base-dir "$runtime_101" --base-version 1.0.1 --version 1.0.2 \
