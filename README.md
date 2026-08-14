@@ -46,9 +46,13 @@ not committed to Git.
 ./scripts/docker-build.sh sd-image
 ```
 
-Generated artifacts live below `output/`. The current 4 GiB seed image uses a
-stock-compatible boot prefix, a 512 MiB `PLUMOS_BOOT`, a 2048 MiB ext4
-`PLUMOS_SYS`, and a FAT32 `PLUMOS_USER` occupying the remainder.
+Generated artifacts live below `output/`. The SD image is an approximately
+2.5 GiB compact seed containing the stock-compatible boot prefix, a 512 MiB
+`PLUMOS_BOOT`, and a 2048 MiB ext4 `PLUMOS_SYS`. On the first boot from a card
+of at least 16 GB, plumOS grows `PLUMOS_SYS` to 8192 MiB and creates FAT32
+`PLUMOS_USER` through the remaining card. Setup automatically resumes through
+one early reboot when the mounted partition geometry cannot be refreshed
+online. Boot the card once before copying ROMs or BIOS files from a host.
 
 `release-image` fails until the implementation audit reports zero release
 blockers. Use `sd-image` for development hardware testing, and always flash a

@@ -43,9 +43,12 @@ Docker Desktopまたは互換Docker engineと、stock Pixel2から読み取り�
 ./scripts/docker-build.sh sd-image
 ```
 
-成果物は`output/`へ生成されます。現在のSD imageはstock-compatible boot prefix、
-512 MiB `PLUMOS_BOOT`、2048 MiB ext4 `PLUMOS_SYS`、残りのFAT32
-`PLUMOS_USER`を持つ4 GiB seed imageです。
+成果物は`output/`へ生成されます。SD imageは約2.5 GiBのcompact seedで、
+stock-compatible boot prefix、512 MiB `PLUMOS_BOOT`、2048 MiB ext4
+`PLUMOS_SYS`だけを収録します。16 GB以上のSDで初回起動すると、`PLUMOS_SYS`を
+8192 MiBへ拡張し、残り全域にFAT32 `PLUMOS_USER`を作成します。kernelがmount中の
+partition更新を受け付けない場合は、初回setup中に一度だけ自動再起動して処理を
+再開します。ROMやBIOSをmacOSから配置するのは、この初回起動完了後です。
 
 `release-image`は実装監査のrelease blockerが0になるまで失敗します。開発中の
 実機試験には`sd-image`を使い、書き込みにはstock SDとは別のカードを使用します。

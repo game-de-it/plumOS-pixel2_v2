@@ -14,6 +14,35 @@ Pixel2 currently uses the stock-compatible Rockchip prefix plus:
 permissions for the runtime. `/mnt/plumos-user` is the host-readable content
 volume.
 
+## Compact Seed and First Boot
+
+The distributed image is 2,701,131,776 bytes and contains two MBR partitions:
+
+| Partition | Seed geometry | First-boot geometry |
+| --- | --- | --- |
+| p1 `PLUMOS_BOOT` | sector 32768, 512 MiB FAT32 | unchanged |
+| p2 `PLUMOS_SYS` | sector 1081344, 2048 MiB ext4 | expanded to exactly 8192 MiB |
+| p3 `PLUMOS_USER` | absent | sector 17858560 through the physical-card end, FAT32 |
+
+The minimum supported physical card is 16 GB (15,000,000,000 readable bytes
+or larger). The provisioner runs after the retained stock initramfs mounts p2.
+It validates exact p1/p2 boundaries, records a durable journal under
+`/storage/provision`, replaces the seed MBR entries, updates the kernel view,
+runs online `resize2fs`, formats only the newly owned p3 as `PLUMOS_USER`, and
+creates `roms`, `bios`, `Images`, `Themes`, `Screenshots`, `Music`, `updates`,
+`imports`, `exports`, and `plumos-logs`.
+
+If the mounted p2 cannot be resized in the running kernel view, init performs
+one synchronized early reboot and resumes from the observed table and journal.
+After `/storage/provision/complete` and the final geometry agree, ordinary boot
+does not rerun resize, format, seeding, or marker writes. An existing p3 is
+never formatted: incompatible legacy geometry is logged and preserved for a
+manual migration.
+
+Before first boot a host sees only `PLUMOS_BOOT`. After provisioning completes
+and the card is returned to macOS or Windows, `PLUMOS_USER` is the volume for
+ROMs, BIOS files, images, themes, media, and update archives.
+
 ## Managed and Device-Owned Data
 
 Managed files are covered by `/mnt/plumos/checksums.sha256`. Device-owned

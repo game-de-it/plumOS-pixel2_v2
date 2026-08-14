@@ -135,8 +135,10 @@
 
 - [x] p1を512 MiB System A/B layoutへ変更する
 - [x] p2を2048 MiB seed ext4 `PLUMOS_SYS`として生成する
-- [ ] first bootでp2を8192 MiBへ拡張しp3 `PLUMOS_USER`を作る
-- [ ] provisioningを中断・再開可能かつ既存p3非破壊にする
+- [x] first bootでp2を8192 MiBへ拡張しp3 `PLUMOS_USER`を作る
+  - 2026-08-14: compact p1+p2 MBR seed、online `resize2fs`、残容量FAT32作成、ROM/BIOS directory seedをSystem early initへ統合。stock handoffがmount済みp2のgeometry更新を拒否した場合はsync後1回rebootして再開する。
+- [x] provisioningを中断・再開可能かつ既存p3非破壊にする
+  - 2026-08-14: p3 ownershipをMBR変更前にext4 journalへcommitし、各stageを再実行可能にした。16 GB sparse-card simulationで中断resume、完了後無書込み、旧4 GiB layoutのp3 byte保持を検証。
 - [x] stock initramfs固定handoffの内側へSystem A/B選択、SHA-256検証、rollbackを実装する
   - 2026-08-13: stockが固定で開く`/SYSTEM`を小さなPixel2 dispatcherとし、FAT32で名前衝突しない`/system-slots/system-{a,b}.squashfs`を選択する。pendingは一度だけ試し、次bootまでFE health promotionがなければactiveへrollback。`5932ef9`でslot A cold boot、`7f16e6d`でinactive B pending boot、FE promotion、B active再起動、mount継承、旧root detach、FE/ADB起動を実機確認。実機failure rollbackは未検証。
 - [x] frontend renderer-readyによるSystem health promotionを実装する
@@ -147,7 +149,8 @@
 - [x] FE System Update画面とsafe reboot flowを統合する
   - 2026-08-13: `tests/test-pixel2-update.sh`とARM64 System chroot検証は合格。公開鍵だけをSystemへ同梱し秘密鍵混入gateを追加。ADBからrequestしたsigned Runtime/Systemの実機成功経路は合格。FEからのrequest、進捗/失敗表示、実機failure rollbackはacceptanceとして継続する。
 - [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
-  - 2026-08-14: 現行64 GB実機SDで最終境界（p2=8192 MiB、p3=残り49.7 GiB）、既存user data復元、cold boot mountには合格。release seedから同じ処理を中断再開可能に行うfirst-boot provisionerは未実装のため項目は継続。
+  - 2026-08-14: 現行64 GB実機SDで最終境界（p2=8192 MiB、p3=残り49.7 GiB）、既存user data復元、cold boot mountには合格。この時点ではrelease seed側が未実装だったため項目を継続した。
+  - 2026-08-14: release seed provisionerを実装し、16 GB sparse-cardで最終MBR、ext4 8 GiB、残容量FAT32、directory seed、中断resume、idempotency、既存p3保護までhost合格。新規compact imageからの物理Pixel2初回bootのみ継続。
 
 ## Boot artifact boundary
 

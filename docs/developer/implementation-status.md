@@ -135,8 +135,8 @@ blockedとなった。残る13 systemには互換contentが無いため、全87 
 現在の4 GiB imageはp1 512 MiB、p2 2048 MiB、p3 remainderを事前生成する。
 first-bootで未実装なのは次の通り。
 
-- first bootでp2を8192 MiBへ拡張し、残りにp3を非破壊作成するprovisioner;
-- interrupted provisioningのresumeと既存p3保護;
+- [実装済み] first bootでp2を8192 MiBへ拡張し、残りにp3を非破壊作成するprovisioner;
+- [実装済み] interrupted provisioningのresume、通常boot fast path、既存p3保護;
 - ext4 label/UUID/resize markerの実機確認。
 
 System A/B selector、pending boot、renderer-ready promotion、Runtime write-ahead

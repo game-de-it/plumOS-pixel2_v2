@@ -1,7 +1,7 @@
 # 0003: Pixel2 updateable runtime and emulator layout
 
 Date: 2026-08-12
-Status: Adopted; signed updater host-verified on 2026-08-13
+Status: Adopted; signed updater verified on 2026-08-13; compact seed implemented on 2026-08-14
 
 ## Decision
 
@@ -24,11 +24,13 @@ to exactly 8 GiB and creates p3 from the following aligned sector through the
 last usable MBR sector. Provisioning must be idempotent and must never format
 an existing p3 containing unknown or user data.
 
-The current 4 GiB three-partition seed image is an implementation step toward
-that contract. It already uses the final p1 and p2 seed sizes and includes a
-small host-visible p3 for development ROM staging. The compact p1+p2 release
-image and idempotent first-boot p2/p3 provisioning remain the final update
-contract.
+The image builder now emits only p1 and p2 and ends at sector 5275647. The
+first-boot provisioner validates the MBR and physical-card capacity, records
+ownership before modifying the table, grows p2 online, and creates p3 only
+when no p3 exists. If the stock handoff's mounted p2 prevents the kernel from
+refreshing geometry, setup syncs and resumes after one early reboot. An
+existing p3 with legacy, unknown, or unexpected geometry is preserved and is
+never reformatted.
 
 ## Ownership boundary
 
