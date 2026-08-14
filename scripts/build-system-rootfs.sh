@@ -98,7 +98,7 @@ install -D -m 0644 "$ROOT_DIR/package/system-pixel2/plumos-update-public.pem" \
 progress_dir="$OUT_DIR/update-progress"
 python3 "$ROOT_DIR/scripts/generate-pixel2-update-progress.py" \
     --output-dir "$progress_dir"
-for frame in "$progress_dir"/update_*.raw; do
+for frame in "$progress_dir"/*.raw; do
     install -D -m 0644 "$frame" \
         "$ROOTFS_DIR/usr/share/plumos/update-progress/$(basename "$frame")"
 done

@@ -118,12 +118,18 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     stages = {
+        "prepare": ("PREPARING STORAGE", 10, False),
+        "resize": ("RESIZING SYSTEM", 30, False),
+        "userdata": ("CREATING USER STORAGE", 55, False),
+        "verify": ("VERIFYING SYSTEM", 75, False),
+        "start": ("STARTING PLUMOS", 95, False),
         "update_verify": ("VERIFYING UPDATE", 15, False),
         "update_runtime": ("UPDATING RUNTIME", 45, False),
         "update_system": ("UPDATING SYSTEM", 55, False),
         "update_finalize": ("FINALIZING UPDATE", 90, False),
         "update_rollback": ("RESTORING PREVIOUS", 70, False),
         "update_error": ("UPDATE FAILED", 100, True),
+        "error": ("STARTUP FAILED", 100, True),
     }
     expected_size = PHYSICAL_WIDTH * PHYSICAL_HEIGHT * 4
     for name, (message, percent, error) in stages.items():

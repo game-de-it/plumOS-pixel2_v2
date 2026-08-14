@@ -62,8 +62,8 @@ test -x "$tmp/rootfs/usr/bin/python3"
 test -x "$tmp/rootfs/usr/bin/openssl"
 test -L "$tmp/rootfs/usr/bin/env"
 test -f "$tmp/rootfs/etc/plumos-update-public.pem"
-for frame in update_verify update_runtime update_system update_finalize \
-    update_rollback update_error; do
+for frame in prepare resize userdata verify start error update_verify \
+    update_runtime update_system update_finalize update_rollback update_error; do
     path="$tmp/rootfs/usr/share/plumos/update-progress/$frame.raw"
     test -f "$path" || {
         printf 'error: update progress frame missing: %s.raw\n' "$frame" >&2
@@ -74,6 +74,16 @@ for frame in update_verify update_runtime update_system update_finalize \
         exit 1
     }
 done
+grep -q 'show_progress prepare' \
+    "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
+grep -q 'show_progress resize' \
+    "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
+grep -q 'show_progress userdata' \
+    "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
+grep -q 'show_progress verify' \
+    "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
+grep -q 'show_progress start' \
+    "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
 grep -q '^plumos-pixel2-v1$' "$tmp/rootfs/etc/plumos-system-abi"
 grep -q '^DEVICE_ID = "pixel2"$' "$tmp/rootfs/usr/sbin/plumos-system-update"
 grep -q '"runtime_abi": "plumos-pixel2-app-layer-v1"' \

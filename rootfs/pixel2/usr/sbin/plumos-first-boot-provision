@@ -18,6 +18,8 @@ BLKID=${PLUMOS_PROVISION_BLKID:-/usr/sbin/blkid}
 MOUNT=${PLUMOS_PROVISION_MOUNT:-/bin/mount}
 MMD=${PLUMOS_PROVISION_MMD:-mmd}
 MCOPY=${PLUMOS_PROVISION_MCOPY:-mcopy}
+PROGRESS_ROOT=${PLUMOS_PROVISION_PROGRESS_ROOT:-/usr/share/plumos/update-progress}
+FRAMEBUFFER=${PLUMOS_PROVISION_FRAMEBUFFER:-/dev/fb0}
 
 RUNTIME_ROOT=${PLUMOS_PROVISION_RUNTIME_ROOT:-/storage}
 STATE_DIR=${PLUMOS_PROVISION_STATE_DIR:-$RUNTIME_ROOT/provision}
@@ -64,8 +66,17 @@ log() {
     printf '%s\n' "$line" >/dev/console 2>/dev/null || true
 }
 
+show_progress() {
+    [ "$HOST_MODE" = 1 ] && return 0
+    [ "${PLUMOS_PROVISION_PROGRESS:-1}" = 0 ] && return 0
+    frame=$PROGRESS_ROOT/$1.raw
+    [ -r "$frame" ] && [ -e "$FRAMEBUFFER" ] || return 0
+    "$BB" cat "$frame" >"$FRAMEBUFFER" 2>/dev/null || true
+}
+
 fail() {
     log "result=failed reason=$1"
+    show_progress error
     $BB sync
     rm -f "$TABLE_DUMP"
     exit 1
@@ -164,6 +175,7 @@ if [ -f "$STATE_DIR/complete" ]; then
     fi
 fi
 
+show_progress prepare
 log "stage=inspect disk=$DISK sectors=$disk_size"
 refresh_table_dump || fail partition-table-unreadable
 p1_start=$(partition_value "$TABLE_P1" start)
@@ -251,6 +263,7 @@ if [ "$(kernel_value "$P2" size)" != "$SYS_TARGET_SECTORS" ] ||
 fi
 
 if [ ! -f "$STATE_DIR/ext4-resized" ]; then
+    show_progress resize
     log 'stage=resize-system-ext4'
     "$RESIZE2FS" "$P2" >>"$LOG" 2>&1 || fail resize2fs
     : >"$STATE_DIR/ext4-resized"
@@ -265,6 +278,7 @@ if [ -z "$p3_type" ]; then
         log 'result=preserved reason=existing-unrecognized-user-partition'
         exit 30
     }
+    show_progress userdata
     log 'stage=format-user-fat32 label=PLUMOS_USER'
     "$MKFS_FAT" -F 32 -n PLUMOS_USER -i 504C0003 "$P3" >>"$LOG" 2>&1 ||
         fail mkfs-fat
@@ -279,6 +293,7 @@ if [ "$p3_type" != vfat ] || [ "$p3_label" != PLUMOS_USER ]; then
     exit 30
 fi
 
+show_progress verify
 log 'stage=seed-user-directories'
 if [ "$HOST_MODE" = 1 ]; then
     export MTOOLS_SKIP_CHECK=1
@@ -308,4 +323,5 @@ $BB sync
 : >"$STATE_DIR/complete"
 $BB sync
 log 'result=complete layout=pixel2-compact-seed-v1'
+show_progress start
 exit 0
