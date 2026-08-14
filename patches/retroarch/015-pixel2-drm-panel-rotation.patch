@@ -1,0 +1,68 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -1157,6 +1157,20 @@ static void *drm_init(const video_info_t *video,
+    _drmvars->core_width       = 0;
+    _drmvars->core_height      = 0;
+    _drmvars->rotation         = retroarch_get_rotation() & 3;
++   {
++      const char *panel_rotation = getenv("PLUMOS_DRM_PANEL_ROTATION");
++      if (panel_rotation && *panel_rotation)
++      {
++         char *end = NULL;
++         unsigned long parsed = strtoul(panel_rotation, &end, 10);
++         if (end && *end == '\0' && parsed <= 3)
++         {
++            _drmvars->rotation = (unsigned)parsed;
++            RARCH_LOG("[DRM] Fixed panel rotation set to %u.\n",
++                  _drmvars->rotation);
++         }
++      }
++   }
+ 
+    _drmvars->main_surface     = NULL;
+    _drmvars->menu_surface     = NULL;
+@@ -1378,5 +1391,13 @@ static void drm_set_rotation(void *data, unsigned rotation)
+ {
+    struct drm_video *_drmvars = data;
++   const char *panel_rotation = getenv("PLUMOS_DRM_PANEL_ROTATION");
++
++   if (panel_rotation && *panel_rotation)
++   {
++      RARCH_LOG("[DRM] Fixed panel rotation remains %u.\n",
++            _drmvars ? _drmvars->rotation : 0);
++      return;
++   }
+    unsigned next_rotation = rotation & 3;
+ 
+    if (!_drmvars || _drmvars->rotation == next_rotation)
+diff --git a/runloop.c b/runloop.c
+--- a/runloop.c
++++ b/runloop.c
+@@ -1877,14 +1877,23 @@ static bool core_environment(unsigned cmd, void *data)
+ 
+          RARCH_LOG("[Environ] SET_ROTATION: \"%u\" (%u deg).\n", rotation, rotation_v[rotation % 4]);
+ 
+-         if (sys_info)
+-            sys_info->core_requested_rotation = rotation;
+-
++         /* A rejected rotation is rendered by the core in software. Do not
++          * retain it as a frontend rotation, since doing so inverts the
++          * aspect of the already-rotated frame a second time. */
+          if (!video_allow_rotate)
++         {
++            if (sys_info)
++               sys_info->core_requested_rotation = 0;
+             return false;
++         }
+ 
+          if (sys_info)
++         {
++            sys_info->core_requested_rotation = rotation;
+             sys_info->rotation = rotation;
++         }
++
++         video_driver_set_aspect_ratio();
+ 
+          if (!video_driver_set_rotation(rotation))
+             return false;

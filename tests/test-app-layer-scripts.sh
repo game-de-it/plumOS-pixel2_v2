@@ -171,16 +171,24 @@ grep -q 'wonderswan|wonderswancolor)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'video_allow_rotate=false' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'PLUMOS_DRM_PANEL_ROTATION=3' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'video_rotation=0' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'aspect_ratio_index=22' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'video_allow_rotate = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'aspect_ratio_index = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
-grep -q 'drm_pixel2_core_aspect' \
-    "$ROOT_DIR/patches/retroarch/015-pixel2-drm-core-aspect.patch"
-grep -q 'aspect_ratio_idx == ASPECT_RATIO_CORE' \
-    "$ROOT_DIR/patches/retroarch/015-pixel2-drm-core-aspect.patch"
+grep -q 'PLUMOS_DRM_PANEL_ROTATION' \
+    "$ROOT_DIR/patches/retroarch/015-pixel2-drm-panel-rotation.patch"
+grep -q 'Fixed panel rotation remains' \
+    "$ROOT_DIR/patches/retroarch/015-pixel2-drm-panel-rotation.patch"
+grep -q 'core_requested_rotation = 0' \
+    "$ROOT_DIR/patches/retroarch/015-pixel2-drm-panel-rotation.patch"
+grep -q 'video_driver_set_aspect_ratio();' \
+    "$ROOT_DIR/patches/retroarch/015-pixel2-drm-panel-rotation.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \

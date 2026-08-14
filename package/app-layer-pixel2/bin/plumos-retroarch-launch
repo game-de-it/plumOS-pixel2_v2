@@ -135,6 +135,7 @@ set_cpu_governor
 append="$runtime_root/retroarch/append.cfg"
 video_driver=drm
 video_allow_rotate=true
+video_rotation=${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}
 aspect_ratio_index=0
 case "${core##*/}" in
     km_duckswanstation_xtreme_amped_libretro.so)
@@ -146,13 +147,13 @@ case "${core##*/}" in
 esac
 case "$system_id" in
     wonderswan|wonderswancolor)
-        # Beetle WonderSwan disables its own software rotation when the
-        # frontend accepts RETRO_ENVIRONMENT_SET_ROTATION. Pixel2 already
-        # applies the fixed CCW panel correction in the DRM presenter, so let
-        # the core rotate its horizontal/vertical content before presentation.
-        # Keep content rotation inside the core so the fixed Pixel2 panel
-        # correction is never replaced with the core-only rotation value.
+        # Match the proven plumOS portrait-panel contract: RetroArch sees an
+        # unrotated logical viewport, Beetle WonderSwan performs its own
+        # SELECT-controlled content rotation, and DRM applies only the fixed
+        # Pixel2 panel correction at final presentation.
         video_allow_rotate=false
+        video_rotation=0
+        export PLUMOS_DRM_PANEL_ROTATION=3
         # WonderSwan uses a 224x144 (14:9) display and changes geometry when
         # SELECT switches orientation. The global Pixel2 4:3 policy would
         # distort both layouts, so use RetroArch's core-provided aspect entry.
@@ -182,7 +183,7 @@ fi
     printf 'audio_device = "%s"\n' "$audio_device"
     printf 'audio_latency = "%s"\n' "$audio_latency"
     printf 'video_driver = "%s"\n' "$video_driver"
-    printf 'video_rotation = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}"
+    printf 'video_rotation = "%s"\n' "$video_rotation"
     printf 'video_allow_rotate = "%s"\n' "$video_allow_rotate"
     printf 'video_refresh_rate = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_REFRESH_RATE:-60.000000}"
     printf 'vrr_runloop_enable = "%s"\n' "${PLUMOS_RETROARCH_VRR_RUNLOOP_ENABLE:-false}"
