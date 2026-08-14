@@ -271,6 +271,60 @@ def load_package(path: Path) -> tuple[dict[str, Any], bytes, bytes]:
     return manifest, manifest_bytes, signature
 
 
+def load_package_metadata(path: Path) -> dict[str, Any]:
+    """Read the signed leading metadata without streaming the payload.
+
+    Pixel2 packages are built with manifest.json and manifest.sig as the first
+    two archive members. Scanning every payload made the FE hash/decompress all
+    old packages merely to decide whether an update existed. Full member and
+    payload validation still happens in request() for the selected package.
+    """
+    if not path.is_file():
+        raise UpdateError(f"update package is missing: {path}")
+    try:
+        with tarfile.open(path, "r|gz") as archive:
+            manifest_member = archive.next()
+            if (
+                manifest_member is None
+                or manifest_member.name != "META/manifest.json"
+                or not manifest_member.isfile()
+                or manifest_member.size > 1024 * 1024
+            ):
+                raise UpdateError("package manifest is not the leading archive member")
+            manifest_handle = archive.extractfile(manifest_member)
+            if manifest_handle is None:
+                raise UpdateError("cannot read package manifest")
+            manifest_bytes = manifest_handle.read()
+
+            signature_member = archive.next()
+            if (
+                signature_member is None
+                or signature_member.name != "META/manifest.sig"
+                or not signature_member.isfile()
+                or signature_member.size > 16 * 1024
+            ):
+                raise UpdateError("package signature is not the second archive member")
+            signature_handle = archive.extractfile(signature_member)
+            if signature_handle is None:
+                raise UpdateError("cannot read package signature")
+            signature = signature_handle.read()
+    except (tarfile.TarError, OSError) as exc:
+        raise UpdateError(f"cannot read update package metadata: {exc}") from exc
+    try:
+        manifest = json.loads(manifest_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise UpdateError(f"invalid update manifest: {exc}") from exc
+    verify_signature(manifest_bytes, signature)
+    declared_names = {"META/manifest.json", "META/manifest.sig"}
+    files = manifest.get("files")
+    if isinstance(files, list):
+        for entry in files:
+            if isinstance(entry, dict):
+                declared_names.add(f"payload/{entry.get('path', '')}")
+    validate_manifest(manifest, declared_names)
+    return manifest
+
+
 def validate_manifest(manifest: dict[str, Any], archive_names: set[str]) -> None:
     if manifest.get("format") != 1:
         raise UpdateError("unsupported update package format")
@@ -369,6 +423,18 @@ def inspect(path: Path) -> dict[str, Any]:
     }
 
 
+def inspect_metadata(path: Path) -> dict[str, Any]:
+    manifest = load_package_metadata(path)
+    current_compatibility(manifest)
+    return {
+        "path": str(path),
+        "package_type": manifest["package_type"],
+        "version": manifest["version"],
+        "source_version": manifest.get("source_version", "*"),
+        "payload_uncompressed_bytes": manifest["payload_uncompressed_bytes"],
+    }
+
+
 def scan_packages() -> list[dict[str, Any]]:
     inbox = USER_ROOT / "updates"
     results: list[dict[str, Any]] = []
@@ -376,7 +442,7 @@ def scan_packages() -> list[dict[str, Any]]:
         return results
     for path in sorted(inbox.glob("plumos-pixel2-*.tar.gz")):
         try:
-            item = inspect(path)
+            item = inspect_metadata(path)
             item["mtime"] = path.stat().st_mtime_ns
             results.append(item)
         except UpdateError as exc:
