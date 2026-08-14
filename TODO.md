@@ -22,6 +22,7 @@
   - [x] signed Runtime/System updaterをFE System Updateとsafe rebootへ接続する
     - 2026-08-13: 既存plumOSの署名・journal・1世代rollback設計をPixel2の`/flash/system-slots`とnamed ABIへ移植。署名なし拒否、Runtime適用/health/rollback、中断journal復旧、inactive System readback、誤slot昇格拒否をhost fixtureで検証。
     - 2026-08-13: Ed25519署名済みRuntimeとSystemを実機適用。Runtimeはrenderer-ready前`pending_health`、ready後`healthy`、3450 checksum合格、1世代backupと設定保持を確認。Systemはinactive Bへのreadback、自動2段reboot、ready前の未昇格、B昇格、充電/USB接続中のB active再起動とFE/ADB復帰を確認。FEメニュー項目そのものの物理操作とfailure rollback injectionは未検証。
+    - 2026-08-14: 4135-file full Runtimeで旧journal方式が12,405回・累計約2.96 GBのJSON書込みになることを検出。`164c841`で完全操作計画を1回だけpre-journalし、backupを開始済み証拠にする線形I/O rollbackへ修正。`89fa6a4`でPixel2 480x640 update進捗6画面もSystemへ収録した。旧方式で開始済み実機transactionと修正版Systemの物理acceptanceは継続。
   - [x] Audio OutputのSpeaker/Headphone選択をPixel2 hardware capabilityと一致させる
     - Pixel2はRK817 speaker単一路のため、存在しない出力切替をFEに表示しない。
   - [x] lidのないPixel2でLid Suspendを選択不能にする
@@ -142,6 +143,7 @@
   - 2026-08-14: compact p1+p2 MBR seed、online `resize2fs`、残容量FAT32作成、ROM/BIOS directory seedをSystem early initへ統合。stock handoffがmount済みp2のgeometry更新を拒否した場合はsync後1回rebootして再開する。
 - [x] provisioningを中断・再開可能かつ既存p3非破壊にする
   - 2026-08-14: p3 ownershipをMBR変更前にext4 journalへcommitし、各stageを再実行可能にした。16 GB sparse-card simulationで中断resume、完了後無書込み、旧4 GiB layoutのp3 byte保持を検証。
+  - 2026-08-14: 実機SystemのBusyBoxに`blkid` appletが無いのに`/bin/blkid` symlinkを作っていたため既存FAT32判定が失敗し、p3を3回再formatした。`b902e3e`でutil-linux実体を収録し、boot-sector type/label fallbackとmissing-blkid非破壊fixtureを追加。修正版boot後はsentinel保持とformat count不増を確認。format前user dataを完全退避した証明はなく、data lossの可能性を記録する。
 - [x] stock initramfs固定handoffの内側へSystem A/B選択、SHA-256検証、rollbackを実装する
   - 2026-08-13: stockが固定で開く`/SYSTEM`を小さなPixel2 dispatcherとし、FAT32で名前衝突しない`/system-slots/system-{a,b}.squashfs`を選択する。pendingは一度だけ試し、次bootまでFE health promotionがなければactiveへrollback。`5932ef9`でslot A cold boot、`7f16e6d`でinactive B pending boot、FE promotion、B active再起動、mount継承、旧root detach、FE/ADB起動を実機確認。実機failure rollbackは未検証。
 - [x] frontend renderer-readyによるSystem health promotionを実装する
@@ -151,6 +153,7 @@
 - [x] Ed25519署名package builder/verifierと公開鍵を実装する
 - [x] FE System Update画面とsafe reboot flowを統合する
   - 2026-08-13: `tests/test-pixel2-update.sh`とARM64 System chroot検証は合格。公開鍵だけをSystemへ同梱し秘密鍵混入gateを追加。ADBからrequestしたsigned Runtime/Systemの実機成功経路は合格。FEからのrequest、進捗/失敗表示、実機failure rollbackはacceptanceとして継続する。
+  - 2026-08-14: updater側のframebuffer書込みは存在したが、Pixel2 Systemがprogress rawを未収録だった。`89fa6a4`でverify/runtime/system/finalize/rollback/errorの6画面を生成・収録し、欠落をSystem verifierで失敗させる。修正版SystemでのLCD目視は継続。
 - [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
   - 2026-08-14: 現行64 GB実機SDで最終境界（p2=8192 MiB、p3=残り49.7 GiB）、既存user data復元、cold boot mountには合格。この時点ではrelease seed側が未実装だったため項目を継続した。
   - 2026-08-14: release seed provisionerを実装し、16 GB sparse-cardで最終MBR、ext4 8 GiB、残容量FAT32、directory seed、中断resume、idempotency、既存p3保護までhost合格。新規compact imageからの物理Pixel2初回bootのみ継続。
