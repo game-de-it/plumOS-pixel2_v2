@@ -95,6 +95,13 @@ install -D -m 0755 "$ROOT_DIR/scripts/plumos-system-update.py" \
     "$ROOTFS_DIR/usr/sbin/plumos-system-update"
 install -D -m 0644 "$ROOT_DIR/package/system-pixel2/plumos-update-public.pem" \
     "$ROOTFS_DIR/etc/plumos-update-public.pem"
+progress_dir="$OUT_DIR/update-progress"
+python3 "$ROOT_DIR/scripts/generate-pixel2-update-progress.py" \
+    --output-dir "$progress_dir"
+for frame in "$progress_dir"/update_*.raw; do
+    install -D -m 0644 "$frame" \
+        "$ROOTFS_DIR/usr/share/plumos/update-progress/$(basename "$frame")"
+done
 printf '%s\n' 'plumos-pixel2-v1' >"$ROOTFS_DIR/etc/plumos-system-abi"
 printf '%s\n' "$VERSION" >"$ROOTFS_DIR/etc/plumos-system-version"
 install -D -m 0755 /lib/aarch64-linux-gnu/ld-linux-aarch64.so.1 \

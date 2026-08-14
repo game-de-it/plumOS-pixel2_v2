@@ -85,6 +85,21 @@ grep -q 'reason=no-pending-state' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'runtime-pending.json' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'runtime-transaction.json' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'verify-runtime' "$ROOT_DIR/scripts/plumos-system-update.py"
+grep -q 'generate-pixel2-update-progress.py' \
+    "$ROOT_DIR/scripts/build-system-rootfs.sh"
+grep -q 'update_rollback update_error' \
+    "$ROOT_DIR/scripts/verify-system-rootfs.sh"
+
+progress_dir=$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-progress.XXXXXX")
+trap 'rm -rf "$progress_dir"' EXIT
+python3 "$ROOT_DIR/scripts/generate-pixel2-update-progress.py" \
+    --output-dir "$progress_dir"
+for frame in update_verify update_runtime update_system update_finalize \
+    update_rollback update_error; do
+    test -f "$progress_dir/$frame.raw"
+    [ "$(stat -f '%z' "$progress_dir/$frame.raw" 2>/dev/null || \
+        stat -c '%s' "$progress_dir/$frame.raw")" -eq $((480 * 640 * 4)) ]
+done
 grep -q 'build-pixel2-update-package.py' "$ROOT_DIR/scripts/docker-build.sh"
 
 ! grep -q '\$bb mountpoint' "$ROOT_DIR/rootfs/pixel2/sbin/init"
