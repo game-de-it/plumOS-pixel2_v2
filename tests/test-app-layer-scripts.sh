@@ -418,6 +418,10 @@ grep -q 'CXXFLAGS += -DCMDR_KEY_MENU=14' \
     "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
 grep -q 'Pixel2 virtual D-pad is SDL joystick buttons 10-13' \
     "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
+grep -q '"/bin/busybox", AsConstCStr(args)' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
+grep -q 'i == inputs.size() - 1' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
 grep -q '^path_default_right=/roms$' \
     "$ROOT_DIR/scripts/build-nextcommander-pixel2.sh"
 grep -q 'lib/libretro/libvorbisfile.so.3' \

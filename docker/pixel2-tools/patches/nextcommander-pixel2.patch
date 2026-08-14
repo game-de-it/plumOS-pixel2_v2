@@ -66,6 +66,30 @@ index d16a23d..6455dc6 100644
  
  $(OUTDIR)/%.o: src/%.cpp
  	@mkdir -p $(@D)
+diff --git a/src/fileutils.cpp b/src/fileutils.cpp
+--- a/src/fileutils.cpp
++++ b/src/fileutils.cpp
+@@ -176,7 +176,11 @@ class ActionResult
+ 
+ template <typename... Args> ActionResult Run(Args... args)
+ {
++#ifdef PLUMOS_PIXEL2
++    const char *execve_args[] = { "/bin/busybox", AsConstCStr(args)..., nullptr };
++#else
+     const char *execve_args[] = { AsConstCStr(args)..., nullptr };
++#endif
+     std::string err;
+     const int errnum = SpawnAndWait(
+         execve_args, /*capture_stdout=*/nullptr, /*capture_stderr=*/&err);
+@@ -250,7 +254,7 @@ void ActionToDir(const std::vector<std::string> &inputs,
+         action_desc = description;
+         action_desc += ' ';
+         action_desc.append(File_utils::getFileName(input));
+-        const bool is_last = (i == input.size() - 1);
++        const bool is_last = (i == inputs.size() - 1);
+         progress_fn(action_desc, i++, inputs.size());
+         JoinPath(dest_dir, File_utils::getFileName(input), dest_filename);
+         if (confirm_overwrite && File_utils::fileExists(dest_filename))
 diff --git a/src/main.cpp b/src/main.cpp
 index e4b2f39..651e892 100644
 --- a/src/main.cpp
