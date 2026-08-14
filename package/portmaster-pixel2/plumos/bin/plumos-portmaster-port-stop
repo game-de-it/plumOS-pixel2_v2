@@ -1,0 +1,76 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+PLUMOS_ROM_ROOT="${PLUMOS_ROM_ROOT:-$PLUMOS_SDCARD_ROOT/roms}"
+resolved_plumos_root="$(readlink -f "$PLUMOS_ROOT" 2>/dev/null || true)"
+[ -n "$resolved_plumos_root" ] && PLUMOS_ROOT="$resolved_plumos_root"
+resolved_rom_root="$(readlink -f "$PLUMOS_ROM_ROOT" 2>/dev/null || true)"
+[ -n "$resolved_rom_root" ] && PLUMOS_ROM_ROOT="$resolved_rom_root"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+PID_FILE="${RUN_ROOT}/port.pid"
+START_FILE="${RUN_ROOT}/port.starttime"
+SCRIPT_FILE="${RUN_ROOT}/port.script"
+action="${1:-stop}"
+
+case "$action" in
+  status|stop) ;;
+  *)
+    printf 'usage: plumOS-portmaster-port-stop [status|stop]\n' >&2
+    exit 64
+    ;;
+esac
+
+[ -f "$PID_FILE" ] || {
+  printf 'plumos-portmaster-port-stop: not running\n'
+  exit 0
+}
+pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+expected_start="$(cat "$START_FILE" 2>/dev/null || true)"
+script="$(cat "$SCRIPT_FILE" 2>/dev/null || true)"
+resolved_script="$(readlink -f "$script" 2>/dev/null || true)"
+[ -n "$resolved_script" ] && script="$resolved_script"
+case "$pid" in ''|*[!0-9]*) printf 'plumos-portmaster-port-stop: invalid pid record\n' >&2; exit 1 ;; esac
+case "$expected_start" in ''|*[!0-9]*) printf 'plumos-portmaster-port-stop: invalid start-time record\n' >&2; exit 1 ;; esac
+[ -r "/proc/${pid}/stat" ] || {
+  rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE"
+  exit 0
+}
+stat_fields="$(sed 's/.*) //' "/proc/${pid}/stat")"
+set -- $stat_fields
+pgrp="${3:-}"
+session="${4:-}"
+starttime="${20:-}"
+if [ "$pgrp" != "$pid" ] || [ "$session" != "$pid" ] ||
+   [ "$starttime" != "$expected_start" ]; then
+  printf 'plumos-portmaster-port-stop: refusing unowned process group pid=%s\n' "$pid" >&2
+  exit 1
+fi
+case "$script" in
+  "${PLUMOS_ROM_ROOT}"/[Pp][Oo][Rr][Tt][Ss]/*.sh) ;;
+  *)
+    printf 'plumos-portmaster-port-stop: invalid script ownership: %s\n' "$script" >&2
+    exit 1
+    ;;
+esac
+
+if [ "$action" = "status" ]; then
+  printf 'plumos-portmaster-port-stop: pid=%s script=%s\n' "$pid" "$script"
+  exit 0
+fi
+
+kill -TERM "-$pid" 2>/dev/null || true
+for _ in 1 2 3 4 5; do
+  [ -d "/proc/${pid}" ] || break
+  sleep 1
+done
+if [ -d "/proc/${pid}" ]; then
+  stat_fields="$(sed 's/.*) //' "/proc/${pid}/stat")"
+  set -- $stat_fields
+  if [ "${3:-}" = "$pid" ] && [ "${4:-}" = "$pid" ] &&
+     [ "${20:-}" = "$expected_start" ]; then
+    kill -KILL "-$pid" 2>/dev/null || true
+  fi
+fi
+rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE"

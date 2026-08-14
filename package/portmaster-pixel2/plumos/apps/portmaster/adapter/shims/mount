@@ -1,0 +1,82 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
+STATE_ROOT="${PLUMOS_ROOT}/state/portmaster"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${STATE_ROOT}/data}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+UNSQUASHFS="${APP_ROOT}/adapter/bin/aarch64/unsquashfs"
+MOUNTS_FILE="${PLUMOS_PORTMASTER_MOUNTS_FILE:-/run/plumos/portmaster/port.mounts}"
+MOUNT_BIN="${PLUMOS_PORTMASTER_MOUNT_BIN:-/bin/mount}"
+UMOUNT_BIN="${PLUMOS_PORTMASTER_UMOUNT_BIN:-/bin/umount}"
+FRT_WRAPPER="${PLUMOS_PORTMASTER_FRT_WRAPPER:-${PLUMOS_ROOT}/bin/plumos-portmaster-frt}"
+
+source_path="${1:-}"
+target_path="${2:-}"
+case "${source_path}:${target_path}" in
+  "${PM_DIR}"/libs/*.squashfs:"${STATE_ROOT}"/home/*) ;;
+  *) exec "$MOUNT_BIN" "$@" ;;
+esac
+
+[ -f "$source_path" ] || {
+  printf 'plumos-portmaster-mount: missing runtime: %s\n' "$source_path" >&2
+  exit 1
+}
+[ -x "$UNSQUASHFS" ] || {
+  printf 'plumos-portmaster-mount: missing unsquashfs: %s\n' "$UNSQUASHFS" >&2
+  exit 1
+}
+
+digest="$(sha256sum "$source_path" | awk '{print $1}')"
+runtime_name="$(basename "$source_path")"
+cache_root="${STATE_ROOT}/runtime-cache"
+cache_dir="${cache_root}/${runtime_name}.${digest}"
+ready_file="${cache_dir}/.plumos-runtime-ready"
+
+if [ ! -f "$ready_file" ]; then
+  cache_tmp="${cache_dir}.tmp.$$"
+  rm -rf "$cache_tmp"
+  mkdir -p "$cache_root" "$cache_tmp"
+  if ! "$UNSQUASHFS" -no-progress -no-xattrs -no-exit-code \
+      -dest "$cache_tmp" "$source_path"; then
+    rm -rf "$cache_tmp"
+    exit 1
+  fi
+  printf '%s\n' "$digest" > "${cache_tmp}/.plumos-runtime-ready"
+  rm -rf "$cache_dir"
+  mv "$cache_tmp" "$cache_dir"
+fi
+
+mkdir -p "$target_path"
+"$MOUNT_BIN" --bind "$cache_dir" "$target_path"
+printf '%s\n' "$target_path" >> "$MOUNTS_FILE"
+
+runtime_exec="${runtime_name%.squashfs}"
+case "$runtime_exec" in
+  frt_*)
+    real="${cache_dir}/${runtime_exec}"
+    wrapper="$FRT_WRAPPER"
+    wrapper_target="${target_path}/${runtime_exec}"
+    real_file="${RUN_ROOT}/frt-real.path"
+    real_file_tmp="${real_file}.tmp.$$"
+    [ -x "$real" ] || {
+      printf 'plumos-portmaster-mount: missing FRT executable: %s\n' "$real" >&2
+      exit 1
+    }
+    [ -x "$wrapper" ] || {
+      printf 'plumos-portmaster-mount: missing FRT wrapper: %s\n' "$wrapper" >&2
+      exit 1
+    }
+    mkdir -p "$RUN_ROOT"
+    printf '%s\n' "$real" > "$real_file_tmp"
+    mv -f "$real_file_tmp" "$real_file"
+    if ! "$MOUNT_BIN" --bind "$wrapper" "$wrapper_target"; then
+      rm -f "$real_file"
+      "$UMOUNT_BIN" "$target_path" 2>/dev/null || true
+      exit 1
+    fi
+    printf '%s\n' "$wrapper_target" >> "$MOUNTS_FILE"
+    ;;
+esac

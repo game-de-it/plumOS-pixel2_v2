@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+if [ "${1:-}" = restart ] && [ "${2:-}" = oga_events ]; then
+  exit 0
+fi
+printf 'plumOS PortMaster: unsupported systemctl request: %s\n' "$*" >&2
+exit 1

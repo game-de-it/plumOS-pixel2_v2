@@ -2,29 +2,105 @@
 set -u
 
 PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+SHARE_DIR="${PLUMOS_NETWORK_SHARE_DIR:-${PLUMOS_SDCARD_ROOT}}"
 RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
 RUN_DIR="${PLUMOS_NETWORK_SERVICES_RUN_DIR:-$RUNTIME_ROOT/network-services}"
+SSH_RUN_DIR="${PLUMOS_SSH_RUN_DIR:-$RUNTIME_ROOT/ssh}"
 LOG_DIR="${PLUMOS_ROOT}/logs"
 CONFIG_DIR="${PLUMOS_ROOT}/config/network"
+SAMBA_RUNTIME_DIR="${PLUMOS_SAMBA_RUNTIME_DIR:-$RUNTIME_ROOT/samba}"
+SAMBA_PRIVATE_DIR="${SAMBA_RUNTIME_DIR}/private"
+SAMBA_LOG_DIR="${SAMBA_RUNTIME_DIR}/log"
+FTP_PORT="${PLUMOS_FTP_PORT:-21}"
+TRANSFER_MAX_CONNECTIONS="${PLUMOS_TRANSFER_MAX_CONNECTIONS:-20}"
+SMB_CONF="${CONFIG_DIR}/smb.conf"
 SERVICES_CONF="${CONFIG_DIR}/services.conf"
-ADB_OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 LOG_FILE="${LOG_DIR}/network-services.log"
 
-mkdir -p "$RUN_DIR" "$LOG_DIR" "$CONFIG_DIR" 2>/dev/null || true
+BUSYBOX="${PLUMOS_ROOT}/bin/busybox"
+TCPSVD="${PLUMOS_ROOT}/bin/tcpsvd"
+FTPD="${PLUMOS_ROOT}/bin/ftpd"
+SFTP_SERVER="${PLUMOS_ROOT}/ssh/libexec/sftp-server"
+SFTP_SERVER_DISABLED="${PLUMOS_ROOT}/ssh/libexec/sftp-server.disabled"
+SFTP_SERVER_BIN="${PLUMOS_ROOT}/ssh/libexec/sftp-server.bin"
+SSH_START="${PLUMOS_ROOT}/ssh/start-ssh.sh"
+SSH_STOP="${PLUMOS_ROOT}/ssh/stop-ssh.sh"
+SMBD="${PLUMOS_ROOT}/network/samba/sbin/smbd"
+NMBD="${PLUMOS_ROOT}/network/samba/sbin/nmbd"
+ADBD_CONTROL="${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}"
+ADB_RECOVERY_MARKER="${PLUMOS_ADB_RECOVERY_MARKER:-${PLUMOS_SDCARD_ROOT}/plumos-enable-adb}"
+
+mkdir -p "$RUN_DIR" "$LOG_DIR" "$CONFIG_DIR"
 
 log() {
-  printf '%s service=%s %s\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)" \
-    "${2:-network}" "$1" >>"$LOG_FILE" 2>/dev/null || true
+  printf '%s service=%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || true)" "${2:-network}" "$1" >> "$LOG_FILE"
+}
+
+close_inherited_display_fds() {
+  for fd in 3 4 5 6 7 8 9; do
+    target="$(readlink "/proc/$$/fd/${fd}" 2>/dev/null || true)"
+    case "$target" in
+      /dev/fb0)
+        eval "exec ${fd}<&- ${fd}>&-" 2>/dev/null || true
+        ;;
+    esac
+  done
+}
+
+pid_alive() {
+  pid_file="$1"
+  [ -s "$pid_file" ] || return 1
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+pid_matches() {
+  pid="$1"
+  expected="$2"
+  cmdline="$(tr '\000' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)"
+  comm="$(cat "/proc/${pid}/comm" 2>/dev/null || true)"
+  case "${cmdline} ${comm}" in
+    *"$expected"*) return 0 ;;
+  esac
+  return 1
+}
+
+pid_file_matches() {
+  pid_file="$1"
+  expected="$2"
+  pid_alive "$pid_file" || return 1
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  pid_matches "$pid" "$expected"
+}
+
+kill_pid_file() {
+  pid_file="$1"
+  name="$2"
+  expected="$3"
+  if pid_alive "$pid_file"; then
+    pid="$(cat "$pid_file" 2>/dev/null || true)"
+    if ! pid_matches "$pid" "$expected"; then
+      log "refuse stop pid=${pid} reason=cmdline_mismatch expected=${expected}" "$name"
+      rm -f "$pid_file"
+      return 1
+    fi
+    kill "$pid" 2>/dev/null || true
+    sleep 1
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+    log "stopped pid=${pid}" "$name"
+  fi
+  rm -f "$pid_file"
 }
 
 config_key() {
   case "$1" in
-    ssh) printf '%s\n' ssh_enabled ;;
-    ftp) printf '%s\n' ftp_enabled ;;
-    sftp) printf '%s\n' sftp_enabled ;;
-    samba) printf '%s\n' samba_enabled ;;
-    adb) printf '%s\n' adb_enabled ;;
+    ssh) printf '%s\n' "ssh_enabled" ;;
+    ftp) printf '%s\n' "ftp_enabled" ;;
+    sftp) printf '%s\n' "sftp_enabled" ;;
+    samba) printf '%s\n' "samba_enabled" ;;
+    adb) printf '%s\n' "adb_enabled" ;;
     *) return 1 ;;
   esac
 }
@@ -32,52 +108,34 @@ config_key() {
 service_enabled() {
   service="$1"
   key="$(config_key "$service")" || return 1
-  if [ "$service" = adb ] && [ -f "$ADB_OPT_IN_MARKER" ]; then
+  if [ "$service" = "adb" ] && [ -f "$ADB_RECOVERY_MARKER" ]; then
     return 0
   fi
   [ -r "$SERVICES_CONF" ] || {
-    [ "$service" = ssh ] || [ "$service" = adb ]
+    [ "$service" = "adb" ]
     return $?
   }
   value="$(sed -n "s/^${key}=//p" "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
   [ -n "$value" ] || {
-    [ "$service" = ssh ] || [ "$service" = adb ]
+    [ "$service" = "adb" ]
     return $?
   }
-  [ "$value" = 1 ] || [ "$value" = true ] || [ "$value" = on ]
+  [ "$value" = "1" ] || [ "$value" = "true" ] || [ "$value" = "on" ]
 }
 
 set_service_enabled() {
   service="$1"
   enabled="$2"
   key="$(config_key "$service")" || return 1
-  tmp="$SERVICES_CONF.tmp.$$"
+  tmp="${SERVICES_CONF}.tmp"
+  mkdir -p "$CONFIG_DIR"
   if [ -r "$SERVICES_CONF" ]; then
-    grep -v "^${key}=" "$SERVICES_CONF" >"$tmp" 2>/dev/null || true
+    grep -v "^${key}=" "$SERVICES_CONF" > "$tmp" 2>/dev/null || true
   else
-    : >"$tmp"
+    : > "$tmp"
   fi
-  printf '%s=%s\n' "$key" "$enabled" >>"$tmp"
-  mv -f "$tmp" "$SERVICES_CONF"
-}
-
-process_has() {
-  needle="$1"
-  for proc in /proc/[0-9]*; do
-    [ -r "$proc/cmdline" ] || continue
-    cmdline="$(tr '\000' ' ' <"$proc/cmdline" 2>/dev/null || true)"
-    case "$cmdline" in *"$needle"*) return 0 ;; esac
-  done
-  return 1
-}
-
-adb_running() {
-  [ -x /usr/lib/plumos/init.d/10-adbd ] &&
-    /usr/lib/plumos/init.d/10-adbd status 2>/dev/null | grep -q '^state=running$'
-}
-
-ssh_running() {
-  process_has dropbear
+  printf '%s=%s\n' "$key" "$enabled" >> "$tmp"
+  mv "$tmp" "$SERVICES_CONF"
 }
 
 print_status() {
@@ -92,93 +150,477 @@ print_status() {
   else
     printf 'enabled=0\n'
   fi
-  printf 'share_dir=%s\n' "${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+  printf 'share_dir=%s\n' "$SHARE_DIR"
 }
 
-status_service() {
-  case "$1" in
-    adb)
-      if adb_running; then
-        print_status adb running 'ADB over USB FunctionFS'
-      else
-        print_status adb stopped 'ADB stopped'
-      fi
-      ;;
-    ssh)
-      if ! command -v dropbear >/dev/null 2>&1; then
-        print_status ssh not_installed 'Dropbear not installed'
-      elif ssh_running; then
-        print_status ssh running 'SSH service controlled by plumOS'
-      else
-        print_status ssh stopped 'SSH stopped'
-      fi
-      ;;
-    ftp) print_status ftp not_installed 'FTP not packaged for Pixel2 yet'; return 1 ;;
-    sftp) print_status sftp not_installed 'SFTP not packaged for Pixel2 yet'; return 1 ;;
-    samba) print_status samba not_installed 'Samba not packaged for Pixel2 yet'; return 1 ;;
-    *) return 2 ;;
-  esac
+process_exists_by_name() {
+  name="$1"
+  [ -n "$name" ] || return 1
+  for proc in /proc/[0-9]*; do
+    [ -d "$proc" ] || continue
+    pid="${proc##*/}"
+    [ "$pid" = "$$" ] && continue
+    comm="$(cat "$proc/comm" 2>/dev/null || true)"
+    cmdline="$(tr '\000' ' ' < "$proc/cmdline" 2>/dev/null || true)"
+    [ "$comm" = "$name" ] && return 0
+    case "$cmdline" in
+      "$name "*|"$name:"*|*"/$name "*|*"/$name") return 0 ;;
+    esac
+  done
+  return 1
 }
 
-start_service() {
-  service="$1"
-  set_service_enabled "$service" 1 || return 1
-  case "$service" in
-    adb)
-      # Keep the live ADB transport stable. The frontend tells users that this
-      # setting is applied after reboot on Pixel2.
-      log 'enabled=1 apply=reboot-required' adb
-      return 0
-      ;;
-    ssh)
-      if [ -x /usr/lib/plumos/init.d/30-ssh ]; then
-        /usr/lib/plumos/init.d/30-ssh start >/dev/null 2>&1 || true
-      fi
-      ssh_running || {
-        log 'result=not-running reason=authorized-keys-or-dropbear-missing' ssh
-        return 0
+sshd_listener_exists() {
+  for proc in /proc/[0-9]*; do
+    [ -r "$proc/cmdline" ] || continue
+    cmdline="$(tr '\000' ' ' < "$proc/cmdline" 2>/dev/null || true)"
+    case "$cmdline" in
+      *sshd*"[listener]"*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+ftp_pid_file() {
+  printf '%s\n' "${RUN_DIR}/plumos-ftp.pid"
+}
+
+smbd_pid_file() {
+  printf '%s\n' "${RUN_DIR}/smbd.pid"
+}
+
+nmbd_pid_file() {
+  printf '%s\n' "${RUN_DIR}/nmbd.pid"
+}
+
+ssh_pid_file() {
+  if [ -s "${SSH_RUN_DIR}/sshd.pid" ]; then
+    printf '%s\n' "${SSH_RUN_DIR}/sshd.pid"
+    return
+  fi
+  if [ -s "${SSH_RUN_DIR}/dropbear.pid" ]; then
+    printf '%s\n' "${SSH_RUN_DIR}/dropbear.pid"
+    return
+  fi
+  printf '%s\n' "${SSH_RUN_DIR}/sshd.pid"
+}
+
+kill_ftp_children() {
+  [ -x "$BUSYBOX" ] || return 0
+  pids="$("$BUSYBOX" ps w 2>/dev/null | "$BUSYBOX" awk -v bb="$BUSYBOX" -v ftpd="$FTPD" '
+    $1 ~ /^[0-9]+$/ {
+      line = $0
+      if (index(line, bb " ftpd ") || index(line, ftpd " ")) {
+        print $1
       }
-      ;;
-    ftp|sftp|samba)
-      log 'result=not-installed' "$service"
-      return 1
-      ;;
+    }
+  ')"
+  [ -n "$pids" ] || return 0
+
+  for pid in $pids; do
+    [ "$pid" = "$$" ] && continue
+    kill "$pid" 2>/dev/null || true
+  done
+  sleep 1
+  for pid in $pids; do
+    [ "$pid" = "$$" ] && continue
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+  done
+  log "stopped sessions pids=$(printf '%s' "$pids" | tr '\n' ' ')" ftp
+}
+
+status_ssh() {
+  if sshd_listener_exists || pid_file_matches "$(ssh_pid_file)" "dropbear"; then
+    print_status ssh running "SSH service controlled by plumOS"
+    return 0
+  fi
+  if process_exists_by_name "dropbear"; then
+    print_status ssh running "SSH running; pid file will be adopted on start"
+    return 0
+  fi
+  if [ ! -x "$SSH_START" ]; then
+    print_status ssh not_installed "SSH start script missing"
+    return 1
+  fi
+  print_status ssh stopped "SSH stopped"
+  return 2
+}
+
+status_ftp() {
+  if [ ! -x "$TCPSVD" ] || [ ! -x "$FTPD" ]; then
+    print_status ftp not_installed "FTP not installed"
+    return 1
+  fi
+  if pid_file_matches "$(ftp_pid_file)" "tcpsvd"; then
+    print_status ftp running "FTP port ${FTP_PORT}, max ${TRANSFER_MAX_CONNECTIONS}"
+    return 0
+  fi
+  print_status ftp stopped "FTP stopped"
+  return 2
+}
+
+status_sftp() {
+  if { [ ! -f "$SFTP_SERVER" ] && [ ! -f "$SFTP_SERVER_DISABLED" ]; } ||
+     [ ! -x "$SFTP_SERVER_BIN" ]; then
+    print_status sftp not_installed "SFTP server not installed"
+    return 1
+  fi
+  if [ ! -f "$SFTP_SERVER" ]; then
+    print_status sftp stopped "SFTP disabled"
+    return 2
+  fi
+  if sshd_listener_exists ||
+     pid_file_matches "$(ssh_pid_file)" "dropbear" ||
+     process_exists_by_name "dropbear"; then
+    print_status sftp running "SFTP server installed; SSH service running"
+    return 0
+  fi
+  print_status sftp stopped "SFTP server installed, SSH not running"
+  return 2
+}
+
+enable_sftp_server() {
+  if [ ! -f "$SFTP_SERVER" ] && [ -f "$SFTP_SERVER_DISABLED" ]; then
+    mv "$SFTP_SERVER_DISABLED" "$SFTP_SERVER"
+  fi
+}
+
+disable_sftp_server() {
+  if [ -f "$SFTP_SERVER" ]; then
+    mv "$SFTP_SERVER" "$SFTP_SERVER_DISABLED"
+  fi
+}
+
+status_samba() {
+  if [ ! -x "$SMBD" ]; then
+    print_status samba not_installed "Samba not installed"
+    return 1
+  fi
+  if pid_file_matches "$(smbd_pid_file)" "smbd"; then
+    print_status samba running "Samba share SDCARD, max ${TRANSFER_MAX_CONNECTIONS}"
+    return 0
+  fi
+  if service_enabled samba && ! has_usable_ipv4; then
+    print_status samba waiting_network "Samba enabled; waiting for IPv4"
+    return 2
+  fi
+  print_status samba stopped "Samba stopped"
+  return 2
+}
+
+has_usable_ipv4() {
+  if command -v ip >/dev/null 2>&1; then
+    ip -4 addr show scope global 2>/dev/null | grep -q '^[[:space:]]*inet '
+    return $?
+  fi
+  if command -v ifconfig >/dev/null 2>&1; then
+    ifconfig 2>/dev/null | grep -E 'inet (addr:)?[1-9][0-9]*\.' | grep -qv '127\.0\.0\.1'
+    return $?
+  fi
+  return 1
+}
+
+status_adb() {
+  if [ ! -x "$ADBD_CONTROL" ]; then
+    print_status adb not_installed "ADB control script not installed"
+    return 1
+  fi
+
+  output="$(PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_SDCARD_ROOT="$PLUMOS_SDCARD_ROOT" \
+    "$ADBD_CONTROL" status 2>/dev/null || true)"
+  state="$(printf '%s\n' "$output" | sed -n 's/^state=//p' | tail -n 1)"
+  summary="$(printf '%s\n' "$output" | sed -n 's/^summary=//p' | tail -n 1)"
+  [ -n "$state" ] || state=stopped
+  [ -n "$summary" ] || summary="ADB stopped"
+
+  print_status adb "$state" "$summary"
+  case "$state" in
+    running|waiting_usb) return 0 ;;
+    not_installed) return 1 ;;
     *) return 2 ;;
   esac
 }
 
-stop_service() {
-  service="$1"
-  set_service_enabled "$service" 0 || return 1
-  case "$service" in
-    adb)
-      log 'enabled=0 apply=reboot-required' adb
-      rm -f "$ADB_OPT_IN_MARKER" 2>/dev/null || true
-      return 0
-      ;;
-    ssh)
-      for proc in /proc/[0-9]*; do
-        [ -r "$proc/cmdline" ] || continue
-        pid="${proc##*/}"
-        [ "$pid" = "$$" ] && continue
-        cmdline="$(tr '\000' ' ' <"$proc/cmdline" 2>/dev/null || true)"
-        case "$cmdline" in *dropbear*) kill "$pid" 2>/dev/null || true ;; esac
-      done
-      ;;
-    ftp|sftp|samba)
-      log 'result=not-installed' "$service"
-      return 1
-      ;;
-    *) return 2 ;;
+start_ftp() {
+  set_service_enabled ftp 1
+  if [ ! -x "$TCPSVD" ] || [ ! -x "$FTPD" ]; then
+    log "start failed reason=not_installed" ftp
+    status_ftp
+    return 1
+  fi
+  if pid_file_matches "$(ftp_pid_file)" "tcpsvd"; then
+    status_ftp
+    return 0
+  fi
+  log "start port=${FTP_PORT} max=${TRANSFER_MAX_CONNECTIONS} share=${SHARE_DIR}" ftp
+  (
+    close_inherited_display_fds
+    exec "$TCPSVD" -vE -c "$TRANSFER_MAX_CONNECTIONS" 0.0.0.0 "$FTP_PORT" \
+      "$FTPD" -w -A -t 300 -T 3600 "$SHARE_DIR" >> "$LOG_FILE" 2>&1 < /dev/null
+  ) &
+  echo "$!" > "$(ftp_pid_file)"
+  sleep 1
+  status_ftp
+}
+
+stop_ftp() {
+  set_service_enabled ftp 0
+  kill_pid_file "$(ftp_pid_file)" ftp "tcpsvd" || true
+  kill_ftp_children
+  status_ftp || true
+  return 0
+}
+
+start_ssh() {
+  set_service_enabled ssh 1
+  if [ ! -x "$SSH_START" ]; then
+    log "start failed reason=ssh_start_missing" ssh
+    status_ssh
+    return 1
+  fi
+  log "start" ssh
+  PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_SDCARD_ROOT="$PLUMOS_SDCARD_ROOT" "$SSH_START" >> "$LOG_FILE" 2>&1 || true
+  status_ssh
+}
+
+stop_ssh() {
+  set_service_enabled ssh 0
+  set_service_enabled sftp 0
+  disable_sftp_server
+  log "stop" ssh
+  if [ -x "$SSH_STOP" ]; then
+    PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_SDCARD_ROOT="$PLUMOS_SDCARD_ROOT" "$SSH_STOP" >> "$LOG_FILE" 2>&1 || true
+  else
+    kill_pid_file "$(ssh_pid_file)" ssh "sshd" || true
+  fi
+  status_ssh || true
+  return 0
+}
+
+start_sftp() {
+  set_service_enabled sftp 1
+  enable_sftp_server
+  if [ ! -f "$SFTP_SERVER" ] || [ ! -x "$SFTP_SERVER_BIN" ]; then
+    log "start failed reason=not_installed" sftp
+    status_sftp
+    return 1
+  fi
+  set_service_enabled ssh 1
+  log "start share=${SHARE_DIR} ssh=plumos_controlled" sftp
+  start_ssh >/dev/null 2>&1 || true
+  status_sftp
+}
+
+stop_sftp() {
+  set_service_enabled sftp 0
+  log "stop shared_ssh=false" sftp
+  disable_sftp_server
+  status_sftp || true
+  return 0
+}
+
+write_smb_conf() {
+  mkdir -p "$SAMBA_PRIVATE_DIR" \
+    "$SAMBA_LOG_DIR" \
+    "${SAMBA_RUNTIME_DIR}/lock" \
+    "${SAMBA_RUNTIME_DIR}/state" \
+    "${SAMBA_RUNTIME_DIR}/cache" \
+    "${SAMBA_RUNTIME_DIR}/ncalrpc"
+  chmod 0700 "$SAMBA_PRIVATE_DIR" "$SAMBA_LOG_DIR" 2>/dev/null || true
+  cat > "${SAMBA_PRIVATE_DIR}/smbpasswd" <<EOF
+root:0:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:4F26822B803282B051EF3A3CD7A5F58D:[U          ]:LCT-FFFFFFFF:
+EOF
+  chmod 0600 "${SAMBA_PRIVATE_DIR}/smbpasswd" 2>/dev/null || true
+  cat > "${SAMBA_PRIVATE_DIR}/smbusers" <<EOF
+root = plumos
+EOF
+  cat > "$SMB_CONF" <<EOF
+[global]
+   workgroup = WORKGROUP
+   netbios name = PLUMOS-Pixel2
+   server string = plumOS Pixel2
+   server role = standalone server
+   security = user
+   passdb backend = smbpasswd:${SAMBA_PRIVATE_DIR}/smbpasswd
+   username map = ${SAMBA_PRIVATE_DIR}/smbusers
+   encrypt passwords = yes
+   map to guest = Never
+   guest account = root
+   usershare allow guests = yes
+   load printers = no
+   disable spoolss = yes
+   printing = bsd
+   printcap name = /dev/null
+   server min protocol = SMB2
+   smb ports = 445
+   max smbd processes = ${TRANSFER_MAX_CONNECTIONS}
+   disable netbios = yes
+   bind interfaces only = no
+   pid directory = ${RUN_DIR}
+   lock directory = ${SAMBA_RUNTIME_DIR}/lock
+   state directory = ${SAMBA_RUNTIME_DIR}/state
+   cache directory = ${SAMBA_RUNTIME_DIR}/cache
+   ncalrpc dir = ${SAMBA_RUNTIME_DIR}/ncalrpc
+   private dir = ${SAMBA_PRIVATE_DIR}
+   log file = ${SAMBA_LOG_DIR}/samba-%m.log
+   max log size = 256
+
+[SDCARD]
+   path = ${SHARE_DIR}
+   browseable = yes
+   read only = no
+   guest ok = no
+   guest only = no
+   valid users = root
+   force user = root
+   max connections = ${TRANSFER_MAX_CONNECTIONS}
+   create mask = 0666
+   directory mask = 0777
+
+[IPC$]
+   path = ${SAMBA_RUNTIME_DIR}
+   read only = yes
+   guest ok = no
+EOF
+}
+
+start_samba() {
+  set_service_enabled samba 1
+  if [ ! -x "$SMBD" ]; then
+    log "start failed reason=not_installed" samba
+    status_samba
+    return 1
+  fi
+  if pid_file_matches "$(smbd_pid_file)" "smbd"; then
+    status_samba
+    return 0
+  fi
+  if ! has_usable_ipv4; then
+    log "start deferred reason=no_ipv4" samba
+    status_samba || true
+    return 0
+  fi
+  write_smb_conf
+  log "start max=${TRANSFER_MAX_CONNECTIONS} share=${SHARE_DIR}" samba
+  (
+    close_inherited_display_fds
+    exec "$SMBD" -D -s "$SMB_CONF" >> "$LOG_FILE" 2>&1 < /dev/null
+  ) || true
+  sleep 1
+  status_samba
+}
+
+stop_samba() {
+  set_service_enabled samba 0
+  kill_pid_file "$(nmbd_pid_file)" nmbd "nmbd" || true
+  kill_pid_file "$(smbd_pid_file)" smbd "smbd" || true
+  status_samba || true
+  return 0
+}
+
+start_adb() {
+  set_service_enabled adb 1
+  if [ ! -x "$ADBD_CONTROL" ]; then
+    log "start failed reason=adb_control_missing" adb
+    status_adb
+    return 1
+  fi
+  # Do not tear down or replace a live USB gadget from the frontend process.
+  # The System service consumes the persisted setting during the next boot.
+  log "enabled=1 apply=reboot-required" adb
+  status_adb
+}
+
+stop_adb() {
+  set_service_enabled adb 0
+  rm -f "$ADB_RECOVERY_MARKER" 2>/dev/null || true
+  log "enabled=0 apply=reboot-required" adb
+  status_adb || true
+  return 0
+}
+
+usage() {
+  cat <<EOF
+Usage: $0 COMMAND SERVICE
+
+Commands:
+  status SERVICE
+  start SERVICE
+  stop SERVICE
+  restart SERVICE
+  start-enabled
+
+Services:
+  ssh      plumOS-controlled SSH shell service
+  ftp      BusyBox FTP on port ${FTP_PORT}, max ${TRANSFER_MAX_CONNECTIONS}, share ${SHARE_DIR}
+  sftp     SFTP server payload; depends on SSH
+  samba    SMB share //Pixel2_IP/SDCARD, max ${TRANSFER_MAX_CONNECTIONS}, backed by ${SHARE_DIR}
+  adb      ADB over USB FunctionFS/configfs
+  all
+EOF
+}
+
+run_one() {
+  command="$1"
+  service="$2"
+  case "$command:$service" in
+    status:ssh) status_ssh ;;
+    status:ftp) status_ftp ;;
+    status:sftp) status_sftp ;;
+    status:samba) status_samba ;;
+    status:adb) status_adb ;;
+    start:ssh) start_ssh ;;
+    start:ftp) start_ftp ;;
+    start:sftp) start_sftp ;;
+    start:samba) start_samba ;;
+    start:adb) start_adb ;;
+    stop:ssh) stop_ssh ;;
+    stop:ftp) stop_ftp ;;
+    stop:sftp) stop_sftp ;;
+    stop:samba) stop_samba ;;
+    stop:adb) stop_adb ;;
+    restart:ssh) stop_ssh >/dev/null 2>&1 || true; start_ssh ;;
+    restart:ftp) stop_ftp >/dev/null 2>&1 || true; start_ftp ;;
+    restart:sftp) stop_sftp >/dev/null 2>&1 || true; start_sftp ;;
+    restart:samba) stop_samba >/dev/null 2>&1 || true; start_samba ;;
+    restart:adb) stop_adb >/dev/null 2>&1 || true; start_adb ;;
+    *) usage >&2; return 2 ;;
   esac
 }
 
-case "${1:-}" in
-  status) [ "$#" -ge 2 ] || exit 2; status_service "$2" ;;
-  start) [ "$#" -ge 2 ] || exit 2; start_service "$2" ;;
-  stop) [ "$#" -ge 2 ] || exit 2; stop_service "$2" ;;
-  -h|--help|help)
-    printf '%s\n' 'Usage: plumos-network-services status|start|stop ssh|ftp|sftp|samba|adb'
+command="${1:-}"
+service="${2:-}"
+if [ "$command" = "start-enabled" ]; then
+  rc=0
+  for svc in ssh ftp sftp samba adb; do
+    if service_enabled "$svc"; then
+      run_one start "$svc" || rc=$?
+    else
+      [ "$svc" = "sftp" ] && disable_sftp_server
+      log "skip disabled" "$svc"
+    fi
+  done
+  exit "$rc"
+fi
+
+if [ -z "$command" ] || [ -z "$service" ]; then
+  usage >&2
+  exit 2
+fi
+
+case "$service" in
+  all)
+    rc=0
+    for svc in ssh ftp sftp samba adb; do
+      run_one "$command" "$svc" || rc=$?
+    done
+    exit "$rc"
     ;;
-  *) printf '%s\n' 'Usage: plumos-network-services status|start|stop ssh|ftp|sftp|samba|adb' >&2; exit 2 ;;
+  ssh|ftp|sftp|samba|adb)
+    run_one "$command" "$service"
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
 esac

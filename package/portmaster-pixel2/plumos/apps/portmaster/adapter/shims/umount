@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${PLUMOS_ROOT}/state/portmaster/data}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+
+case "${1:-}" in
+  "${PM_DIR}"/libs/*.squashfs) exit 0 ;;
+  *) exec /bin/umount "$@" ;;
+esac

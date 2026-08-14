@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${PLUMOS_ROOT}/state/portmaster/data}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+action="${1:-stop}"
+filter="${2:-}"
+
+owned_pid() {
+  name=$1
+  file="${RUN_ROOT}/${name}.pid"
+  [ -f "$file" ] || return 1
+  pid="$(cat "$file" 2>/dev/null || true)"
+  case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+  cmdline="$(tr '\000' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)"
+  case "$cmdline" in
+    *"${PM_DIR}/${name}"*) printf '%s\n' "$pid"; return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+case "$action" in
+  --list)
+    for name in gptokeyb gptokeyb2; do
+      [ -z "$filter" ] || [ "$filter" = "$name" ] || continue
+      owned_pid "$name" || true
+    done
+    ;;
+  stop)
+    for name in gptokeyb gptokeyb2; do
+      pid="$(owned_pid "$name" || true)"
+      [ -n "$pid" ] && kill -TERM "$pid" 2>/dev/null || true
+      rm -f "${RUN_ROOT}/${name}.pid"
+    done
+    ;;
+  *)
+    printf 'usage: plumOS-portmaster-gptokeyb-stop [stop|--list [name]]\n' >&2
+    exit 64
+    ;;
+esac

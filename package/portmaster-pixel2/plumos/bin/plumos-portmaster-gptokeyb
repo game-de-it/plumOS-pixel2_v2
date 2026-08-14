@@ -1,0 +1,18 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${PLUMOS_ROOT}/state/portmaster/data}"
+REAL="${DATA_ROOT}/upstream/PortMaster/gptokeyb"
+PID_FILE="${RUN_ROOT}/gptokeyb.pid"
+[ -x "$REAL" ] || { printf 'missing GPTokeYB: %s\n' "$REAL" >&2; exit 127; }
+mkdir -p "$RUN_ROOT"
+"$REAL" "$@" &
+pid=$!
+printf '%s\n' "$pid" > "$PID_FILE"
+trap 'kill -TERM "$pid" 2>/dev/null || true' HUP INT TERM
+wait "$pid"
+rc=$?
+[ "$(cat "$PID_FILE" 2>/dev/null || true)" = "$pid" ] && rm -f "$PID_FILE"
+exit "$rc"

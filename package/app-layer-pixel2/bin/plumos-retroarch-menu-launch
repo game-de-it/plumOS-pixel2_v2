@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+root="${PLUMOS_ROOT:-/mnt/plumos}"
+runtime_root="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+config="$root/config/retroarch/retroarch.cfg"
+factory="$root/factory-defaults/retroarch/retroarch.cfg"
+append="$runtime_root/retroarch/menu-append.cfg"
+
+mkdir -p "$root/config/retroarch" "$root/state/retroarch/home" \
+    "$root/logs" "$runtime_root/retroarch"
+if [ ! -s "$config" ]; then
+    cp "$factory" "$config.next"
+    sync
+    mv "$config.next" "$config"
+fi
+
+if [ -x "$root/bin/plumos-audio-output" ]; then
+    "$root/bin/plumos-audio-output" prepare >>"$root/logs/retroarch-menu.log" 2>&1
+    export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$runtime_root/audio/asound.conf}"
+    export ALSA_PLUGIN_DIR="${ALSA_PLUGIN_DIR:-$root/lib/alsa-lib}"
+fi
+cat >"$append" <<EOF
+video_driver = "drm"
+video_rotation = "3"
+video_allow_rotate = "true"
+video_force_aspect = "true"
+video_aspect_ratio = "1.333333"
+input_driver = "udev"
+input_joypad_driver = "udev"
+joypad_autoconfig_dir = "$root/factory-defaults/retroarch/autoconfig"
+input_menu_toggle_btn = "14"
+menu_driver = "rgui"
+config_save_on_exit = "false"
+system_directory = "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"
+EOF
+
+export HOME="$root/state/retroarch/home"
+export XDG_CONFIG_HOME="$root/config"
+export LD_LIBRARY_PATH="$root/emulator/lib:$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$root/bin/retroarch" -v -c "$config" --appendconfig "$append" \
+    >>"$root/logs/retroarch-menu.log" 2>&1

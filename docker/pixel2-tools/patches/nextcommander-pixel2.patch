@@ -1,0 +1,326 @@
+diff --git a/Makefile b/Makefile
+index d16a23d..6455dc6 100644
+--- a/Makefile
++++ b/Makefile
+@@ -55,7 +55,7 @@ CXXFLAGS += -DPATH_DEFAULT_RIGHT=\"$(SDCARD_ROOT)\"
+ CXXFLAGS += -DFILE_SYSTEM=\"/dev/mmcblk1p1\"
+ 
+ # Keys
+-# Joys for Miyoo Flip
++# Joys for GKD Pixel2
+ CXXFLAGS += -DCMDR_KEY_UP=SDLK_UP
+ CXXFLAGS += -DCMDR_KEY_RIGHT=SDLK_RIGHT
+ CXXFLAGS += -DCMDR_KEY_DOWN=SDLK_DOWN
+@@ -77,10 +77,44 @@ CXXFLAGS += -DAUTOSCALE_DPI=1
+ 
+ #CXXFLAGS += -DSCREEN_WIDTH=1024 #640
+ #CXXFLAGS += -DSCREEN_HEIGHT=768 #480
+-# Miyoo Flip: 640x480 @3.5in, 229ppi -> 229/72 = 3.1805 PPU -> we use 3 (font size 24)
++# GKD Pixel2: 640x480 @3.5in, 229ppi -> 229/72 = 3.1805 PPU -> we use 3 (font size 24)
+ CXXFLAGS += -DPPU_X=3
+ CXXFLAGS += -DPPU_Y=3
+ CXXFLAGS += -DSCREEN_BPP=32
++
++# GKD Pixel2 / plumOS
++else ifneq (,$(findstring pixel2,$(PLATFORM)))
++SDCARD_ROOT := /mnt/plumos-user
++NEXTUI_SYSTEM_PATH := $(SDCARD_ROOT)/plumos/apps/nextcommander
++
++CXXFLAGS += -O2 -pipe -fomit-frame-pointer
++CXXFLAGS += -DPLUMOS_PIXEL2
++CXXFLAGS += $$(pkg-config --cflags libdrm libpng)
++CXXFLAGS += -DPATH_DEFAULT=\"$(SDCARD_ROOT)\"
++CXXFLAGS += -DPATH_DEFAULT_RIGHT=\"$(SDCARD_ROOT)/roms\"
++CXXFLAGS += -DFILE_SYSTEM=\"$(SDCARD_ROOT)\"
++
++# SDL's game-controller order for the plumOS Pixel2 virtual controller.
++CXXFLAGS += -DCMDR_KEY_UP=SDLK_UP
++CXXFLAGS += -DCMDR_KEY_RIGHT=SDLK_RIGHT
++CXXFLAGS += -DCMDR_KEY_DOWN=SDLK_DOWN
++CXXFLAGS += -DCMDR_KEY_LEFT=SDLK_LEFT
++CXXFLAGS += -DCMDR_KEY_OPEN=0
++CXXFLAGS += -DCMDR_KEY_PARENT=1
++CXXFLAGS += -DCMDR_KEY_OPERATION=2
++CXXFLAGS += -DCMDR_KEY_SYSTEM=3
++CXXFLAGS += -DCMDR_KEY_PAGEUP=4
++CXXFLAGS += -DCMDR_KEY_PAGEDOWN=5
++CXXFLAGS += -DCMDR_KEY_SELECT=6
++CXXFLAGS += -DCMDR_KEY_TRANSFER=7
++CXXFLAGS += -DCMDR_KEY_MENU=8
++
++CXXFLAGS += -DAUTOSCALE=0
++CXXFLAGS += -DAUTOSCALE_DPI=0
++CXXFLAGS += -DPPU_X=2
++CXXFLAGS += -DPPU_Y=2
++CXXFLAGS += -DSCREEN_BPP=32
++LINKFLAGS += -ldrm -lpng -lz
+ endif
+ 
+ SDL := SDL2
+@@ -127,7 +161,7 @@ all: $(EXECUTABLE)
+ $(EXECUTABLE): $(addprefix $(OUTDIR)/,$(OBJS))
+ 	$(SUM) "  LINK    $@"
+ 	$(SUM) "  LINK    $(LINKFLAGS)"
+-	$(CMD)$(CXX) $(LINKFLAGS) -o $@ $^
++	$(CMD)$(CXX) -o $@ $^ $(LINKFLAGS)
+ 
+ $(OUTDIR)/%.o: src/%.cpp
+ 	@mkdir -p $(@D)
+diff --git a/src/main.cpp b/src/main.cpp
+index e4b2f39..651e892 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -94,7 +94,11 @@ int main(int argc, char *argv[])
+     putenv(l_s);
+ 
+     // Init SDL
+-    SDL_Init(SDL_INIT_VIDEO |  SDL_INIT_JOYSTICK);
++#ifdef PLUMOS_PIXEL2
++    SDL_Init(SDL_INIT_JOYSTICK);
++#else
++    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
++#endif
+     if (IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF | IMG_INIT_WEBP) == 0) {
+         std::cerr << "IMG_Init failed" << std::endl;
+     } else {
+@@ -158,6 +162,10 @@ int main(int argc, char *argv[])
+         SDL_JoystickClose(Globals::g_joy);
+     }
+ 
++#ifdef PLUMOS_PIXEL2
++    screen.shutdown();
++#endif
++
+     //Quit
+     SDL_utils::hastalavista();
+ 
+diff --git a/src/screen.cpp b/src/screen.cpp
+index 43d31fa..724d15a 100644
+--- a/src/screen.cpp
++++ b/src/screen.cpp
+@@ -3,9 +3,17 @@
+ #include <algorithm>
+ #include <cstdint>
+ #include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ 
+ #include "sdlutils.h"
+ 
++#ifdef PLUMOS_PIXEL2
++#define PLUMOS_FBDEV_ENABLE_DRM 1
++#define PLUMOS_FBDEV_ENABLE_PNG 1
++#include "plumos_fbdev_renderer.h"
++#endif
++
+ Screen screen;
+ 
+ namespace {
+@@ -30,6 +38,14 @@ SDL_Surface *SetVideoMode(int width, int height, int bpp, std::uint32_t flags)
+ }
+ #endif
+ 
++#if defined(USE_SDL2) && defined(PLUMOS_PIXEL2)
++SDL_Surface *CreatePixel2Surface(int width, int height)
++{
++    return SDL_CreateRGBSurface(0, width, height, SCREEN_BPP,
++        0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
++}
++#endif
++
+ }
+ 
+ int Screen::init()
+@@ -75,13 +91,37 @@ int Screen::init()
+ #endif
+ 
+ #ifdef USE_SDL2
++#ifdef PLUMOS_PIXEL2
++    char error[256] = {};
++    auto *native = static_cast<plumos_fbdev_renderer *>(
++        std::calloc(1, sizeof(plumos_fbdev_renderer)));
++    if (native == nullptr) {
++        SDL_Log("Failed to allocate Pixel2 DRM renderer");
++        return 1;
++    }
++    if (!plumos_fbdev_renderer_init(native, "/dev/fb0", error,
++            sizeof(error))) {
++        SDL_Log("Failed to initialize Pixel2 DRM renderer: %s", error);
++        std::free(native);
++        return 1;
++    }
++    plumos_fbdev_renderer_set_rotation(native, "ccw");
++    native_renderer = native;
++    setPhysicalResolution(640, 480);
++    screen.surface = CreatePixel2Surface(640, 480);
++    if (screen.surface == nullptr) {
++        SDL_Log("Failed to create software surface: %s", SDL_GetError());
++        shutdown();
++        return 1;
++    }
++#else
+     int window_flags = SDL_WINDOW_RESIZABLE;
+     if (cfg.disp_autoscale) window_flags |= SDL_WINDOW_MAXIMIZED;
+ 
+     int window_w = screen.actual_w;
+     int window_h = screen.actual_h;
+     window = SDL_CreateWindow("Commander", SDL_WINDOWPOS_UNDEFINED,
+-        SDL_WINDOWPOS_UNDEFINED, window_h, window_h, window_flags);
++        SDL_WINDOWPOS_UNDEFINED, window_w, window_h, window_flags);
+     if (window == nullptr) {
+         SDL_Log("Failed to create window: %s", SDL_GetError());
+         return 1;
+@@ -108,6 +148,7 @@ int Screen::init()
+     SDL_GetWindowSize(window, &window_w, &window_h);
+     setPhysicalResolution(window_w, window_h);
+     screen.surface = SDL_GetWindowSurface(window);
++#endif
+ #else
+     surface = SetVideoMode(screen.actual_w, screen.actual_h, SCREEN_BPP,
+         SDL_SWSURFACE | SDL_RESIZABLE);
+@@ -119,11 +160,71 @@ int Screen::init()
+     return 0;
+ }
+ 
++#ifdef PLUMOS_PIXEL2
++void Screen::nativeFlip()
++{
++    auto *native = static_cast<plumos_fbdev_renderer *>(native_renderer);
++    if (native == nullptr || surface == nullptr || native->mem == nullptr) {
++        return;
++    }
++    const auto *source = static_cast<const std::uint32_t *>(surface->pixels);
++    const int stride = surface->pitch / 4;
++    for (int y = 0; y < surface->h; y++) {
++        for (int x = 0; x < surface->w; x++) {
++            const std::uint32_t pixel = source[y * stride + x];
++            plumos_fbdev_put_pixel(native, x, y,
++                plumos_fbdev_pack_color(native,
++                    static_cast<std::uint8_t>((pixel >> 16) & 0xff),
++                    static_cast<std::uint8_t>((pixel >> 8) & 0xff),
++                    static_cast<std::uint8_t>(pixel & 0xff)));
++        }
++    }
++    if (plumos_fbdev_present(native)) {
++        static int capture_attempted = 0;
++        const char *capture_path =
++            std::getenv("PLUMOS_NEXTCOMMANDER_SCREENSHOT");
++        if (!capture_attempted && capture_path != nullptr &&
++                capture_path[0] != '\0') {
++            char error[256] = {};
++            capture_attempted = 1;
++            if (plumos_fbdev_write_screenshot_png(
++                    native, capture_path, error, sizeof(error))) {
++                SDL_Log("Pixel2 screenshot saved: %s", capture_path);
++            } else {
++                SDL_Log("Pixel2 screenshot failed: %s", error);
++            }
++        }
++    } else {
++        SDL_Log("Pixel2 DRM page flip failed");
++    }
++}
++
++void Screen::shutdown()
++{
++    auto *native = static_cast<plumos_fbdev_renderer *>(native_renderer);
++    if (native != nullptr) {
++        plumos_fbdev_renderer_shutdown(native);
++        std::free(native);
++        native_renderer = nullptr;
++    }
++    if (surface != nullptr) {
++        SDL_FreeSurface(surface);
++        surface = nullptr;
++    }
++}
++#endif
++
+ int Screen::onResize(int w, int h)
+ {
+ #ifdef USE_SDL2
++#ifdef PLUMOS_PIXEL2
++    (void)w;
++    (void)h;
++    return 0;
++#else
+     this->surface = SDL_GetWindowSurface(this->window);
+     setPhysicalResolution(surface->w, surface->h);
++#endif
+ #else
+ #ifndef MIYOOMINI
+     this->surface = SDL_GetVideoSurface();
+diff --git a/src/screen.h b/src/screen.h
+index 5249165..feaf54e 100644
+--- a/src/screen.h
++++ b/src/screen.h
+@@ -29,15 +29,24 @@ struct Screen
+     SDL_Surface *surface;
+ 
+ #ifdef USE_SDL2
++#ifndef PLUMOS_PIXEL2
+     SDL_Window *window;
+ #endif
++#endif
++#ifdef PLUMOS_PIXEL2
++    void *native_renderer = nullptr;
++#endif
+ 
+     void flip() {
+ #ifdef USE_SDL2
++#ifdef PLUMOS_PIXEL2
++        nativeFlip();
++#else
+ 		if (SDL_UpdateWindowSurface(window) <= -1) {
+ 			SDL_Log("%s", SDL_GetError());
+ 		}
+ 		surface = SDL_GetWindowSurface(window);
++#endif
+ #else
+ #ifdef MIYOOMINI
+ 	GFX_Flip(surface);
+@@ -51,6 +60,11 @@ struct Screen
+     // Called once at startup.
+     int init();
+ 
++#ifdef PLUMOS_PIXEL2
++    void nativeFlip();
++    void shutdown();
++#endif
++
+     // Called on every SDL_RESIZE event.
+     int onResize(int w, int h);
+ 
+diff --git a/src/window.cpp b/src/window.cpp
+index e3e646e..2b8c89c 100644
+--- a/src/window.cpp
++++ b/src/window.cpp
+@@ -108,7 +108,27 @@ int CWindow::execute()
+                     //printf("joy:%d\n",event.jbutton.button); fflush(stdout);
+                     SDL_utils::setMouseCursorEnabled(false);
+                     SDL_Event key_event;
+-                    key_event.key.keysym.sym = event.jbutton.button == CMDR_KEY_MENU ? CMDR_KEY_SYSTEM : event.jbutton.button;
++                    switch (event.jbutton.button) {
++                    /* Pixel2 evdev D-pad keys are SDL joystick buttons 11-14. */
++                    case 11:
++                        key_event.key.keysym.sym = CMDR_KEY_UP;
++                        break;
++                    case 12:
++                        key_event.key.keysym.sym = CMDR_KEY_DOWN;
++                        break;
++                    case 13:
++                        key_event.key.keysym.sym = CMDR_KEY_LEFT;
++                        break;
++                    case 14:
++                        key_event.key.keysym.sym = CMDR_KEY_RIGHT;
++                        break;
++                    default:
++                        key_event.key.keysym.sym =
++                            event.jbutton.button == CMDR_KEY_MENU
++                                ? CMDR_KEY_SYSTEM
++                                : event.jbutton.button;
++                        break;
++                    }
+                     l_render = this->keyPress(key_event) || l_render;
+                     if (m_retVal) l_loop = false;
+                     break;

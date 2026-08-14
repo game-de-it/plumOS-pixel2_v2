@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+INPUT_SYS_ROOT="${PLUMOS_PORTMASTER_INPUT_SYS_ROOT:-/sys/class/input}"
+REAL_FILE="${RUN_ROOT}/frt-real.path"
+attempts="${PLUMOS_PORTMASTER_FRT_INPUT_WAIT_ATTEMPTS:-40}"
+interval="${PLUMOS_PORTMASTER_FRT_INPUT_WAIT_INTERVAL:-0.05}"
+attempt=0
+
+real="$(cat "$REAL_FILE" 2>/dev/null || true)"
+case "$real" in
+  "${PLUMOS_ROOT}"/state/portmaster/runtime-cache/*/frt_*) ;;
+  *)
+    printf 'plumos-portmaster-frt: invalid runtime path: %s\n' \
+      "${real:--}" >&2
+    exit 127
+    ;;
+esac
+[ -x "$real" ] || {
+  printf 'plumos-portmaster-frt: missing runtime: %s\n' "$real" >&2
+  exit 127
+}
+case "$attempts" in
+  ''|*[!0-9]*) attempts=40 ;;
+esac
+
+while [ "$attempt" -lt "$attempts" ]; do
+  for name_file in "$INPUT_SYS_ROOT"/event*/device/name; do
+    [ -r "$name_file" ] || continue
+    if [ "$(cat "$name_file" 2>/dev/null || true)" = "Fake Keyboard" ]; then
+      printf '[plumOS] FRT input handoff: Fake Keyboard ready\n' >&2
+      exec "$real" "$@"
+    fi
+  done
+  attempt=$((attempt + 1))
+  sleep "$interval"
+done
+
+printf '[plumOS] FRT input handoff timed out; starting runtime fallback\n' >&2
+exec "$real" "$@"

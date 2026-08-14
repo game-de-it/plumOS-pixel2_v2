@@ -1,0 +1,180 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
+STATE_ROOT="${PLUMOS_ROOT}/state/portmaster"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${STATE_ROOT}/data}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+BASELINE_ROOT="${APP_ROOT}/upstream"
+ADAPTER_DIR="${APP_ROOT}/adapter"
+LIB_DIR="${RUN_ROOT}/lib"
+NEXTCOMMANDER_LIB="${PLUMOS_ROOT}/apps/nextcommander/lib"
+PYTHON_LIB="${PLUMOS_ROOT}/apps/python/lib"
+EMULATOR_LIB="${PLUMOS_ROOT}/emulator/lib"
+PYGAME_LIB="${PLUMOS_ROOT}/apps/pyxel/site/pygame.libs"
+SONAME_MAP="${PLUMOS_ROOT}/config/standalone/soname-links.tsv"
+
+link_one() {
+  soname=$1
+  shift
+  for source in "$@"; do
+    if [ -f "$source" ]; then
+      ln -sf "$source" "${LIB_DIR}/${soname}"
+      return 0
+    fi
+  done
+  printf 'plumos-portmaster-runtime: missing library for %s\n' "$soname" >&2
+  return 1
+}
+
+prepare() {
+  if [ ! -f "${PM_DIR}/pugwash" ]; then
+    [ -f "${BASELINE_ROOT}/PortMaster/pugwash" ] || {
+      printf 'plumos-portmaster-runtime: baseline payload is incomplete: %s\n' \
+        "$BASELINE_ROOT" >&2
+      exit 1
+    }
+    seed="${DATA_ROOT}.next.$$"
+    rm -rf "$seed"
+    mkdir -p "$seed"
+    cp -a "$BASELINE_ROOT" "$seed/upstream"
+    [ ! -f "${APP_ROOT}/installed.json" ] ||
+      cp -p "${APP_ROOT}/installed.json" "$seed/installed.json"
+    sync
+    mkdir -p "$(dirname "$DATA_ROOT")"
+    if [ -e "$DATA_ROOT" ]; then
+      printf 'plumos-portmaster-runtime: refusing incomplete mutable payload: %s\n' \
+        "$DATA_ROOT" >&2
+      rm -rf "$seed"
+      exit 1
+    fi
+    mv "$seed" "$DATA_ROOT"
+    sync
+  fi
+  [ -f "${PM_DIR}/pugwash" ] || {
+    printf 'plumos-portmaster-runtime: incomplete PortMaster payload: %s\n' "$PM_DIR" >&2
+    exit 1
+  }
+  for helper in gptokeyb gptokeyb2; do
+    [ -f "${PM_DIR}/${helper}" ] || {
+      printf 'plumos-portmaster-runtime: missing input helper: %s\n' \
+        "${PM_DIR}/${helper}" >&2
+      exit 1
+    }
+    chmod 0755 "${PM_DIR}/${helper}" || {
+      printf 'plumos-portmaster-runtime: cannot enable input helper: %s\n' \
+        "${PM_DIR}/${helper}" >&2
+      exit 1
+    }
+  done
+  mkdir -p "$RUN_ROOT" "$LIB_DIR" "${PLUMOS_ROOT}/logs/apps"
+  [ -e /dev/fd ] || ln -s /proc/self/fd /dev/fd 2>/dev/null || true
+  [ -e /dev/stdin ] || ln -s /proc/self/fd/0 /dev/stdin 2>/dev/null || true
+  [ -e /dev/stdout ] || ln -s /proc/self/fd/1 /dev/stdout 2>/dev/null || true
+  [ -e /dev/stderr ] || ln -s /proc/self/fd/2 /dev/stderr 2>/dev/null || true
+  find "$LIB_DIR" -type l -delete 2>/dev/null || true
+
+  if [ -f "$SONAME_MAP" ]; then
+    while IFS="$(printf '\t')" read -r soname real_name; do
+      [ -n "$soname" ] || continue
+      [ -f "${PLUMOS_ROOT}/lib/${real_name}" ] || continue
+      ln -sf "${PLUMOS_ROOT}/lib/${real_name}" "${LIB_DIR}/${soname}"
+    done < "$SONAME_MAP"
+  fi
+
+  link_one libSDL2-2.0.so.0 \
+    "${PLUMOS_ROOT}/apps/pyxel/lib/libSDL2-2.0.so.0"
+  link_one libSDL2_image-2.0.so.0 \
+    "${PLUMOS_ROOT}/lib/libSDL2_image-2.0.so.0.600.3" \
+    "${PLUMOS_ROOT}/apps/nextcommander/lib/libSDL2_image-2.0.so.0.600.3"
+  link_one libSDL2_mixer-2.0.so.0 \
+    "${ADAPTER_DIR}/lib/aarch64/libSDL2_mixer-2.0.so.0"
+  link_one libmodplug.so.1 \
+    "${ADAPTER_DIR}/lib/aarch64/libmodplug.so.1"
+  fluidsynth_library=""
+  for candidate in "${PYGAME_LIB}"/libfluidsynth-*.so.3.*; do
+    if [ -f "$candidate" ]; then
+      fluidsynth_library="$candidate"
+      break
+    fi
+  done
+  link_one libfluidsynth.so.3 "$fluidsynth_library"
+  link_one libvorbisfile.so.3 \
+    "${EMULATOR_LIB}/libvorbisfile.so.3"
+  link_one libtheoradec.so.1 \
+    "${ADAPTER_DIR}/lib/aarch64/libtheoradec.so.1"
+  link_one libz.so.1 \
+    "${NEXTCOMMANDER_LIB}/libz.so.1"
+  link_one liblzma.so.5 \
+    "${NEXTCOMMANDER_LIB}/liblzma.so.5"
+  link_one liblz4.so.1 \
+    "${NEXTCOMMANDER_LIB}/liblz4.so.1"
+  link_one libzstd.so.1 \
+    "${NEXTCOMMANDER_LIB}/libzstd.so.1"
+  link_one libbz2.so.1.0 \
+    "${PYTHON_LIB}/libbz2.so.1.0"
+  link_one libFLAC.so.12 \
+    "${NEXTCOMMANDER_LIB}/libFLAC.so.12"
+  link_one libmpg123.so.0 \
+    "${NEXTCOMMANDER_LIB}/libmpg123.so.0"
+  link_one libopusfile.so.0 \
+    "${EMULATOR_LIB}/libopusfile.so.0"
+  link_one libSDL2_ttf-2.0.so.0 \
+    "${PLUMOS_ROOT}/apps/nextcommander/lib/libSDL2_ttf-2.0.so.0.2000.1"
+  link_one libfreetype.so.6 \
+    "${NEXTCOMMANDER_LIB}/libfreetype.so.6.18.3"
+  link_one libharfbuzz.so.0 \
+    "${NEXTCOMMANDER_LIB}/libharfbuzz.so.0.60000.0"
+  link_one libgraphite2.so.3 \
+    "${NEXTCOMMANDER_LIB}/libgraphite2.so.3.2.1"
+  link_one libbrotlidec.so.1 \
+    "${NEXTCOMMANDER_LIB}/libbrotlidec.so.1.0.9"
+  link_one libbrotlicommon.so.1 \
+    "${NEXTCOMMANDER_LIB}/libbrotlicommon.so.1.0.9"
+  link_one libSDL2_gfx-1.0.so.0 \
+    "${ADAPTER_DIR}/lib/aarch64/libSDL2_gfx-1.0.so.0"
+  link_one libopenal.so.1 \
+    "${ADAPTER_DIR}/lib/aarch64/libopenal.so.1"
+  link_one liblzo2.so.2 \
+    "${ADAPTER_DIR}/lib/aarch64/liblzo2.so.2"
+  link_one libavcodec.so.58 \
+    "${ADAPTER_DIR}/lib/aarch64/libavcodec.so.58"
+  link_one libavformat.so.58 \
+    "${ADAPTER_DIR}/lib/aarch64/libavformat.so.58"
+  link_one libavutil.so.56 \
+    "${ADAPTER_DIR}/lib/aarch64/libavutil.so.56"
+  link_one libswresample.so.3 \
+    "${ADAPTER_DIR}/lib/aarch64/libswresample.so.3"
+  link_one libswscale.so.5 \
+    "${ADAPTER_DIR}/lib/aarch64/libswscale.so.5"
+  link_one libevdev.so.2 \
+    "${ADAPTER_DIR}/lib/aarch64/libevdev.so.2"
+  link_one libFLAC.so.8 \
+    "${ADAPTER_DIR}/lib/aarch64/libFLAC.so.8"
+  link_one libjpeg.so.8 \
+    "${ADAPTER_DIR}/lib/aarch64/libjpeg.so.8"
+  link_one libreadline.so.7 \
+    "${ADAPTER_DIR}/lib/aarch64/libreadline.so.7"
+  link_one libcairo.so.2 \
+    "${ADAPTER_DIR}/lib/aarch64/libcairo.so.2"
+  link_one libpixman-1.so.0 \
+    "${ADAPTER_DIR}/lib/aarch64/libpixman-1.so.0"
+
+  cat > "${RUN_ROOT}/gamecontrollerdb.txt" <<'EOF'
+06000000091200006635000001000000,plumOS Pixel2 Controller,a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,back:b6,start:b7,guide:b8,leftstick:b9,rightstick:b10,dpup:b11,dpdown:b12,dpleft:b13,dpright:b14,lefttrigger:a2,righttrigger:a5,leftx:a0,lefty:a1,rightx:a3,righty:a4,platform:Linux,
+EOF
+  cp -f "${ADAPTER_DIR}/control.txt" "${PM_DIR}/control.txt"
+  cp -f "${ADAPTER_DIR}/mod_plumOS.txt" "${PM_DIR}/mod_plumOS.txt"
+  chmod 0755 "${PM_DIR}/control.txt" "${PM_DIR}/mod_plumOS.txt"
+  printf '%s\n' "$LIB_DIR"
+}
+
+case "${1:-prepare}" in
+  prepare) prepare ;;
+  *)
+    printf 'usage: plumOS-portmaster-runtime prepare\n' >&2
+    exit 64
+    ;;
+esac

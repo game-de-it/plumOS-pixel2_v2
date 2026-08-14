@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+export PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH="${RUN_ROOT}/lib"
+exec "${PLUMOS_ROOT}/bin/plumos-python-pixel2" "$@"

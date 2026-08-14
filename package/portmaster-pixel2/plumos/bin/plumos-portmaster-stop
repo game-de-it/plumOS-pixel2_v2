@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+PID_FILE="${RUN_ROOT}/portmaster.pid"
+
+[ -f "$PID_FILE" ] || {
+  printf 'plumos-portmaster-stop: not running\n'
+  exit 0
+}
+pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+case "$pid" in ''|*[!0-9]*) rm -f "$PID_FILE"; exit 0 ;; esac
+cmdline="$(tr '\000' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)"
+case "$cmdline" in
+  *plumos_portmaster_bootstrap.py*) ;;
+  *)
+    printf 'plumos-portmaster-stop: refusing unowned pid=%s cmd=%s\n' "$pid" "$cmdline" >&2
+    exit 1
+    ;;
+esac
+
+kill -TERM "$pid" 2>/dev/null || true
+for _ in 1 2 3 4 5; do
+  [ -d "/proc/${pid}" ] || break
+  sleep 1
+done
+if [ -d "/proc/${pid}" ]; then
+  cmdline="$(tr '\000' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)"
+  case "$cmdline" in
+    *plumos_portmaster_bootstrap.py*) kill -KILL "$pid" 2>/dev/null || true ;;
+  esac
+fi
+rm -f "$PID_FILE"

@@ -1,0 +1,265 @@
+#!/bin/sh
+set -u
+
+if [ "${PLUMOS_PORTMASTER_PORT_BUSYBOX_REEXEC:-0}" != 1 ]; then
+  early_busybox="${PLUMOS_BUSYBOX:-/mnt/plumos-user/.tmp_update/busybox}"
+  if [ -x "$early_busybox" ]; then
+    export PLUMOS_PORTMASTER_PORT_BUSYBOX_REEXEC=1
+    exec "$early_busybox" sh "$0" "$@"
+  fi
+fi
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+PLUMOS_ROM_ROOT="${PLUMOS_ROM_ROOT:-$PLUMOS_SDCARD_ROOT/roms}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+BB="${PLUMOS_BUSYBOX:-/mnt/plumos-user/.tmp_update/busybox}"
+APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
+LIB_DIR="${RUN_ROOT}/lib"
+ROMS_ROOT="${PLUMOS_ROM_ROOT}"
+STATE_ROOT="${PLUMOS_ROOT}/state/portmaster"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${STATE_ROOT}/data}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+LOG_FILE="${PLUMOS_ROOT}/logs/apps/portmaster-ports.log"
+PID_FILE="${RUN_ROOT}/port.pid"
+START_FILE="${RUN_ROOT}/port.starttime"
+SCRIPT_FILE="${RUN_ROOT}/port.script"
+MOUNTS_FILE="${RUN_ROOT}/port.mounts"
+child=""
+restore_frontend=0
+script="${1:-}"
+[ -n "$script" ] || { printf 'usage: plumOS-portmaster-port-launch SCRIPT [ARGS...]\n' >&2; exit 64; }
+shift
+[ -x "$BB" ] || BB=/bin/busybox
+resolved_roms_root="$(readlink -f "$ROMS_ROOT" 2>/dev/null || true)"
+[ -n "$resolved_roms_root" ] && ROMS_ROOT="$resolved_roms_root"
+script="$(readlink -f "$script" 2>/dev/null || true)"
+case "$script" in
+  "${ROMS_ROOT}"/[Pp][Oo][Rr][Tt][Ss]/*.sh)
+    PORTS_ROOT="${script%/*}"
+    port_relative="${script#"${ROMS_ROOT}"/}"
+    port_relative="${port_relative#*/}"
+    case "$port_relative" in
+      */*) printf 'refusing nested PortMaster helper script: %s\n' "$script" >&2; exit 64 ;;
+    esac
+    ;;
+  *) printf 'refusing script outside %s/ports: %s\n' "$ROMS_ROOT" "$script" >&2; exit 64 ;;
+esac
+[ -f "$script" ] || { printf 'missing PortMaster script: %s\n' "$script" >&2; exit 127; }
+
+prepare_content_alias() {
+  content_root="${RUN_ROOT}/content"
+  ports_alias="${content_root}/ports"
+  mkdir -p "$content_root"
+  if [ -e "$ports_alias" ] && [ ! -L "$ports_alias" ]; then
+    printf 'PortMaster runtime content alias is obstructed: %s\n' \
+      "$ports_alias" >&2
+    return 1
+  fi
+  rm -f "$ports_alias"
+  ln -s "$PORTS_ROOT" "$ports_alias"
+  PLUMOS_PORTMASTER_DIRECTORY="${content_root#/}"
+  export PLUMOS_PORTMASTER_DIRECTORY
+}
+
+prepare_content_alias || exit 1
+
+frontend_is_ancestor() {
+  parent=$PPID
+  count=0
+  while [ "$parent" -gt 1 ] 2>/dev/null && [ "$count" -lt 16 ]; do
+    cmdline="$(tr '\000' ' ' < "/proc/${parent}/cmdline" 2>/dev/null || true)"
+    case "$cmdline" in
+      *plumos-controller-ui-pixel2*|*plumos-controller-ui-fbdev*) return 0 ;;
+    esac
+    parent="$(sed 's/.*) //' "/proc/${parent}/stat" 2>/dev/null | awk '{print $2}' || true)"
+    case "$parent" in ''|*[!0-9]*) return 1 ;; esac
+    count=$((count + 1))
+  done
+  return 1
+}
+
+frontend_running() {
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-stop" status 2>/dev/null | grep -q 'pid='
+}
+
+is_mounted() {
+  awk -v path="$1" \
+    'tolower($5) == tolower(path) { found=1 } END { exit !found }' \
+    /proc/self/mountinfo
+}
+
+cleanup() {
+  if [ -n "$child" ]; then
+    recorded="$(cat "$PID_FILE" 2>/dev/null || true)"
+    if [ "$recorded" = "$child" ]; then
+      kill -TERM "-$child" 2>/dev/null || true
+      for _ in 1 2 3 4 5; do
+        kill -0 "-$child" 2>/dev/null || break
+        sleep 1
+      done
+      kill -KILL "-$child" 2>/dev/null || true
+    fi
+  fi
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-portmaster-gptokeyb-stop" stop 2>/dev/null || true
+  if [ -f "$MOUNTS_FILE" ]; then
+    sed '1!G;h;$!d' "$MOUNTS_FILE" 2>/dev/null | while IFS= read -r target; do
+      [ -n "$target" ] || continue
+      is_mounted "$target" && umount "$target" 2>/dev/null || true
+    done
+  fi
+  rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE" "$MOUNTS_FILE"
+  if [ "$restore_frontend" -eq 1 ] && ! frontend_running; then
+    nohup "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-launch" >/dev/null 2>&1 &
+  fi
+}
+
+trap cleanup EXIT HUP INT TERM
+
+prepare_compat_mount() {
+  compat_target=/usr/lib/compat
+
+  [ -d "$compat_target" ] || return 0
+
+  if is_mounted "$compat_target"; then
+    printf 'PortMaster has a stale compatibility mount: %s\n' "$compat_target" >&2
+    return 1
+  fi
+  mount --bind "$LIB_DIR" "$compat_target" || {
+    printf 'PortMaster cannot bind the compatibility runtime: %s\n' "$compat_target" >&2
+    return 1
+  }
+  printf '%s\n' "$compat_target" >> "$MOUNTS_FILE"
+}
+
+patch_known_port_runtime_path() {
+  case "$(basename "$script" | tr '[:upper:]' '[:lower:]')" in
+    'moonlight new.sh') ;;
+    *) return 0 ;;
+  esac
+
+  gui_file="$(dirname "$script")/moonlightnew/gui/main.lua"
+  old_path='LD_LIBRARY_PATH=%s/moonlight/libs:/usr/lib/compat'
+  interim_path='LD_LIBRARY_PATH=%s/moonlight/libs:/run/plumos/portmaster/lib:/usr/lib/compat'
+  new_path='LD_LIBRARY_PATH=%s/moonlight/libs:/usr/lib/compat:${LD_LIBRARY_PATH:-}'
+  [ -f "$gui_file" ] || {
+    printf 'PortMaster Moonlight GUI is missing: %s\n' "$gui_file" >&2
+    return 1
+  }
+  grep -Fq "$new_path" "$gui_file" && return 0
+  if grep -Fq "$old_path" "$gui_file"; then
+    source_path="$old_path"
+  elif grep -Fq "$interim_path" "$gui_file"; then
+    source_path="$interim_path"
+  else
+    printf 'PortMaster Moonlight GUI has an unknown runtime-path contract: %s\n' "$gui_file" >&2
+    return 1
+  fi
+
+  temp_file="${gui_file}.plumos.$$"
+  sed "s#${source_path}#${new_path}#" "$gui_file" > "$temp_file" || {
+    rm -f "$temp_file"
+    return 1
+  }
+  mv -f "$temp_file" "$gui_file" || {
+    rm -f "$temp_file"
+    return 1
+  }
+  sync "$gui_file" 2>/dev/null || sync
+}
+
+port_requires_armhf() {
+  grep -Eq "^[[:space:]]*(export[[:space:]]+)?PORT_32BIT[[:space:]]*=[[:space:]]*['\"]?[Yy]" "$script"
+}
+
+if port_requires_armhf; then
+  mkdir -p "$(dirname "$LOG_FILE")"
+  message="PortMaster ARMHF port is not supported by the Pixel2 app layer: $(basename "$script")"
+  printf '%s\n' "$message" >&2
+  printf '\n[%s] unsupported_armhf script=%s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$script" >> "$LOG_FILE"
+  exit 78
+fi
+
+if [ -f "$PID_FILE" ]; then
+  old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  if [ -d "/proc/${old_pid}" ]; then
+    printf 'PortMaster port is already running: pid=%s\n' "$old_pid" >&2
+    exit 75
+  fi
+  rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE"
+fi
+
+"$BB" sh "${PLUMOS_ROOT}/bin/plumos-portmaster-runtime" prepare >/dev/null || exit 1
+mkdir -p "$RUN_ROOT" "$(dirname "$LOG_FILE")" "$STATE_ROOT/home"
+audio_output="${PLUMOS_ROOT}/bin/plumos-audio-output"
+[ -x "$audio_output" ] || {
+  printf 'plumos-portmaster-port-launch: audio router is missing\n' >&2
+  exit 1
+}
+"$BB" sh "$audio_output" prepare >>"$LOG_FILE" 2>&1 || {
+  printf 'plumos-portmaster-port-launch: audio route preparation failed\n' >&2
+  exit 1
+}
+audio_status="$(tr '\n' ' ' </run/plumos/audio/output.status)"
+if [ -x "${PLUMOS_ROOT}/bin/plumos-volume-control" ]; then
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-volume-control" apply \
+    >>"$LOG_FILE" 2>&1 || true
+fi
+: > "$MOUNTS_FILE"
+patch_known_port_runtime_path || exit 1
+prepare_compat_mount || exit 1
+for name in config libs themes; do
+  source_dir="${STATE_ROOT}/${name}"
+  target_dir="${PM_DIR}/${name}"
+  mkdir -p "$source_dir" "$target_dir"
+  if is_mounted "$target_dir"; then
+    printf 'PortMaster port has a stale state mount: %s\n' "$target_dir" >&2
+    exit 1
+  fi
+  mount --bind "$source_dir" "$target_dir" || exit 1
+  printf '%s\n' "$target_dir" >> "$MOUNTS_FILE"
+done
+export PLUMOS_ROOT PLUMOS_RUNTIME_ROOT="/run/plumos"
+export PLUMOS_PORTMASTER_APP_ROOT="$APP_ROOT"
+export PLUMOS_PORTMASTER_DATA_ROOT="$DATA_ROOT"
+export PLUMOS_PORTMASTER_MOUNTS_FILE="$MOUNTS_FILE"
+export HOME="${STATE_ROOT}/home"
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_CACHE_HOME="${RUN_ROOT}/cache"
+export XDG_DATA_HOME="${DATA_ROOT}/upstream"
+export HM_TOOLS_DIR="${DATA_ROOT}/upstream"
+export HM_PORTS_DIR="$PORTS_ROOT"
+export HM_SCRIPTS_DIR="$PORTS_ROOT"
+export PATH="${APP_ROOT}/adapter/shims:${APP_ROOT}/adapter/bin/aarch64:${PLUMOS_ROOT}/bin:${PATH}"
+export LD_LIBRARY_PATH="${RUN_ROOT}/lib"
+export SDL_VIDEODRIVER="kmsdrm"
+export SDL_RENDER_DRIVER="opengles2"
+export SDL_AUDIODRIVER="alsa"
+export ALSOFT_DRIVERS="alsa"
+export ALSA_CONFIG_PATH="/run/plumos/audio/asound.conf"
+export ALSA_PLUGIN_DIR="${PLUMOS_ROOT}/lib/alsa-lib"
+export SDL_GAMECONTROLLERCONFIG_FILE="${RUN_ROOT}/gamecontrollerdb.txt"
+export SDL_GAMECONTROLLERCONFIG="$(cat "$SDL_GAMECONTROLLERCONFIG_FILE")"
+export AUDIODEV="plumos_output"
+export SDL_VIDEO_KMSDRM_DEVICE_INDEX="${SDL_VIDEO_KMSDRM_DEVICE_INDEX:-0}"
+export LIBGL_DRIVERS_PATH="${PLUMOS_ROOT}/apps/pyxel/dri"
+export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+export MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-kms_swrast}"
+mkdir -p "$XDG_CACHE_HOME" "$HM_PORTS_DIR"
+
+if ! frontend_is_ancestor && frontend_running; then
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-stop" stop >> "$LOG_FILE" 2>&1
+  restore_frontend=1
+fi
+
+printf '\n[%s] script=%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$script" \
+  "$(printf '%s' "$audio_status" | tr '\n' ' ')" >> "$LOG_FILE"
+LD_LIBRARY_PATH="${RUN_ROOT}/lib" setsid bash "$script" "$@" >> "$LOG_FILE" 2>&1 &
+child=$!
+printf '%s\n' "$child" > "$PID_FILE"
+sed 's/.*) //' "/proc/${child}/stat" | awk '{print $20}' > "$START_FILE"
+printf '%s\n' "$script" > "$SCRIPT_FILE"
+wait "$child"
+rc=$?
+exit "$rc"

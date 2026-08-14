@@ -7,7 +7,7 @@ RUN dpkg --add-architecture armhf \
         android-liblog-dev android-libutils-dev abootimg autoconf automake bash bc bison \
         build-essential busybox-static gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
         ca-certificates clang cmake cpio curl debootstrap device-tree-compiler dosfstools dpkg-dev \
-        dropbear-bin e2fsprogs faketime fdisk file flex gawk genimage gettext git iproute2 iw jq kmod \
+        dropbear-bin e2fsprogs faketime fdisk file flex fonts-dejavu-core fonts-noto-cjk gawk genimage gettext git iproute2 iw jq kmod \
         libasound2-dev libasound2-dev:armhf libavcodec-dev libavformat-dev libavutil-dev libboost-date-time-dev \
         libboost-filesystem-dev libboost-locale-dev libboost-system-dev libbrotli-dev libbz2-dev \
         libcap-dev libcurl4-openssl-dev \
@@ -21,6 +21,6 @@ RUN dpkg --add-architecture armhf \
         libswresample-dev libudev-dev libusb-1.0-0-dev libvorbis-dev libxmp-dev libxml2-dev \
         meson mtools ninja-build parted \
         pkg-config python3 python3-pip rsync \
-        squashfs-tools util-linux \
-        wpasupplicant xz-utils zlib1g-dev \
+        openssh-sftp-server samba squashfs-tools util-linux unzip \
+        wpasupplicant xz-utils zip zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*

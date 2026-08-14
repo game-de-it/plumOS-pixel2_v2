@@ -1,0 +1,195 @@
+#!/bin/sh
+set -u
+
+if [ "${PLUMOS_PORTMASTER_BUSYBOX_REEXEC:-0}" != 1 ]; then
+  early_busybox="${PLUMOS_BUSYBOX:-/mnt/plumos-user/.tmp_update/busybox}"
+  if [ -x "$early_busybox" ]; then
+    export PLUMOS_PORTMASTER_BUSYBOX_REEXEC=1
+    exec "$early_busybox" sh "$0" "$@"
+  fi
+fi
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+PLUMOS_ROM_ROOT="${PLUMOS_ROM_ROOT:-$PLUMOS_SDCARD_ROOT/roms}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+BB="${PLUMOS_BUSYBOX:-/mnt/plumos-user/.tmp_update/busybox}"
+APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
+ADAPTER_DIR="${APP_ROOT}/adapter"
+STATE_ROOT="${PLUMOS_ROOT}/state/portmaster"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${STATE_ROOT}/data}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+LOG_FILE="${PLUMOS_ROOT}/logs/apps/portmaster.log"
+PID_FILE="${RUN_ROOT}/portmaster.pid"
+MOUNTS_FILE="${RUN_ROOT}/state.mounts"
+child_pid=""
+restore_frontend=0
+[ -x "$BB" ] || BB=/bin/busybox
+
+frontend_is_ancestor() {
+  parent=$PPID
+  count=0
+  while [ "$parent" -gt 1 ] 2>/dev/null && [ "$count" -lt 16 ]; do
+    cmdline="$(tr '\000' ' ' < "/proc/${parent}/cmdline" 2>/dev/null || true)"
+    case "$cmdline" in
+      *plumos-frontend-pixel2*) return 0 ;;
+    esac
+    parent="$(sed 's/.*) //' "/proc/${parent}/stat" 2>/dev/null | awk '{print $2}' || true)"
+    case "$parent" in ''|*[!0-9]*) return 1 ;; esac
+    count=$((count + 1))
+  done
+  return 1
+}
+
+frontend_running() {
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-stop" status 2>/dev/null | grep -q 'pid='
+}
+
+is_mounted() {
+  awk -v path="$1" \
+    'tolower($5) == tolower(path) { found=1 } END { exit !found }' \
+    /proc/self/mountinfo
+}
+
+cleanup() {
+  if [ -f "$MOUNTS_FILE" ]; then
+    sed '1!G;h;$!d' "$MOUNTS_FILE" 2>/dev/null | while IFS= read -r target; do
+      [ -n "$target" ] || continue
+      is_mounted "$target" && umount "$target" 2>/dev/null || true
+    done
+    rm -f "$MOUNTS_FILE"
+  fi
+  recorded="$(cat "$PID_FILE" 2>/dev/null || true)"
+  if [ -n "$child_pid" ] && [ "$recorded" = "$child_pid" ]; then
+    rm -f "$PID_FILE"
+  fi
+  # Port installs can replace thousands of FAT32 entries. Finish that write
+  # boundary before returning control to the frontend or accepting a reboot.
+  sync
+  if [ "$restore_frontend" -eq 1 ] && ! frontend_running; then
+    nohup "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-launch" >/dev/null 2>&1 &
+  fi
+}
+
+terminate_child() {
+  [ -n "$child_pid" ] || return 0
+  cmdline="$(tr '\000' ' ' < "/proc/${child_pid}/cmdline" 2>/dev/null || true)"
+  case "$cmdline" in
+    *plumos_portmaster_bootstrap.py*) kill -TERM "$child_pid" 2>/dev/null || true ;;
+  esac
+}
+
+trap cleanup EXIT
+trap terminate_child HUP INT TERM
+
+mkdir -p "$RUN_ROOT" "$STATE_ROOT/config" "$STATE_ROOT/libs" \
+  "$STATE_ROOT/themes" "$STATE_ROOT/home" "$(dirname "$LOG_FILE")"
+
+if [ -f "$PID_FILE" ]; then
+  old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  old_cmd="$(tr '\000' ' ' < "/proc/${old_pid}/cmdline" 2>/dev/null || true)"
+  case "$old_pid:$old_cmd" in
+    *:*plumos_portmaster_bootstrap.py*)
+      printf 'plumos-portmaster-launch: already running pid=%s\n' "$old_pid" >&2
+      exit 75
+      ;;
+  esac
+  rm -f "$PID_FILE"
+fi
+
+"$BB" sh "${PLUMOS_ROOT}/bin/plumos-portmaster-runtime" prepare >/dev/null || exit 1
+
+: > "$MOUNTS_FILE"
+upstream_log="${PLUMOS_ROOT}/logs/apps/portmaster-upstream.log"
+upstream_log_target="${PM_DIR}/pugwash.txt"
+touch "$upstream_log" "$upstream_log_target"
+if is_mounted "$upstream_log_target"; then
+  printf 'plumos-portmaster-launch: stale log mount: %s\n' "$upstream_log_target" >&2
+  exit 1
+fi
+mount --bind "$upstream_log" "$upstream_log_target" || exit 1
+printf '%s\n' "$upstream_log_target" >> "$MOUNTS_FILE"
+for name in config libs themes; do
+  source_dir="${STATE_ROOT}/${name}"
+  target_dir="${PM_DIR}/${name}"
+  mkdir -p "$source_dir" "$target_dir"
+  if is_mounted "$target_dir"; then
+    printf 'plumos-portmaster-launch: stale state mount: %s\n' "$target_dir" >&2
+    exit 1
+  fi
+  mount --bind "$source_dir" "$target_dir" || exit 1
+  printf '%s\n' "$target_dir" >> "$MOUNTS_FILE"
+done
+
+if ! frontend_is_ancestor && frontend_running; then
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-stop" stop >> "$LOG_FILE" 2>&1
+  restore_frontend=1
+fi
+
+audio_output="${PLUMOS_ROOT}/bin/plumos-audio-output"
+[ -x "$audio_output" ] || {
+  printf 'plumos-portmaster-launch: audio router is missing\n' >&2
+  exit 1
+}
+"$BB" sh "$audio_output" prepare >>"$LOG_FILE" 2>&1 || {
+  printf 'plumos-portmaster-launch: audio route preparation failed\n' >&2
+  exit 1
+}
+audio_status="$(tr '\n' ' ' </run/plumos/audio/output.status)"
+if [ -x "${PLUMOS_ROOT}/bin/plumos-volume-control" ]; then
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-volume-control" apply \
+    >>"$LOG_FILE" 2>&1 || true
+fi
+
+cfw_version="$(cat "${PLUMOS_ROOT}/VERSION" 2>/dev/null || printf 'unknown')"
+export PLUMOS_ROOT PLUMOS_SDCARD_ROOT PLUMOS_ROM_ROOT
+export PLUMOS_PORTMASTER_APP_ROOT="$APP_ROOT"
+export PLUMOS_PORTMASTER_DATA_ROOT="$DATA_ROOT"
+export PLUMOS_PORTMASTER_CFW_VERSION="$cfw_version"
+export HOME="${STATE_ROOT}/home"
+export XDG_CONFIG_HOME="${STATE_ROOT}/config"
+export XDG_CACHE_HOME="${RUN_ROOT}/cache"
+export XDG_DATA_HOME="${DATA_ROOT}/upstream"
+export HM_TOOLS_DIR="${DATA_ROOT}/upstream"
+export HM_PORTS_DIR="${PLUMOS_ROM_ROOT}/ports"
+export HM_SCRIPTS_DIR="${PLUMOS_ROM_ROOT}/ports"
+export PATH="${PLUMOS_ROOT}/bin:${PATH}"
+export LD_LIBRARY_PATH="${RUN_ROOT}/lib:${PLUMOS_ROOT}/apps/pyxel/lib:${PLUMOS_ROOT}/apps/python/lib:${PLUMOS_ROOT}/lib:${PLUMOS_ROOT}/apps/nextcommander/lib:${PLUMOS_ROOT}/emulator/lib:${PLUMOS_ROOT}/apps/pyxel/site/pygame.libs:${LD_LIBRARY_PATH:-}"
+export PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH="${RUN_ROOT}/lib:${PLUMOS_ROOT}/lib:${PLUMOS_ROOT}/apps/nextcommander/lib:${PLUMOS_ROOT}/emulator/lib:${PLUMOS_ROOT}/apps/pyxel/site/pygame.libs"
+export PYSDL2_DLL_PATH="${RUN_ROOT}/lib"
+export SDL_VIDEODRIVER="kmsdrm"
+export SDL_RENDER_DRIVER="opengles2"
+export SDL_AUDIODRIVER="alsa"
+export ALSA_CONFIG_PATH="/run/plumos/audio/asound.conf"
+export ALSA_PLUGIN_DIR="${PLUMOS_ROOT}/lib/alsa-lib"
+export SDL_GAMECONTROLLERCONFIG_FILE="${RUN_ROOT}/gamecontrollerdb.txt"
+export SDL_GAMECONTROLLERCONFIG="$(cat "$SDL_GAMECONTROLLERCONFIG_FILE")"
+export AUDIODEV="plumos_output"
+export SDL_VIDEO_KMSDRM_DEVICE_INDEX="${SDL_VIDEO_KMSDRM_DEVICE_INDEX:-0}"
+export SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-${PLUMOS_ROOT}/apps/pyxel/lib/libEGL.so.1}"
+export SDL_VIDEO_GL_DRIVER="${SDL_VIDEO_GL_DRIVER:-${PLUMOS_ROOT}/apps/pyxel/lib/libGLESv2.so.2}"
+export LIBGL_DRIVERS_PATH="${PLUMOS_ROOT}/apps/pyxel/dri"
+export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-${PLUMOS_ROOT}/apps/pyxel/egl_vendor.d/50_mesa.json}"
+export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+export MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-kms_swrast}"
+export MESA_SHADER_CACHE_DISABLE="${MESA_SHADER_CACHE_DISABLE:-true}"
+fit_library="${PLUMOS_PORTMASTER_FIT_LIBRARY:-${PLUMOS_ROOT}/apps/pyxel/lib/plumos-pyxel-fit.so}"
+if [ -r "$fit_library" ] && [ "${PLUMOS_PORTMASTER_FIT:-1}" != 0 ]; then
+  export PLUMOS_PYXEL_FIT=1
+  export PLUMOS_PYXEL_FIT_WIDTH=640
+  export PLUMOS_PYXEL_FIT_HEIGHT=480
+  export LD_PRELOAD="$fit_library${LD_PRELOAD:+:$LD_PRELOAD}"
+fi
+mkdir -p "$HOME" "$XDG_CACHE_HOME" "$HM_PORTS_DIR"
+
+printf '\n[%s] launch version=%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+  "$(cat "${PM_DIR}/version" 2>/dev/null || printf unknown)" \
+  "$(printf '%s' "$audio_status" | tr '\n' ' ')" >> "$LOG_FILE"
+
+"$BB" sh "${PLUMOS_ROOT}/bin/plumos-python-pixel2" \
+  "${ADAPTER_DIR}/plumos_portmaster_bootstrap.py" "$@" >> "$LOG_FILE" 2>&1 &
+child_pid=$!
+printf '%s\n' "$child_pid" > "$PID_FILE"
+wait "$child_pid"
+rc=$?
+exit "$rc"

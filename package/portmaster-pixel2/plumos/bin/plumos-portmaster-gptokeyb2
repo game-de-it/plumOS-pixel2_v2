@@ -1,0 +1,21 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${PLUMOS_ROOT}/state/portmaster/data}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+REAL="${PM_DIR}/gptokeyb2"
+PRELOAD="${PM_DIR}/libinterpose.aarch64.so"
+PID_FILE="${RUN_ROOT}/gptokeyb2.pid"
+[ -x "$REAL" ] || { printf 'missing GPTokeYB2: %s\n' "$REAL" >&2; exit 127; }
+[ -f "$PRELOAD" ] || { printf 'missing GPTokeYB2 interposer: %s\n' "$PRELOAD" >&2; exit 127; }
+mkdir -p "$RUN_ROOT"
+LD_PRELOAD="$PRELOAD${LD_PRELOAD:+:$LD_PRELOAD}" "$REAL" "$@" &
+pid=$!
+printf '%s\n' "$pid" > "$PID_FILE"
+trap 'kill -TERM "$pid" 2>/dev/null || true' HUP INT TERM
+wait "$pid"
+rc=$?
+[ "$(cat "$PID_FILE" 2>/dev/null || true)" = "$pid" ] && rm -f "$PID_FILE"
+exit "$rc"

@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${PLUMOS_ROOT}/state/portmaster/data}"
+export PLUMOS_ROOT PLUMOS_PORTMASTER_APP_ROOT="$APP_ROOT"
+export PLUMOS_PORTMASTER_DATA_ROOT="$DATA_ROOT"
+
+"${PLUMOS_ROOT}/bin/plumos-portmaster-runtime" prepare >/dev/null
+
+TIME_SYNC="${PLUMOS_TIME_SYNC_HELPER:-${PLUMOS_ROOT}/bin/plumos-time-sync}"
+if [ -x "$TIME_SYNC" ]; then
+  if ! "$TIME_SYNC" sync; then
+    printf '%s\n' \
+      'PortMaster update warning: time synchronization failed; trying HTTPS with the current clock.' >&2
+  fi
+fi
+
+exec "${PLUMOS_ROOT}/bin/plumos-python-pixel2" \
+  "${APP_ROOT}/adapter/plumos_portmaster_update.py" "$@"

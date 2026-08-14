@@ -1,0 +1,81 @@
+#!/bin/bash
+# plumOS-owned PortMaster compatibility contract for GKD Pixel2 ports.
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+export directory="${PLUMOS_PORTMASTER_DIRECTORY:-run/plumos/portmaster/content}"
+PLUMOS_PORTMASTER_DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${PLUMOS_ROOT}/state/portmaster/data}"
+export PLUMOS_PORTMASTER_DATA_ROOT
+export controlfolder="${PLUMOS_PORTMASTER_DATA_ROOT}/upstream/PortMaster"
+export CUR_TTY="/dev/tty0"
+export CFW_NAME="plumOS"
+export CFW_VERSION="$(cat "${PLUMOS_ROOT}/VERSION" 2>/dev/null || printf 'unknown')"
+export CFW_GLIBC="2.36"
+export DEVICE_NAME="GKD Pixel2"
+export DEVICE_CPU="RK3326"
+export DEVICE_RAM="1024"
+export DEVICE_ARCH="aarch64"
+export DEVICE_HAS_ARMHF="N"
+export DEVICE_HAS_AARCH64="Y"
+export DEVICE_HAS_X86="N"
+export DEVICE_HAS_X86_64="N"
+export DEVICE_INFO_VERSION="plumos-pixel2-1"
+export PM_VERSION="$(cat "${controlfolder}/version" 2>/dev/null || printf 'unknown')"
+export DISPLAY_WIDTH="640"
+export DISPLAY_HEIGHT="480"
+export DISPLAY_ORIENTATION="0"
+export ASPECT_X="4"
+export ASPECT_Y="3"
+export ANALOG_STICKS="0"
+export ANALOGSTICKS="0"
+export LOWRES="N"
+export DEVICE="06000000091200006635000001000000"
+export param_device="gkd-pixel2"
+export HOTKEY="guide"
+export ESUDO=""
+export ESUDOKILL=""
+export ESUDOKILL2=""
+export PM_CAN_MOUNT="Y"
+export PORT_32BIT="N"
+export raloc="${PLUMOS_ROOT}/bin"
+export raconf=""
+export SDL_GAMECONTROLLERCONFIG_FILE="${PLUMOS_RUNTIME_ROOT}/portmaster/gamecontrollerdb.txt"
+
+SDLDBFILE="${SDL_GAMECONTROLLERCONFIG_FILE}"
+SDLDBUSERFILE="${SDL_GAMECONTROLLERCONFIG_FILE}"
+
+get_controls() {
+  export DEVICE="06000000091200006635000001000000"
+  export param_device="gkd-pixel2"
+  export ANALOGSTICKS="0"
+  export ANALOG_STICKS="0"
+  export LOWRES="N"
+  export HOTKEY="guide"
+  export SDL_GAMECONTROLLERCONFIG_FILE="${PLUMOS_RUNTIME_ROOT}/portmaster/gamecontrollerdb.txt"
+  sdl_controllerconfig="$(cat "${SDL_GAMECONTROLLERCONFIG_FILE}" 2>/dev/null || true)"
+  export sdl_controllerconfig
+}
+
+# Keep upstream dialogs and port helpers, then replace only unsafe lifecycle hooks.
+source "${controlfolder}/funcs.txt"
+
+export GPTOKEYB="${PLUMOS_ROOT}/bin/plumos-portmaster-gptokeyb"
+export GPTOKEYB2="${PLUMOS_ROOT}/bin/plumos-portmaster-gptokeyb2"
+
+pm_gptokeyb_finish() {
+  "${PLUMOS_ROOT}/bin/plumos-portmaster-gptokeyb-stop" stop
+}
+
+pm_finish() {
+  pm_gptokeyb_finish
+  pm_message_end
+  case "${CUR_TTY:-}" in
+    /dev/tty*) printf '\033c' > "${CUR_TTY}" 2>/dev/null || true ;;
+  esac
+}
+
+pm_platform_helper() {
+  if [ -e "${PM_PIPE:-}" ]; then
+    PortMasterDialogExit
+  fi
+}
