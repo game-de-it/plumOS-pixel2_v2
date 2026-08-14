@@ -442,6 +442,14 @@ grep -q 'plumos-frontend-stop stop' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'renderer->var.xres = renderer->physical_yres' \
     "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+grep -q 'case BTN_EAST:' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+grep -q 'case BTN_SOUTH:' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+grep -q 'case BTN_TRIGGER_HAPPY1:' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+grep -q 'B/FUNCTION Exit' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
 grep -q 'logical_width = (r->rotation == 1 || r->rotation == 3)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q '? (int)r->physical_yres' \
