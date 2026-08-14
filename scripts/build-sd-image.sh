@@ -101,14 +101,14 @@ normalize_ext4_timestamps() {
     faketime "$fake_time" debugfs -w -f "$commands" "$image" >/dev/null 2>&1
 }
 
-# Fixed 4 GiB seed layout, in 512-byte sectors.
-TOTAL_SECTORS=8388608
+# Compact first-boot seed layout, in 512-byte sectors.  The image deliberately
+# ends with the 2 GiB p2 filesystem.  First boot grows p2 to exactly 8 GiB and
+# creates p3 PLUMOS_USER through the physical card's final sector.
+TOTAL_SECTORS=5275648
 BOOT_START=32768
 BOOT_SECTORS=1048576
 SYS_START=1081344
 SYS_SECTORS=4194304
-USER_START=5275648
-USER_SECTORS=3112960
 IMAGE="$OUT_DIR/plumOS-Pixel2-$VERSION.img"
 WORK="$(mktemp -d /tmp/plumos-pixel2-image.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
@@ -121,7 +121,6 @@ dd if="$PREFIX" of="$IMAGE" bs=1M count=16 conv=notrunc status=none
 parted -s "$IMAGE" unit s mklabel msdos \
     mkpart primary fat32 "${BOOT_START}s" "$((BOOT_START + BOOT_SECTORS - 1))s" \
     mkpart primary ext4 "${SYS_START}s" "$((SYS_START + SYS_SECTORS - 1))s" \
-    mkpart primary fat32 "${USER_START}s" "$((USER_START + USER_SECTORS - 1))s" \
     set 1 boot on 2> >(grep -v 'udevadm: not found' >&2)
 # Keep the partition table deterministic while leaving the Rockchip payload at
 # sectors 1..32767 untouched.
@@ -129,7 +128,6 @@ printf '\x50\x4c\x55\x4d' | dd of="$IMAGE" bs=1 seek=440 conv=notrunc status=non
 
 truncate -s "$((BOOT_SECTORS * 512))" "$WORK/boot.fat"
 truncate -s "$((SYS_SECTORS * 512))" "$WORK/plumos-sys.ext4"
-truncate -s "$((USER_SECTORS * 512))" "$WORK/plumos-user.fat"
 SOURCE_DATE_EPOCH="$SOURCE_EPOCH" mkfs.vfat --invariant -F 32 -n PLUMOS_BOOT \
     -i 504C554D "$WORK/boot.fat" >/dev/null
 E2FSPROGS_FAKE_TIME="$SOURCE_EPOCH" mkfs.ext4 -q -F -L PLUMOS_SYS \
@@ -137,11 +135,6 @@ E2FSPROGS_FAKE_TIME="$SOURCE_EPOCH" mkfs.ext4 -q -F -L PLUMOS_SYS \
     -E lazy_itable_init=0,lazy_journal_init=0,hash_seed=504c554d-5354-4154-4500-000000000002 \
     -d "$WORK/plumos-sys" "$WORK/plumos-sys.ext4"
 normalize_ext4_timestamps "$WORK/plumos-sys" "$WORK/plumos-sys.ext4" "$SOURCE_EPOCH"
-SOURCE_DATE_EPOCH="$SOURCE_EPOCH" mkfs.vfat --invariant -F 32 -n PLUMOS_USER \
-    -i 504C0003 "$WORK/plumos-user.fat" >/dev/null
-for directory in roms bios Images Themes Screenshots Music updates imports exports plumos-logs; do
-    MTOOLS_SKIP_CHECK=1 mmd -i "$WORK/plumos-user.fat" "::/$directory"
-done
 
 install -m 0644 "$STOCK_BOOT_DIR/Image" "$WORK/boot/Image"
 install -m 0644 "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" \
@@ -173,7 +166,11 @@ stock_dtb_sha256=$stock_dtb_sha
 boot_splash=oemsplash-1080.png
 boot_splash_geometry=480x640
 boot_splash_sha256=$boot_splash_sha
-layout=boot-prefix-16MiB,boot-fat-512MiB,plumos-sys-ext4-2048MiB,plumos-user-fat32-remainder
+layout=compact-seed-v1,boot-prefix-16MiB,boot-fat-512MiB,plumos-sys-ext4-2048MiB,plumos-user-absent
+first_boot_p2_target_mib=8192
+first_boot_p3_label=PLUMOS_USER
+first_boot_p3_extent=sector-17858560-to-card-end
+minimum_card_bytes=15000000000
 runtime_abi=plumos-pixel2-app-layer-v1
 system_layout=fixed-dispatcher,system-a,system-b
 stock_initramfs_hooks=post-flash.sh,post-sysroot.sh
@@ -183,11 +180,9 @@ MTOOLS_SKIP_CHECK=1 mcopy -m -o -i "$WORK/boot.fat" "$WORK/boot/"* ::/
 
 dd if="$WORK/boot.fat" of="$IMAGE" bs=512 seek="$BOOT_START" conv=notrunc status=none
 dd if="$WORK/plumos-sys.ext4" of="$IMAGE" bs=512 seek="$SYS_START" conv=notrunc status=none
-dd if="$WORK/plumos-user.fat" of="$IMAGE" bs=512 seek="$USER_START" conv=notrunc status=none
 
 boot_fs_sha=$(sha256sum "$WORK/boot.fat" | awk '{print $1}')
 sys_fs_sha=$(sha256sum "$WORK/plumos-sys.ext4" | awk '{print $1}')
-user_fs_sha=$(sha256sum "$WORK/plumos-user.fat" | awk '{print $1}')
 image_sha=$(sha256sum "$IMAGE" | awk '{print $1}')
 image_size=$(stat -c '%s' "$IMAGE")
 cat >"$OUT_DIR/image.manifest" <<EOF
@@ -198,7 +193,8 @@ image_sha256=$image_sha
 boot_prefix_sha256=$prefix_sha
 boot_filesystem_sha256=$boot_fs_sha
 sys_filesystem_sha256=$sys_fs_sha
-user_filesystem_sha256=$user_fs_sha
+user_filesystem=created-on-first-boot
+user_filesystem_label=PLUMOS_USER
 source_ref=$SOURCE_REF
 source_date_epoch=$SOURCE_EPOCH
 EOF

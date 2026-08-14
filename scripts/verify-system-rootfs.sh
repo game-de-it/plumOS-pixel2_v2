@@ -46,6 +46,15 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/50-update-health"
 grep -q 'system-booted' "$tmp/rootfs/usr/lib/plumos/init.d/50-update-health"
 grep -q 'frontend-ready-timeout' "$tmp/rootfs/usr/lib/plumos/init.d/50-update-health"
 test -x "$tmp/rootfs/usr/sbin/plumos-system-update"
+test -x "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
+test -x "$tmp/rootfs/usr/sbin/sfdisk"
+test -x "$tmp/rootfs/usr/bin/partx"
+test -x "$tmp/rootfs/usr/sbin/resize2fs"
+test -x "$tmp/rootfs/usr/sbin/mkfs.fat"
+grep -q 'existing-user-blocks-system-growth' \
+    "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
+grep -q 'p3-owned-by-provisioner' \
+    "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
 test -x "$tmp/rootfs/usr/bin/python3"
 test -x "$tmp/rootfs/usr/bin/openssl"
 test -L "$tmp/rootfs/usr/bin/env"
@@ -94,6 +103,16 @@ if [ "$(uname -m)" = aarch64 ]; then
         = pixel2
     chroot "$tmp/rootfs" /usr/bin/openssl version >/dev/null
     chroot "$tmp/rootfs" /usr/sbin/plumos-system-update --help >/dev/null
+    chroot "$tmp/rootfs" /usr/sbin/sfdisk --version >/dev/null
+    chroot "$tmp/rootfs" /usr/bin/partx --version >/dev/null
+    storage_tool_rc=0
+    chroot "$tmp/rootfs" /usr/sbin/resize2fs -V >/dev/null 2>&1 || \
+        storage_tool_rc=$?
+    [ "$storage_tool_rc" -le 1 ]
+    storage_tool_rc=0
+    chroot "$tmp/rootfs" /usr/sbin/mkfs.fat --help >/dev/null 2>&1 || \
+        storage_tool_rc=$?
+    [ "$storage_tool_rc" -le 1 ]
     first_module=$(find "$tmp/rootfs/lib/modules/$release" -name '*.ko' -print -quit)
     if [ -n "$first_module" ]; then
         case "$(chroot "$tmp/rootfs" /sbin/modinfo -F vermagic \

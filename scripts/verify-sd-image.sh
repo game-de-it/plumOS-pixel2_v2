@@ -38,11 +38,11 @@ if ! command -v parted >/dev/null 2>&1; then
     exit "$rc"
 fi
 
-[ "$(stat -c '%s' "$IMAGE")" -eq 4294967296 ]
+[ "$(stat -c '%s' "$IMAGE")" -eq 2701131776 ]
 layout=$(parted -m -s "$IMAGE" unit s print)
 printf '%s\n' "$layout" | grep -q '^1:32768s:1081343s:1048576s:fat32::boot, lba;$'
 printf '%s\n' "$layout" | grep -q '^2:1081344s:5275647s:4194304s:ext4::;$'
-printf '%s\n' "$layout" | grep -q '^3:5275648s:8388607s:3112960s:fat32::lba;$'
+[ "$(printf '%s\n' "$layout" | grep -c '^[0-9][0-9]*:')" -eq 2 ]
 
 WORK="$(mktemp -d /tmp/plumos-pixel2-verify.XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
@@ -51,12 +51,9 @@ dd if="$PREFIX" of="$WORK/source-prefix.bin" bs=512 skip=1 count=32767 status=no
 cmp "$WORK/image-prefix.bin" "$WORK/source-prefix.bin"
 dd if="$IMAGE" of="$WORK/boot.fat" bs=512 skip=32768 count=1048576 status=none
 dd if="$IMAGE" of="$WORK/plumos-sys.ext4" bs=512 skip=1081344 count=4194304 status=none
-dd if="$IMAGE" of="$WORK/plumos-user.fat" bs=512 skip=5275648 count=3112960 status=none
 fsck.vfat -n "$WORK/boot.fat" >/dev/null
-fsck.vfat -n "$WORK/plumos-user.fat" >/dev/null
 e2fsck -fn "$WORK/plumos-sys.ext4" >/dev/null
 [ "$(blkid -s LABEL -o value "$WORK/plumos-sys.ext4")" = PLUMOS_SYS ]
-[ "$(blkid -s LABEL -o value "$WORK/plumos-user.fat")" = PLUMOS_USER ]
 for file in Image SYSTEM rk3326s-gkd-pixel2.dtb oemsplash-1080.png plumos-image.manifest \
     post-flash.sh post-sysroot.sh; do
     MTOOLS_SKIP_CHECK=1 mcopy -i "$WORK/boot.fat" "::/$file" "$WORK/$file"
@@ -85,6 +82,10 @@ grep -q '^system_layout=fixed-dispatcher,system-a,system-b$' \
     "$WORK/plumos-image.manifest"
 grep -q '^stock_initramfs_hooks=post-flash.sh,post-sysroot.sh$' \
     "$WORK/plumos-image.manifest"
+grep -q '^layout=compact-seed-v1,.*plumos-user-absent$' \
+    "$WORK/plumos-image.manifest"
+grep -q '^first_boot_p2_target_mib=8192$' "$WORK/plumos-image.manifest"
+grep -q '^first_boot_p3_label=PLUMOS_USER$' "$WORK/plumos-image.manifest"
 grep -q '/usr/bin/ply-image /flash/oemsplash-1080.png' "$WORK/post-flash.sh"
 grep -q 'boot-splash result=plumos' "$WORK/post-flash.sh"
 grep -q 'post-sysroot' "$WORK/post-sysroot.sh"
@@ -101,9 +102,7 @@ done
 mkdir -p "$WORK/app-layer"
 debugfs -R "rdump / $WORK/app-layer" "$WORK/plumos-sys.ext4" >/dev/null 2>&1
 "$ROOT_DIR/scripts/verify-app-layer.sh" "$WORK/app-layer"
-for directory in roms bios Images Themes Screenshots Music updates; do
-    MTOOLS_SKIP_CHECK=1 mdir -i "$WORK/plumos-user.fat" "::/$directory" >/dev/null
-done
+"$ROOT_DIR/tests/test-pixel2-first-boot-provision.sh" "$IMAGE"
 if strings "$WORK/Image" "$WORK/rk3326s-gkd-pixel2.dtb" \
     "$WORK/plumos-image.manifest" | grep -Eiq '(rock[n]ix|emuel[e]c|batocer[a]|knull[i])'; then
     printf 'error: foreign distribution identity in boot payload\n' >&2

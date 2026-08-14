@@ -1,0 +1,291 @@
+#!/bin/sh
+set -u
+
+# Pixel2 keeps the vendor kernel and initramfs.  That initramfs mounts p2 at
+# /storage before handing off to plumOS, so p2 growth is performed online.  If
+# the running kernel cannot refresh the MBR geometry while p2 is mounted, the
+# durable state below makes a single early reboot sufficient to resume.
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+BB=${PLUMOS_PROVISION_BUSYBOX:-/bin/busybox}
+SFDISK=${PLUMOS_PROVISION_SFDISK:-/usr/sbin/sfdisk}
+PARTX=${PLUMOS_PROVISION_PARTX:-/usr/bin/partx}
+RESIZE2FS=${PLUMOS_PROVISION_RESIZE2FS:-/usr/sbin/resize2fs}
+MKFS_FAT=${PLUMOS_PROVISION_MKFS_FAT:-/usr/sbin/mkfs.fat}
+BLKID=${PLUMOS_PROVISION_BLKID:-/bin/blkid}
+MOUNT=${PLUMOS_PROVISION_MOUNT:-/bin/mount}
+MMD=${PLUMOS_PROVISION_MMD:-mmd}
+MCOPY=${PLUMOS_PROVISION_MCOPY:-mcopy}
+
+RUNTIME_ROOT=${PLUMOS_PROVISION_RUNTIME_ROOT:-/storage}
+STATE_DIR=${PLUMOS_PROVISION_STATE_DIR:-$RUNTIME_ROOT/provision}
+USER_ROOT=${PLUMOS_PROVISION_USER_ROOT:-/mnt/plumos-user}
+SYS_CLASS_BLOCK=${PLUMOS_PROVISION_SYS_CLASS_BLOCK:-/sys/class/block}
+HOST_MODE=${PLUMOS_PROVISION_HOST_MODE:-0}
+
+BOOT_START=32768
+BOOT_SECTORS=1048576
+SYS_START=1081344
+SYS_SEED_SECTORS=4194304
+SYS_TARGET_SECTORS=16777216
+USER_START=17858560
+# Marketed 16 GB cards are normally 16,000,000,000 bytes, not 16 GiB.
+MIN_DISK_SECTORS=29296875
+
+resolve_runtime_device() {
+    source=$($BB awk '$2 == "/storage" { print $1; exit }' /proc/mounts 2>/dev/null || true)
+    case "$source" in
+        *p2) printf '%s\n' "${source%p2}" ;;
+        */*[!0-9]2) printf '%s\n' "${source%2}" ;;
+        *) printf '%s\n' /dev/mmcblk0 ;;
+    esac
+}
+
+DISK=${PLUMOS_PROVISION_DISK:-$(resolve_runtime_device)}
+case "$DISK" in
+    *[0-9]) TABLE_P1=${DISK}p1; TABLE_P2=${DISK}p2; TABLE_P3=${DISK}p3 ;;
+    *) TABLE_P1=${DISK}1; TABLE_P2=${DISK}2; TABLE_P3=${DISK}3 ;;
+esac
+P2=${PLUMOS_PROVISION_P2:-$TABLE_P2}
+P3=${PLUMOS_PROVISION_P3:-$TABLE_P3}
+TABLE_DUMP=${PLUMOS_PROVISION_TABLE_DUMP:-/run/plumos-partition-table.$$}
+LOG=$STATE_DIR/first-boot.log
+
+mkdir -p "$STATE_DIR" 2>/dev/null || {
+    printf 'plumos-provision=result=failed reason=state-directory\n' >&2
+    exit 1
+}
+
+log() {
+    line="$($BB date -u +%Y-%m-%dT%H:%M:%SZ) plumos-provision=$*"
+    printf '%s\n' "$line" >>"$LOG" 2>/dev/null || true
+    printf '%s\n' "$line" >/dev/console 2>/dev/null || true
+}
+
+fail() {
+    log "result=failed reason=$1"
+    $BB sync
+    rm -f "$TABLE_DUMP"
+    exit 1
+}
+
+disk_sectors() {
+    if [ -b "$DISK" ]; then
+        $BB blockdev --getsz "$DISK"
+    elif [ -f "$DISK" ]; then
+        bytes=$($BB stat -c %s "$DISK")
+        printf '%s\n' $((bytes / 512))
+    else
+        return 1
+    fi
+}
+
+refresh_table_dump() {
+    "$SFDISK" -d "$DISK" >"$TABLE_DUMP" 2>>"$LOG" || return 1
+}
+
+partition_value() {
+    device=$1
+    key=$2
+    $BB awk -v device="$device" -v key="$key" '
+        $1 == device {
+            gsub(/,/, "")
+            for (i = 1; i <= NF; i++) {
+                if ($i == key "=") {
+                    print $(i + 1)
+                    exit
+                }
+                if (index($i, key "=") == 1) {
+                    print substr($i, length(key) + 2)
+                    exit
+                }
+            }
+        }
+    ' "$TABLE_DUMP"
+}
+
+kernel_value() {
+    device=$1
+    key=$2
+    name=${device##*/}
+    $BB cat "$SYS_CLASS_BLOCK/$name/$key" 2>/dev/null || true
+}
+
+partition_node_exists() {
+    [ -b "$1" ] || { [ "$HOST_MODE" = 1 ] && [ -f "$1" ]; }
+}
+
+blkid_value() {
+    "$BLKID" -s "$1" -o value "$2" 2>/dev/null || true
+}
+
+expected_user_sectors=0
+disk_size=$(disk_sectors) || fail disk-unavailable
+[ "$disk_size" -ge "$MIN_DISK_SECTORS" ] || fail disk-smaller-than-16gb
+expected_user_sectors=$((disk_size - USER_START))
+[ "$expected_user_sectors" -gt 0 ] || fail no-user-partition-space
+
+# The completed path is intentionally bounded: no resize, format, directory
+# seeding, marker rewrite, or log append occurs during an ordinary boot.
+if [ -f "$STATE_DIR/complete" ]; then
+    p2_start=$(kernel_value "$P2" start)
+    p2_size=$(kernel_value "$P2" size)
+    p3_start=$(kernel_value "$P3" start)
+    p3_size=$(kernel_value "$P3" size)
+    p3_label=$(blkid_value LABEL "$P3")
+    if [ "$p2_start" = "$SYS_START" ] &&
+        [ "$p2_size" = "$SYS_TARGET_SECTORS" ] &&
+        [ "$p3_start" = "$USER_START" ] &&
+        [ "$p3_size" = "$expected_user_sectors" ] &&
+        [ "$p3_label" = PLUMOS_USER ]; then
+        exit 0
+    fi
+fi
+
+log "stage=inspect disk=$DISK sectors=$disk_size"
+refresh_table_dump || fail partition-table-unreadable
+p1_start=$(partition_value "$TABLE_P1" start)
+p1_size=$(partition_value "$TABLE_P1" size)
+p2_start=$(partition_value "$TABLE_P2" start)
+p2_size=$(partition_value "$TABLE_P2" size)
+p3_start=$(partition_value "$TABLE_P3" start)
+p3_size=$(partition_value "$TABLE_P3" size)
+
+[ "$p1_start" = "$BOOT_START" ] && [ "$p1_size" = "$BOOT_SECTORS" ] ||
+    fail unexpected-boot-partition
+[ "$p2_start" = "$SYS_START" ] || fail unexpected-system-partition-start
+case "$p2_size" in
+    "$SYS_SEED_SECTORS"|"$SYS_TARGET_SECTORS") ;;
+    *) fail unexpected-system-partition-size ;;
+esac
+
+# An existing p3 is never reformatted unless this provisioner durably recorded
+# ownership before creating the entry.  Legacy development cards therefore
+# keep all ROMs/BIOS even though their old geometry blocks automatic p2 growth.
+if [ -n "$p3_start" ] && [ "$p2_size" != "$SYS_TARGET_SECTORS" ]; then
+    log "result=preserved reason=existing-user-blocks-system-growth p3_start=$p3_start"
+    rm -f "$TABLE_DUMP"
+    exit 30
+fi
+if [ -n "$p3_start" ] && {
+    [ "$p3_start" != "$USER_START" ] ||
+    [ "$p3_size" != "$expected_user_sectors" ];
+}; then
+    log "result=preserved reason=unexpected-existing-user-geometry p3_start=$p3_start p3_size=$p3_size"
+    rm -f "$TABLE_DUMP"
+    exit 30
+fi
+
+if [ -z "$p3_start" ]; then
+    printf '%s\n' table-planned >"$STATE_DIR/state"
+    : >"$STATE_DIR/p3-owned-by-provisioner"
+    $BB sync
+    log "stage=partition-table-write p2_sectors=$SYS_TARGET_SECTORS p3_sectors=$expected_user_sectors"
+    "$SFDISK" --no-reread --no-tell-kernel "$DISK" >>"$LOG" 2>&1 <<EOF
+label: dos
+label-id: 0x4d554c50
+unit: sectors
+
+$TABLE_P1 : start=$BOOT_START, size=$BOOT_SECTORS, type=c, bootable
+$TABLE_P2 : start=$SYS_START, size=$SYS_TARGET_SECTORS, type=83
+$TABLE_P3 : start=$USER_START, size=$expected_user_sectors, type=c
+EOF
+    [ "$?" -eq 0 ] || fail partition-table-write
+    : >"$STATE_DIR/partition-table-written"
+    printf '%s\n' table-written >"$STATE_DIR/state"
+    $BB sync
+    refresh_table_dump || fail partition-table-reread
+    [ "$(partition_value "$TABLE_P2" size)" = "$SYS_TARGET_SECTORS" ] ||
+        fail partition-table-p2-verification
+    [ "$(partition_value "$TABLE_P3" start)" = "$USER_START" ] ||
+        fail partition-table-p3-verification
+    p2_size=$SYS_TARGET_SECTORS
+    p3_start=$USER_START
+    p3_size=$expected_user_sectors
+
+    if [ "$HOST_MODE" != 1 ]; then
+        "$PARTX" --update --nr 2 "$DISK" >>"$LOG" 2>&1 || true
+        "$PARTX" --add --nr 3 "$DISK" >>"$LOG" 2>&1 || true
+        attempt=0
+        while [ "$attempt" -lt 20 ]; do
+            [ "$(kernel_value "$P2" size)" = "$SYS_TARGET_SECTORS" ] &&
+                [ "$(kernel_value "$P3" start)" = "$USER_START" ] && break
+            $BB sleep 0.1
+            attempt=$((attempt + 1))
+        done
+    fi
+fi
+
+rm -f "$TABLE_DUMP"
+
+# MBR state is durable but the mounted p2 block device can still expose the old
+# size until reboot.  Exit 20 asks init for one early, clean resume boot.
+if [ "$(kernel_value "$P2" size)" != "$SYS_TARGET_SECTORS" ] ||
+    [ "$(kernel_value "$P3" start)" != "$USER_START" ] ||
+    ! partition_node_exists "$P3"; then
+    log 'result=reboot-required reason=kernel-partition-geometry'
+    $BB sync
+    exit 20
+fi
+
+if [ ! -f "$STATE_DIR/ext4-resized" ]; then
+    log 'stage=resize-system-ext4'
+    "$RESIZE2FS" "$P2" >>"$LOG" 2>&1 || fail resize2fs
+    : >"$STATE_DIR/ext4-resized"
+    printf '%s\n' ext4-resized >"$STATE_DIR/state"
+    $BB sync
+fi
+
+p3_type=$(blkid_value TYPE "$P3")
+p3_label=$(blkid_value LABEL "$P3")
+if [ -z "$p3_type" ]; then
+    [ -f "$STATE_DIR/p3-owned-by-provisioner" ] || {
+        log 'result=preserved reason=existing-unrecognized-user-partition'
+        exit 30
+    }
+    log 'stage=format-user-fat32 label=PLUMOS_USER'
+    "$MKFS_FAT" -F 32 -n PLUMOS_USER -i 504C0003 "$P3" >>"$LOG" 2>&1 ||
+        fail mkfs-fat
+    : >"$STATE_DIR/p3-formatted"
+    printf '%s\n' p3-formatted >"$STATE_DIR/state"
+    $BB sync
+    p3_type=$(blkid_value TYPE "$P3")
+    p3_label=$(blkid_value LABEL "$P3")
+fi
+if [ "$p3_type" != vfat ] || [ "$p3_label" != PLUMOS_USER ]; then
+    log "result=preserved reason=existing-user-filesystem type=${p3_type:-none} label=${p3_label:-none}"
+    exit 30
+fi
+
+log 'stage=seed-user-directories'
+if [ "$HOST_MODE" = 1 ]; then
+    export MTOOLS_SKIP_CHECK=1
+    for directory in roms bios Images Themes Screenshots Music updates imports exports plumos-logs; do
+        "$MMD" -i "$P3" "::/$directory" >/dev/null 2>&1 || true
+    done
+    marker=$STATE_DIR/.plumos-ready
+    : >"$marker"
+    "$MCOPY" -o -i "$P3" "$marker" ::/.plumos-ready >/dev/null 2>&1 ||
+        fail host-ready-marker
+    rm -f "$marker"
+else
+    $BB mkdir -p "$USER_ROOT"
+    if ! $BB grep -qs " $USER_ROOT " /proc/mounts 2>/dev/null; then
+        "$MOUNT" -t vfat -o rw "$P3" "$USER_ROOT" >>"$LOG" 2>&1 ||
+            fail user-mount
+    fi
+    for directory in roms bios Images Themes Screenshots Music updates imports exports plumos-logs; do
+        $BB mkdir -p "$USER_ROOT/$directory" || fail user-directory
+    done
+    : >"$USER_ROOT/.plumos-ready" || fail user-ready-marker
+fi
+
+printf '%s\n' complete >"$STATE_DIR/state"
+: >"$STATE_DIR/userdata-seeded"
+$BB sync
+: >"$STATE_DIR/complete"
+$BB sync
+log 'result=complete layout=pixel2-compact-seed-v1'
+exit 0

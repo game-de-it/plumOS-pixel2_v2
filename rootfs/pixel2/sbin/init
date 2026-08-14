@@ -78,6 +78,28 @@ if ! is_mounted /mnt/plumos && \
         printf 'plumos-init=warn mount=runtime fallback=tmpfs\n'
     fi
 fi
+
+provisioner=/usr/sbin/plumos-first-boot-provision
+if [ -x "$provisioner" ]; then
+    "$provisioner"
+    provision_rc=$?
+    case "$provision_rc" in
+        0) ;;
+        20)
+            printf 'plumos-init=provision result=reboot-required\n'
+            $bb sync
+            exec $bb reboot -f
+            ;;
+        30)
+            printf 'plumos-init=provision result=preserved-existing-layout\n'
+            ;;
+        *)
+            printf 'plumos-init=provision result=failed rc=%s action=recovery-shell\n' \
+                "$provision_rc"
+            exec $bb setsid $bb cttyhack /bin/sh -l
+            ;;
+    esac
+fi
 if ! mount_partition /mnt/plumos-user PLUMOS_USER /dev/mmcblk0p3 rw 2>/dev/null; then
     if mount_partition /mnt/plumos-user PLUMOS_ROMS /dev/mmcblk0p3 rw 2>/dev/null; then
         printf 'plumos-init=warn mount=user-data legacy-label=PLUMOS_ROMS\n'

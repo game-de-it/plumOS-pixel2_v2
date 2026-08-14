@@ -73,7 +73,8 @@ for applet in basename blkid cat chmod chown cttyhack cut date dirname env grep 
     ln -s /bin/busybox "$ROOTFS_DIR/bin/$applet"
 done
 ln -s /bin/busybox "$ROOTFS_DIR/usr/bin/env"
-for binary in ip iw wpa_supplicant wpa_cli dropbear dropbearkey kmod python3 openssl; do
+for binary in ip iw wpa_supplicant wpa_cli dropbear dropbearkey kmod python3 openssl \
+    sfdisk partx resize2fs mkfs.fat fsck.fat; do
     copy_elf "$binary"
 done
 cp -a /usr/lib/python3.11 "$ROOTFS_DIR/usr/lib/"
@@ -103,7 +104,7 @@ ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/modinfo"
 
 mkdir -p "$ROOTFS_DIR/usr/share/licenses/debian"
 for package in busybox-static kmod iproute2 iw wpasupplicant dropbear-bin \
-    python3.11-minimal openssl; do
+    python3.11-minimal openssl fdisk util-linux e2fsprogs dosfstools; do
     install -m 0644 "/usr/share/doc/$package/copyright" \
         "$ROOTFS_DIR/usr/share/licenses/debian/$package-copyright"
 done
