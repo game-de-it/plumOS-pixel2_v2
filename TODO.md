@@ -51,6 +51,7 @@
   - [x] RetroArch menu
   - [x] PortMaster
   - [x] Update PortMaster
+  - [x] Ports systemからPortMaster install済みscriptを起動する導線
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
@@ -129,7 +130,7 @@
   - [ ] data layout policy: cannonball、cavestory、chailove、dinothawr、lowresnx、lutro、microw8、quake、wolf3d
   - [ ] frontend policy: j2me、music、ti83、vmu
   - [ ] scraper source policy: uzebox
-- [ ] disabled 10 system（saturn、mame2003plus、ports、2048、bk、daphne、flashback、mrboom、palm、rickdangerous）を実装または非対応理由確定する
+- [ ] disabled 9 system（saturn、mame2003plus、2048、bk、daphne、flashback、mrboom、palm、rickdangerous）を実装または非対応理由確定する
   - [x] Saturnは`unsupported_performance_rk3326`として非対応理由を確定する
 
 ## Final partition and update contract

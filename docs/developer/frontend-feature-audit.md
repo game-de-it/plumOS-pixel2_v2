@@ -28,6 +28,7 @@ backendへ置き換える。一方、共有Appsやfile transfer daemonが未実�
 - START: UI Settings、System Settings、Network Settings、Apps、HELP、Reboot、Shutdown
 - Apps: Scraping、File Manager、Music Player、RetroArch、Pyxel Setup、PortMaster、
   Update PortMaster
+- Ports system: `roms/ports/*.sh`からPixel2 PortMaster launcherへ接続
 - NW Service: SSH、FTP、SFTP、Samba、ADB
 - Settings: MFと共通の89 ID。Pixel2固有のhardware capability判定は保持する。
 

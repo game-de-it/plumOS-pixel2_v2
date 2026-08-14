@@ -2188,7 +2188,7 @@
       "short_name": "Ports",
       "sort_order": 350,
       "hardware": "app",
-      "enabled": false,
+      "enabled": true,
       "pinned": false,
       "directory_aliases": [
         {
@@ -2220,7 +2220,7 @@
       "default_cpu_policy": "ondemand",
       "scraper": {
         "enabled": false,
-        "reason": "pixel2-portmaster-pending"
+        "reason": "not_single_rom_crc"
       }
     },
     {

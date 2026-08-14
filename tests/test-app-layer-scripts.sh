@@ -334,6 +334,12 @@ grep -q 'default-on-no-explicit-setting' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'generate-pixel2-system-logos.py' \
     "$ROOT_DIR/scripts/build-frontend-component.sh"
+grep -Fq 'apps/*/bin/*.bin|ssh/libexec/*.bin' \
+    "$ROOT_DIR/scripts/verify-app-layer.sh"
+! grep -q 'head -n 1' "$ROOT_DIR/scripts/verify-app-layer.sh"
+grep -q 'xargs -0 grep -I' "$ROOT_DIR/scripts/verify-app-layer.sh"
+jq -e '.systems[] | select(.id == "ports" and .enabled == true and .default_launch_profile == "external:port")' \
+    "$ROOT_DIR/package/frontend-pixel2/systems.json" >/dev/null
 grep -q 'install_scraper_runtime' "$ROOT_DIR/scripts/build-frontend-component.sh"
 grep -q 'PLUMOS_SDCARD_ROOT:-/mnt/plumos-user' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"

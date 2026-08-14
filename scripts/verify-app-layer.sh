@@ -54,6 +54,8 @@ done
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"
+jq -e '.systems[] | select(.id == "ports" and .enabled == true and .default_launch_profile == "external:port")' \
+    "$ROOT/config/frontend/systems.json" >/dev/null
 grep -q '^input_device = "pixel2_joypad"$' \
     "$ROOT/factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg"
 grep -q '^input_joypad_driver = "udev"$' \
@@ -196,18 +198,17 @@ if strings "$ROOT/bin/plumos-hardware-keys" | \
     printf 'error: foreign device identity in Pixel2 hardware key daemon\n' >&2
     exit 1
 fi
-rom_like_content="$(
+rom_like_content=
+while IFS= read -r path; do
+    rel=${path#"$ROOT"/}
+    case "$rel" in
+        standalone/ppsspp/assets/shaders/smiley_16x16_rgba.bin|apps/*/bin/*.bin|ssh/libexec/*.bin) continue ;;
+    esac
+    [ -n "$rom_like_content" ] || rom_like_content="$rel"
+done < <(
     find "$ROOT" -type f \( -iname '*.nes' -o -iname '*.gb' -o -iname '*.gba' \
-        -o -iname '*.sfc' -o -iname '*.smc' -o -iname '*.bin' -o -iname '*.cue' \) |
-    while IFS= read -r path; do
-        rel=${path#"$ROOT"/}
-        if [ "$rel" = "standalone/ppsspp/assets/shaders/smiley_16x16_rgba.bin" ]; then
-            continue
-        fi
-        printf '%s\n' "$rel"
-    done |
-    head -n 1
-)"
+        -o -iname '*.sfc' -o -iname '*.smc' -o -iname '*.bin' -o -iname '*.cue' \)
+)
 if [ -n "$rom_like_content" ]; then
     printf 'error: ROM or BIOS-like content in app layer\n' >&2
     printf 'error: first match: %s\n' "$rom_like_content" >&2
@@ -215,7 +216,7 @@ if [ -n "$rom_like_content" ]; then
 fi
 if find "$ROOT" \
     -path "$ROOT/apps/portmaster/upstream" -prune -o \
-    -type f -print0 | xargs -0 grep -a -E -i -n \
+    -type f -print0 | xargs -0 grep -I -E -i -n \
     'rock[n]ix|emuel[e]c|batocer[a]|knull[i]|stock[o]s' >/dev/null; then
     printf 'error: foreign distribution identity in app layer\n' >&2
     exit 1

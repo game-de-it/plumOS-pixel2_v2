@@ -85,6 +85,9 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
     feature_contract = load_json(
         repo / "package/frontend-pixel2/feature-contract.json"
     )
+    text_ui_text = (
+        repo / "vendor/plumos-frontend/src/plumos_text_ui.c"
+    ).read_text(encoding="utf-8", errors="replace")
     findings: list[Finding] = []
 
     enabled = [system for system in systems if system.get("enabled") is not False]
@@ -134,6 +137,23 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
 
     for system in enabled:
         for profile in system.get("launch_profiles", []):
+            if profile == "external:port":
+                launcher = app_root / "bin/plumos-portmaster-port-launch"
+                if (
+                    not launcher.is_file()
+                    or 'strcmp(launch_profile, "external:port")' not in text_ui_text
+                    or '"bin/plumos-portmaster-port-launch"' not in text_ui_text
+                ):
+                    findings.append(
+                        Finding(
+                            "P0",
+                            "frontend-route",
+                            f"{system['id']} -> {profile}",
+                            "PortMaster content launcher is missing",
+                            True,
+                        )
+                    )
+                continue
             if not profile.startswith("standalone:"):
                 continue
             emulator = profile.split(":", 1)[1]
