@@ -30,11 +30,19 @@ gadget_bound() {
     [ -r "$GADGET/UDC" ] && [ -n "$(cat "$GADGET/UDC" 2>/dev/null)" ]
 }
 
-adb_opted_in() {
+adb_enabled_by_policy() {
     [ -f "$OPT_IN_MARKER" ] && return 0
-    [ -r "$SERVICES_CONF" ] || return 1
+    # Pixel2 has no onboard Wi-Fi, so a fresh or recovered image must retain a
+    # maintenance path.  A value written by the frontend always wins; only an
+    # absent setting uses the default-on policy.
+    [ -r "$SERVICES_CONF" ] || return 0
     value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-    case "$value" in 1|true|on) return 0 ;; *) return 1 ;; esac
+    case "$value" in
+        1|true|on) return 0 ;;
+        0|false|off) return 1 ;;
+        '') return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 stop_adbd() {
@@ -56,8 +64,8 @@ stop_adbd() {
 }
 
 start_adbd() {
-    if ! adb_opted_in; then
-        log "result=disabled reason=explicit-opt-in-required marker=$OPT_IN_MARKER"
+    if ! adb_enabled_by_policy; then
+        log "result=disabled reason=explicit-user-setting marker=$OPT_IN_MARKER"
         return 0
     fi
     [ -x /usr/sbin/adbd ] || {
@@ -134,7 +142,7 @@ start_adbd() {
         stop_adbd
         return 1
     }
-    log "result=started udc=$udc access=explicit-opt-in"
+    log "result=started udc=$udc access=default-on-no-explicit-setting"
 }
 
 recover_adbd() {
@@ -162,7 +170,7 @@ status_adbd() {
     udc_state=unknown
     set -- /sys/class/udc/*
     [ -e "$1/state" ] && udc_state=$(cat "$1/state" 2>/dev/null || true)
-    if ! adb_opted_in; then
+    if ! adb_enabled_by_policy; then
         state=disabled
     elif pid_running && [ "$bound" -eq 1 ]; then
         case "$udc_state" in
@@ -173,7 +181,7 @@ status_adbd() {
     printf 'service=adb\nrunning=%s\ngadget_bound=%s\nudc_state=%s\n' \
         "$(pid_running && echo 1 || echo 0)" "$bound" "$udc_state"
     printf 'state=%s\nopted_in=%s\n' "$state" \
-        "$(adb_opted_in && echo 1 || echo 0)"
+        "$(adb_enabled_by_policy && echo 1 || echo 0)"
 }
 
 case "${1:-}" in

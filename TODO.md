@@ -27,8 +27,8 @@
   - [x] lidのないPixel2でLid Suspendを選択不能にする
   - [x] FTP/SFTP/SambaをPixel2 service capabilityと一致させる
     - Pixel2 imageが所有するSSH/ADBだけを表示する。未搭載daemonを機能するtoggleとして公開しない。
-  - [x] ADBを明示opt-inにし、UI設定・boot・recoveryを一貫させる
-    - 2026-08-13: release defaultはOFF、`adb_enabled=1`またはFAT32 rootの`plumos-enable-adb`だけがFunctionFS gadgetを起動する。FE toggleは再起動後に反映し、OFF時はrecovery markerも除去。`adb_enabled=1`を保持したSystem A/B cold bootでFunctionFS configured、ADB shell復帰を実機確認。default OFF/recovery markerの実機検証は未完了。
+  - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
+    - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
@@ -197,7 +197,7 @@
 ## Connectivity
 
 - [x] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
-- [x] release imageではADB認証または明示opt-inを必須にする
+- [x] 設定未作成時はUSB ADBを保守経路として起動し、FEの明示OFF/ONとrecovery markerを提供する
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [x] ADB列挙とshellを実機検証する
 - [ ] USB Wi-FiとSSHを実機検証する

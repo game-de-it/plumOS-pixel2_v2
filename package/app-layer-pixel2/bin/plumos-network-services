@@ -35,9 +35,15 @@ service_enabled() {
   if [ "$service" = adb ] && [ -f "$ADB_OPT_IN_MARKER" ]; then
     return 0
   fi
-  [ -r "$SERVICES_CONF" ] || { [ "$service" = ssh ]; return $?; }
+  [ -r "$SERVICES_CONF" ] || {
+    [ "$service" = ssh ] || [ "$service" = adb ]
+    return $?
+  }
   value="$(sed -n "s/^${key}=//p" "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-  [ -n "$value" ] || { [ "$service" = ssh ]; return $?; }
+  [ -n "$value" ] || {
+    [ "$service" = ssh ] || [ "$service" = adb ]
+    return $?
+  }
   [ "$value" = 1 ] || [ "$value" = true ] || [ "$value" = on ]
 }
 

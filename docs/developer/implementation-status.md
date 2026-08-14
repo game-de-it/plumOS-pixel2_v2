@@ -65,13 +65,14 @@ Device verifiedを意味しない。
 | Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
 | PSX alternate SA | pinned PCSX-ReARMed r26l、sdl12-compat、Pixel2 CCW fbdev presenter、入力、48 kHz音声、factory configをhost build済み | 実機で起動、画面、全入力、音声、menu/exit、FE復帰を検証 |
 
-Pixel2では存在しないAudio Output切替、Lid Suspend、FTP/SFTP/Sambaをdevice
-capabilityにより表示しない。これは未実装項目を隠す処置ではなく、物理hardwareと
-imageが所有しない機能を操作可能と誤表示しないための契約である。
+Pixel2では存在しないAudio Output切替とLid Suspendだけをdevice capabilityにより
+表示しない。FTP/SFTP/Sambaは共通plumOS機能として実装し、daemon欠落を理由に
+非表示にしない。
 
-ADB daemon自体はhost-key challengeを持たないため、release defaultをOFFにし、FEで
-保存した`adb_enabled=1`またはuser FAT32 rootの`plumos-enable-adb` markerだけを
-boot opt-inとして扱う。新SYSTEMでON/OFF/recovery markerをcold boot検証する。
+Pixel2はWi-Fiを内蔵しないため、network service設定が未作成の初回起動・復旧時は
+FunctionFS ADBを既定ONにする。FEが保存した`adb_enabled=0/1`を優先し、user FAT32
+rootの`plumos-enable-adb` markerは明示OFF後の復旧経路として扱う。新SYSTEMで
+default ON、明示OFF/ON、recovery markerをcold boot検証する。
 SSHは`authorized_keys`の有無に加えてUI toggleとboot状態の一致を別途確認する。
 
 ## P1: application and standalone parity
