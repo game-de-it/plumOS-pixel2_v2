@@ -38,7 +38,10 @@ FONT = {
     "T": ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
     "U": ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
     "V": ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
+    "W": ["10001", "10001", "10001", "10101", "10101", "10101", "01010"],
+    "X": ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
     "Y": ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+    "Z": ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
 }
 
 
@@ -62,7 +65,9 @@ def draw_text(frame: bytearray, text: str, y: int, scale: int, value: int) -> No
     glyph_width = 6 * scale
     x = (LOGICAL_WIDTH - max(0, len(text) * glyph_width - scale)) // 2
     for char in text:
-        for row_index, row in enumerate(FONT.get(char, FONT[" "])):
+        if char not in FONT:
+            raise ValueError(f"update progress font has no glyph for {char!r}")
+        for row_index, row in enumerate(FONT[char]):
             for column, enabled in enumerate(row):
                 if enabled == "1":
                     fill_rect(
