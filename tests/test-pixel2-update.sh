@@ -244,17 +244,19 @@ runtime_root="$interrupted_root"
 write_runtime_fixture "$runtime_root" 1.0.0 old
 mkdir -p "$runtime_root/backups/update-previous/files/bin" \
     "$runtime_root/update-state"
+printf '%s\n' untouched >"$runtime_root/bin/untouched-tool"
 mv "$runtime_root/bin/test-tool" \
     "$runtime_root/backups/update-previous/files/bin/test-tool"
 printf '%s\n' partial >"$runtime_root/bin/test-tool"
 printf '%s\n' partial-new >"$runtime_root/bin/new-tool"
 printf '%s\n' \
-    '{"status":"applying","operations":[{"path":"bin/test-tool","existed":true,"install_requested":true,"installed":false},{"path":"bin/new-tool","existed":false,"install_requested":true,"installed":false}]}' \
+    '{"status":"applying","operations":[{"path":"bin/test-tool","existed":true,"install_requested":true,"installed":false},{"path":"bin/new-tool","existed":false,"install_requested":true,"installed":false},{"path":"bin/untouched-tool","existed":true,"install_requested":true,"installed":false}]}' \
     >"$runtime_root/update-state/runtime-transaction.json"
 run_updater apply-pending
 assert_file_value "$runtime_root/bin/test-tool" old
 [ ! -e "$runtime_root/bin/new-tool" ] || \
     fail 'Interrupted Runtime transaction left a new file installed'
+assert_file_value "$runtime_root/bin/untouched-tool" untouched
 grep -q '"result": "rolled_back"' \
     "$runtime_root/update-state/last-result.json" || \
     fail 'Interrupted Runtime rollback result was not recorded'

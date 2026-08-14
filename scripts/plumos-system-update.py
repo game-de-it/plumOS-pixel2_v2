@@ -447,13 +447,21 @@ def rollback_runtime(reason: str) -> None:
         relative = safe_relative(operation["path"])
         target = PLUMOS_ROOT / relative
         backup = BACKUP_ROOT / "files" / relative
-        if (operation.get("install_requested") or operation.get("installed")) and (
-            target.exists() or target.is_symlink()
-        ):
+        target_exists = target.exists() or target.is_symlink()
+        backup_exists = backup.exists() or backup.is_symlink()
+        if operation.get("existed"):
+            # A backup is the durable proof that this operation started. If it
+            # is absent, the original target was never moved and must not be
+            # removed merely because the complete plan was pre-journaled.
+            if backup_exists:
+                if target_exists:
+                    remove_path(target)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(backup, target)
+        elif operation.get("install_requested") and target_exists:
+            # A target that did not exist before the transaction can only be a
+            # newly installed file, and is safe to remove during rollback.
             remove_path(target)
-        if operation.get("existed") and (backup.exists() or backup.is_symlink()):
-            target.parent.mkdir(parents=True, exist_ok=True)
-            os.replace(backup, target)
         fsync_directory(target.parent)
     journal["status"] = "rolled_back"
     journal["rollback_reason"] = reason
@@ -488,42 +496,52 @@ def apply_runtime(package: Path, manifest: dict[str, Any]) -> int:
         rollback_runtime("pending runtime update did not reach frontend readiness")
     remove_path(BACKUP_ROOT)
     BACKUP_ROOT.mkdir(parents=True, exist_ok=True)
+    operations: list[dict[str, Any]] = []
+    requested_operations: list[tuple[str, bool]] = [
+        (str(entry["path"]), True) for entry in manifest["files"]
+    ]
+    requested_operations.extend(
+        (str(path), False) for path in manifest.get("delete", [])
+    )
+    requested_operations.sort(key=lambda item: runtime_sort_key({"path": item[0]}))
+    for relative, installs in requested_operations:
+        safe_relative(relative)
+        target = PLUMOS_ROOT / relative
+        existed = target.exists() or target.is_symlink()
+        if existed and not (target.is_file() or target.is_symlink()):
+            raise UpdateError(f"managed target is not a file or symlink: {relative}")
+        operations.append({
+            "path": relative,
+            "existed": existed,
+            "install_requested": installs,
+            "installed": False,
+        })
     journal: dict[str, Any] = {
         "status": "applying",
         "version": manifest["version"],
         "previous_version": read_text(PLUMOS_ROOT / "VERSION", "unknown"),
         "package_sha256": sha256_file(package),
         "started_at": now(),
-        "operations": [],
+        "operations": operations,
     }
+    # Persist the complete transaction plan once before the first rename. The
+    # presence of each backup is sufficient to distinguish a started existing
+    # target from an untouched one during recovery, so rewriting the growing
+    # JSON journal for every file only adds O(n^2) SD-card I/O.
     journal_write(journal)
-    operations: list[tuple[str, bool]] = [(str(entry["path"]), True) for entry in manifest["files"]]
-    operations.extend((str(path), False) for path in manifest.get("delete", []))
-    operations.sort(key=lambda item: runtime_sort_key({"path": item[0]}))
     try:
         show_progress("update_runtime")
-        for relative, installs in operations:
-            safe_relative(relative)
+        for operation in operations:
+            relative = str(operation["path"])
+            installs = bool(operation["install_requested"])
             target = PLUMOS_ROOT / relative
             backup = BACKUP_ROOT / "files" / relative
             staged = staging / relative
-            existed = target.exists() or target.is_symlink()
-            if existed and not (target.is_file() or target.is_symlink()):
-                raise UpdateError(f"managed target is not a file or symlink: {relative}")
-            operation = {
-                "path": relative,
-                "existed": existed,
-                "install_requested": installs,
-                "installed": False,
-            }
-            journal["operations"].append(operation)
-            journal_write(journal)
-            if existed:
+            if operation["existed"]:
                 backup.parent.mkdir(parents=True, exist_ok=True)
                 os.replace(target, backup)
                 fsync_directory(backup.parent)
                 operation["backed_up"] = True
-                journal_write(journal)
             if installs:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 os.replace(staged, target)
@@ -532,7 +550,6 @@ def apply_runtime(package: Path, manifest: dict[str, Any]) -> int:
                         fsync_file_descriptor(handle.fileno())
                 operation["installed"] = True
                 fsync_directory(target.parent)
-                journal_write(journal)
         # A Runtime update is one of the explicit integrity-check points. The
         # normal boot path trusts this completed generation and does not repeat
         # the full 1+ GiB hash pass before drawing the frontend.
