@@ -73,6 +73,8 @@ for applet in basename blkid cat chmod chown cttyhack cut date dirname env grep 
     ln -s /bin/busybox "$ROOTFS_DIR/bin/$applet"
 done
 ln -s /bin/busybox "$ROOTFS_DIR/usr/bin/env"
+mkdir -p "$ROOTFS_DIR/usr/lib"
+ln -s /mnt/plumos/ssh/libexec/sftp-server "$ROOTFS_DIR/usr/lib/sftp-server"
 for binary in ip iw wpa_supplicant wpa_cli dropbear dropbearkey kmod python3 openssl \
     sfdisk partx resize2fs mkfs.fat fsck.fat; do
     copy_elf "$binary"

@@ -24,7 +24,8 @@ for script in \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/systemd/systemd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi" \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh"; do
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh" \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"; do
     bash -n "$script"
 done
 
@@ -52,11 +53,22 @@ grep -q 'transport=nonblocking FunctionFS' "$ROOT_DIR/scripts/build-adbd-overlay
 ! grep -q 'PLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'recover_adbd' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'adb_opted_in' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'adb_enabled_by_policy()' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'default-on-no-explicit-setting' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q '/mnt/plumos-user/plumos-enable-adb' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q '/mnt/plumos/config/network/services.conf' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'plumos-network-services' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
+grep -q 'start-enabled' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
+grep -q 'result=degraded' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
+grep -q ') &' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
+grep -q '/mnt/plumos/ssh/libexec/sftp-server' \
+    "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'pixel2_usb_present' "$ROOT_DIR/scripts/pixel2-adb.sh"
 grep -q 'PLUMOS_SYS' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'app-layer-selected' \

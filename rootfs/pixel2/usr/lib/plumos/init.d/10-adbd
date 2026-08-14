@@ -8,7 +8,7 @@ FFS=/dev/usb-ffs/adb
 PID=/run/plumos/adbd.pid
 LOG=/state/plumos/logs/adbd.log
 SERIAL_FILE=/state/plumos/config/adb-serial
-SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/state/plumos/config/network/services.conf}"
+SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 
 log() {

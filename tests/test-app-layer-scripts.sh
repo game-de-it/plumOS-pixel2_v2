@@ -322,8 +322,16 @@ grep -q 'factory-defaults/pico/config/standalone' \
     "$ROOT_DIR/scripts/build-app-layer.sh"
 grep -q 'factory-defaults/sa/state/standalone' \
     "$ROOT_DIR/scripts/build-app-layer.sh"
-grep -q 'if (!runtime_device_is_pixel2())' \
+for service in ssh ftp sftp samba adb; do
+    grep -q "network_${service}_enabled" \
+        "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+    grep -Eq "(^|[[:space:]|])${service}([[:space:]|)]|$)" \
+        "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
+done
+! grep -q 'ships SSH and ADB only' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'default-on-no-explicit-setting' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'generate-pixel2-system-logos.py' \
     "$ROOT_DIR/scripts/build-frontend-component.sh"
 grep -q 'install_scraper_runtime' "$ROOT_DIR/scripts/build-frontend-component.sh"
@@ -336,6 +344,42 @@ grep -q 'scraper-sources.tsv' "$ROOT_DIR/scripts/build-frontend-component.sh"
 feature_tmp="$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-feature-test.XXXXXX")"
 trap 'rm -rf "$feature_tmp"' EXIT
 mkdir -p "$feature_tmp/card/roms/nes" "$feature_tmp/plumos"
+
+mkdir -p "$feature_tmp/network/plumos/bin" "$feature_tmp/network/card"
+cat >"$feature_tmp/network/adbd-control" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$1" >>"$PLUMOS_TEST_ADBD_CALLS"
+printf '%s\n' 'state=stopped' 'summary=ADB applies at reboot'
+EOF
+chmod 0755 "$feature_tmp/network/adbd-control"
+network_env=(
+    PLUMOS_ROOT="$feature_tmp/network/plumos"
+    PLUMOS_SDCARD_ROOT="$feature_tmp/network/card"
+    PLUMOS_RUNTIME_ROOT="$feature_tmp/network/run"
+    PLUMOS_ADBD_CONTROL="$feature_tmp/network/adbd-control"
+    PLUMOS_TEST_ADBD_CALLS="$feature_tmp/network/adbd-calls"
+)
+env "${network_env[@]}" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
+    status adb >"$feature_tmp/network/adb-default.status" || true
+grep -q '^enabled=1$' "$feature_tmp/network/adb-default.status"
+env "${network_env[@]}" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
+    start adb >"$feature_tmp/network/adb-start.status" || true
+grep -q '^adb_enabled=1$' \
+    "$feature_tmp/network/plumos/config/network/services.conf"
+! grep -q '^start$' "$feature_tmp/network/adbd-calls"
+env "${network_env[@]}" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
+    stop adb >"$feature_tmp/network/adb-stop.status" || true
+grep -q '^adb_enabled=0$' \
+    "$feature_tmp/network/plumos/config/network/services.conf"
+touch "$feature_tmp/network/card/plumos-enable-adb"
+env "${network_env[@]}" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
+    status adb >"$feature_tmp/network/adb-recovery.status" || true
+grep -q '^enabled=1$' "$feature_tmp/network/adb-recovery.status"
+
 touch "$feature_tmp/card/roms/nes/.DS_Store"
 PLUMOS_ROOT="$feature_tmp/plumos" \
 PLUMOS_SDCARD_ROOT="$feature_tmp/card" \

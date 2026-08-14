@@ -153,8 +153,8 @@ $ORIG_SHA  $ORIG
 $DEBIAN_SHA  $DEBIAN
 patch=enable FunctionFS daemon path outside Android framework
 transport=nonblocking FunctionFS
-authentication=daemon has no host-key challenge; USB access requires explicit persistent opt-in
-opt_in_config=/state/plumos/config/network/services.conf adb_enabled=1
+authentication=daemon has no host-key challenge; fresh Pixel2 images keep the USB maintenance path enabled until the user explicitly disables it
+policy_config=/mnt/plumos/config/network/services.conf adb_enabled=0|1
 opt_in_recovery_marker=/mnt/plumos-user/plumos-enable-adb
 EOF
 printf 'adbd_overlay=result-ok destination=%s\n' "$DEST"
