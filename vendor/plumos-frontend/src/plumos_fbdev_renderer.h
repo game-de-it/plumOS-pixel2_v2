@@ -437,9 +437,19 @@ static void plumos_fbdev_put_pixel(struct plumos_fbdev_renderer *r, int x, int y
                                    uint32_t color) {
   long offset;
   unsigned char *p;
+  int logical_width;
+  int logical_height;
 
-  if (!r || !r->mem || x < 0 || y < 0 || x >= (int)r->var.xres ||
-      y >= (int)r->var.yres) {
+  if (!r || !r->mem || x < 0 || y < 0) {
+    return;
+  }
+  logical_width = (r->rotation == 1 || r->rotation == 3)
+                      ? (int)r->physical_yres
+                      : (int)r->physical_xres;
+  logical_height = (r->rotation == 1 || r->rotation == 3)
+                       ? (int)r->physical_xres
+                       : (int)r->physical_yres;
+  if (x >= logical_width || y >= logical_height) {
     return;
   }
   if (r->rotation == 1) {
@@ -453,6 +463,10 @@ static void plumos_fbdev_put_pixel(struct plumos_fbdev_renderer *r, int x, int y
     int physical_x = y;
     y = (int)r->physical_yres - 1 - x;
     x = physical_x;
+  }
+  if (x < 0 || y < 0 || x >= (int)r->physical_xres ||
+      y >= (int)r->physical_yres) {
+    return;
   }
   if (r->shadow) {
     offset = (long)y * (long)r->fix.line_length +

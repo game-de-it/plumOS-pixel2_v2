@@ -438,6 +438,10 @@ grep -q 'plumos-frontend-stop stop' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'renderer->var.xres = renderer->physical_yres' \
     "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+grep -q 'logical_width = (r->rotation == 1 || r->rotation == 3)' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
+grep -q '? (int)r->physical_yres' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     start adb >"$feature_tmp/network/adb-start.status" || true
