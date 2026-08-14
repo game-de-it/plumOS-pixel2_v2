@@ -279,6 +279,9 @@ for system in systems:
                     missing.append(profile)
                 elif not (root / "apps/python/bin/python3.11").exists():
                     missing.append(profile)
+            elif profile == "external:port":
+                if not (root / "bin/plumos-portmaster-port-launch").exists():
+                    missing.append(profile)
             else:
                 missing.append(profile)
             continue
@@ -300,7 +303,8 @@ if [ "$(uname -m)" = aarch64 ]; then
 
     runtime_tmp=$(mktemp -d /tmp/plumos-pixel2-app-verify.XXXXXX)
     trap 'rm -rf "$runtime_tmp"' EXIT
-    mkdir -p "$runtime_tmp/app/state" "$runtime_tmp/roms/nes" "$runtime_tmp/roms/pyxel"
+    mkdir -p "$runtime_tmp/app/state" "$runtime_tmp/roms/nes" \
+        "$runtime_tmp/roms/pyxel" "$runtime_tmp/roms/ports"
     ln -s "$ROOT/bin" "$runtime_tmp/app/bin"
     ln -s "$ROOT/apps" "$runtime_tmp/app/apps"
     ln -s "$ROOT/cores" "$runtime_tmp/app/cores"
@@ -334,6 +338,15 @@ if [ "$(uname -m)" = aarch64 ]; then
         >"$runtime_tmp/pyxel-launch-plan.txt"
     grep -q '^launch_profile: pyxel:pixel2$' "$runtime_tmp/pyxel-launch-plan.txt"
     grep -q '^can_execute: yes$' "$runtime_tmp/pyxel-launch-plan.txt"
+    printf '#!/bin/sh\nexit 0\n' >"$runtime_tmp/roms/ports/test.sh"
+    chmod 0755 "$runtime_tmp/roms/ports/test.sh"
+    PLUMOS_ROOT="$runtime_tmp/app" \
+        PLUMOS_SDCARD_ROOT="$runtime_tmp" \
+        PLUMOS_ROM_ROOT="$runtime_tmp/roms" \
+        "$ROOT/bin/plumos-text-ui" launch ports ports/test.sh --no-scan \
+        >"$runtime_tmp/ports-launch-plan.txt"
+    grep -q '^launch_profile: external:port$' "$runtime_tmp/ports-launch-plan.txt"
+    grep -q '^can_execute: yes$' "$runtime_tmp/ports-launch-plan.txt"
     rm -rf "$runtime_tmp"
     trap - EXIT
 fi
