@@ -62,7 +62,12 @@ prepare_power_transition() {
     if [ -x /mnt/plumos/bin/plumos-hardware-keys-service ]; then
         /mnt/plumos/bin/plumos-hardware-keys-service stop >>"$log_file" 2>&1 || true
     fi
-    stop_pid_file /run/plumos/frontend.pid frontend
+    if [ -x /mnt/plumos/bin/plumos-frontend-stop ]; then
+        PLUMOS_ROOT=/mnt/plumos PLUMOS_RUNTIME_ROOT=/run/plumos \
+            /mnt/plumos/bin/plumos-frontend-stop stop >>"$log_file" 2>&1 || true
+    else
+        stop_pid_file /run/plumos/frontend.pid frontend
+    fi
     umount_if_mounted /roms || true
     umount_if_mounted /mnt/plumos-user || true
     $bb sync

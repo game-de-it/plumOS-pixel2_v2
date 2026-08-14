@@ -420,6 +420,8 @@ grep -q '40-frontend' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-frontend-launch"
 grep -q 'process_is_live' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-hardware-keys-service"
+grep -q 'plumos-frontend-stop stop' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'renderer->var.xres = renderer->physical_yres' \
     "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
 env "${network_env[@]}" \
