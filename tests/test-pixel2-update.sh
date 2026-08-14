@@ -95,6 +95,16 @@ fi
 printf '%s\n' old >"$runtime_root/bin/test-tool"
 run_updater verify-runtime >/dev/null
 
+# Runtime packages must fail during construction, rather than only on-device,
+# when a symlink uses a parent traversal rejected by the updater contract.
+ln -s ../network/bin/busybox "$runtime_102/bin/invalid-parent-link"
+if python3 "$BUILDER" --type runtime --input "$runtime_102" \
+    --base-version 1.0.1 --version 1.0.2 \
+    --signing-key "$private_key" --output-dir "$dist" >/dev/null 2>&1; then
+    fail 'Runtime package builder accepted an updater-incompatible symlink'
+fi
+rm -f "$runtime_102/bin/invalid-parent-link"
+
 base_checksums="$temp_root/runtime-1.0.0-checksums.sha256"
 python3 - "$base_100" "$base_checksums" <<'PY'
 from hashlib import sha256

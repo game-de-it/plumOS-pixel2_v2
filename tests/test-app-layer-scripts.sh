@@ -307,6 +307,9 @@ if grep -ERiq 'V9[0]S|M[F]|Miy[o]o|ROCKNIX' \
     exit 1
 fi
 grep -q 'component: "libretro-cores"' "$ROOT_DIR/scripts/build-libretro-cores.sh"
+grep -q 'updater-incompatible app-layer symlink' "$ROOT_DIR/scripts/verify-app-layer.sh"
+! grep -q 'ln -s ../network/bin/busybox' \
+    "$ROOT_DIR/scripts/build-network-services-pixel2.sh"
 grep -q '^complete=true$' "$ROOT_DIR/scripts/build-app-layer.sh"
 grep -q 'PLUMOS_STORAGE_ROOT:-/mnt/plumos-user' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-storage-health"

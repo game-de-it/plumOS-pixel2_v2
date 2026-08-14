@@ -89,6 +89,9 @@ def entry_for_path(path: Path, root: Path) -> dict[str, Any]:
     mode = stat.S_IMODE(path.lstat().st_mode)
     if path.is_symlink():
         target = os.readlink(path)
+        pure_target = PurePosixPath(target)
+        if pure_target.is_absolute() or not target or ".." in pure_target.parts:
+            raise ValueError(f"runtime symlink is incompatible with updater: {relative} -> {target}")
         return {
             "path": relative,
             "type": "symlink",

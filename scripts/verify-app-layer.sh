@@ -51,6 +51,23 @@ done
 (cd "$ROOT" && sha256sum -c components/music-player/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/network-services/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/portmaster/checksums.sha256 >/dev/null)
+python3 - "$ROOT" <<'PY'
+import os
+from pathlib import Path, PurePosixPath
+import sys
+
+root = Path(sys.argv[1])
+invalid = []
+for path in root.rglob("*"):
+    if not path.is_symlink():
+        continue
+    target = os.readlink(path)
+    pure = PurePosixPath(target)
+    if pure.is_absolute() or not target or ".." in pure.parts:
+        invalid.append(f"{path.relative_to(root)} -> {target}")
+if invalid:
+    raise SystemExit("updater-incompatible app-layer symlink: " + ", ".join(invalid))
+PY
 grep -q '"device": "pixel2"' "$ROOT/manifest.json"
 grep -q '"complete": true' "$ROOT/manifest.json"
 grep -q '"retroarch:quicknes"' "$ROOT/config/frontend/systems.json"

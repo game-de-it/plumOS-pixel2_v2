@@ -70,8 +70,14 @@ set -o pipefail
 [ "$oldconfig_rc" -eq 0 ]
 make -C "$busybox_src" -j"${JOBS:-$(nproc)}" busybox >/dev/null
 install -m 0755 "$busybox_src/busybox" "$NETWORK_DIR/bin/busybox"
-ln -s ../network/bin/busybox "$PLUMOS_DIR/bin/tcpsvd"
-ln -s ../network/bin/busybox "$PLUMOS_DIR/bin/ftpd"
+for applet in tcpsvd ftpd; do
+    cat >"$PLUMOS_DIR/bin/$applet" <<EOF
+#!/bin/sh
+root="\${PLUMOS_ROOT:-/mnt/plumos}"
+exec "\$root/network/bin/busybox" "$applet" "\$@"
+EOF
+    chmod 0755 "$PLUMOS_DIR/bin/$applet"
+done
 
 sftp_real=/usr/lib/openssh/sftp-server
 [ -x "$sftp_real" ] || sftp_real=/usr/lib/sftp-server
