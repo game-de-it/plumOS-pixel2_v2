@@ -26,13 +26,19 @@ write_runtime_fixture() {
     root=$1
     version=$2
     tool_value=$3
-    mkdir -p "$root/bin" "$root/config/system"
+    mkdir -p "$root/bin" "$root/config/frontend" "$root/config/system" \
+        "$root/fonts" "$root/network/bin" "$root/ssh/libexec"
     printf '%s\n' "$version" >"$root/VERSION"
     printf '%s\n' "$VENDOR" >"$root/COMPAT_VENDOR"
     printf '%s\n' "$RUNTIME_ABI" >"$root/RUNTIME_ABI"
     printf '%s\n' "$tool_value" >"$root/bin/test-tool"
     printf '%s\n' '{"device":"pixel2"}' >"$root/manifest.json"
+    printf '%s\n' '{"device":"pixel2","contract":"complete"}' \
+        >"$root/config/frontend/feature-contract.json"
     printf '%s\n' 'managed-input-map' >"$root/config/system/input-map.env"
+    printf '%s\n' 'font-fixture' >"$root/fonts/default.otf"
+    printf '%s\n' 'network-fixture' >"$root/network/bin/daemon"
+    printf '%s\n' 'ssh-fixture' >"$root/ssh/libexec/server"
     python3 - "$root" <<'PY'
 from hashlib import sha256
 from pathlib import Path
@@ -104,6 +110,30 @@ if python3 "$BUILDER" --type runtime --input "$runtime_102" \
     fail 'Runtime package builder accepted an updater-incompatible symlink'
 fi
 rm -f "$runtime_102/bin/invalid-parent-link"
+
+full_dist="$temp_root/full-dist"
+mkdir -p "$full_dist"
+python3 "$BUILDER" --type runtime --input "$runtime_102" \
+    --version 1.0.2 --signing-key "$private_key" --output-dir "$full_dist" \
+    >/dev/null
+python3 - "$full_dist/plumos-pixel2-runtime-1.0.2.tar.gz" <<'PY'
+import json
+from pathlib import Path
+import sys
+import tarfile
+
+with tarfile.open(Path(sys.argv[1]), "r:gz") as archive:
+    manifest = json.load(archive.extractfile("META/manifest.json"))
+paths = {entry["path"] for entry in manifest["files"]}
+required = {
+    "config/frontend/feature-contract.json",
+    "fonts/default.otf",
+    "network/bin/daemon",
+    "ssh/libexec/server",
+}
+assert required <= paths, sorted(required - paths)
+PY
+run_updater inspect "$full_dist/plumos-pixel2-runtime-1.0.2.tar.gz" >/dev/null
 
 base_checksums="$temp_root/runtime-1.0.0-checksums.sha256"
 python3 - "$base_100" "$base_checksums" <<'PY'

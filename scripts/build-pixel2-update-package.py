@@ -24,8 +24,8 @@ VENDOR_RUNTIME = "pixel2-rockchip-r1"
 
 MANAGED_ROOTS = {
     "apps", "bin", "components", "cores", "emulator", "factory-defaults",
-    "frontend", "info", "lib", "licenses", "picoarch", "scraper", "share",
-    "standalone", "themes",
+    "fonts", "frontend", "info", "lib", "licenses", "network", "picoarch",
+    "scraper", "share", "ssh", "standalone", "themes",
 }
 
 MANAGED_ROOT_FILES = {
@@ -38,6 +38,7 @@ MANAGED_ROOT_FILES = {
 
 MANAGED_CONFIG_PREFIXES = (
     "config/frontend/apps.json",
+    "config/frontend/feature-contract.json",
     "config/frontend/menus.json",
     "config/frontend/scraper-sources.tsv",
     "config/frontend/systems.json",

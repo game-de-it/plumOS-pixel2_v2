@@ -39,6 +39,15 @@ for path in \
     components/portmaster/manifest.json; do
     [ -f "$ROOT/$path" ] || { printf 'error: app-layer file missing: %s\n' "$path" >&2; exit 1; }
 done
+for path in \
+    config/frontend/feature-contract.json \
+    fonts/default.otf fonts/cjk-fallback.ttc \
+    network/bin/busybox ssh/libexec/sftp-server; do
+    [ -e "$ROOT/$path" ] || {
+        printf 'error: update-managed app-layer file missing: %s\n' "$path" >&2
+        exit 1
+    }
+done
 (cd "$ROOT" && sha256sum -c checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/frontend/checksums.sha256 >/dev/null)
 (cd "$ROOT" && sha256sum -c components/retroarch/checksums.sha256 >/dev/null)
