@@ -10,7 +10,9 @@ for script in \
     scripts/build-standalone-pixel2.sh \
     scripts/build-app-layer.sh \
     scripts/verify-app-layer.sh \
+    package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
     package/app-layer-pixel2/bin/plumos-retroarch-launch \
+    package/app-layer-pixel2/bin/plumos-retroarch-menu-launch \
     package/app-layer-pixel2/bin/plumos-ensure-udev-input-db \
     package/app-layer-pixel2/bin/plumos-safe-shutdown \
     package/app-layer-pixel2/bin/plumos-run-with-input-map \
@@ -116,6 +118,42 @@ grep -q '"id": "pyxel_setup"' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q '"id": "scraping"' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
+python3 - "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+lines = path.read_text().splitlines()
+pairs = [line.split(" = ", 1) for line in lines if " = " in line]
+values = dict(pairs)
+assert len(pairs) == 3374
+assert len(values) == 3374
+required = {
+    "auto_overrides_enable": "\"true\"",
+    "auto_remaps_enable": "\"true\"",
+    "config_save_on_exit": "\"true\"",
+    "input_driver": "\"udev\"",
+    "input_joypad_driver": "\"udev\"",
+    "input_menu_toggle_btn": "\"14\"",
+    "menu_show_core_updater": "\"false\"",
+    "menu_show_online_updater": "\"false\"",
+    "input_enable_hotkey_btn": "\"8\"",
+    "input_exit_emulator_btn": "\"9\"",
+    "joypad_autoconfig_dir": "\"/mnt/plumos/factory-defaults/retroarch/autoconfig\"",
+    "savefiles_in_content_dir": "\"false\"",
+    "savestates_in_content_dir": "\"false\"",
+    "system_directory": "\"/mnt/plumos-user/bios\"",
+    "video_driver": "\"drm\"",
+    "video_refresh_rate": "\"60.000000\"",
+    "video_rotation": "\"3\"",
+    "vrr_runloop_enable": "\"false\"",
+}
+for key, expected in required.items():
+    assert values[key] == expected, (key, values[key], expected)
+text = path.read_text()
+for forbidden in ("mali_fbdev", "~/", "/root/", "V90S", "v90s", "Miyoo", "miyoo"):
+    assert forbidden not in text, forbidden
+PY
 grep -q 'video_force_aspect = "true"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'aspect_ratio_index = "0"' \
@@ -126,6 +164,17 @@ grep -q 'input_player1_analog_dpad_mode = "0"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'input_player1_down_btn = "11"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
+grep -q 'legacy_pixel2_sha256=b97c897b' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q 'result-replaced-legacy' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q 'result-merged added=' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+if grep -q 'config_save_on_exit = "false"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"; then
+    exit 1
+fi
 grep -q '^input_a_btn = "1"$' \
     "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
 grep -q '^input_b_btn = "0"$' \

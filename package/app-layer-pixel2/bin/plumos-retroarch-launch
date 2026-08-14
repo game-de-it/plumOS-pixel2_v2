@@ -78,9 +78,17 @@ factory="$root/factory-defaults/retroarch/retroarch.cfg"
 core_options="$root/config/retroarch/retroarch-core-options.cfg"
 alsa_config="$root/config/alsa/alsa.conf"
 alsa_factory="$root/factory-defaults/alsa/alsa.conf"
-$bb mkdir -p "$root/config/retroarch" "$root/config/alsa" "$root/saves/$system_id" \
-    "$root/states/$system_id" "$root/logs" "$runtime_root/retroarch"
-if [ ! -s "$config" ]; then
+$bb mkdir -p "$root/config/retroarch/config" "$root/config/retroarch/remaps" \
+    "$root/config/retroarch/playlists/builtin" "$root/config/retroarch/filters/audio" \
+    "$root/config/retroarch/filters/video" "$root/config/retroarch/overlays/keyboards" \
+    "$root/config/retroarch/records_config" "$root/config/alsa" \
+    "$root/saves/$system_id" "$root/states/$system_id" "$root/logs/retroarch/runtime" \
+    "$root/state/retroarch/home" "$root/state/retroarch/cache" \
+    "$runtime_root/retroarch" "$runtime_root/cache/retroarch" \
+    "$sdcard_root/Screenshots" "$sdcard_root/Recordings" "$sdcard_root/Images/retroarch"
+if [ -x "$root/bin/plumos-retroarch-config-merge" ]; then
+    "$root/bin/plumos-retroarch-config-merge" >>"$root/logs/retroarch-launch.log" 2>&1
+elif [ ! -s "$config" ]; then
     $bb cp "$factory" "$config.next"
     $bb sync
     $bb mv "$config.next" "$config"
@@ -209,7 +217,6 @@ fi
     printf 'input_player1_l_y_plus_axis = "+1"\n'
     printf 'input_player1_analog_dpad_mode = "0"\n'
     printf 'input_menu_toggle_btn = "%s"\n' "${PLUMOS_INPUT_FUNCTION_UDEV_BTN:-14}"
-    printf 'config_save_on_exit = "false"\n'
     printf 'savefile_directory = "%s"\n' "$root/saves/$system_id"
     printf 'savestate_directory = "%s"\n' "$root/states/$system_id"
     printf 'system_directory = "%s"\n' "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"

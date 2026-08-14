@@ -6,7 +6,8 @@ ROOT="${1:-}"
 for path in \
     manifest.json checksums.sha256 VERSION COMPAT_VENDOR RUNTIME_ABI \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
-    bin/plumos-retroarch-launch bin/plumos-ensure-udev-input-db \
+    bin/plumos-retroarch-config-merge bin/plumos-retroarch-launch \
+    bin/plumos-ensure-udev-input-db \
     bin/plumos-picoarch-launch bin/plumos-picoarch-stop \
     bin/plumos-standalone-launch bin/plumos-standalone-stop \
     bin/retroarch cores/quicknes_libretro.so \
@@ -109,8 +110,19 @@ grep -q '^input_player1_analog_dpad_mode = "0"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^input_player1_down_btn = "11"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
-grep -q '^config_save_on_exit = "false"$' \
+grep -q '^config_save_on_exit = "true"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^auto_overrides_enable = "true"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^auto_remaps_enable = "true"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^input_menu_toggle_btn = "14"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^menu_show_core_updater = "false"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^menu_show_online_updater = "false"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q 'result-replaced-legacy' "$ROOT/bin/plumos-retroarch-config-merge"
 grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
 grep -q 'ID_INPUT_JOYSTICK=1' "$ROOT/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-audio-output' "$ROOT/bin/plumos-retroarch-launch"

@@ -1,0 +1,80 @@
+#!/bin/sh
+set -eu
+
+bb=${PLUMOS_BUSYBOX:-/bin/busybox}
+root=${PLUMOS_ROOT:-/mnt/plumos}
+config=${PLUMOS_RETROARCH_CONFIG:-$root/config/retroarch/retroarch.cfg}
+factory=${PLUMOS_RETROARCH_FACTORY_CONFIG:-$root/factory-defaults/retroarch/retroarch.cfg}
+state_dir=${PLUMOS_RETROARCH_CONFIG_STATE:-$root/state/retroarch}
+marker=$state_dir/factory-config.sha256
+legacy_pixel2_sha256=b97c897bb7141a77d6fb17e77a66895540b9bd9cc177d7ee983afcb75e5e819e
+
+[ -s "$factory" ] || {
+    printf 'retroarch_config=result-error reason=factory-missing path=%s\n' "$factory" >&2
+    exit 1
+}
+$bb mkdir -p "${config%/*}" "$state_dir"
+set -- $($bb sha256sum "$factory")
+factory_sha256=$1
+
+install_factory() {
+    $bb cp "$factory" "$config.next"
+    $bb sync
+    $bb mv "$config.next" "$config"
+}
+write_marker() {
+    printf '%s\n' "$factory_sha256" >"$marker.next"
+    $bb sync
+    $bb mv "$marker.next" "$marker"
+}
+
+if [ ! -s "$config" ]; then
+    install_factory
+    write_marker
+    printf 'retroarch_config=result-installed sha256=%s\n' "$factory_sha256"
+    exit 0
+fi
+
+set -- $($bb sha256sum "$config")
+config_sha256=$1
+if [ "$config_sha256" = "$legacy_pixel2_sha256" ]; then
+    install_factory
+    write_marker
+    printf 'retroarch_config=result-replaced-legacy sha256=%s\n' "$factory_sha256"
+    exit 0
+fi
+
+if [ -r "$marker" ] && [ "$($bb sed -n '1p' "$marker")" = "$factory_sha256" ]; then
+    exit 0
+fi
+
+# Preserve every explicit user value. Only keys absent from the mutable file
+# are copied from the new factory surface, so an app-layer update cannot reset
+# menu choices, per-core behavior, hotkeys, paths, or user overrides.
+$bb cp "$config" "$config.next"
+printf '\n' >>"$config.next"
+$bb awk '
+    NR == FNR {
+        if ($0 ~ /^[A-Za-z0-9_]+[[:space:]]*=/) {
+            key=$0
+            sub(/[[:space:]]*=.*/, "", key)
+            present[key]=1
+        }
+        next
+    }
+    $0 ~ /^[A-Za-z0-9_]+[[:space:]]*=/ {
+        key=$0
+        sub(/[[:space:]]*=.*/, "", key)
+        if (!present[key]) {
+            print
+            added++
+        }
+    }
+    END { printf "%d", added + 0 > count_file }
+' count_file="$state_dir/merge-count.$$" "$config" "$factory" >>"$config.next"
+added=$($bb sed -n '1p' "$state_dir/merge-count.$$" 2>/dev/null || printf '0')
+$bb rm -f "$state_dir/merge-count.$$"
+$bb sync
+$bb mv "$config.next" "$config"
+write_marker
+printf 'retroarch_config=result-merged added=%s sha256=%s\n' "$added" "$factory_sha256"

@@ -3,13 +3,22 @@ set -eu
 
 root="${PLUMOS_ROOT:-/mnt/plumos}"
 runtime_root="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+sdcard_root="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
 config="$root/config/retroarch/retroarch.cfg"
 factory="$root/factory-defaults/retroarch/retroarch.cfg"
 append="$runtime_root/retroarch/menu-append.cfg"
 
-mkdir -p "$root/config/retroarch" "$root/state/retroarch/home" \
-    "$root/logs" "$runtime_root/retroarch"
-if [ ! -s "$config" ]; then
+mkdir -p "$root/config/retroarch/config" "$root/config/retroarch/remaps" \
+    "$root/config/retroarch/playlists/builtin" "$root/config/retroarch/filters/audio" \
+    "$root/config/retroarch/filters/video" "$root/config/retroarch/overlays/keyboards" \
+    "$root/config/retroarch/records_config" "$root/state/retroarch/home" \
+    "$root/state/retroarch/cache" "$root/logs/retroarch/runtime" \
+    "$runtime_root/retroarch" "$runtime_root/cache/retroarch" \
+    "$sdcard_root/Screenshots" "$sdcard_root/Recordings" \
+    "$sdcard_root/Images/retroarch"
+if [ -x "$root/bin/plumos-retroarch-config-merge" ]; then
+    "$root/bin/plumos-retroarch-config-merge" >>"$root/logs/retroarch-menu.log" 2>&1
+elif [ ! -s "$config" ]; then
     cp "$factory" "$config.next"
     sync
     mv "$config.next" "$config"
@@ -40,12 +49,12 @@ input_joypad_driver = "udev"
 joypad_autoconfig_dir = "$root/factory-defaults/retroarch/autoconfig"
 input_menu_toggle_btn = "14"
 menu_driver = "rgui"
-config_save_on_exit = "false"
 system_directory = "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"
 EOF
 
 export HOME="$root/state/retroarch/home"
 export XDG_CONFIG_HOME="$root/config"
+export XDG_CACHE_HOME="$root/state/retroarch/cache"
 export LD_LIBRARY_PATH="$root/emulator/lib:$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 exec "$root/bin/retroarch" --menu -v -c "$config" --appendconfig "$append" \
     >>"$root/logs/retroarch-menu.log" 2>&1
