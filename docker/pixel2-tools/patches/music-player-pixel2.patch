@@ -171,4 +171,31 @@ index 33209ee..1b0c33b 100644
 +    usleep(16000);
    }
  
-   state.running = 0;
+  state.running = 0;
+diff --git a/plumos_music_pixel2_renderer.h b/plumos_music_pixel2_renderer.h
+index 15e6039..9b9b05c 100644
+--- a/plumos_music_pixel2_renderer.h
++++ b/plumos_music_pixel2_renderer.h
+@@ -10,7 +10,21 @@
+  */
+ #define plumos_mmf_gfx_renderer plumos_fbdev_renderer
+ #define plumos_mmf_gfx_renderer_init plumos_fbdev_renderer_init
+-#define plumos_mmf_gfx_renderer_set_rotation plumos_fbdev_renderer_set_rotation
++static void plumos_music_pixel2_set_rotation(
++    struct plumos_fbdev_renderer *renderer, const char *rotation) {
++  plumos_fbdev_renderer_set_rotation(renderer, rotation);
++  if (!renderer) {
++    return;
++  }
++  if (renderer->rotation == 1 || renderer->rotation == 3) {
++    renderer->var.xres = renderer->physical_yres;
++    renderer->var.yres = renderer->physical_xres;
++  } else {
++    renderer->var.xres = renderer->physical_xres;
++    renderer->var.yres = renderer->physical_yres;
++  }
++}
++#define plumos_mmf_gfx_renderer_set_rotation plumos_music_pixel2_set_rotation
+ #define plumos_mmf_gfx_renderer_load_font plumos_fbdev_renderer_load_font
+ #define plumos_mmf_gfx_renderer_load_fallback_font \
+   plumos_fbdev_renderer_load_fallback_font

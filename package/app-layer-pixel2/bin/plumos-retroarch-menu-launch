@@ -38,5 +38,5 @@ EOF
 export HOME="$root/state/retroarch/home"
 export XDG_CONFIG_HOME="$root/config"
 export LD_LIBRARY_PATH="$root/emulator/lib:$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-exec "$root/bin/retroarch" -v -c "$config" --appendconfig "$append" \
+exec "$root/bin/retroarch" --menu -v -c "$config" --appendconfig "$append" \
     >>"$root/logs/retroarch-menu.log" 2>&1

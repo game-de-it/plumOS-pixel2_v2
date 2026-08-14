@@ -410,6 +410,10 @@ grep -q 'lib/libretro/libvorbisfile.so.3' \
     "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-runtime"
 grep -q 'lib/libretro/libopusfile.so.0' \
     "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-runtime"
+grep -q 'retroarch" --menu -v' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"
+grep -q 'renderer->var.xres = renderer->physical_yres' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
 env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     start adb >"$feature_tmp/network/adb-start.status" || true
