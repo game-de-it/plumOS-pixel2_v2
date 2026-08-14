@@ -78,3 +78,68 @@ output/live/2026-08-15-file-manager-audit/
 app-layer verifyに合格した。更新後の実機でも`plumos-system-update verify-runtime`が
 全managed checksumに合格した。実物の物理buttonによる最終目視はoperator gateとして
 この機械検証と区別する。
+
+## File operation backend validation
+
+### Root cause
+
+NextCommander upstreamのfile operation backendは、copy、move、symbolic link、
+rename、delete、new directoryをそれぞれ`cp`、`mv`、`ln`、`rm`、`mkdir`として
+`execvp`する。Pixel2 SystemのBusyBoxはこれらのappletを内蔵するが、個別の
+`/bin/cp`等のlinkは生成していない。shell lookupでは`cp`を実行できても、
+NextCommanderの直接`execvp("cp")`は`ENOENT`となるため、operation dialogを確定
+してもcopyが実行されなかった。
+
+### Fix
+
+`883fd1d`でPixel2 buildのfile operationだけ、次のargv contractでBusyBox本体を
+起動するようにした。
+
+```text
+/bin/busybox cp ...
+/bin/busybox mv ...
+/bin/busybox ln ...
+/bin/busybox rm ...
+/bin/busybox mkdir ...
+/bin/busybox sync
+```
+
+他platformのupstream execution pathは変更していない。同時に複数選択時の
+`is_last`判定がfile path文字数を比較していた誤りを、input件数の比較へ修正した。
+source contract testへBusyBox dispatchと複数選択判定を追加し、再現build、component
+checksum、strict app-layer assemblyに合格した。
+
+### Signed deployment and device proof
+
+稼働中Runtime `0.1.0-dev-0106a75`をbaseとして署名deltaを生成し、通常のinbox、
+inspect、request、safe reboot経路で適用した。
+
+```text
+runtime=0.1.0-dev-883fd1d
+package_sha256=a7e05376f268563ad3e49c624a0a64a81b694a8dd2820d1793cb068e534e450c
+transaction_status=healthy
+runtime_verify=result-ok
+```
+
+実機NextCommanderの左右paneを専用test directoryへ固定し、`event2`へ物理buttonと
+同じEV_KEY eventを入力した。DOWNで`copy-source.txt`を選択し、Xでoperation menu、
+Aで`Copy >`を確定した。shellから`cp`を代行せず、NextCommander自身のSDL/inputと
+file operation経路を通した結果は次の通り。
+
+```text
+source_sha256=57e32c7fdc0d5c0ec8caae1a255e63cd382de21e4da84daadca3db8ee1f2c620
+target_sha256=57e32c7fdc0d5c0ec8caae1a255e63cd382de21e4da84daadca3db8ee1f2c620
+copy_result=matched
+```
+
+copy後のcaptureは左右pane双方に`copy-source.txt`が存在することを示す。画面証拠は
+Git管理外の次のdirectoryへ保持する。
+
+```text
+output/live/2026-08-15-file-manager-copy-validation/
+  fm-copy-before.png
+  fm-copy-after-landscape.png
+```
+
+検証専用の実機directoryとscreenshotはcopy確認後に除去し、FEを再起動した。ROM、
+BIOS、save、既存user settingは変更していない。
