@@ -406,6 +406,20 @@ grep -q "awk '{ print \$3 }'" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
 grep -q 'PLUMOS_ROOT/emulator/lib' \
     "$ROOT_DIR/scripts/build-nextcommander-pixel2.sh"
+grep -q 'CXXFLAGS += -DCMDR_KEY_OPEN=1' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
+grep -q 'CXXFLAGS += -DCMDR_KEY_PARENT=0' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
+grep -q 'CXXFLAGS += -DCMDR_KEY_SELECT=8' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
+grep -q 'CXXFLAGS += -DCMDR_KEY_TRANSFER=9' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
+grep -q 'CXXFLAGS += -DCMDR_KEY_MENU=14' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
+grep -q 'Pixel2 virtual D-pad is SDL joystick buttons 10-13' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nextcommander-pixel2.patch"
+grep -q '^path_default_right=/roms$' \
+    "$ROOT_DIR/scripts/build-nextcommander-pixel2.sh"
 grep -q 'lib/libretro/libvorbisfile.so.3' \
     "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-runtime"
 grep -q 'lib/libretro/libopusfile.so.0' \

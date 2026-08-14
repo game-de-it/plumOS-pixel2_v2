@@ -30,23 +30,23 @@ index d16a23d..6455dc6 100644
 +CXXFLAGS += -DPLUMOS_PIXEL2
 +CXXFLAGS += $$(pkg-config --cflags libdrm libpng)
 +CXXFLAGS += -DPATH_DEFAULT=\"$(SDCARD_ROOT)\"
-+CXXFLAGS += -DPATH_DEFAULT_RIGHT=\"$(SDCARD_ROOT)/roms\"
++CXXFLAGS += -DPATH_DEFAULT_RIGHT=\"/roms\"
 +CXXFLAGS += -DFILE_SYSTEM=\"$(SDCARD_ROOT)\"
 +
-+# SDL's game-controller order for the plumOS Pixel2 virtual controller.
++# SDL button order from the shared plumOS Pixel2 virtual controller contract.
 +CXXFLAGS += -DCMDR_KEY_UP=SDLK_UP
 +CXXFLAGS += -DCMDR_KEY_RIGHT=SDLK_RIGHT
 +CXXFLAGS += -DCMDR_KEY_DOWN=SDLK_DOWN
 +CXXFLAGS += -DCMDR_KEY_LEFT=SDLK_LEFT
-+CXXFLAGS += -DCMDR_KEY_OPEN=0
-+CXXFLAGS += -DCMDR_KEY_PARENT=1
++CXXFLAGS += -DCMDR_KEY_OPEN=1
++CXXFLAGS += -DCMDR_KEY_PARENT=0
 +CXXFLAGS += -DCMDR_KEY_OPERATION=2
 +CXXFLAGS += -DCMDR_KEY_SYSTEM=3
 +CXXFLAGS += -DCMDR_KEY_PAGEUP=4
 +CXXFLAGS += -DCMDR_KEY_PAGEDOWN=5
-+CXXFLAGS += -DCMDR_KEY_SELECT=6
-+CXXFLAGS += -DCMDR_KEY_TRANSFER=7
-+CXXFLAGS += -DCMDR_KEY_MENU=8
++CXXFLAGS += -DCMDR_KEY_SELECT=8
++CXXFLAGS += -DCMDR_KEY_TRANSFER=9
++CXXFLAGS += -DCMDR_KEY_MENU=14
 +
 +CXXFLAGS += -DAUTOSCALE=0
 +CXXFLAGS += -DAUTOSCALE_DPI=0
@@ -301,17 +301,17 @@ index e3e646e..2b8c89c 100644
                      SDL_Event key_event;
 -                    key_event.key.keysym.sym = event.jbutton.button == CMDR_KEY_MENU ? CMDR_KEY_SYSTEM : event.jbutton.button;
 +                    switch (event.jbutton.button) {
-+                    /* Pixel2 evdev D-pad keys are SDL joystick buttons 11-14. */
-+                    case 11:
++                    /* Pixel2 virtual D-pad is SDL joystick buttons 10-13. */
++                    case 10:
 +                        key_event.key.keysym.sym = CMDR_KEY_UP;
 +                        break;
-+                    case 12:
++                    case 11:
 +                        key_event.key.keysym.sym = CMDR_KEY_DOWN;
 +                        break;
-+                    case 13:
++                    case 12:
 +                        key_event.key.keysym.sym = CMDR_KEY_LEFT;
 +                        break;
-+                    case 14:
++                    case 13:
 +                        key_event.key.keysym.sym = CMDR_KEY_RIGHT;
 +                        break;
 +                    default:

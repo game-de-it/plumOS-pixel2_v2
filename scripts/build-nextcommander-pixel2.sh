@@ -103,7 +103,7 @@ disp_ppu_y=2
 disp_autoscale=false
 disp_autoscale_dpi=false
 path_default=/mnt/plumos-user
-path_default_right=/mnt/plumos-user/roms
+path_default_right=/roms
 path_default_right_fallback=/mnt/plumos-user/roms
 res_dir=/mnt/plumos/apps/nextcommander/res
 EOF
