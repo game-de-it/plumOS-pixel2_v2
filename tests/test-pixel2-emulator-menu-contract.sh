@@ -14,6 +14,7 @@ SA_BUILD="$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 SA_LAUNCHER="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 SA_STOP="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-stop"
 DRASTIC_RUNNER_PATCH="$ROOT_DIR/patches/drastic/steward-fu-nds-pixel2-runner-readiness.patch"
+DRASTIC_ROTATION_PATCH="$ROOT_DIR/patches/drastic/steward-fu-nds-pixel2-runner-rotation.patch"
 PPSSPP_CONTROLS="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/controls.ini"
 PPSSPP_CONFIG="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/ppsspp.ini"
 PPSSPP_CONTROLLER_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
@@ -117,6 +118,18 @@ if grep '^+' "$DRASTIC_RUNNER_PATCH" | grep -Fq 'pidof drastic'; then
 fi
 grep -Fq 'DRASTIC_RUNNER_PATCH' "$SA_BUILD" ||
     fail 'DraStic build does not consume runner readiness patch'
+for contract in \
+    '#define R_DISPLAY_W 480' \
+    '#define R_DISPLAY_H 640' \
+    'vec4(-vert_tex_pos.y, vert_tex_pos.x' \
+    'glViewport(0, 0, R_DISPLAY_W, R_DISPLAY_H)'; do
+    grep -Fq "$contract" "$DRASTIC_ROTATION_PATCH" ||
+        fail "DraStic Pixel2 rotation patch missing: $contract"
+done
+grep -Fq 'DRASTIC_ROTATION_PATCH' "$SA_BUILD" ||
+    fail 'DraStic build does not consume runner rotation patch'
+grep -Fq 'runner_rotation_patch_sha256' "$SA_BUILD" ||
+    fail 'DraStic manifest does not record runner rotation patch'
 grep -Fq 'readlink "/proc/${pid}/exe"' "$SA_STOP" ||
     fail 'standalone stop ownership check is missing'
 

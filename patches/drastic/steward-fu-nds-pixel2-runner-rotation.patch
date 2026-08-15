@@ -1,0 +1,68 @@
+diff --git a/runner/runner.c b/runner/runner.c
+index 20f79dc..3a4e38e 100644
+--- a/runner/runner.c
++++ b/runner/runner.c
+@@ -32,7 +32,12 @@ static const char *vert_shader_code =
+     "varying vec2 frag_tex_coord;                                       \n"
+     "void main()                                                        \n"
+     "{                                                                  \n"
++#if defined(GKD_PIXEL2)
++    "    gl_Position = vec4(-vert_tex_pos.y, vert_tex_pos.x,            \n"
++    "                       vert_tex_pos.z, vert_tex_pos.w);             \n"
++#else
+     "    gl_Position = vert_tex_pos;                                    \n"
++#endif
+     "    frag_tex_coord = vert_tex_coord;                               \n"
+     "}                                                                  \n";
+ 
+@@ -121,7 +126,8 @@ static int init_gles(void)
+     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+ 
+-    myrunner.sdl2.win = SDL_CreateWindow("DraStic", 0, 0, R_LCD_W, R_LCD_H, SDL_WINDOW_OPENGL);
++    myrunner.sdl2.win = SDL_CreateWindow("DraStic", 0, 0, R_DISPLAY_W,
++                                         R_DISPLAY_H, SDL_WINDOW_OPENGL);
+     myrunner.gles.ctx = SDL_GL_CreateContext(myrunner.sdl2.win);
+   
+     myrunner.gles.vert.shader = glCreateShader(GL_VERTEX_SHADER);
+@@ -158,7 +164,7 @@ static int init_gles(void)
+     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+   
+-    glViewport(0, 0, R_LCD_W, R_LCD_H);
++    glViewport(0, 0, R_DISPLAY_W, R_DISPLAY_H);
+     glClear(GL_COLOR_BUFFER_BIT);
+     glVertexAttribPointer(myrunner.gles.vert.tex_pos, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), fg_vertices);
+     glVertexAttribPointer(myrunner.gles.vert.tex_coord, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &fg_vertices[3]);
+diff --git a/runner/runner.h b/runner/runner.h
+index 2fbd7cd..d21966f 100644
+--- a/runner/runner.h
++++ b/runner/runner.h
+@@ -19,16 +19,27 @@
+ #if defined(GKD_PIXEL2)
+ #define R_LCD_W 640
+ #define R_LCD_H 480
++#define R_DISPLAY_W 480
++#define R_DISPLAY_H 640
+ #endif
+ 
+ #if defined(GKD_MINIPLUS)
+ #define R_LCD_W 640
+ #define R_LCD_H 480
++#define R_DISPLAY_W R_LCD_W
++#define R_DISPLAY_H R_LCD_H
+ #endif
+ 
+ #if defined(TRIMUI_BRICK)
+ #define R_LCD_W 1024
+ #define R_LCD_H 768
++#define R_DISPLAY_W R_LCD_W
++#define R_DISPLAY_H R_LCD_H
++#endif
++
++#if defined(UT)
++#define R_DISPLAY_W R_LCD_W
++#define R_DISPLAY_H R_LCD_H
+ #endif
+ 
+ #define SHM_NAME "NDS_SHM"
