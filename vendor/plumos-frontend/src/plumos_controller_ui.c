@@ -11876,6 +11876,7 @@ static int run_power_action(struct ui_state *ui, const char *action, int powerof
   int rc;
   int terminal_action;
   int dry_run_enabled;
+  int sleep_display_power_attempted = 0;
   enum ui_screen previous_screen;
 
   if (!action || (strcmp(action, "shutdown") != 0 &&
@@ -11997,7 +11998,17 @@ static int run_power_action(struct ui_state *ui, const char *action, int powerof
     set_status(ui, "sleep display blank failed");
     return 0;
   }
+  if (strcmp(action, "sleep") == 0 && ui_renderer_fbdev_only(ui)) {
+    sleep_display_power_attempted = 1;
+    if (!plumos_fbdev_set_display_power(&ui->fbdev_renderer, 0)) {
+      fprintf(stderr, "frontend: sleep display power-off failed\n");
+    }
+  }
   rc = run_runtime_shell_command(cmd);
+  if (sleep_display_power_attempted &&
+      !plumos_fbdev_set_display_power(&ui->fbdev_renderer, 1)) {
+    fprintf(stderr, "frontend: sleep display power-on failed\n");
+  }
   if (rc == -1) {
     if (terminal_action) {
       ui->screen = previous_screen;

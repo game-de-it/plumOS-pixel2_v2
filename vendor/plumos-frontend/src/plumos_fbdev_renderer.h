@@ -671,6 +671,56 @@ static int plumos_fbdev_present_black(struct plumos_fbdev_renderer *r) {
   return 1;
 }
 
+static int plumos_fbdev_set_display_power(struct plumos_fbdev_renderer *r,
+                                          int enabled) {
+#ifdef PLUMOS_FBDEV_ENABLE_DRM
+  drmModeObjectProperties *properties;
+  int property_result = -2;
+  int crtc_result;
+  uint32_t index;
+
+  if (!r || !r->drm_active || r->drm_fd < 0) {
+    return 0;
+  }
+  properties = drmModeObjectGetProperties(r->drm_fd, r->drm_connector_id,
+                                          DRM_MODE_OBJECT_CONNECTOR);
+  if (properties) {
+    for (index = 0; index < properties->count_props; index++) {
+      drmModePropertyRes *property =
+          drmModeGetProperty(r->drm_fd, properties->props[index]);
+      if (!property) {
+        continue;
+      }
+      if (strcmp(property->name, "DPMS") == 0) {
+        property_result = drmModeObjectSetProperty(
+            r->drm_fd, r->drm_connector_id, DRM_MODE_OBJECT_CONNECTOR,
+            property->prop_id,
+            enabled ? DRM_MODE_DPMS_ON : DRM_MODE_DPMS_OFF);
+        drmModeFreeProperty(property);
+        break;
+      }
+      drmModeFreeProperty(property);
+    }
+    drmModeFreeObjectProperties(properties);
+  }
+  if (enabled) {
+    crtc_result = drmModeSetCrtc(
+        r->drm_fd, r->drm_crtc_id, r->drm_fb_id[r->drm_front], 0, 0,
+        &r->drm_connector_id, 1, &r->drm_mode);
+    return crtc_result == 0 &&
+           (property_result == -2 || property_result == 0);
+  }
+  crtc_result =
+      drmModeSetCrtc(r->drm_fd, r->drm_crtc_id, 0, 0, 0, NULL, 0, NULL);
+  return crtc_result == 0 &&
+         (property_result == -2 || property_result == 0);
+#else
+  (void)r;
+  (void)enabled;
+  return 0;
+#endif
+}
+
 #ifdef PLUMOS_FBDEV_ENABLE_PNG
 #if defined(__GNUC__)
 #pragma GCC diagnostic push

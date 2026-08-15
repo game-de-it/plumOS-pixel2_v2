@@ -186,3 +186,9 @@ grep -q 'plumos_fbdev_present_black(&ui->fbdev_renderer)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'static int plumos_fbdev_present_black' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
+grep -q 'static int plumos_fbdev_set_display_power' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
+grep -q 'DRM_MODE_DPMS_OFF' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
+grep -q 'drmModeSetCrtc(r->drm_fd, r->drm_crtc_id, 0' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
