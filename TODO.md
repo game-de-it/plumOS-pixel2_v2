@@ -26,6 +26,20 @@
   - [x] Audio OutputのSpeaker/Headphone選択をPixel2 hardware capabilityと一致させる
     - Pixel2はRK817 speaker単一路のため、存在しない出力切替をFEに表示しない。
   - [x] lidのないPixel2でLid Suspendを選択不能にする
+  - [x] 物理Powerのglobal menuとPixel2 sleep/standbyを実装する
+    - 2026-08-15: `rk805 pwrkey` (`event0`) をFEと常駐hardware-key
+      serviceの双方で扱い、FE外ではdisplay ownerだけをSIGSTOPして同じpower
+      menuをoverlay表示する。Sleep/Reboot/Shutdown/Cancelを共通化し、terminal
+      action前にはownerを再開してsave/TERM処理を許可する。
+    - stock 5.10.198は`freeze mem`を公開するが、USB給電中の実機では両stateを
+      suspend開始前に`EBUSY`で拒否した。kernel sleepを優先し、拒否時はdisplay
+      owner停止、backlight消灯、次のPowerだけで復帰するsoftware standbyへ
+      自動fallbackする。復帰後はPixel2固有のRK817 `Speaker`/`Headphone`
+      switch、輝度、音量状態、必要時のADB gadgetを復元する。
+    - 署名Runtime `0.1.0-dev-a9b4d2a`を実機適用し、Frontend 194/194、3秒の
+      bounded standby、輝度28の復元、RK817再arm、FE/常駐service各1 processを
+      確認。物理PowerによるFE/RA/PicoArch/SA/Apps上のmenu表示と、Power復帰後の
+      操作・音声はoperator確認を継続する。
   - [x] FTP/SFTP/SambaをPixel2 componentとして実装する
     - 2026-08-14: 初期bring-upの「SSH/ADBだけを表示」を撤回し、V90S/MFと同じ5 serviceをpackage化。保存設定のboot再開、component checksum、release gateへ統合した。USB Wi-Fi実機でのFTP/SFTP/Samba接続は未検証。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる

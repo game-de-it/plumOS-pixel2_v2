@@ -80,3 +80,16 @@ i2c bus 0, addr 0x20, reg 0xf4, bit 0
 The FE power action path has been validated for reboot. FE shutdown has been
 validated through dry-run plus the RK817 helper path; actual FE-menu poweroff
 is still a terminal physical-device test.
+
+Power is read from the stock `rk805 pwrkey` input (`/dev/input/event0` on the
+validated Pixel2). The hardware-key service remains running after the FE is
+stopped so the same power menu can overlay RetroArch, PicoArch, standalone
+emulators, and Apps. The overlay pauses only active display owners and restores
+exactly those processes on cancel or sleep return.
+
+The stock kernel advertises `freeze mem`, but the USB-powered validation unit
+returned `EBUSY` before either suspend state began. The helper therefore tries
+the requested kernel state first and falls back to Pixel2 software standby.
+Software standby keeps the display owner paused, blanks the backlight, and uses
+the next Power press as a wake-only event. The normal FE suppresses that queued
+wake event so it cannot immediately reopen the menu.

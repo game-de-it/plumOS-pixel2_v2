@@ -71,3 +71,17 @@ content/user mounts where possible, syncs, and then:
 
 - reboots via sysrq `b` / BusyBox fallback;
 - shuts down through RK817 `DEV_OFF`, then BusyBox poweroff fallback.
+
+The physical `rk805 pwrkey` is owned continuously by the hardware-key service.
+While the normal FE owns the display, the FE opens the power menu directly.
+When an emulator or App owns the display, the service starts
+`plumos-power-menu-overlay`, pauses only the current display owners, and uses
+the same Sleep/Reboot/Shutdown/Cancel menu. Reboot and shutdown resume owners
+before TERM so runtimes can save normally.
+
+Sleep first requests the stock kernel's `mem` state. If the vendor kernel
+rejects entry, Pixel2 falls back to software standby: the foreground owner
+remains paused, the backlight is set to zero, and the next physical Power press
+wakes the device without opening a second power menu. Resume reapplies display,
+volume state, and the RK817 `Speaker`/`Headphone` route switches. ADB is rebound
+only after a real kernel suspend returns.
