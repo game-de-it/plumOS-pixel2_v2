@@ -94,8 +94,9 @@ RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the
 D-pad as `ABS_X`/`ABS_Y` axes and the remaining controls as evdev keys on
 `pixel2_joypad`; the generated autoconfig therefore binds D-pad directions with
 axis entries. The dedicated Function button is compact udev index 14 and opens
-the menu directly. START+SELECT is an independent menu fallback, not an
-immediate process-exit chord. Gameplay hotkeys use SELECT as their enable key:
+the menu directly. START+SELECT is the Pixel2 direct RetroArch exit chord:
+SELECT enables hotkeys and START is `input_exit_emulator_btn`. Gameplay hotkeys
+use the same SELECT enable key:
 L/R load and save state, X captures a screenshot, Y toggles FPS, D-pad left/right
 changes the state slot, and L2/R2 toggles slow/fast motion. Pixel2 reports L2/R2
 as buttons 6/7, so another device's trigger-axis bindings must not be copied.
@@ -111,8 +112,10 @@ The RetroArch factory contract is a bundle, not only `retroarch.cfg`:
 
 `plumos-retroarch-config-merge` installs all three and only appends absent keys
 to user-owned auxiliary files. The migration from the earlier incomplete
-Pixel2 factory changes the twelve known old defaults only when the recorded
-factory generation and old values both match; unrelated user values are kept.
+Pixel2 factory changes ten known save/trigger defaults only when the recorded
+factory generation and old values both match. A separate two-key migration
+restores START+SELECT direct exit for the short-lived regressed factory;
+unrelated user values are kept.
 
 Normal saves and save states use the active ROM filesystem with content-folder
 and core sorting. `/mnt/plumos/saves/<system>` and

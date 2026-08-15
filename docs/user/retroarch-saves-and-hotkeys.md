@@ -7,7 +7,7 @@ Gameplay hotkeys use SELECT as the modifier unless noted otherwise.
 | Physical buttons | Action |
 | --- | --- |
 | FUNCTION | Open the RetroArch menu |
-| START + SELECT | Open the RetroArch menu (fallback) |
+| START + SELECT | Exit RetroArch and return to the frontend |
 | SELECT + L | Load state |
 | SELECT + R | Save state |
 | SELECT + D-pad Left/Right | Previous/next state slot |
@@ -16,8 +16,9 @@ Gameplay hotkeys use SELECT as the modifier unless noted otherwise.
 | SELECT + L2 | Toggle slow motion |
 | SELECT + R2 | Toggle fast forward |
 
-Use the menu to close content or quit RetroArch cleanly. A clean exit allows
-normal save data and the automatic exit state to finish writing.
+START+SELECT performs the normal RetroArch exit path, allowing normal save data
+and the automatic exit state to finish writing. FUNCTION remains available when
+the RetroArch menu is needed.
 
 ## Save locations
 

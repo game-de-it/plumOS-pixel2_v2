@@ -71,3 +71,34 @@ the same paths with the same hashes before and after update:
 Physical gameplay save/load, menu operation, and post-reboot loading of a newly
 written state remain operator acceptance gates; configuration presence and old
 state preservation are not treated as substitutes for those checks.
+
+## START+SELECT regression correction
+
+The `68abe6c` factory incorrectly replaced Pixel2's previously working direct
+exit chord with another device's START+SELECT menu combo. This was a regression,
+not a required part of the save-layout port. Commit `612cc19` restored:
+
+```text
+input_enable_hotkey_btn = "8"
+input_exit_emulator_btn = "9"
+input_menu_toggle_btn = "14"
+input_menu_toggle_gamepad_combo = "0"
+```
+
+The old incomplete-factory migration now changes ten save and trigger keys and
+leaves Pixel2 exit behavior intact. A separate generation-aware migration
+repairs only the two regressed exit/menu values in an active cfg saved by
+RetroArch. Its BusyBox fixture reports `result-migrated-regression added=2` and
+preserves unrelated user values.
+
+Signed Runtime `0.1.0-dev-612cc19` was applied from
+`0.1.0-dev-68abe6c`. The 13-file delta had zero deletions and package SHA-256:
+
+```text
+b55c440fa64b3717c91c79c14508b74b405ae2f375c18098293acfa335afd981
+```
+
+The device reached `runtime_healthy`; the live helper migrated exactly two
+values. All six existing fallback/content-local manual and automatic state
+files retained their pre-update SHA-256 hashes. Physical button confirmation
+remains required after this configuration and deployment proof.
