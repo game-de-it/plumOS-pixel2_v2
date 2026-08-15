@@ -23,6 +23,9 @@
 #define REPEAT_INTERVAL_MS 120
 #define PERSIST_DELAY_MS 750
 #define POWER_MENU_DEBOUNCE_MS 800
+#define SOFTWARE_WAKE_MIN_PRESS_MS 80
+#define USB_POWER_EVENT_GUARD_MS 1500
+#define ADB_USB_RESTART_DELAY_MS 2000
 
 struct input_source {
   const char *name;
@@ -216,6 +219,20 @@ static pid_t frontend_pid(void) {
   return (pid_t)value;
 }
 
+static int software_sleep_active(void) {
+  const char *runtime_root = getenv("PLUMOS_RUNTIME_ROOT");
+  char sleep_marker[512];
+
+  if (!runtime_root || !runtime_root[0]) {
+    runtime_root = "/run/plumos";
+  }
+  if (snprintf(sleep_marker, sizeof(sleep_marker), "%s/software-sleep",
+               runtime_root) >= (int)sizeof(sleep_marker)) {
+    return 0;
+  }
+  return access(sleep_marker, F_OK) == 0;
+}
+
 static int wake_software_sleep(void) {
   const char *runtime_root = getenv("PLUMOS_RUNTIME_ROOT");
   char sleep_marker[512];
@@ -247,6 +264,44 @@ static int wake_software_sleep(void) {
   }
   fprintf(stderr, "hardware-keys: action=software-sleep-wake rc=0\n");
   return 1;
+}
+
+static int read_usb_online(void) {
+  const char *path = getenv("PLUMOS_PIXEL2_USB_ONLINE");
+  FILE *file;
+  int value;
+
+  if (!path || !path[0]) {
+    path = "/sys/class/power_supply/usb/online";
+  }
+  file = fopen(path, "r");
+  if (!file) {
+    return -1;
+  }
+  value = -1;
+  if (fscanf(file, "%d", &value) != 1) {
+    value = -1;
+  }
+  fclose(file);
+  return value < 0 ? -1 : value != 0;
+}
+
+static int spawn_adbd_restart(void) {
+  const char *control = getenv("PLUMOS_ADBD_CONTROL");
+  pid_t child;
+
+  if (!control || !control[0]) {
+    control = "/usr/lib/plumos/init.d/10-adbd";
+  }
+  child = fork();
+  if (child < 0) {
+    return -errno;
+  }
+  if (child == 0) {
+    execl(control, control, "restart", (char *)NULL);
+    _exit(127);
+  }
+  return 0;
 }
 
 static int open_power_menu(int force_overlay) {
@@ -321,6 +376,10 @@ int main(void) {
   long long repeat_due = 0;
   long long persist_due = 0;
   long long power_menu_debounce_due = 0;
+  long long software_sleep_power_press_ms = 0;
+  long long usb_power_event_guard_due = 0;
+  long long adb_usb_restart_due = 0;
+  int usb_online = -1;
   int select_down = 0;
   int held_direction = 0;
   int held_is_display = 0;
@@ -352,6 +411,7 @@ int main(void) {
   signal(SIGUSR1, request_power_menu);
   setvbuf(stderr, NULL, _IOLBF, 0);
   fprintf(stderr, "hardware-keys: start owner=plumos device=pixel2\n");
+  usb_online = read_usb_online();
   (void)run_helper("plumos-volume-control", "apply");
   (void)run_helper("plumos-display-control", "apply");
 
@@ -379,6 +439,32 @@ int main(void) {
       break;
     }
     reap_children();
+    {
+      int current_usb_online = read_usb_online();
+      if (current_usb_online >= 0 && usb_online >= 0 &&
+          current_usb_online != usb_online) {
+        usb_power_event_guard_due = now + USB_POWER_EVENT_GUARD_MS;
+        adb_usb_restart_due = current_usb_online
+                                  ? now + ADB_USB_RESTART_DELAY_MS
+                                  : 0;
+        fprintf(stderr,
+                "hardware-keys: event=usb-power-transition online=%d guard_ms=%d adb_restart_ms=%d\n",
+                current_usb_online, USB_POWER_EVENT_GUARD_MS,
+                current_usb_online ? ADB_USB_RESTART_DELAY_MS : 0);
+      }
+      if (current_usb_online >= 0) {
+        usb_online = current_usb_online;
+      }
+    }
+    if (adb_usb_restart_due > 0 && now >= adb_usb_restart_due &&
+        usb_online == 1) {
+      int result = spawn_adbd_restart();
+
+      fprintf(stderr,
+              "hardware-keys: action=adb-usb-restart online=1 rc=%d\n",
+              result);
+      adb_usb_restart_due = 0;
+    }
     if (power_menu_requested) {
       power_menu_requested = 0;
       (void)open_power_menu(1);
@@ -399,10 +485,28 @@ int main(void) {
         if (bytes == (ssize_t)sizeof(event)) {
           if (source == &power_key && event.type == EV_KEY &&
               event.code == KEY_POWER) {
-            if (event.value == 1 && now >= power_menu_debounce_due) {
-              if (!wake_software_sleep()) {
-                (void)open_power_menu(0);
+            if (software_sleep_active()) {
+              if (event.value == 1) {
+                software_sleep_power_press_ms = now;
+                fprintf(stderr,
+                        "hardware-keys: action=software-sleep-wake candidate=press\n");
+              } else if (event.value == 0) {
+                long long held_ms = software_sleep_power_press_ms > 0
+                                        ? now - software_sleep_power_press_ms
+                                        : 0;
+                if (software_sleep_power_press_ms > 0 &&
+                    held_ms >= SOFTWARE_WAKE_MIN_PRESS_MS &&
+                    now >= usb_power_event_guard_due) {
+                  (void)wake_software_sleep();
+                } else {
+                  fprintf(stderr,
+                          "hardware-keys: action=software-sleep-wake ignored=1 held_ms=%lld usb_guard=%d\n",
+                          held_ms, now < usb_power_event_guard_due);
+                }
+                software_sleep_power_press_ms = 0;
               }
+            } else if (event.value == 1 && now >= power_menu_debounce_due) {
+              (void)open_power_menu(0);
               now = monotonic_ms();
               power_menu_debounce_due = now + POWER_MENU_DEBOUNCE_MS;
             }
