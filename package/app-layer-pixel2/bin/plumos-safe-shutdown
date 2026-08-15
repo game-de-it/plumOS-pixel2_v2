@@ -22,6 +22,10 @@ adbd_control=${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}
 display_control=${PLUMOS_DISPLAY_CONTROL:-$root/bin/plumos-display-control}
 volume_control=${PLUMOS_VOLUME_CONTROL:-$root/bin/plumos-volume-control}
 rk817_resume=${PLUMOS_RK817_RESUME_HELPER:-$root/bin/plumos-rk817-resume}
+backlight=${PLUMOS_PIXEL2_BACKLIGHT:-/sys/class/backlight/backlight/brightness}
+software_sleep_marker=${PLUMOS_SOFTWARE_SLEEP_MARKER:-$runtime_root/software-sleep}
+software_sleep_force=${PLUMOS_FORCE_SOFTWARE_SLEEP:-0}
+software_backlight_saved=
 
 mkdir -p "$log_dir" "$runtime_root" 2>/dev/null || true
 
@@ -186,6 +190,47 @@ set_wakealarm() {
     log "sleep=wakealarm-armed seconds=$wakeup_sec"
 }
 
+software_sleep_action() {
+    elapsed=0
+    software_backlight_saved=$(cat "$backlight" 2>/dev/null || true)
+    printf 'sleeping\n' >"$software_sleep_marker"
+    if [ -w "$backlight" ]; then
+        printf '0\n' >"$backlight" 2>/dev/null || true
+    fi
+    log "sleep=software-enter reason=kernel-unavailable wakeup_sec=$wakeup_sec"
+    while [ -e "$software_sleep_marker" ]; do
+        if [ "$wakeup_sec" -gt 0 ] && [ "$elapsed" -ge "$wakeup_sec" ]; then
+            rm -f "$software_sleep_marker"
+            log "sleep=software-wake reason=timeout seconds=$elapsed"
+            break
+        fi
+        $bb sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    if [ -n "$software_backlight_saved" ] && [ -w "$backlight" ]; then
+        printf '%s\n' "$software_backlight_saved" >"$backlight" 2>/dev/null || true
+    fi
+    software_backlight_saved=
+    [ ! -e "$software_sleep_marker" ] || rm -f "$software_sleep_marker"
+    log "sleep=software-returned seconds=$elapsed"
+}
+
+restore_after_sleep() {
+    run_rk817_resume arm
+    if [ -x "$volume_control" ]; then
+        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+            "$volume_control" apply >>"$log_file" 2>&1 || \
+            log 'sleep=volume-restore-failed'
+    fi
+    if [ -x "$display_control" ]; then
+        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+            "$display_control" apply >>"$log_file" 2>&1 || \
+            log 'sleep=display-restore-failed'
+    fi
+    [ "$sleep_settle_sec" -eq 0 ] || $bb sleep "$sleep_settle_sec"
+    run_rk817_resume rearm
+}
+
 sleep_action() {
     case "$sleep_backend" in
         none)
@@ -209,25 +254,26 @@ sleep_action() {
         log "sleep=result-dry-run backend=$sleep_backend"
         return 0
     fi
+    kernel_sleep=0
     set_wakealarm
-    log "sleep=enter backend=$sleep_backend"
-    printf '%s\n' "$sleep_backend" >"$power_state"
-    log "sleep=resume backend=$sleep_backend"
-    run_rk817_resume arm
-    if [ -x "$volume_control" ]; then
-        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
-            "$volume_control" apply >>"$log_file" 2>&1 || \
-            log 'sleep=volume-restore-failed'
+    if [ "$software_sleep_force" != 1 ]; then
+        log "sleep=enter backend=$sleep_backend"
+        if printf '%s\n' "$sleep_backend" >"$power_state"; then
+            kernel_sleep=1
+            log "sleep=resume backend=$sleep_backend"
+        else
+            log "sleep=kernel-entry-failed backend=$sleep_backend fallback=software"
+        fi
+    else
+        log "sleep=kernel-entry-skipped backend=$sleep_backend reason=forced-software"
     fi
-    if [ -x "$display_control" ]; then
-        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
-            "$display_control" apply >>"$log_file" 2>&1 || \
-            log 'sleep=display-restore-failed'
+    if [ "$kernel_sleep" -eq 0 ]; then
+        [ "$wakeup_sec" -eq 0 ] || printf '0\n' >"$rtc_wakealarm" 2>/dev/null || true
+        software_sleep_action
     fi
-    [ "$sleep_settle_sec" -eq 0 ] || $bb sleep "$sleep_settle_sec"
-    run_rk817_resume rearm
-    restore_adb "$adb_resume"
-    log "sleep=result-returned backend=$sleep_backend"
+    restore_after_sleep
+    [ "$kernel_sleep" -eq 0 ] || restore_adb "$adb_resume"
+    log "sleep=result-returned backend=$sleep_backend kernel_sleep=$kernel_sleep"
 }
 
 while [ "$#" -gt 0 ]; do
@@ -259,7 +305,16 @@ if ! mkdir "$lock_dir" 2>/dev/null; then
     log "power=result-already-running action=$action"
     exit 0
 fi
-trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT INT TERM
+cleanup() {
+    rm -f "$software_sleep_marker" 2>/dev/null || true
+    if [ -n "$software_backlight_saved" ] && [ -w "$backlight" ]; then
+        printf '%s\n' "$software_backlight_saved" >"$backlight" 2>/dev/null || true
+    fi
+    rmdir "$lock_dir" 2>/dev/null || true
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 log "power=result-requested device=pixel2 action=$action dry_run=$dry_run"
 case "$action" in

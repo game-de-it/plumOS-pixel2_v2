@@ -75,6 +75,34 @@ grep -q '^stop$' "$TEST_ROOT/calls"
 grep -q '^start$' "$TEST_ROOT/calls"
 grep -q 'sleep=result-returned backend=mem' "$TEST_ROOT/logs/power.log"
 
+printf '42\n' >"$TEST_ROOT/backlight"
+: >"$TEST_ROOT/calls"
+PLUMOS_ROOT="$TEST_ROOT/plumos" \
+PLUMOS_RUNTIME_ROOT="$TEST_ROOT/run" \
+PLUMOS_BUSYBOX="$TEST_ROOT/busybox" \
+PLUMOS_POWER_LOG_DIR="$TEST_ROOT/logs" \
+PLUMOS_POWER_LOCK_DIR="$TEST_ROOT/run/power.lock" \
+PLUMOS_POWER_STATE="$TEST_ROOT/power-state" \
+PLUMOS_RTC_WAKEALARM="$TEST_ROOT/wakealarm" \
+PLUMOS_ADBD_CONTROL="$TEST_ROOT/adbd" \
+PLUMOS_DISPLAY_CONTROL="$TEST_ROOT/display" \
+PLUMOS_VOLUME_CONTROL="$TEST_ROOT/volume" \
+PLUMOS_RK817_RESUME_HELPER="$TEST_ROOT/rk817" \
+PLUMOS_PIXEL2_BACKLIGHT="$TEST_ROOT/backlight" \
+PLUMOS_FORCE_SOFTWARE_SLEEP=1 \
+PLUMOS_SLEEP_SETTLE_SEC=0 \
+PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown" \
+        --sleep --sleep-backend mem --wakeup-sec 1 --wait-sec 0
+[ "$(cat "$TEST_ROOT/backlight")" = 42 ]
+[ ! -e "$TEST_ROOT/run/software-sleep" ]
+grep -q 'sleep=software-enter reason=kernel-unavailable wakeup_sec=1' \
+    "$TEST_ROOT/logs/power.log"
+grep -q 'sleep=software-wake reason=timeout seconds=1' \
+    "$TEST_ROOT/logs/power.log"
+grep -q 'sleep=result-returned backend=mem kernel_sleep=0' \
+    "$TEST_ROOT/logs/power.log"
+
 cat >"$TEST_ROOT/menu" <<'EOF'
 #!/bin/sh
 state=$(ps -o state= -p "$PLUMOS_TEST_OWNER_PID" | sed 's/^[[:space:]]*//;s/^\(.\).*/\1/')
@@ -129,3 +157,8 @@ case "$(ps -o state= -p "$OWNER_PID" | sed 's/^[[:space:]]*//;s/^\(.\).*/\1/')" 
 esac
 
 printf 'pixel2_power_menu_sleep=result-ok\n'
+
+grep -q 'wake_software_sleep' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'consume_power_wake_suppression' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"

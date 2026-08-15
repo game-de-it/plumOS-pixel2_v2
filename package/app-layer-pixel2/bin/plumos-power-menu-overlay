@@ -9,6 +9,7 @@ MENU="${PLUMOS_POWER_MENU_OVERLAY_UI:-$PLUMOS_ROOT/bin/plumos-frontend-pixel2}"
 SAFE_SHUTDOWN="${PLUMOS_POWER_MENU_SAFE_SHUTDOWN:-$PLUMOS_ROOT/bin/plumos-safe-shutdown}"
 LOCK_DIR="${PLUMOS_POWER_MENU_LOCK_DIR:-$RUNTIME_ROOT/power-menu-overlay.lock}"
 SELECTION_FILE="${PLUMOS_POWER_MENU_SELECTION_FILE:-$RUNTIME_ROOT/power-menu-overlay.$$.selection}"
+WAKE_SUPPRESS="${PLUMOS_POWER_WAKE_SUPPRESS:-$RUNTIME_ROOT/power-wake-suppress}"
 PAUSED_PIDS=""
 TERMINAL_ACTION=0
 
@@ -149,6 +150,8 @@ case "$selection" in
     run_power_action sleep
     action_rc=$?
     resume_display_owners
+    sleep 1
+    rm -f "$WAKE_SUPPRESS" 2>/dev/null || true
     exit "$action_rc"
     ;;
   reboot|shutdown)

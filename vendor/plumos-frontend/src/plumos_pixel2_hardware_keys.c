@@ -216,6 +216,39 @@ static pid_t frontend_pid(void) {
   return (pid_t)value;
 }
 
+static int wake_software_sleep(void) {
+  const char *runtime_root = getenv("PLUMOS_RUNTIME_ROOT");
+  char sleep_marker[512];
+  char suppress_marker[512];
+  int fd;
+
+  if (!runtime_root || !runtime_root[0]) {
+    runtime_root = "/run/plumos";
+  }
+  if (snprintf(sleep_marker, sizeof(sleep_marker), "%s/software-sleep",
+               runtime_root) >= (int)sizeof(sleep_marker) ||
+      snprintf(suppress_marker, sizeof(suppress_marker),
+               "%s/power-wake-suppress", runtime_root) >=
+          (int)sizeof(suppress_marker)) {
+    return 0;
+  }
+  if (access(sleep_marker, F_OK) != 0) {
+    return 0;
+  }
+  fd = open(suppress_marker, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644);
+  if (fd >= 0) {
+    (void)write(fd, "wake\n", 5);
+    close(fd);
+  }
+  if (unlink(sleep_marker) < 0 && errno != ENOENT) {
+    fprintf(stderr, "hardware-keys: action=software-sleep-wake rc=%d\n",
+            -errno);
+    return 0;
+  }
+  fprintf(stderr, "hardware-keys: action=software-sleep-wake rc=0\n");
+  return 1;
+}
+
 static int open_power_menu(int force_overlay) {
   const char *runtime_root = getenv("PLUMOS_RUNTIME_ROOT");
   char lock_path[512];
@@ -367,7 +400,9 @@ int main(void) {
           if (source == &power_key && event.type == EV_KEY &&
               event.code == KEY_POWER) {
             if (event.value == 1 && now >= power_menu_debounce_due) {
-              (void)open_power_menu(0);
+              if (!wake_software_sleep()) {
+                (void)open_power_menu(0);
+              }
               now = monotonic_ms();
               power_menu_debounce_due = now + POWER_MENU_DEBOUNCE_MS;
             }

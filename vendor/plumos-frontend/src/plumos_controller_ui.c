@@ -15245,6 +15245,20 @@ static void trace_dispatched_action(const struct ui_state *ui, enum ui_action ac
   fclose(f);
 }
 
+static int consume_power_wake_suppression(void) {
+  const char *runtime_root = getenv("PLUMOS_RUNTIME_ROOT");
+  char path[PATH_MAX];
+
+  if (!runtime_root || !runtime_root[0]) {
+    runtime_root = "/run/plumos";
+  }
+  if (snprintf(path, sizeof(path), "%s/power-wake-suppress", runtime_root) >=
+      (int)sizeof(path)) {
+    return 0;
+  }
+  return unlink(path) == 0;
+}
+
 static void read_input_actions(struct ui_state *ui, int fd, int power_only,
                                enum ui_action *action) {
   struct input_event ev;
@@ -15256,6 +15270,11 @@ static void read_input_actions(struct ui_state *ui, int fd, int power_only,
     if (ev.type == EV_KEY) {
       enum ui_action event_action;
       if (power_only && ev.code != KEY_POWER) {
+        trace_input_event(&ev, power_only, ACTION_NONE);
+        continue;
+      }
+      if (power_only && ev.code == KEY_POWER && ev.value == 1 &&
+          consume_power_wake_suppression()) {
         trace_input_event(&ev, power_only, ACTION_NONE);
         continue;
       }
