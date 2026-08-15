@@ -3,13 +3,18 @@ set -u
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH HOME=/root
-GADGET=/sys/kernel/config/usb_gadget/plumos_pixel2
-FFS=/dev/usb-ffs/adb
-PID=/run/plumos/adbd.pid
-LOG=/state/plumos/logs/adbd.log
-SERIAL_FILE=/state/plumos/config/adb-serial
+GADGET="${PLUMOS_ADB_GADGET:-/sys/kernel/config/usb_gadget/plumos_pixel2}"
+UDC_CLASS="${PLUMOS_ADB_UDC_CLASS:-/sys/class/udc}"
+FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
+PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
+RECOVERY_PID="${PLUMOS_ADB_RECOVERY_PID:-/run/plumos/adbd-recovery.pid}"
+LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
+SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
+PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
 SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
+RECOVERY_DELAY="${PLUMOS_ADB_RECOVERY_DELAY:-4}"
+RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
 
 log() {
     mkdir -p "${LOG%/*}"
@@ -21,13 +26,64 @@ pid_running() {
     pid=$(tr -d '[:space:]' <"$PID" 2>/dev/null || true)
     case "$pid" in ''|*[!0-9]*) return 1 ;; esac
     kill -0 "$pid" 2>/dev/null || return 1
-    cmdline=$(tr '\000' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)
+    cmdline=$(tr '\000' ' ' <"$PROC_ROOT/$pid/cmdline" 2>/dev/null || true)
     case "$cmdline" in *adbd*) return 0 ;; esac
     return 1
 }
 
 gadget_bound() {
     [ -r "$GADGET/UDC" ] && [ -n "$(cat "$GADGET/UDC" 2>/dev/null)" ]
+}
+
+udc_path() {
+    set -- "$UDC_CLASS"/*
+    [ -e "$1" ] || return 1
+    printf '%s\n' "$1"
+}
+
+udc_state() {
+    path=$(udc_path 2>/dev/null) || {
+        printf 'missing\n'
+        return 1
+    }
+    cat "$path/state" 2>/dev/null || printf 'unknown\n'
+}
+
+udc_online() {
+    case "$(udc_state 2>/dev/null || true)" in
+        configured|suspended) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+wait_udc_online() {
+    timeout=$1
+    elapsed=0
+    while [ "$elapsed" -lt "$timeout" ]; do
+        udc_online && return 0
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    udc_online
+}
+
+recovery_running() {
+    [ -s "$RECOVERY_PID" ] || return 1
+    recovery_pid=$(tr -d '[:space:]' <"$RECOVERY_PID" 2>/dev/null || true)
+    case "$recovery_pid" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$recovery_pid" 2>/dev/null
+}
+
+stop_recovery() {
+    if [ "${PLUMOS_ADBD_RECOVERY_WORKER:-0}" = 1 ]; then
+        rm -f "$RECOVERY_PID"
+        return 0
+    fi
+    if recovery_running; then
+        recovery_pid=$(cat "$RECOVERY_PID")
+        [ "$recovery_pid" = "$$" ] || kill "$recovery_pid" 2>/dev/null || true
+    fi
+    rm -f "$RECOVERY_PID"
 }
 
 adb_enabled_by_policy() {
@@ -46,6 +102,7 @@ adb_enabled_by_policy() {
 }
 
 stop_adbd() {
+    stop_recovery
     if [ -e "$GADGET/UDC" ]; then
         : >"$GADGET/UDC" 2>>"$LOG" || true
     fi
@@ -89,13 +146,12 @@ start_adbd() {
     done
     mdev -s 2>/dev/null || true
     sleep 1
-    set -- /sys/class/udc/*
-    [ -e "$1" ] || {
+    udc_path=$(udc_path 2>/dev/null) || {
         log 'result=failed reason=udc-missing'
         return 1
     }
-    udc=${1##*/}
-    log "udc=result-found name=$udc state=$(cat "$1/state" 2>/dev/null || true)"
+    udc=${udc_path##*/}
+    log "udc=result-found name=$udc state=$(cat "$udc_path/state" 2>/dev/null || true)"
 
     mkdir -p "$GADGET/strings/0x409" \
         "$GADGET/configs/c.1/strings/0x409" \
@@ -143,18 +199,62 @@ start_adbd() {
         return 1
     }
     log "result=started udc=$udc access=default-on-no-explicit-setting"
+    [ "${PLUMOS_ADBD_RECOVERY_WORKER:-0}" = 1 ] || schedule_recovery
+}
+
+rebind_adbd() {
+    udc_path=$(udc_path 2>/dev/null) || return 1
+    udc=${udc_path##*/}
+    : >"$GADGET/UDC" 2>>"$LOG" || return 1
+    sleep 1
+    printf '%s\n' "$udc" >"$GADGET/UDC" 2>>"$LOG" || return 1
+    wait_udc_online "$RECOVERY_WAIT"
+}
+
+schedule_recovery() {
+    recovery_running && return 0
+    mkdir -p "${RECOVERY_PID%/*}"
+    (
+        sleep "$RECOVERY_DELAY"
+        if adb_enabled_by_policy && pid_running && gadget_bound; then
+            state=$(udc_state 2>/dev/null || true)
+            case "$state" in
+                configured|suspended)
+                    log "result=watchdog-healthy state=$state"
+                    ;;
+                *)
+                    log "action=watchdog-recover reason=udc-${state:-unknown}"
+                    PLUMOS_ADBD_RECOVERY_WORKER=1 "$0" recover || true
+                    ;;
+            esac
+        fi
+        rm -f "$RECOVERY_PID"
+    ) </dev/null >>"$LOG" 2>&1 &
+    printf '%s\n' "$!" >"$RECOVERY_PID"
 }
 
 recover_adbd() {
     if pid_running && gadget_bound; then
-        log 'result=recover-not-needed'
-        return 0
+        state=$(udc_state 2>/dev/null || true)
+        case "$state" in
+            configured|suspended)
+                log "result=recover-not-needed state=$state"
+                return 0
+                ;;
+            *)
+                log "action=rebind reason=udc-${state:-unknown}"
+                if rebind_adbd; then
+                    log "result=recovered action=rebind state=$(udc_state 2>/dev/null || true)"
+                    return 0
+                fi
+                log "result=rebind-failed state=$(udc_state 2>/dev/null || true) action=clean-restart"
+                ;;
+        esac
     fi
     if pid_running && [ -e "$GADGET/UDC" ]; then
-        set -- /sys/class/udc/*
-        [ -e "$1" ] || return 1
-        printf '%s\n' "${1##*/}" >"$GADGET/UDC" && {
-            log "result=recovered action=rebind udc=${1##*/}"
+        udc_path=$(udc_path 2>/dev/null) || return 1
+        printf '%s\n' "${udc_path##*/}" >"$GADGET/UDC" && {
+            log "result=recovered action=bind udc=${udc_path##*/}"
             return 0
         }
     fi
@@ -168,8 +268,9 @@ status_adbd() {
     bound=0
     gadget_bound && bound=1
     udc_state=unknown
-    set -- /sys/class/udc/*
-    [ -e "$1/state" ] && udc_state=$(cat "$1/state" 2>/dev/null || true)
+    udc_path=$(udc_path 2>/dev/null || true)
+    [ -n "$udc_path" ] && [ -e "$udc_path/state" ] && \
+        udc_state=$(cat "$udc_path/state" 2>/dev/null || true)
     if ! adb_enabled_by_policy; then
         state=disabled
     elif pid_running && [ "$bound" -eq 1 ]; then
