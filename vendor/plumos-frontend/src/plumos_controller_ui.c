@@ -5404,6 +5404,11 @@ static int font_path_is_bitmap_only(const char *path) {
 
 static int choose_mali_font_path(struct ui_state *ui, const char *requested,
                                  char *out, size_t out_size) {
+  static const char *packaged_candidates[] = {
+      "fonts/ui.ttf",
+      "fonts/default.ttf",
+      "fonts/default.otf",
+  };
   static const char *rel_candidates[] = {
       "fonts/ui.ttf",
       "fonts/default.ttf",
@@ -5436,6 +5441,17 @@ static int choose_mali_font_path(struct ui_state *ui, const char *requested,
     return 1;
   }
   out[0] = '\0';
+  if (ui) {
+    for (i = 0; i < sizeof(packaged_candidates) / sizeof(packaged_candidates[0]);
+         i++) {
+      char candidate[PATH_MAX];
+      if (join_path(candidate, sizeof(candidate), ui->plumos_root,
+                    packaged_candidates[i]) &&
+          file_exists(candidate)) {
+        return copy_string(out, out_size, candidate);
+      }
+    }
+  }
   for (i = 0; i < sizeof(rel_candidates) / sizeof(rel_candidates[0]); i++) {
     char candidate[PATH_MAX];
     if (join_path(candidate, sizeof(candidate), ui->sdcard_root, rel_candidates[i]) &&
@@ -5448,6 +5464,9 @@ static int choose_mali_font_path(struct ui_state *ui, const char *requested,
 
 static int choose_mali_fallback_font_path(struct ui_state *ui, const char *primary,
                                           char *out, size_t out_size) {
+  static const char *packaged_candidates[] = {
+      "fonts/cjk-fallback.ttc",
+  };
   static const char *rel_candidates[] = {
       "fonts/cjk-fallback.ttc",
       "plumos/fonts/cjk-fallback.ttc",
@@ -5466,6 +5485,16 @@ static int choose_mali_fallback_font_path(struct ui_state *ui, const char *prima
   out[0] = '\0';
   if (!ui) {
     return 0;
+  }
+  for (i = 0; i < sizeof(packaged_candidates) / sizeof(packaged_candidates[0]);
+       i++) {
+    char candidate[PATH_MAX];
+    if (join_path(candidate, sizeof(candidate), ui->plumos_root,
+                  packaged_candidates[i]) &&
+        file_exists(candidate) &&
+        (!primary || strcmp(candidate, primary) != 0)) {
+      return copy_string(out, out_size, candidate);
+    }
   }
   for (i = 0; i < sizeof(rel_candidates) / sizeof(rel_candidates[0]); i++) {
     char candidate[PATH_MAX];

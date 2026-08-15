@@ -374,6 +374,15 @@ grep -q 'open_power_menu_for_action(ui, "reboot")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'open_power_menu_for_action(ui, "shutdown")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+font_source="$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+sed -n '/static int choose_mali_font_path/,/static int choose_mali_fallback_font_path/p' \
+    "$font_source" | grep -q 'ui->plumos_root,'
+sed -n '/static int choose_mali_font_path/,/static int choose_mali_fallback_font_path/p' \
+    "$font_source" | grep -q '"fonts/default.otf"'
+sed -n '/static int choose_mali_fallback_font_path/,/static void add_setting_entry/p' \
+    "$font_source" | grep -q 'ui->plumos_root,'
+sed -n '/static int choose_mali_fallback_font_path/,/static void add_setting_entry/p' \
+    "$font_source" | grep -q '"fonts/cjk-fallback.ttc"'
 grep -q 'sysrq-trigger' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'rk817-dev-off' \
