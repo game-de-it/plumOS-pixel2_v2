@@ -194,6 +194,12 @@ grep -q 'suspend_drm_planes' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'restore_drm_planes' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'drastic_core_for_runner' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'display-companion=pause' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'display-companion=resume' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'PLUMOS_POWER_MENU_PREPAUSED_PID' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-power-menu-overlay"
 grep -q '^  handled)' \

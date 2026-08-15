@@ -327,6 +327,125 @@ static int stop_process_for_overlay(pid_t pid) {
   return process_is_stopped(pid);
 }
 
+static int read_process_executable(pid_t pid, char *path, size_t path_size) {
+  char link_path[64];
+  ssize_t length;
+
+  if (pid <= 1 || !path || path_size < 2 ||
+      snprintf(link_path, sizeof(link_path), "/proc/%ld/exe", (long)pid) >=
+          (int)sizeof(link_path)) {
+    return 0;
+  }
+  length = readlink(link_path, path, path_size - 1);
+  if (length < 0 || (size_t)length >= path_size) {
+    return 0;
+  }
+  path[length] = '\0';
+  return 1;
+}
+
+static pid_t process_parent_pid(pid_t pid) {
+  char path[64];
+  char line[512];
+  char *closing;
+  char state;
+  long parent = 0;
+  FILE *file;
+
+  if (pid <= 1 ||
+      snprintf(path, sizeof(path), "/proc/%ld/stat", (long)pid) >=
+          (int)sizeof(path)) {
+    return 0;
+  }
+  file = fopen(path, "r");
+  if (!file) {
+    return 0;
+  }
+  line[0] = '\0';
+  (void)fgets(line, sizeof(line), file);
+  fclose(file);
+  closing = strrchr(line, ')');
+  if (!closing || sscanf(closing + 2, "%c %ld", &state, &parent) != 2 ||
+      parent <= 1) {
+    return 0;
+  }
+  return (pid_t)parent;
+}
+
+static int read_runtime_line(const char *path, char *line, size_t line_size) {
+  FILE *file;
+
+  if (!path || !line || line_size < 2) {
+    return 0;
+  }
+  file = fopen(path, "r");
+  if (!file) {
+    return 0;
+  }
+  line[0] = '\0';
+  if (!fgets(line, line_size, file)) {
+    fclose(file);
+    return 0;
+  }
+  fclose(file);
+  line[strcspn(line, "\r\n")] = '\0';
+  return line[0] != '\0';
+}
+
+static pid_t drastic_core_for_runner(pid_t owner) {
+  const char *root = getenv("PLUMOS_ROOT");
+  const char *runtime_root = getenv("PLUMOS_RUNTIME_ROOT");
+  char runner_path[512];
+  char owner_executable[512];
+  char pid_path[512];
+  char exe_path[512];
+  char pid_line[64];
+  char expected_executable[512];
+  char actual_executable[512];
+  char *end = NULL;
+  long value;
+  pid_t core;
+  pid_t owner_parent;
+  pid_t core_parent;
+
+  if (!root || !root[0]) {
+    root = "/mnt/plumos";
+  }
+  if (!runtime_root || !runtime_root[0]) {
+    runtime_root = "/run/plumos";
+  }
+  if (snprintf(runner_path, sizeof(runner_path),
+               "%s/standalone/drastic/bin/runner", root) >=
+          (int)sizeof(runner_path) ||
+      !read_process_executable(owner, owner_executable,
+                               sizeof(owner_executable)) ||
+      strcmp(owner_executable, runner_path) != 0 ||
+      snprintf(pid_path, sizeof(pid_path), "%s/standalone/drastic.pid",
+               runtime_root) >= (int)sizeof(pid_path) ||
+      snprintf(exe_path, sizeof(exe_path), "%s/standalone/drastic.exe",
+               runtime_root) >= (int)sizeof(exe_path) ||
+      !read_runtime_line(pid_path, pid_line, sizeof(pid_line)) ||
+      !read_runtime_line(exe_path, expected_executable,
+                         sizeof(expected_executable))) {
+    return 0;
+  }
+  errno = 0;
+  value = strtol(pid_line, &end, 10);
+  if (errno || !end || *end || value <= 1 || value == (long)owner) {
+    return 0;
+  }
+  core = (pid_t)value;
+  owner_parent = process_parent_pid(owner);
+  core_parent = process_parent_pid(core);
+  if (!read_process_executable(core, actual_executable,
+                               sizeof(actual_executable)) ||
+      strcmp(actual_executable, expected_executable) != 0 ||
+      owner_parent <= 1 || core_parent != owner_parent) {
+    return 0;
+  }
+  return core;
+}
+
 static size_t suspend_drm_planes(
     int drm_fd, struct drm_plane_snapshot *snapshots, size_t capacity) {
   drmModePlaneRes *resources;
@@ -537,15 +656,25 @@ static int spawn_power_menu_overlay(void) {
   if (child == 0) {
     int target_fd = -1;
     pid_t owner = external_drm_owner(&target_fd);
+    pid_t companion = 0;
     int owner_drm_fd = -1;
     int handed_off = 0;
     int owner_stopped = 0;
+    int companion_stopped = 0;
     struct drm_plane_snapshot plane_snapshots[DRM_PLANE_SNAPSHOT_LIMIT];
     size_t plane_count = 0;
     pid_t overlay;
     int status = 1 << 8;
 
     if (owner > 1 && target_fd >= 0) {
+      companion = drastic_core_for_runner(owner);
+      if (companion > 1) {
+        companion_stopped = stop_process_for_overlay(companion);
+        fprintf(stderr,
+                "hardware-keys: display-companion=pause owner=%ld pid=%ld rc=%d\n",
+                (long)owner, (long)companion,
+                companion_stopped ? 0 : -EIO);
+      }
       owner_drm_fd = duplicate_process_fd(owner, target_fd);
       if (owner_drm_fd >= 0) {
         owner_stopped = stop_process_for_overlay(owner);
@@ -621,6 +750,12 @@ static int spawn_power_menu_overlay(void) {
       (void)kill(owner, SIGCONT);
       fprintf(stderr, "hardware-keys: display-owner=resume owner=%ld\n",
               (long)owner);
+    }
+    if (companion_stopped) {
+      (void)kill(companion, SIGCONT);
+      fprintf(stderr,
+              "hardware-keys: display-companion=resume owner=%ld pid=%ld\n",
+              (long)owner, (long)companion);
     }
     _exit(WIFEXITED(status) ? WEXITSTATUS(status) : 1);
   }
