@@ -31,6 +31,7 @@ service_env=(
     PLUMOS_ADB_UDC_CLASS="$TMP/udc"
     PLUMOS_ADB_PID="$TMP/run/adbd.pid"
     PLUMOS_ADB_RECOVERY_PID="$TMP/run/adbd-recovery.pid"
+    PLUMOS_ADB_ACTION_LOCK="$TMP/run/adbd-action.lock"
     PLUMOS_ADB_LOG="$TMP/log/adbd.log"
     PLUMOS_ADB_PROC_ROOT="$TMP/proc"
     PLUMOS_ADB_SERVICES_CONF="$TMP/config/services.conf"
@@ -41,6 +42,14 @@ service_env=(
 
 env "${service_env[@]}" "$SERVICE" recover
 grep -q 'result=recover-not-needed state=configured' "$TMP/log/adbd.log"
+test "$(cat "$TMP/gadget/UDC")" = fake-udc
+
+# A physical cable replug invalidates the host transport even when the UDC has
+# already returned to configured.  The dedicated action must therefore rebind
+# rather than use recover's healthy no-op.
+env "${service_env[@]}" "$SERVICE" replug
+grep -q 'action=rebind reason=usb-replug state=configured' "$TMP/log/adbd.log"
+grep -q 'result=replug-recovered action=rebind state=configured' "$TMP/log/adbd.log"
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
 printf '%s\n' 'not attached' >"$TMP/udc/fake-udc/state"
@@ -55,5 +64,20 @@ test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
 grep -q 'schedule_recovery' "$SERVICE"
 grep -q 'action=watchdog-recover' "$SERVICE"
+
+# Mutating actions must not overlap.  This is the failure mode that previously
+# launched two adbd instances and collided on the JDWP/FunctionFS sockets.
+mkdir "$TMP/run/adbd-action.lock"
+printf '%s\n' "$$" >"$TMP/run/adbd-action.lock/pid"
+if env "${service_env[@]}" PLUMOS_ADB_ACTION_LOCK_WAIT=0 \
+    "$SERVICE" replug; then
+    echo 'replug unexpectedly bypassed the active action lock' >&2
+    exit 1
+fi
+grep -q 'result=action-busy action=replug' "$TMP/log/adbd.log"
+rmdir "$TMP/run/adbd-action.lock" 2>/dev/null || {
+    rm -f "$TMP/run/adbd-action.lock/pid"
+    rmdir "$TMP/run/adbd-action.lock"
+}
 
 printf '%s\n' 'pixel2_adbd_recovery=result-ok'

@@ -8,6 +8,7 @@ UDC_CLASS="${PLUMOS_ADB_UDC_CLASS:-/sys/class/udc}"
 FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
 PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
 RECOVERY_PID="${PLUMOS_ADB_RECOVERY_PID:-/run/plumos/adbd-recovery.pid}"
+ACTION_LOCK="${PLUMOS_ADB_ACTION_LOCK:-/run/plumos/adbd-action.lock}"
 LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
 SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
 PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
@@ -15,10 +16,56 @@ SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.c
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 RECOVERY_DELAY="${PLUMOS_ADB_RECOVERY_DELAY:-4}"
 RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
+ACTION_LOCK_WAIT="${PLUMOS_ADB_ACTION_LOCK_WAIT:-12}"
+ACTION_LOCK_HELD=0
 
 log() {
     mkdir -p "${LOG%/*}"
     printf '%s service=adb %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
+}
+
+release_action_lock() {
+    [ "$ACTION_LOCK_HELD" -eq 1 ] || return 0
+    rm -f "$ACTION_LOCK/pid"
+    rmdir "$ACTION_LOCK" 2>/dev/null || true
+    ACTION_LOCK_HELD=0
+}
+
+acquire_action_lock() {
+    action=$1
+    mkdir -p "${ACTION_LOCK%/*}"
+    waited=0
+    while ! mkdir "$ACTION_LOCK" 2>/dev/null; do
+        lock_pid=$(cat "$ACTION_LOCK/pid" 2>/dev/null || true)
+        case "$lock_pid" in
+            ''|*[!0-9]*) lock_pid= ;;
+        esac
+        if [ -z "$lock_pid" ] || ! kill -0 "$lock_pid" 2>/dev/null; then
+            rm -f "$ACTION_LOCK/pid"
+            rmdir "$ACTION_LOCK" 2>/dev/null || true
+            continue
+        fi
+        if [ "$waited" -ge "$ACTION_LOCK_WAIT" ]; then
+            log "result=action-busy action=$action owner=$lock_pid waited=$waited"
+            return 1
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+    printf '%s\n' "$$" >"$ACTION_LOCK/pid"
+    ACTION_LOCK_HELD=1
+}
+
+run_mutating_action() {
+    action=$1
+    shift
+    acquire_action_lock "$action" || return 1
+    trap 'release_action_lock' EXIT
+    "$@"
+    rc=$?
+    release_action_lock
+    trap - EXIT
+    return "$rc"
 }
 
 pid_running() {
@@ -263,6 +310,31 @@ recover_adbd() {
     start_adbd
 }
 
+replug_adbd() {
+    if ! adb_enabled_by_policy; then
+        log 'result=replug-skipped reason=disabled'
+        return 0
+    fi
+    if pid_running && gadget_bound; then
+        state=$(udc_state 2>/dev/null || true)
+        log "action=rebind reason=usb-replug state=${state:-unknown}"
+        if rebind_adbd; then
+            log "result=replug-recovered action=rebind state=$(udc_state 2>/dev/null || true)"
+            return 0
+        fi
+        log "result=replug-rebind-failed state=$(udc_state 2>/dev/null || true) action=clean-restart"
+    else
+        log 'action=replug-restart reason=daemon-or-gadget-missing'
+    fi
+    stop_adbd
+    start_adbd
+}
+
+restart_adbd() {
+    stop_adbd
+    start_adbd
+}
+
 status_adbd() {
     state=stopped
     bound=0
@@ -286,10 +358,11 @@ status_adbd() {
 }
 
 case "${1:-}" in
-    start) start_adbd ;;
-    stop) stop_adbd ;;
-    restart) stop_adbd; start_adbd ;;
-    recover) recover_adbd ;;
+    start) run_mutating_action start start_adbd ;;
+    stop) run_mutating_action stop stop_adbd ;;
+    restart) run_mutating_action restart restart_adbd ;;
+    recover) run_mutating_action recover recover_adbd ;;
+    replug) run_mutating_action replug replug_adbd ;;
     status) status_adbd ;;
-    *) printf 'usage: %s {start|stop|restart|recover|status}\n' "$0" >&2; exit 2 ;;
+    *) printf 'usage: %s {start|stop|restart|recover|replug|status}\n' "$0" >&2; exit 2 ;;
 esac

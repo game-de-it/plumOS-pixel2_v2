@@ -619,7 +619,7 @@ static int read_usb_online(void) {
   return value < 0 ? -1 : value != 0;
 }
 
-static int spawn_adbd_recovery(void) {
+static int spawn_adbd_replug(void) {
   const char *control = getenv("PLUMOS_ADBD_CONTROL");
   pid_t child;
 
@@ -631,7 +631,7 @@ static int spawn_adbd_recovery(void) {
     return -errno;
   }
   if (child == 0) {
-    execl(control, control, "recover", (char *)NULL);
+    execl(control, control, "replug", (char *)NULL);
     _exit(127);
   }
   return 0;
@@ -915,10 +915,10 @@ int main(void) {
     }
     if (adb_usb_recovery_due > 0 && now >= adb_usb_recovery_due &&
         usb_online == 1) {
-      int result = spawn_adbd_recovery();
+      int result = spawn_adbd_replug();
 
       fprintf(stderr,
-              "hardware-keys: action=adb-usb-recover online=1 rc=%d\n",
+              "hardware-keys: action=adb-usb-replug online=1 rc=%d\n",
               result);
       adb_usb_recovery_due = 0;
     }
