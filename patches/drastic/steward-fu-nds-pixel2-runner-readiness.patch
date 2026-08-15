@@ -1,0 +1,123 @@
+diff --git a/runner/runner.c b/runner/runner.c
+index 7763cc0..20f79dc 100644
+--- a/runner/runner.c
++++ b/runner/runner.c
+@@ -75,8 +75,9 @@ static GLushort vert_indices[] = {
+     0, 1, 2, 0, 2, 3
+ };
+ 
+-static int running = 0;
+-static int frame_cnt = 0;
++static volatile int running = 0;
++static volatile int frame_cnt = 0;
++static volatile int runner_init_state = 0;
+ static runner_t myrunner = { 0 };
+ 
+ static int init_shm(void)
+@@ -176,14 +177,17 @@ static void* runner_handler(void *param)
+ 
+     if (init_gles() < 0) {
+         error("failed to init gles\n");
++        runner_init_state = -1;
+         return NULL;
+     }
+ 
+     if (init_shm() < 0) {
+         error("failed to init shm\n");
++        runner_init_state = -1;
+         return NULL;
+     }
+ 
++    runner_init_state = 1;
+     running = 1;
+     while (running) {
+         if (myrunner.shm.buf->valid == 0) {
+@@ -291,9 +295,23 @@ static void* runner_handler(void *param)
+             }
+             break;
+         case SHM_CMD_FLIP:
++        {
++            const char *ready_path;
++            int ready_fd;
++
+             frame_cnt += 1;
+             trace("recv SHM_CMD_FLIP\n");
+             SDL_GL_SwapWindow(myrunner.sdl2.win);
++            if (frame_cnt == 1) {
++                ready_path = getenv("NDS_RUNNER_READY_FILE");
++                if (ready_path && ready_path[0] == '/') {
++                    ready_fd = open(ready_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
++                    if (ready_fd >= 0) {
++                        (void)write(ready_fd, "ready\n", 6);
++                        close(ready_fd);
++                    }
++                }
++            }
+ 
+             glActiveTexture(GL_TEXTURE0);
+             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+@@ -331,7 +349,8 @@ static void* runner_handler(void *param)
+             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, vert_indices);
+ 
+             break;
++        }
+         case SHM_CMD_QUIT:
+             running = 0;
+             trace("recv SHM_CMD_QUIT\n");
+             break;
+@@ -364,30 +383,42 @@ static void* runner_handler(void *param)
+ 
+ int main(int argc, char **argv)
+ {
++    const char *timeout_env = NULL;
++    char *timeout_end = NULL;
++    long startup_timeout_ms = 15000;
++    long waited_ms = 0;
++    int rc = 0;
+     pthread_t id = 0;
+ 
+     nds_debug_level = get_debug_level(0);
+     trace("log level \"%s\"\n", DEBUG_LEVEL_STR[nds_debug_level]);
++    timeout_env = getenv("NDS_RUNNER_STARTUP_TIMEOUT_MS");
++    if (timeout_env && timeout_env[0]) {
++        long parsed = strtol(timeout_env, &timeout_end, 10);
++        if (timeout_end && *timeout_end == '\0' && parsed >= 1000 && parsed <= 60000) {
++            startup_timeout_ms = parsed;
++        }
++    }
+ 
+     pthread_create(&id, NULL, runner_handler, NULL);
+ 
+-    usleep(1500000);
++    while (frame_cnt == 0 && runner_init_state >= 0 &&
++           waited_ms < startup_timeout_ms) {
++        usleep(10000);
++        waited_ms += 10;
++    }
+ 
+     if (frame_cnt == 0) {
+         running = 0;
+-        error("no receive any frame from emulator\n");
+-
+-#if defined(TRIMUI_BRICK)
+-        system("kill -9 `pidof ld-linux-armhf.so.3`");
+-#endif
+-
+-#if defined(GKD_PIXEL2) || defined(GKD_MINIPLUS)
+-        system("kill -9 `pidof drastic`");
+-#endif
+-
+-        error("killed emulator\n");
++        rc = 1;
++        if (runner_init_state < 0) {
++            error("display runner initialization failed\n");
++        }
++        else {
++            error("no frame from emulator after %ld ms\n", startup_timeout_ms);
++        }
+     }
+     pthread_join(id, NULL);
+ 
+-    return 0;
++    return rc;
+ }

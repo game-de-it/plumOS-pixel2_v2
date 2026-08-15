@@ -29,6 +29,7 @@ DRASTIC_RELEASE_URL="${PLUMOS_PIXEL2_DRASTIC_RELEASE_URL:-https://github.com/ste
 DRASTIC_RELEASE_SHA256="${PLUMOS_PIXEL2_DRASTIC_RELEASE_SHA256:-9e4ed98047dea0f014daea7c3530793f92f19d60073fceb9fd2a040696f66491}"
 DRASTIC_ARCHIVE="${PLUMOS_PIXEL2_DRASTIC_ARCHIVE:-$ROOT_DIR/output/downloads/drastic_miyoo-flip_20251104.zip}"
 DRASTIC_PATCH="$PATCH_DIR/drastic/steward-fu-nds-pixel2-toolchain.patch"
+DRASTIC_RUNNER_PATCH="$PATCH_DIR/drastic/steward-fu-nds-pixel2-runner-readiness.patch"
 DRASTIC_MMAP_COMPAT="$ROOT_DIR/package/standalone-pixel2/src/drastic-mmap-compat.c"
 PCSX_REPO="${PLUMOS_PIXEL2_PCSX_REPO:-https://github.com/notaz/pcsx_rearmed.git}"
 PCSX_REF="${PLUMOS_PIXEL2_PCSX_REF:-9f8b6f248e073f03c530efda7c4cc60a7e2ecafc}"
@@ -442,6 +443,8 @@ build_drastic() {
     >>"$DRASTIC_LOG" 2>&1
   git -C "$DRASTIC_SOURCE_DIR" apply "$DRASTIC_PATCH" \
     >>"$DRASTIC_LOG" 2>&1
+  git -C "$DRASTIC_SOURCE_DIR" apply "$DRASTIC_RUNNER_PATCH" \
+    >>"$DRASTIC_LOG" 2>&1
   make -C "$DRASTIC_SOURCE_DIR" -f Makefile.gkd_pixel2 -j"$JOBS" \
     TOOLCHAIN_BIN="$(dirname "$(command -v arm-linux-gnueabihf-gcc)")" \
     NDS_INCLUDE_ROOT=/usr/include \
@@ -549,6 +552,7 @@ build_drastic() {
   detour_sha256=$(sha256_file "$DRASTIC_DST/lib/libdtr.so")
   sdl2_sha256=$(sha256_file "$DRASTIC_DST/lib/libSDL2-2.0.so.0")
   compat_sha256=$(sha256_file "$DRASTIC_DST/lib/libdrastic_mmap_compat.so")
+  runner_patch_sha256=$(sha256_file "$DRASTIC_RUNNER_PATCH")
   cat >"$DRASTIC_DST/build-manifest.json" <<EOF
 {
   "device": "pixel2",
@@ -569,6 +573,7 @@ build_drastic() {
     "libdrastic_mmap_compat.so": "$compat_sha256"
   },
   "runtime_contract": "package-local-armhf-gkd-pixel2",
+  "runner_readiness_patch_sha256": "$runner_patch_sha256",
   "global_usr_overlay": false,
   "process_aslr": "disabled-only-for-drastic"
 }

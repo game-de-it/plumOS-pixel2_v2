@@ -281,6 +281,8 @@ if [ "$id" = drastic ]; then
   log="$LOG_ROOT/drastic.log"
   drastic_mounts=""
   runner_pid=""
+  pid=""
+  runner_ready="${PLUMOS_RUNTIME_ROOT}/standalone/drastic.runner-ready.$$"
   setarch_bin=""
   setarch_mode=""
 
@@ -352,12 +354,23 @@ if [ "$id" = drastic ]; then
 
   restore_drastic_runtime() {
     rc=$?
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      kill -TERM "$pid" >/dev/null 2>&1 || true
+      core_wait=0
+      while kill -0 "$pid" 2>/dev/null && [ "$core_wait" -lt 20 ]; do
+        sleep 0.1
+        core_wait=$((core_wait + 1))
+      done
+      kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" >/dev/null 2>&1 || true
+      wait "$pid" >/dev/null 2>&1 || true
+      pid=""
+    fi
     if [ -n "$runner_pid" ]; then
       kill "$runner_pid" >/dev/null 2>&1 || true
       wait "$runner_pid" >/dev/null 2>&1 || true
       runner_pid=""
     fi
-    rm -f /dev/shm/NDS_SHM 2>/dev/null || true
+    rm -f /dev/shm/NDS_SHM "$runner_ready" 2>/dev/null || true
     for mount_target in $drastic_mounts; do
       umount "$mount_target" >/dev/null 2>&1 || true
     done
@@ -375,10 +388,13 @@ if [ "$id" = drastic ]; then
     "$PLUMOS_ROOT/bin/plumos-volume-control" apply >>"$log" 2>&1 || true
   fi
 
-  rm -f /dev/shm/NDS_SHM
+  mkdir -p "${PLUMOS_RUNTIME_ROOT}/standalone"
+  rm -f /dev/shm/NDS_SHM "$runner_ready"
   (
     cd "$runtime" || exit 127
-    exec "$runner"
+    NDS_RUNNER_READY_FILE="$runner_ready" \
+    NDS_RUNNER_STARTUP_TIMEOUT_MS="${PLUMOS_DRASTIC_STARTUP_TIMEOUT_MS:-15000}" \
+      exec "$runner"
   ) >>"$log" 2>&1 &
   runner_pid=$!
   runner_wait=0
@@ -418,7 +434,29 @@ if [ "$id" = drastic ]; then
   ) >>"$log" 2>&1 &
   pid=$!
   printf '%s\n' "$pid" >"$pid_file"
-  printf '%s\n' "$exe" >"$exe_file"
+  printf '%s\n' "$loader" >"$exe_file"
+
+  display_wait=0
+  while [ ! -e "$runner_ready" ] && [ "$display_wait" -lt 200 ]; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      wait "$pid" 2>/dev/null
+      rc=$?
+      fail "DraStic exited before first displayed frame (rc=$rc)" 1
+    fi
+    kill -0 "$runner_pid" 2>/dev/null ||
+      fail "DraStic display runner exited before first frame" 1
+    sleep 0.1
+    display_wait=$((display_wait + 1))
+  done
+  [ -e "$runner_ready" ] || fail "DraStic first displayed frame timeout" 1
+  printf 'id=drastic display_ready=first-frame runner_pid=%s core_pid=%s\n' \
+    "$runner_pid" "$pid" >>"$LOG_ROOT/launcher.log"
+
+  while kill -0 "$pid" 2>/dev/null; do
+    kill -0 "$runner_pid" 2>/dev/null ||
+      fail "DraStic display runner exited during emulation" 1
+    sleep 0.2
+  done
   wait "$pid"
   rc=$?
   printf 'id=%s exit=%s\n' "$id" "$rc" >>"$LOG_ROOT/launcher.log"

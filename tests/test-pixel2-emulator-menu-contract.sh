@@ -12,6 +12,8 @@ PCSX_PICOFE_PATCH="$ROOT_DIR/patches/pcsx_rearmed/libpicofe-r26l-pixel2-input.pa
 OPENBOR_PATCH="$ROOT_DIR/patches/openbor/openbor-v6391-pixel2-sdl.patch"
 SA_BUILD="$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 SA_LAUNCHER="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+SA_STOP="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-stop"
+DRASTIC_RUNNER_PATCH="$ROOT_DIR/patches/drastic/steward-fu-nds-pixel2-runner-readiness.patch"
 PPSSPP_CONTROLS="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/controls.ini"
 PPSSPP_CONFIG="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/ppsspp.ini"
 PPSSPP_CONTROLLER_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
@@ -93,6 +95,30 @@ for contract in \
     grep -Fq "$contract" "$SA_LAUNCHER" ||
         fail "DraStic live config migration missing: $contract"
 done
+
+for contract in \
+    'NDS_RUNNER_STARTUP_TIMEOUT_MS' \
+    'NDS_RUNNER_READY_FILE' \
+    'display_ready=first-frame' \
+    'printf '\''%s\n'\'' "$loader" >"$exe_file"' \
+    'DraStic display runner exited during emulation'; do
+    grep -Fq "$contract" "$SA_LAUNCHER" ||
+        fail "DraStic first-frame lifecycle contract missing: $contract"
+done
+for contract in \
+    'startup_timeout_ms = 15000' \
+    'NDS_RUNNER_READY_FILE' \
+    'no frame from emulator after %ld ms'; do
+    grep -Fq "$contract" "$DRASTIC_RUNNER_PATCH" ||
+        fail "DraStic runner readiness patch missing: $contract"
+done
+if grep '^+' "$DRASTIC_RUNNER_PATCH" | grep -Fq 'pidof drastic'; then
+    fail 'DraStic runner patch must not retain guessed pidof termination'
+fi
+grep -Fq 'DRASTIC_RUNNER_PATCH' "$SA_BUILD" ||
+    fail 'DraStic build does not consume runner readiness patch'
+grep -Fq 'readlink "/proc/${pid}/exe"' "$SA_STOP" ||
+    fail 'standalone stop ownership check is missing'
 
 grep -Eq '^Pause[[:space:]]*=.*(^|,)10-4(,|$)' "$PPSSPP_CONTROLS" ||
     fail 'PPSSPP factory FUNCTION pause binding is missing'
