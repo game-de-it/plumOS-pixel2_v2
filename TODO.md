@@ -36,15 +36,20 @@
       owner停止、backlight消灯、次のPowerだけで復帰するsoftware standbyへ
       自動fallbackする。復帰後はPixel2固有のRK817 `Speaker`/`Headphone`
       switch、輝度、音量状態、必要時のADB gadgetを復元する。
-    - 署名Runtime `0.1.0-dev-a9b4d2a`を実機適用し、Frontend 194/194、3秒の
-      bounded standby、輝度28の復元、RK817再arm、FE/常駐service各1 processを
-      確認。物理PowerによるFE/RA/PicoArch/SA/Apps上のmenu表示と、Power復帰後の
-      操作・音声はoperator確認を継続する。
+    - 署名Runtime `0.1.0-dev-c5d9c16`を実機適用。FEのDRM両bufferを黒でpresent
+      した後、connector DPMS OFFとCRTC切断でDSI panelを完全消灯する。USBを
+      sleep中に抜き差ししても消灯を維持し、2秒後のpolicy-aware ADB再起動で
+      ADBが自動復帰、物理Power 1回で輝度28・FE操作まで正常復帰することを確認。
+      RA/PicoArch/SA/Appsがdisplay ownerのoverlay経路と復帰後の操作・音声は
+      operator確認を継続する。
   - [x] FTP/SFTP/SambaをPixel2 componentとして実装する
     - 2026-08-14: 初期bring-upの「SSH/ADBだけを表示」を撤回し、V90S/MFと同じ5 serviceをpackage化。保存設定のboot再開、component checksum、release gateへ統合した。USB Wi-Fi実機でのFTP/SFTP/Samba接続は未検証。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
+    - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
+      検出し、再接続2秒後にユーザー設定を尊重してADB gadgetを再起動する。
+      software sleep中の実機で画面を起こさずADBが自動再列挙することを確認。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する

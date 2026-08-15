@@ -1,7 +1,7 @@
 # Pixel2 global power menu and sleep validation
 
-Date: 2026-08-15
-Final tested Runtime: `0.1.0-dev-a9b4d2a`
+Date: 2026-08-15 to 2026-08-16
+Final tested Runtime: `0.1.0-dev-c5d9c16`
 
 ## Result
 
@@ -63,11 +63,25 @@ falls back to software standby when the stock kernel refuses entry.
 
 Software standby:
 
-1. leaves the current display owner stopped;
-2. saves and blanks the Pixel2 backlight without changing persistent settings;
-3. waits for the hardware-key service to consume the next Power press;
-4. suppresses the duplicate queued Power event in the normal FE;
-5. restores the exact backlight, display/volume state, RK817 route, and owner.
+1. presents black into both Pixel2 DRM buffers;
+2. sets connector DPMS off and detaches the CRTC so the DSI panel fully powers
+   down instead of retaining the last menu frame;
+3. saves and blanks the Pixel2 backlight without changing persistent settings;
+4. waits for the hardware-key service to consume the next Power press;
+5. suppresses the duplicate queued Power event in the normal FE;
+6. reconnects the CRTC/mode and restores the exact backlight, display/volume
+   state, RK817 route, and display owner.
+
+Writing `0` to the fbdev/backlight interfaces was not sufficient after the DRM
+frontend became the scanout owner. `/dev/fb0` could be black while the visible
+DRM plane retained the power menu, and a black DRM frame still left the DSI
+panel faintly lit. The two-stage DRM black present plus connector/CRTC power
+transition is therefore part of the Pixel2 sleep contract.
+
+USB power changes are observed through `/sys/class/power_supply/usb/online`.
+The hardware-key service ignores PMIC Power events for 1500 ms after a cable
+transition. On reconnect it asynchronously restarts the policy-aware ADB
+service after 2000 ms, allowing ADB to re-enumerate without waking the display.
 
 This provides a working sleep/wake interaction without replacing the stock
 kernel. It is not equivalent to SoC/RAM power collapse while this stock-kernel
@@ -85,22 +99,21 @@ frontend_component=result-ok
 app_layer_verify=result-ok
 ```
 
-The final signed Runtime package was inspected from base
-`0.1.0-dev-03295f4`, then requested through the normal updater:
+The final display-power signed Runtime package was inspected from base
+`0.1.0-dev-4620c4b`, then requested through the normal updater:
 
 ```text
-package=plumos-pixel2-runtime-0.1.0-dev-a9b4d2a.tar.gz
-sha256=fe2992dd7bbc4326dc98c605fbe5c574b9a39c77a3259d48f364c50cb16b04fa
-payload_files=12
+package=plumos-pixel2-runtime-0.1.0-dev-c5d9c16.tar.gz
+sha256=fc52a942b00303e204176c2908cdf01d43e60b7d842aebdd5e2a69b512eeb46b
+payload_files=9
 result=ready
 ```
 
 After reboot the device reported:
 
 ```text
-VERSION=0.1.0-dev-a9b4d2a
-frontend_ok=194 frontend_bad=0
-frontend=ready
+VERSION=0.1.0-dev-c5d9c16
+runtime_transaction=healthy
 hardware-key service processes=1
 frontend processes=1
 ```
@@ -115,14 +128,26 @@ sleep=result-returned backend=mem kernel_sleep=0
 backlight_before=28 backlight_after=28
 ```
 
+## Physical sleep and USB hotplug acceptance
+
+The FE path was physically accepted on `0.1.0-dev-c5d9c16`:
+
+1. Power opened the global menu and Sleep fully powered down the display;
+2. unplugging and reconnecting USB while asleep left the display off;
+3. the service logged `online=0`, then `online=1`, and
+   `action=adb-usb-restart online=1 rc=0`;
+4. ADB re-enumerated while `/run/plumos/software-sleep` remained active;
+5. one physical Power press cleared the marker, restored brightness 28 and
+   `bl_power=0`, returned to the FE, and FE controls remained functional.
+
 ## Remaining physical gate
 
-The operator still needs to validate the tactile path:
+The normal FE sleep/USB/wake path is complete. The operator still needs to
+validate the overlay path while non-FE display owners are active:
 
-1. Power opens the menu from the FE and Cancel returns normally;
-2. Power opens the overlay while each runtime family owns the screen;
-3. selecting Sleep blanks the screen and the next Power press wakes it;
-4. no second menu appears from the wake press;
-5. input, video, and audio continue after wake.
+1. Power opens the overlay while RA, PicoArch, standalone emulators, and Apps
+   each own the screen;
+2. Cancel returns normally for each family;
+3. sleep/wake returns video, input, and audio for each family.
 
 These are physical acceptance gates, not missing implementation.
