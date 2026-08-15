@@ -72,8 +72,8 @@ gcc "${common[@]}" "$SOURCE_DIR/plumos_text_ui.c" \
     -o "$BIN_DIR/plumos-text-ui"
 gcc "${common[@]}" "$SOURCE_DIR/plumos_frontend.c" \
     -o "$BIN_DIR/plumos-frontend-diagnostics"
-gcc "${common[@]}" "$SOURCE_DIR/plumos_pixel2_hardware_keys.c" \
-    -o "$BIN_DIR/plumos-hardware-keys"
+gcc "${common[@]}" $drm_cflags "$SOURCE_DIR/plumos_pixel2_hardware_keys.c" \
+    -o "$BIN_DIR/plumos-hardware-keys" $drm_libs
 gcc "${common[@]}" "$SOURCE_DIR/plumos_rk817_resume.c" \
     -o "$BIN_DIR/plumos-rk817-resume" \
     -Wl,-rpath,'$ORIGIN/../frontend/lib' -lasound

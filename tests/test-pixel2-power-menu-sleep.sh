@@ -182,6 +182,16 @@ grep -q 'control, "restart"' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'consume_power_wake_suppression' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'write_power_overlay_selection(ui, "handled")' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'SYS_pidfd_getfd' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'drmDropMaster(owner_drm_fd)' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'drmSetMaster(owner_drm_fd)' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q '^  handled)' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-power-menu-overlay"
 grep -q 'plumos_fbdev_present_black(&ui->fbdev_renderer)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'static int plumos_fbdev_present_black' \

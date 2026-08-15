@@ -11,11 +11,20 @@
 #include <string.h>
 #include <sys/file.h>
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#include <xf86drm.h>
+
+#ifndef SYS_pidfd_open
+#define SYS_pidfd_open 434
+#endif
+#ifndef SYS_pidfd_getfd
+#define SYS_pidfd_getfd 438
+#endif
 
 #define INPUT_SCAN_LIMIT 32
 #define REOPEN_INTERVAL_MS 2000
@@ -109,29 +118,6 @@ static int run_helper(const char *helper_name, const char *action) {
   return WIFEXITED(status) && WEXITSTATUS(status) == 0 ? 0 : -EIO;
 }
 
-static int spawn_helper(const char *helper_name, const char *action) {
-  const char *root = getenv("PLUMOS_ROOT");
-  char helper[512];
-  pid_t child;
-
-  if (!root || !root[0]) {
-    root = "/mnt/plumos";
-  }
-  if (snprintf(helper, sizeof(helper), "%s/bin/%s", root, helper_name) >=
-      (int)sizeof(helper)) {
-    return -ENAMETOOLONG;
-  }
-  child = fork();
-  if (child < 0) {
-    return -errno;
-  }
-  if (child == 0) {
-    execl(helper, helper, action, (char *)NULL);
-    _exit(127);
-  }
-  return 0;
-}
-
 static void reap_children(void) {
   while (waitpid(-1, NULL, WNOHANG) > 0) {
   }
@@ -184,6 +170,108 @@ static int process_owns_display(pid_t pid) {
   }
   closedir(directory);
   return owns_display;
+}
+
+static int process_drm_fd(pid_t pid) {
+  char directory_path[64];
+  DIR *directory;
+  struct dirent *entry;
+  int result = -1;
+
+  if (pid <= 1 || snprintf(directory_path, sizeof(directory_path),
+                           "/proc/%ld/fd", (long)pid) >=
+                      (int)sizeof(directory_path)) {
+    return -1;
+  }
+  directory = opendir(directory_path);
+  if (!directory) {
+    return -1;
+  }
+  while ((entry = readdir(directory)) != NULL) {
+    char link_path[128];
+    char target[256];
+    char *end = NULL;
+    long fd_number;
+    ssize_t length;
+
+    if (entry->d_name[0] == '.') {
+      continue;
+    }
+    errno = 0;
+    fd_number = strtol(entry->d_name, &end, 10);
+    if (errno || !end || *end || fd_number < 0 || fd_number > 1048576) {
+      continue;
+    }
+    if (snprintf(link_path, sizeof(link_path), "%s/%s", directory_path,
+                 entry->d_name) >= (int)sizeof(link_path)) {
+      continue;
+    }
+    length = readlink(link_path, target, sizeof(target) - 1);
+    if (length < 0) {
+      continue;
+    }
+    target[length] = '\0';
+    if (strcmp(target, "/dev/dri/card0") == 0) {
+      result = (int)fd_number;
+      break;
+    }
+  }
+  closedir(directory);
+  return result;
+}
+
+static pid_t external_drm_owner(int *target_fd) {
+  DIR *proc;
+  struct dirent *entry;
+  pid_t result = 0;
+
+  if (target_fd) {
+    *target_fd = -1;
+  }
+  proc = opendir("/proc");
+  if (!proc) {
+    return 0;
+  }
+  while ((entry = readdir(proc)) != NULL) {
+    char *end = NULL;
+    long value;
+    int fd;
+
+    if (entry->d_name[0] < '0' || entry->d_name[0] > '9') {
+      continue;
+    }
+    errno = 0;
+    value = strtol(entry->d_name, &end, 10);
+    if (errno || !end || *end || value <= 1 || value == (long)getpid()) {
+      continue;
+    }
+    fd = process_drm_fd((pid_t)value);
+    if (fd >= 0) {
+      result = (pid_t)value;
+      if (target_fd) {
+        *target_fd = fd;
+      }
+      break;
+    }
+  }
+  closedir(proc);
+  return result;
+}
+
+static int duplicate_process_fd(pid_t pid, int target_fd) {
+  int pidfd;
+  int duplicated;
+
+  pidfd = (int)syscall(SYS_pidfd_open, pid, 0U);
+  if (pidfd < 0) {
+    return -errno;
+  }
+  duplicated = (int)syscall(SYS_pidfd_getfd, pidfd, target_fd, 0U);
+  if (duplicated < 0) {
+    duplicated = -errno;
+  }
+  close(pidfd);
+  return duplicated;
 }
 
 static pid_t frontend_pid(void) {
@@ -303,6 +391,81 @@ static int spawn_adbd_restart(void) {
   return 0;
 }
 
+static int spawn_power_menu_overlay(void) {
+  const char *root = getenv("PLUMOS_ROOT");
+  char helper[512];
+  pid_t child;
+
+  if (!root || !root[0]) {
+    root = "/mnt/plumos";
+  }
+  if (snprintf(helper, sizeof(helper), "%s/bin/plumos-power-menu-overlay",
+               root) >= (int)sizeof(helper)) {
+    return -ENAMETOOLONG;
+  }
+  child = fork();
+  if (child < 0) {
+    return -errno;
+  }
+  if (child == 0) {
+    int target_fd = -1;
+    pid_t owner = external_drm_owner(&target_fd);
+    int owner_drm_fd = -1;
+    int handed_off = 0;
+    pid_t overlay;
+    int status = 1 << 8;
+
+    if (owner > 1 && target_fd >= 0) {
+      owner_drm_fd = duplicate_process_fd(owner, target_fd);
+      if (owner_drm_fd >= 0) {
+        if (drmDropMaster(owner_drm_fd) == 0) {
+          handed_off = 1;
+          fprintf(stderr,
+                  "hardware-keys: drm-master=drop owner=%ld fd=%d rc=0\n",
+                  (long)owner, target_fd);
+        } else {
+          fprintf(stderr,
+                  "hardware-keys: drm-master=drop owner=%ld fd=%d rc=%d\n",
+                  (long)owner, target_fd, -errno);
+        }
+      } else {
+        fprintf(stderr,
+                "hardware-keys: drm-master=duplicate owner=%ld fd=%d rc=%d\n",
+                (long)owner, target_fd, owner_drm_fd);
+      }
+    }
+    overlay = fork();
+    if (overlay == 0) {
+      execl(helper, helper, "open", (char *)NULL);
+      _exit(127);
+    }
+    if (overlay > 0) {
+      while (waitpid(overlay, &status, 0) < 0 && errno == EINTR) {
+      }
+    }
+    if (handed_off) {
+      int attempt;
+      int restore_result = -1;
+
+      for (attempt = 0; attempt < 20; attempt++) {
+        if (drmSetMaster(owner_drm_fd) == 0) {
+          restore_result = 0;
+          break;
+        }
+        usleep(50000);
+      }
+      fprintf(stderr,
+              "hardware-keys: drm-master=restore owner=%ld rc=%d\n",
+              (long)owner, restore_result == 0 ? 0 : -errno);
+    }
+    if (owner_drm_fd >= 0) {
+      close(owner_drm_fd);
+    }
+    _exit(WIFEXITED(status) ? WEXITSTATUS(status) : 1);
+  }
+  return 0;
+}
+
 static int open_power_menu(int force_overlay) {
   const char *runtime_root = getenv("PLUMOS_RUNTIME_ROOT");
   char lock_path[512];
@@ -327,7 +490,7 @@ static int open_power_menu(int force_overlay) {
             "hardware-keys: action=power-menu skipped=already-open\n");
     return 0;
   }
-  result = spawn_helper("plumos-power-menu-overlay", "open");
+  result = spawn_power_menu_overlay();
   fprintf(stderr, "hardware-keys: action=power-menu overlay=1 rc=%d\n",
           result);
   return result;

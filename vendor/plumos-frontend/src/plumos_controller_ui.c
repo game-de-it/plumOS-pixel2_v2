@@ -14080,7 +14080,9 @@ static void handle_action(struct ui_state *ui, enum ui_action action) {
         return;
       }
       if (ui->power_overlay) {
-        if (write_power_overlay_selection(ui, entry->id)) {
+        if (write_power_overlay_selection(ui, "handled")) {
+          (void)run_power_action(ui, entry->id,
+                                 strcmp(entry->id, "shutdown") == 0);
           ui->exit_requested = 1;
         }
         return;

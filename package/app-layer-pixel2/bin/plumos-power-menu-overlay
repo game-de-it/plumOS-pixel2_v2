@@ -146,6 +146,10 @@ selection="$(read_selection)"
 log "menu end rc=$menu_rc selection=${selection:-cancel}"
 
 case "$selection" in
+  handled)
+    resume_display_owners
+    exit "$menu_rc"
+    ;;
   sleep)
     run_power_action sleep
     action_rc=$?
