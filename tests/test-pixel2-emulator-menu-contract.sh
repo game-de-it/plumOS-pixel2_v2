@@ -97,6 +97,11 @@ for contract in \
         fail "DraStic live config migration missing: $contract"
 done
 
+grep -Fq 'kill -CONT "$runner_pid"' "$SA_LAUNCHER" ||
+    fail 'DraStic cleanup must resume a power-overlay-stopped runner'
+grep -Fq 'runner_stop_wait' "$SA_LAUNCHER" ||
+    fail 'DraStic runner cleanup must remain bounded'
+
 for contract in \
     'NDS_RUNNER_STARTUP_TIMEOUT_MS' \
     'NDS_RUNNER_READY_FILE' \
