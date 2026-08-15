@@ -26,7 +26,6 @@ backlight=${PLUMOS_PIXEL2_BACKLIGHT:-/sys/class/backlight/backlight/brightness}
 backlight_power=${PLUMOS_PIXEL2_BACKLIGHT_POWER:-${backlight%/*}/bl_power}
 framebuffer_blank=${PLUMOS_PIXEL2_FB_BLANK:-/sys/class/graphics/fb0/blank}
 software_sleep_marker=${PLUMOS_SOFTWARE_SLEEP_MARKER:-$runtime_root/software-sleep}
-power_wake_suppress=${PLUMOS_POWER_WAKE_SUPPRESS:-$runtime_root/power-wake-suppress}
 software_sleep_force=${PLUMOS_FORCE_SOFTWARE_SLEEP:-0}
 software_backlight_saved=
 software_backlight_power_saved=
@@ -245,14 +244,6 @@ software_sleep_action() {
     log "sleep=software-returned seconds=$elapsed"
 }
 
-clear_wake_suppression_later() {
-    [ -e "$power_wake_suppress" ] || return 0
-    (
-        $bb sleep 2
-        rm -f "$power_wake_suppress"
-    ) </dev/null >/dev/null 2>&1 &
-}
-
 restore_after_sleep() {
     run_rk817_resume arm
     if [ -x "$volume_control" ]; then
@@ -309,7 +300,6 @@ sleep_action() {
     if [ "$kernel_sleep" -eq 0 ]; then
         [ "$wakeup_sec" -eq 0 ] || printf '0\n' >"$rtc_wakealarm" 2>/dev/null || true
         software_sleep_action
-        clear_wake_suppression_later
     fi
     unblank_display_after_sleep
     restore_after_sleep

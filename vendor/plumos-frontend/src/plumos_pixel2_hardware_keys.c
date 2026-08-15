@@ -23,7 +23,6 @@
 #define REPEAT_INTERVAL_MS 120
 #define PERSIST_DELAY_MS 750
 #define POWER_MENU_DEBOUNCE_MS 800
-#define SOFTWARE_WAKE_MIN_PRESS_MS 80
 #define USB_POWER_EVENT_GUARD_MS 1500
 #define ADB_USB_RESTART_DELAY_MS 2000
 
@@ -376,7 +375,6 @@ int main(void) {
   long long repeat_due = 0;
   long long persist_due = 0;
   long long power_menu_debounce_due = 0;
-  long long software_sleep_power_press_ms = 0;
   long long usb_power_event_guard_due = 0;
   long long adb_usb_restart_due = 0;
   int usb_online = -1;
@@ -485,28 +483,14 @@ int main(void) {
         if (bytes == (ssize_t)sizeof(event)) {
           if (source == &power_key && event.type == EV_KEY &&
               event.code == KEY_POWER) {
-            if (software_sleep_active()) {
-              if (event.value == 1) {
-                software_sleep_power_press_ms = now;
+            if (event.value == 1 && now >= power_menu_debounce_due) {
+              if (software_sleep_active() &&
+                  now < usb_power_event_guard_due) {
                 fprintf(stderr,
-                        "hardware-keys: action=software-sleep-wake candidate=press\n");
-              } else if (event.value == 0) {
-                long long held_ms = software_sleep_power_press_ms > 0
-                                        ? now - software_sleep_power_press_ms
-                                        : 0;
-                if (software_sleep_power_press_ms > 0 &&
-                    held_ms >= SOFTWARE_WAKE_MIN_PRESS_MS &&
-                    now >= usb_power_event_guard_due) {
-                  (void)wake_software_sleep();
-                } else {
-                  fprintf(stderr,
-                          "hardware-keys: action=software-sleep-wake ignored=1 held_ms=%lld usb_guard=%d\n",
-                          held_ms, now < usb_power_event_guard_due);
-                }
-                software_sleep_power_press_ms = 0;
+                        "hardware-keys: action=software-sleep-wake ignored=usb-guard\n");
+              } else if (!wake_software_sleep()) {
+                (void)open_power_menu(0);
               }
-            } else if (event.value == 1 && now >= power_menu_debounce_due) {
-              (void)open_power_menu(0);
               now = monotonic_ms();
               power_menu_debounce_due = now + POWER_MENU_DEBOUNCE_MS;
             }

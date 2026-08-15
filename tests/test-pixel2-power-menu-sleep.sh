@@ -78,7 +78,6 @@ grep -q 'sleep=result-returned backend=mem' "$TEST_ROOT/logs/power.log"
 printf '42\n' >"$TEST_ROOT/backlight"
 printf '0\n' >"$TEST_ROOT/backlight-power"
 printf '0\n' >"$TEST_ROOT/fb-blank"
-printf 'wake\n' >"$TEST_ROOT/run/power-wake-suppress"
 : >"$TEST_ROOT/calls"
 PLUMOS_ROOT="$TEST_ROOT/plumos" \
 PLUMOS_RUNTIME_ROOT="$TEST_ROOT/run" \
@@ -103,11 +102,6 @@ PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
 [ "$(cat "$TEST_ROOT/backlight-power")" = 0 ]
 [ "$(cat "$TEST_ROOT/fb-blank")" = 0 ]
 [ ! -e "$TEST_ROOT/run/software-sleep" ]
-for _ in 1 2 3; do
-    [ ! -e "$TEST_ROOT/run/power-wake-suppress" ] && break
-    sleep 1
-done
-[ ! -e "$TEST_ROOT/run/power-wake-suppress" ]
 grep -q 'sleep=display-blank brightness=42 bl_power=0' \
     "$TEST_ROOT/logs/power.log"
 grep -q 'sleep=display-unblank brightness=42 bl_power=0' \
@@ -175,8 +169,6 @@ esac
 printf 'pixel2_power_menu_sleep=result-ok\n'
 
 grep -q 'wake_software_sleep' \
-    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-grep -q 'SOFTWARE_WAKE_MIN_PRESS_MS 80' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'USB_POWER_EVENT_GUARD_MS 1500' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"

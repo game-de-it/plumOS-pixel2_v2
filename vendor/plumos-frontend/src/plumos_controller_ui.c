@@ -15256,7 +15256,7 @@ static int consume_power_wake_suppression(void) {
       (int)sizeof(path)) {
     return 0;
   }
-  return access(path, F_OK) == 0;
+  return unlink(path) == 0;
 }
 
 static void read_input_actions(struct ui_state *ui, int fd, int power_only,
