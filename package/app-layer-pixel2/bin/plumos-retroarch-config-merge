@@ -13,6 +13,7 @@ state_dir=${PLUMOS_RETROARCH_CONFIG_STATE:-$root/state/retroarch}
 marker=$state_dir/factory-config.sha256
 legacy_pixel2_sha256=b97c897bb7141a77d6fb17e77a66895540b9bd9cc177d7ee983afcb75e5e819e
 legacy_incomplete_full_sha256=9f4aaebdab3cc3a9be24b203161e63f63f1887e4eb0b79c82618086d3cbc4b24
+regressed_pixel2_sha256=8d9a8e71cc38e63d1c6084d6bcf99701507cb632ff2dd1f4ebf9963b82beae77
 
 [ -s "$factory" ] || {
     printf 'retroarch_config=result-error reason=factory-missing path=%s\n' "$factory" >&2
@@ -84,12 +85,6 @@ migrate_legacy_incomplete_values() {
     migrate_next="${config}.next.$$"
     migrate_count="$state_dir/migrate-legacy-count.$$"
     $bb awk '
-        $0 == "input_exit_emulator_btn = \"9\"" {
-            $0 = "input_exit_emulator_btn = \"nul\""; changed++
-        }
-        $0 == "input_menu_toggle_gamepad_combo = \"0\"" {
-            $0 = "input_menu_toggle_gamepad_combo = \"4\""; changed++
-        }
         $0 == "input_toggle_fast_forward_axis = \"+5\"" {
             $0 = "input_toggle_fast_forward_axis = \"nul\""; changed++
         }
@@ -133,6 +128,29 @@ migrate_legacy_incomplete_values() {
     fi
 }
 
+migrate_regressed_exit_values() {
+    migrate_next="${config}.next.$$"
+    migrate_count="$state_dir/migrate-regression-count.$$"
+    $bb awk '
+        $0 == "input_exit_emulator_btn = \"nul\"" {
+            $0 = "input_exit_emulator_btn = \"9\""; changed++
+        }
+        $0 == "input_menu_toggle_gamepad_combo = \"4\"" {
+            $0 = "input_menu_toggle_gamepad_combo = \"0\""; changed++
+        }
+        { print }
+        END { print changed + 0 > count_file }
+    ' count_file="$migrate_count" "$config" >"$migrate_next"
+    regression_changed=$($bb sed -n '1p' "$migrate_count" 2>/dev/null || printf '0')
+    $bb rm -f "$migrate_count"
+    if [ "$regression_changed" -gt 0 ]; then
+        $bb sync
+        $bb mv "$migrate_next" "$config"
+    else
+        $bb rm -f "$migrate_next"
+    fi
+}
+
 write_marker() {
     printf '%s\n' "$factory_sha256" >"$marker.next"
     $bb sync
@@ -146,7 +164,8 @@ if [ ! -s "$config" ]; then
     main_result=installed
 elif set -- $($bb sha256sum "$config") &&
         { [ "$1" = "$legacy_pixel2_sha256" ] ||
-          [ "$1" = "$legacy_incomplete_full_sha256" ]; }; then
+          [ "$1" = "$legacy_incomplete_full_sha256" ] ||
+          [ "$1" = "$regressed_pixel2_sha256" ]; }; then
     atomic_copy "$factory" "$config"
     main_result=replaced-legacy
 elif [ -r "$marker" ] &&
@@ -155,6 +174,12 @@ elif [ -r "$marker" ] &&
     merge_key_file "$factory" "$config" config
     main_result=migrated-legacy
     main_added=$((legacy_changed + merge_added))
+elif [ -r "$marker" ] &&
+        [ "$($bb sed -n '1p' "$marker")" = "$regressed_pixel2_sha256" ]; then
+    migrate_regressed_exit_values
+    merge_key_file "$factory" "$config" config
+    main_result=migrated-regression
+    main_added=$((regression_changed + merge_added))
 elif [ ! -r "$marker" ] ||
         [ "$($bb sed -n '1p' "$marker")" != "$factory_sha256" ]; then
     merge_key_file "$factory" "$config" config

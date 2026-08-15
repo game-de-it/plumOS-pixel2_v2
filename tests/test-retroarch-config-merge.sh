@@ -45,8 +45,6 @@ grep -q "^input_player1_btn_down = \"18\"$" \
 # its generation marker to migrate only values that still equal the old
 # Pixel2 defaults, while retaining an unrelated explicit user value.
 sed -i \
-    -e "s/input_exit_emulator_btn = \"nul\"/input_exit_emulator_btn = \"9\"/" \
-    -e "s/input_menu_toggle_gamepad_combo = \"4\"/input_menu_toggle_gamepad_combo = \"0\"/" \
     -e "s/input_toggle_fast_forward_axis = \"nul\"/input_toggle_fast_forward_axis = \"+5\"/" \
     -e "s/input_toggle_fast_forward_btn = \"7\"/input_toggle_fast_forward_btn = \"nul\"/" \
     -e "s/input_toggle_slowmotion_axis = \"nul\"/input_toggle_slowmotion_axis = \"+4\"/" \
@@ -64,12 +62,29 @@ printf "%s\n" "9f4aaebdab3cc3a9be24b203161e63f63f1887e4eb0b79c82618086d3cbc4b24"
 PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
     /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
     > /tmp/migrate.log
-grep -q "retroarch_config=result-migrated-legacy added=12" /tmp/migrate.log
-grep -q "^input_exit_emulator_btn = \"nul\"$" "$active/retroarch.cfg"
-grep -q "^input_menu_toggle_gamepad_combo = \"4\"$" "$active/retroarch.cfg"
+grep -q "retroarch_config=result-migrated-legacy added=10" /tmp/migrate.log
+grep -q "^input_exit_emulator_btn = \"9\"$" "$active/retroarch.cfg"
+grep -q "^input_menu_toggle_gamepad_combo = \"0\"$" "$active/retroarch.cfg"
 grep -q "^input_toggle_fast_forward_btn = \"7\"$" "$active/retroarch.cfg"
 grep -q "^input_toggle_slowmotion_btn = \"6\"$" "$active/retroarch.cfg"
 grep -q "^savefiles_in_content_dir = \"true\"$" "$active/retroarch.cfg"
 grep -q "^savestates_in_content_dir = \"true\"$" "$active/retroarch.cfg"
+grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
+
+# Repair the short-lived Pixel2 factory that changed START+SELECT from direct
+# exit to a menu combo. A cfg saved by RetroArch is identified by its factory
+# marker, and only the two matching regression values are restored.
+sed -i \
+    -e "s/input_exit_emulator_btn = \"9\"/input_exit_emulator_btn = \"nul\"/" \
+    -e "s/input_menu_toggle_gamepad_combo = \"0\"/input_menu_toggle_gamepad_combo = \"4\"/" \
+    "$active/retroarch.cfg"
+printf "%s\n" "8d9a8e71cc38e63d1c6084d6bcf99701507cb632ff2dd1f4ebf9963b82beae77" \
+    > "$root/state/retroarch/factory-config.sha256"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/regression.log
+grep -q "retroarch_config=result-migrated-regression added=2" /tmp/regression.log
+grep -q "^input_exit_emulator_btn = \"9\"$" "$active/retroarch.cfg"
+grep -q "^input_menu_toggle_gamepad_combo = \"0\"$" "$active/retroarch.cfg"
 grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 '

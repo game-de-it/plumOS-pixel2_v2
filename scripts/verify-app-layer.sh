@@ -120,9 +120,11 @@ grep -q '^auto_remaps_enable = "true"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^input_menu_toggle_btn = "14"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
-grep -q '^input_menu_toggle_gamepad_combo = "4"$' \
+grep -q '^input_menu_toggle_gamepad_combo = "0"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^input_enable_hotkey_btn = "8"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^input_exit_emulator_btn = "9"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^input_load_state_btn = "4"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
@@ -152,6 +154,7 @@ grep -q '^menu_show_online_updater = "false"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q 'main_result=replaced-legacy' "$ROOT/bin/plumos-retroarch-config-merge"
 grep -q 'main_result=migrated-legacy' "$ROOT/bin/plumos-retroarch-config-merge"
+grep -q 'main_result=migrated-regression' "$ROOT/bin/plumos-retroarch-config-merge"
 grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
 grep -q 'ID_INPUT_JOYSTICK=1' "$ROOT/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-audio-output' "$ROOT/bin/plumos-retroarch-launch"

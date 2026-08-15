@@ -136,11 +136,11 @@ required = {
     "input_driver": "\"udev\"",
     "input_joypad_driver": "\"udev\"",
     "input_menu_toggle_btn": "\"14\"",
-    "input_menu_toggle_gamepad_combo": "\"4\"",
+    "input_menu_toggle_gamepad_combo": "\"0\"",
     "menu_show_core_updater": "\"false\"",
     "menu_show_online_updater": "\"false\"",
     "input_enable_hotkey_btn": "\"8\"",
-    "input_exit_emulator_btn": "\"nul\"",
+    "input_exit_emulator_btn": "\"9\"",
     "input_load_state_btn": "\"4\"",
     "input_save_state_btn": "\"5\"",
     "input_toggle_fast_forward_axis": "\"nul\"",
@@ -186,7 +186,11 @@ grep -q 'legacy_pixel2_sha256=b97c897b' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'legacy_incomplete_full_sha256=9f4aaebd' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q 'regressed_pixel2_sha256=8d9a8e71' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'main_result=migrated-legacy' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q 'main_result=migrated-regression' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'main_result=replaced-legacy' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
