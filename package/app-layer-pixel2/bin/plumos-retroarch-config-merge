@@ -5,9 +5,14 @@ bb=${PLUMOS_BUSYBOX:-/bin/busybox}
 root=${PLUMOS_ROOT:-/mnt/plumos}
 config=${PLUMOS_RETROARCH_CONFIG:-$root/config/retroarch/retroarch.cfg}
 factory=${PLUMOS_RETROARCH_FACTORY_CONFIG:-$root/factory-defaults/retroarch/retroarch.cfg}
+core_options=${PLUMOS_RETROARCH_CORE_OPTIONS:-$root/config/retroarch/retroarch-core-options.cfg}
+core_options_factory=${PLUMOS_RETROARCH_CORE_OPTIONS_FACTORY:-$root/factory-defaults/retroarch/retroarch-core-options.cfg}
+remap=${PLUMOS_RETROARCH_N64_REMAP:-$root/config/retroarch/remaps/ParaLLEl N64/ParaLLEl N64.rmp}
+remap_factory=${PLUMOS_RETROARCH_N64_REMAP_FACTORY:-$root/factory-defaults/retroarch/remaps/ParaLLEl N64/ParaLLEl N64.rmp}
 state_dir=${PLUMOS_RETROARCH_CONFIG_STATE:-$root/state/retroarch}
 marker=$state_dir/factory-config.sha256
 legacy_pixel2_sha256=b97c897bb7141a77d6fb17e77a66895540b9bd9cc177d7ee983afcb75e5e819e
+legacy_incomplete_full_sha256=9f4aaebdab3cc3a9be24b203161e63f63f1887e4eb0b79c82618086d3cbc4b24
 
 [ -s "$factory" ] || {
     printf 'retroarch_config=result-error reason=factory-missing path=%s\n' "$factory" >&2
@@ -17,64 +22,94 @@ $bb mkdir -p "${config%/*}" "$state_dir"
 set -- $($bb sha256sum "$factory")
 factory_sha256=$1
 
-install_factory() {
-    $bb cp "$factory" "$config.next"
+atomic_copy() {
+    source=$1
+    target=$2
+    $bb mkdir -p "${target%/*}"
+    temporary="${target}.next.$$"
+    $bb cp "$source" "$temporary"
     $bb sync
-    $bb mv "$config.next" "$config"
+    $bb mv "$temporary" "$target"
 }
+
+merge_key_file() {
+    merge_factory=$1
+    merge_target=$2
+    merge_label=$3
+    merge_added=0
+    merge_result=unchanged
+    [ -s "$merge_factory" ] || return 0
+    if [ ! -s "$merge_target" ]; then
+        atomic_copy "$merge_factory" "$merge_target"
+        merge_added=$($bb awk '$0 ~ /^[A-Za-z0-9_.-]+[[:space:]]*=/ { count++ } END { print count + 0 }' "$merge_factory")
+        merge_result=installed
+        return 0
+    fi
+
+    merge_next="${merge_target}.next.$$"
+    merge_count="$state_dir/merge-${merge_label}-count.$$"
+    $bb cp "$merge_target" "$merge_next"
+    printf '\n' >>"$merge_next"
+    $bb awk '
+        NR == FNR {
+            if ($0 ~ /^[A-Za-z0-9_.-]+[[:space:]]*=/) {
+                key=$0
+                sub(/[[:space:]]*=.*/, "", key)
+                present[key]=1
+            }
+            next
+        }
+        $0 ~ /^[A-Za-z0-9_.-]+[[:space:]]*=/ {
+            key=$0
+            sub(/[[:space:]]*=.*/, "", key)
+            if (!present[key]) {
+                print
+                added++
+            }
+        }
+        END { print added + 0 > count_file }
+    ' count_file="$merge_count" "$merge_target" "$merge_factory" >>"$merge_next"
+    merge_added=$($bb sed -n '1p' "$merge_count" 2>/dev/null || printf '0')
+    $bb rm -f "$merge_count"
+    if [ "$merge_added" -gt 0 ]; then
+        $bb sync
+        $bb mv "$merge_next" "$merge_target"
+        merge_result=merged
+    else
+        $bb rm -f "$merge_next"
+    fi
+}
+
 write_marker() {
     printf '%s\n' "$factory_sha256" >"$marker.next"
     $bb sync
     $bb mv "$marker.next" "$marker"
 }
 
+main_result=unchanged
+main_added=0
 if [ ! -s "$config" ]; then
-    install_factory
-    write_marker
-    printf 'retroarch_config=result-installed sha256=%s\n' "$factory_sha256"
-    exit 0
+    atomic_copy "$factory" "$config"
+    main_result=installed
+elif set -- $($bb sha256sum "$config") &&
+        { [ "$1" = "$legacy_pixel2_sha256" ] ||
+          [ "$1" = "$legacy_incomplete_full_sha256" ]; }; then
+    atomic_copy "$factory" "$config"
+    main_result=replaced-legacy
+elif [ ! -r "$marker" ] ||
+        [ "$($bb sed -n '1p' "$marker")" != "$factory_sha256" ]; then
+    merge_key_file "$factory" "$config" config
+    main_result=$merge_result
+    main_added=$merge_added
 fi
 
-set -- $($bb sha256sum "$config")
-config_sha256=$1
-if [ "$config_sha256" = "$legacy_pixel2_sha256" ]; then
-    install_factory
-    write_marker
-    printf 'retroarch_config=result-replaced-legacy sha256=%s\n' "$factory_sha256"
-    exit 0
-fi
+# These files are part of the same RetroArch factory contract. Explicit user
+# values are preserved while newly supplied core options/remap keys are added.
+merge_key_file "$core_options_factory" "$core_options" core-options
+printf 'retroarch_aux=result-%s target=core-options added=%s\n' "$merge_result" "$merge_added"
+merge_key_file "$remap_factory" "$remap" parallel-n64-remap
+printf 'retroarch_aux=result-%s target=parallel-n64-remap added=%s\n' "$merge_result" "$merge_added"
 
-if [ -r "$marker" ] && [ "$($bb sed -n '1p' "$marker")" = "$factory_sha256" ]; then
-    exit 0
-fi
-
-# Preserve every explicit user value. Only keys absent from the mutable file
-# are copied from the new factory surface, so an app-layer update cannot reset
-# menu choices, per-core behavior, hotkeys, paths, or user overrides.
-$bb cp "$config" "$config.next"
-printf '\n' >>"$config.next"
-$bb awk '
-    NR == FNR {
-        if ($0 ~ /^[A-Za-z0-9_]+[[:space:]]*=/) {
-            key=$0
-            sub(/[[:space:]]*=.*/, "", key)
-            present[key]=1
-        }
-        next
-    }
-    $0 ~ /^[A-Za-z0-9_]+[[:space:]]*=/ {
-        key=$0
-        sub(/[[:space:]]*=.*/, "", key)
-        if (!present[key]) {
-            print
-            added++
-        }
-    }
-    END { printf "%d", added + 0 > count_file }
-' count_file="$state_dir/merge-count.$$" "$config" "$factory" >>"$config.next"
-added=$($bb sed -n '1p' "$state_dir/merge-count.$$" 2>/dev/null || printf '0')
-$bb rm -f "$state_dir/merge-count.$$"
-$bb sync
-$bb mv "$config.next" "$config"
 write_marker
-printf 'retroarch_config=result-merged added=%s sha256=%s\n' "$added" "$factory_sha256"
+printf 'retroarch_config=result-%s added=%s sha256=%s\n' \
+    "$main_result" "$main_added" "$factory_sha256"

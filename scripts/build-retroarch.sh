@@ -47,12 +47,18 @@ rm -rf "$OUT_ROOT"
 mkdir -p "$PLUMOS_DIR/bin" "$PLUMOS_DIR/emulator/lib" \
     "$PLUMOS_DIR/emulator/dri" "$PLUMOS_DIR/emulator/egl_vendor.d" \
     "$PLUMOS_DIR/factory-defaults/retroarch/autoconfig/udev" \
+    "$PLUMOS_DIR/factory-defaults/retroarch/remaps/ParaLLEl N64" \
     "$PLUMOS_DIR/factory-defaults/alsa" \
     "$PLUMOS_DIR/licenses" "$COMPONENT_DIR"
 install -m 0755 "$WORK/retroarch" "$PLUMOS_DIR/bin/retroarch"
 strip "$PLUMOS_DIR/bin/retroarch" 2>/dev/null || true
 install -m 0644 "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg" \
     "$PLUMOS_DIR/factory-defaults/retroarch/retroarch.cfg"
+install -m 0644 "$ROOT_DIR/package/retroarch-pixel2/retroarch-core-options.cfg" \
+    "$PLUMOS_DIR/factory-defaults/retroarch/retroarch-core-options.cfg"
+install -m 0644 \
+    "$ROOT_DIR/package/retroarch-pixel2/remaps/ParaLLEl N64/ParaLLEl N64.rmp" \
+    "$PLUMOS_DIR/factory-defaults/retroarch/remaps/ParaLLEl N64/ParaLLEl N64.rmp"
 install -m 0644 "$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg" \
     "$PLUMOS_DIR/factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg"
 install -m 0644 "$ROOT_DIR/package/retroarch-pixel2/alsa.conf" \

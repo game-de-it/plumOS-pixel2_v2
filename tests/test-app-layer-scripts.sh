@@ -27,6 +27,7 @@ for script in \
     package/app-layer-pixel2/bin/plumos-thumbnail-scraper; do
     bash -n "$ROOT_DIR/$script"
 done
+test -x "$ROOT_DIR/tests/test-retroarch-config-merge.sh"
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"
@@ -135,13 +136,30 @@ required = {
     "input_driver": "\"udev\"",
     "input_joypad_driver": "\"udev\"",
     "input_menu_toggle_btn": "\"14\"",
+    "input_menu_toggle_gamepad_combo": "\"4\"",
     "menu_show_core_updater": "\"false\"",
     "menu_show_online_updater": "\"false\"",
     "input_enable_hotkey_btn": "\"8\"",
-    "input_exit_emulator_btn": "\"9\"",
+    "input_exit_emulator_btn": "\"nul\"",
+    "input_load_state_btn": "\"4\"",
+    "input_save_state_btn": "\"5\"",
+    "input_toggle_fast_forward_axis": "\"nul\"",
+    "input_toggle_fast_forward_btn": "\"7\"",
+    "input_toggle_slowmotion_axis": "\"nul\"",
+    "input_toggle_slowmotion_btn": "\"6\"",
     "joypad_autoconfig_dir": "\"/mnt/plumos/factory-defaults/retroarch/autoconfig\"",
-    "savefiles_in_content_dir": "\"false\"",
-    "savestates_in_content_dir": "\"false\"",
+    "quick_menu_show_save_load_state": "\"true\"",
+    "savefiles_in_content_dir": "\"true\"",
+    "savestate_auto_index": "\"true\"",
+    "savestate_auto_save": "\"true\"",
+    "savestate_max_keep": "\"20\"",
+    "savestate_thumbnail_enable": "\"true\"",
+    "savestates_in_content_dir": "\"true\"",
+    "settings_show_saving": "\"true\"",
+    "sort_savefiles_by_content_enable": "\"true\"",
+    "sort_savefiles_enable": "\"true\"",
+    "sort_savestates_by_content_enable": "\"true\"",
+    "sort_savestates_enable": "\"true\"",
     "system_directory": "\"/mnt/plumos-user/bios\"",
     "video_driver": "\"drm\"",
     "video_refresh_rate": "\"60.000000\"",
@@ -166,10 +184,22 @@ grep -q 'input_player1_down_btn = "11"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'legacy_pixel2_sha256=b97c897b' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q 'legacy_incomplete_full_sha256=9f4aaebd' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'result-replaced-legacy' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
-grep -q 'result-merged added=' \
+grep -q 'retroarch_aux=result-%s target=core-options' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q 'retroarch_aux=result-%s target=parallel-n64-remap' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q '^reicast_cpu_mode = "dynamic_recompiler"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/retroarch-core-options.cfg"
+grep -q '^parallel-n64-gfxplugin = "gliden64"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/retroarch-core-options.cfg"
+grep -q '^input_player1_btn_up = "19"$' \
+    "$ROOT_DIR/package/retroarch-pixel2/remaps/ParaLLEl N64/ParaLLEl N64.rmp"
+grep -q 'retroarch-core-options.cfg' "$ROOT_DIR/scripts/build-retroarch.sh"
+grep -q 'remaps/ParaLLEl N64/ParaLLEl N64.rmp' "$ROOT_DIR/scripts/build-retroarch.sh"
 if grep -q 'config_save_on_exit = "false"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"; then

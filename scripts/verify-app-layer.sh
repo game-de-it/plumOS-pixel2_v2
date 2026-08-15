@@ -28,6 +28,8 @@ for path in \
     emulator/lib/libpthread.so.0 \
     factory-defaults/alsa/alsa.conf \
     config/frontend/systems.json config/frontend/feature-contract.json factory-defaults/retroarch/retroarch.cfg \
+    factory-defaults/retroarch/retroarch-core-options.cfg \
+    "factory-defaults/retroarch/remaps/ParaLLEl N64/ParaLLEl N64.rmp" \
     factory-defaults/retroarch/autoconfig/udev/pixel2_joypad.cfg \
     config/system/input-map.env config/system/input-map.json \
     components/frontend/manifest.json components/retroarch/manifest.json \
@@ -118,6 +120,32 @@ grep -q '^auto_remaps_enable = "true"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^input_menu_toggle_btn = "14"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^input_menu_toggle_gamepad_combo = "4"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^input_enable_hotkey_btn = "8"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^input_load_state_btn = "4"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^input_save_state_btn = "5"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^input_toggle_slowmotion_btn = "6"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^input_toggle_fast_forward_btn = "7"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^savefiles_in_content_dir = "true"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^savestates_in_content_dir = "true"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^savestate_auto_save = "true"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^settings_show_saving = "true"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch.cfg"
+grep -q '^reicast_cpu_mode = "dynamic_recompiler"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch-core-options.cfg"
+grep -q '^parallel-n64-gfxplugin = "gliden64"$' \
+    "$ROOT/factory-defaults/retroarch/retroarch-core-options.cfg"
+grep -q '^input_player1_btn_up = "19"$' \
+    "$ROOT/factory-defaults/retroarch/remaps/ParaLLEl N64/ParaLLEl N64.rmp"
 grep -q '^menu_show_core_updater = "false"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^menu_show_online_updater = "false"$' \

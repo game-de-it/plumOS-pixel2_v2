@@ -68,6 +68,12 @@ install -D -m 0644 \
     "$PLUMOS_DIR/factory-defaults/retroarch/retroarch.cfg" \
     "$PLUMOS_DIR/factory-defaults/ra/config/retroarch/retroarch.cfg"
 install -D -m 0644 \
+    "$PLUMOS_DIR/factory-defaults/retroarch/retroarch-core-options.cfg" \
+    "$PLUMOS_DIR/factory-defaults/ra/config/retroarch/retroarch-core-options.cfg"
+install -D -m 0644 \
+    "$PLUMOS_DIR/factory-defaults/retroarch/remaps/ParaLLEl N64/ParaLLEl N64.rmp" \
+    "$PLUMOS_DIR/factory-defaults/ra/config/retroarch/remaps/ParaLLEl N64/ParaLLEl N64.rmp"
+install -D -m 0644 \
     "$PLUMOS_DIR/config/standalone/picoarch.env" \
     "$PLUMOS_DIR/factory-defaults/pico/config/standalone/picoarch.env"
 if [ -d "$PLUMOS_DIR/factory-defaults/standalone/ppsspp/PSP/SYSTEM" ]; then
