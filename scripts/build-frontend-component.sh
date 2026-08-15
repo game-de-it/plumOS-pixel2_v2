@@ -75,7 +75,10 @@ gcc "${common[@]}" "$SOURCE_DIR/plumos_frontend.c" \
 gcc "${common[@]}" "$SOURCE_DIR/plumos_pixel2_hardware_keys.c" \
     -o "$BIN_DIR/plumos-hardware-keys"
 gcc "${common[@]}" "$SOURCE_DIR/plumos_rk817_resume.c" \
-    -o "$BIN_DIR/plumos-rk817-resume" -lasound
+    -o "$BIN_DIR/plumos-rk817-resume" \
+    -Wl,-rpath,'$ORIGIN/../frontend/lib' -lasound
+readelf -d "$BIN_DIR/plumos-rk817-resume" |
+    grep -Fq '$ORIGIN/../frontend/lib'
 strip "$BIN_DIR"/* 2>/dev/null || true
 chmod 0755 "$BIN_DIR"/*
 
