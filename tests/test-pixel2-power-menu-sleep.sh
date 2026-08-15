@@ -76,6 +76,8 @@ grep -q '^start$' "$TEST_ROOT/calls"
 grep -q 'sleep=result-returned backend=mem' "$TEST_ROOT/logs/power.log"
 
 printf '42\n' >"$TEST_ROOT/backlight"
+printf '0\n' >"$TEST_ROOT/backlight-power"
+printf '0\n' >"$TEST_ROOT/fb-blank"
 : >"$TEST_ROOT/calls"
 PLUMOS_ROOT="$TEST_ROOT/plumos" \
 PLUMOS_RUNTIME_ROOT="$TEST_ROOT/run" \
@@ -89,13 +91,21 @@ PLUMOS_DISPLAY_CONTROL="$TEST_ROOT/display" \
 PLUMOS_VOLUME_CONTROL="$TEST_ROOT/volume" \
 PLUMOS_RK817_RESUME_HELPER="$TEST_ROOT/rk817" \
 PLUMOS_PIXEL2_BACKLIGHT="$TEST_ROOT/backlight" \
+PLUMOS_PIXEL2_BACKLIGHT_POWER="$TEST_ROOT/backlight-power" \
+PLUMOS_PIXEL2_FB_BLANK="$TEST_ROOT/fb-blank" \
 PLUMOS_FORCE_SOFTWARE_SLEEP=1 \
 PLUMOS_SLEEP_SETTLE_SEC=0 \
 PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown" \
         --sleep --sleep-backend mem --wakeup-sec 1 --wait-sec 0
 [ "$(cat "$TEST_ROOT/backlight")" = 42 ]
+[ "$(cat "$TEST_ROOT/backlight-power")" = 0 ]
+[ "$(cat "$TEST_ROOT/fb-blank")" = 0 ]
 [ ! -e "$TEST_ROOT/run/software-sleep" ]
+grep -q 'sleep=display-blank brightness=42 bl_power=0' \
+    "$TEST_ROOT/logs/power.log"
+grep -q 'sleep=display-unblank brightness=42 bl_power=0' \
+    "$TEST_ROOT/logs/power.log"
 grep -q 'sleep=software-enter reason=kernel-unavailable wakeup_sec=1' \
     "$TEST_ROOT/logs/power.log"
 grep -q 'sleep=software-wake reason=timeout seconds=1' \

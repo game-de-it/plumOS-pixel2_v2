@@ -23,9 +23,13 @@ display_control=${PLUMOS_DISPLAY_CONTROL:-$root/bin/plumos-display-control}
 volume_control=${PLUMOS_VOLUME_CONTROL:-$root/bin/plumos-volume-control}
 rk817_resume=${PLUMOS_RK817_RESUME_HELPER:-$root/bin/plumos-rk817-resume}
 backlight=${PLUMOS_PIXEL2_BACKLIGHT:-/sys/class/backlight/backlight/brightness}
+backlight_power=${PLUMOS_PIXEL2_BACKLIGHT_POWER:-${backlight%/*}/bl_power}
+framebuffer_blank=${PLUMOS_PIXEL2_FB_BLANK:-/sys/class/graphics/fb0/blank}
 software_sleep_marker=${PLUMOS_SOFTWARE_SLEEP_MARKER:-$runtime_root/software-sleep}
 software_sleep_force=${PLUMOS_FORCE_SOFTWARE_SLEEP:-0}
 software_backlight_saved=
+software_backlight_power_saved=
+sleep_display_blanked=0
 
 mkdir -p "$log_dir" "$runtime_root" 2>/dev/null || true
 
@@ -190,13 +194,42 @@ set_wakealarm() {
     log "sleep=wakealarm-armed seconds=$wakeup_sec"
 }
 
-software_sleep_action() {
-    elapsed=0
+blank_display_for_sleep() {
+    sleep_display_blanked=1
     software_backlight_saved=$(cat "$backlight" 2>/dev/null || true)
-    printf 'sleeping\n' >"$software_sleep_marker"
+    software_backlight_power_saved=$(cat "$backlight_power" 2>/dev/null || true)
     if [ -w "$backlight" ]; then
         printf '0\n' >"$backlight" 2>/dev/null || true
     fi
+    if [ -w "$backlight_power" ]; then
+        printf '4\n' >"$backlight_power" 2>/dev/null || true
+    fi
+    if [ -w "$framebuffer_blank" ]; then
+        printf '4\n' >"$framebuffer_blank" 2>/dev/null || true
+    fi
+    log "sleep=display-blank brightness=${software_backlight_saved:-unknown} bl_power=${software_backlight_power_saved:-unknown}"
+}
+
+unblank_display_after_sleep() {
+    [ "$sleep_display_blanked" -eq 1 ] || return 0
+    if [ -w "$framebuffer_blank" ]; then
+        printf '0\n' >"$framebuffer_blank" 2>/dev/null || true
+    fi
+    if [ -n "$software_backlight_power_saved" ] && [ -w "$backlight_power" ]; then
+        printf '%s\n' "$software_backlight_power_saved" >"$backlight_power" 2>/dev/null || true
+    fi
+    if [ -n "$software_backlight_saved" ] && [ -w "$backlight" ]; then
+        printf '%s\n' "$software_backlight_saved" >"$backlight" 2>/dev/null || true
+    fi
+    log "sleep=display-unblank brightness=${software_backlight_saved:-unknown} bl_power=${software_backlight_power_saved:-unknown}"
+    software_backlight_saved=
+    software_backlight_power_saved=
+    sleep_display_blanked=0
+}
+
+software_sleep_action() {
+    elapsed=0
+    printf 'sleeping\n' >"$software_sleep_marker"
     log "sleep=software-enter reason=kernel-unavailable wakeup_sec=$wakeup_sec"
     while [ -e "$software_sleep_marker" ]; do
         if [ "$wakeup_sec" -gt 0 ] && [ "$elapsed" -ge "$wakeup_sec" ]; then
@@ -207,10 +240,6 @@ software_sleep_action() {
         $bb sleep 1
         elapsed=$((elapsed + 1))
     done
-    if [ -n "$software_backlight_saved" ] && [ -w "$backlight" ]; then
-        printf '%s\n' "$software_backlight_saved" >"$backlight" 2>/dev/null || true
-    fi
-    software_backlight_saved=
     [ ! -e "$software_sleep_marker" ] || rm -f "$software_sleep_marker"
     log "sleep=software-returned seconds=$elapsed"
 }
@@ -256,6 +285,7 @@ sleep_action() {
     fi
     kernel_sleep=0
     set_wakealarm
+    blank_display_for_sleep
     if [ "$software_sleep_force" != 1 ]; then
         log "sleep=enter backend=$sleep_backend"
         if printf '%s\n' "$sleep_backend" >"$power_state"; then
@@ -271,6 +301,7 @@ sleep_action() {
         [ "$wakeup_sec" -eq 0 ] || printf '0\n' >"$rtc_wakealarm" 2>/dev/null || true
         software_sleep_action
     fi
+    unblank_display_after_sleep
     restore_after_sleep
     [ "$kernel_sleep" -eq 0 ] || restore_adb "$adb_resume"
     log "sleep=result-returned backend=$sleep_backend kernel_sleep=$kernel_sleep"
@@ -307,9 +338,7 @@ if ! mkdir "$lock_dir" 2>/dev/null; then
 fi
 cleanup() {
     rm -f "$software_sleep_marker" 2>/dev/null || true
-    if [ -n "$software_backlight_saved" ] && [ -w "$backlight" ]; then
-        printf '%s\n' "$software_backlight_saved" >"$backlight" 2>/dev/null || true
-    fi
+    unblank_display_after_sleep
     rmdir "$lock_dir" 2>/dev/null || true
 }
 trap cleanup EXIT
