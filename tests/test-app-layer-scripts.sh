@@ -121,18 +121,22 @@ grep -q 'video_rotation = "3"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 python3 - "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg" <<'PY'
 from pathlib import Path
+import hashlib
 import sys
 
 path = Path(sys.argv[1])
-lines = path.read_text().splitlines()
+data = path.read_bytes()
+assert hashlib.sha256(data).hexdigest() == "231ee2585779c098d9512a64cc8b17322c3b86e07d3e84889aaac815893d7280"
+lines = data.decode().splitlines()
 pairs = [line.split(" = ", 1) for line in lines if " = " in line]
 values = dict(pairs)
-assert len(pairs) == 3374
-assert len(values) == 3374
+assert len(pairs) == 3376
+assert len(values) == 3376
 required = {
     "auto_overrides_enable": "\"true\"",
     "auto_remaps_enable": "\"true\"",
     "config_save_on_exit": "\"true\"",
+    "content_video_history_path": "\"/roms/content_video_history.lpl\"",
     "input_driver": "\"udev\"",
     "input_joypad_driver": "\"udev\"",
     "input_menu_toggle_btn": "\"14\"",
@@ -148,14 +152,20 @@ required = {
     "input_toggle_slowmotion_axis": "\"nul\"",
     "input_toggle_slowmotion_btn": "\"6\"",
     "joypad_autoconfig_dir": "\"/mnt/plumos/factory-defaults/retroarch/autoconfig\"",
+    "fps_show": "\"false\"",
+    "menu_show_dump_disc": "\"true\"",
+    "menu_show_load_disc": "\"true\"",
     "quick_menu_show_save_load_state": "\"true\"",
+    "savefile_directory": "\"/mnt/plumos/saves/gb\"",
     "savefiles_in_content_dir": "\"true\"",
     "savestate_auto_index": "\"true\"",
     "savestate_auto_save": "\"true\"",
+    "savestate_directory": "\"/mnt/plumos/states/gb\"",
     "savestate_max_keep": "\"20\"",
     "savestate_thumbnail_enable": "\"true\"",
     "savestates_in_content_dir": "\"true\"",
     "settings_show_saving": "\"true\"",
+    "screenshot_directory": "\"/mnt/plumos-user/Images\"",
     "sort_savefiles_by_content_enable": "\"true\"",
     "sort_savefiles_enable": "\"true\"",
     "sort_savestates_by_content_enable": "\"true\"",
@@ -164,6 +174,8 @@ required = {
     "video_driver": "\"drm\"",
     "video_font_enable": "\"true\"",
     "video_font_path": "\"/mnt/plumos/fonts/default.otf\"",
+    "video_font_size": "\"26.000000\"",
+    "video_message_color": "\"0\"",
     "video_refresh_rate": "\"60.000000\"",
     "video_rotation": "\"3\"",
     "vrr_runloop_enable": "\"false\"",
