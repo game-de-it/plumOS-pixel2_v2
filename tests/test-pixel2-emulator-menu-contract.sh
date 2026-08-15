@@ -46,6 +46,18 @@ for binding in \
     grep -Fq "$binding" "$PICO_PATCH" ||
         fail "PicoArch FUNCTION menu binding missing: $binding"
 done
+for binding in \
+    'BTN_DPAD_UP,    IN_BINDTYPE_PLAYER12, RETRO_DEVICE_ID_JOYPAD_UP' \
+    'BTN_DPAD_DOWN,  IN_BINDTYPE_PLAYER12, RETRO_DEVICE_ID_JOYPAD_DOWN' \
+    'BTN_DPAD_LEFT,  IN_BINDTYPE_PLAYER12, RETRO_DEVICE_ID_JOYPAD_LEFT' \
+    'BTN_DPAD_RIGHT, IN_BINDTYPE_PLAYER12, RETRO_DEVICE_ID_JOYPAD_RIGHT' \
+    'BTN_DPAD_UP,    PBTN_UP' \
+    'BTN_DPAD_DOWN,  PBTN_DOWN' \
+    'BTN_DPAD_LEFT,  PBTN_LEFT' \
+    'BTN_DPAD_RIGHT, PBTN_RIGHT'; do
+    grep -Fq "$binding" "$PICO_PATCH" ||
+        fail "PicoArch Pixel2 physical D-pad binding missing: $binding"
+done
 if grep -Fq 'BTN_MODE' "$PICO_PATCH"; then
     fail 'PicoArch still treats Pixel2 FUNCTION as BTN_MODE'
 fi
