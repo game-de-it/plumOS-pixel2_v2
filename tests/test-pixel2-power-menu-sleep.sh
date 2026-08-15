@@ -172,14 +172,19 @@ grep -q 'wake_software_sleep' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'USB_POWER_EVENT_GUARD_MS 1500' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-grep -q 'ADB_USB_RESTART_DELAY_MS 2000' \
+grep -q 'ADB_USB_RECOVERY_DELAY_MS 2000' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q '/sys/class/power_supply/usb/online' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'PLUMOS_ADBD_CONTROL' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-grep -q 'control, "restart"' \
+grep -q 'control, "recover"' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+if grep -q 'control, "restart"' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"; then
+    echo 'hardware-key USB hotplug must not restart a healthy ADB gadget' >&2
+    exit 1
+fi
 grep -q 'consume_power_wake_suppression' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'write_power_overlay_selection(ui, "handled")' \
