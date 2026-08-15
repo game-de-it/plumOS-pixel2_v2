@@ -120,6 +120,8 @@
   - 2026-08-13: RA、PicoArch、PCSX-ReARMed、DraStic、PPSSPP、OpenBORのFunction menu契約を実装し、source contract testを追加。`e9c8f38`から全対象をbuildし、署名Runtimeを実機へ適用。health昇格、対象22 SHA一致、root checksum 3470件合格。各runtimeの物理menu/exit確認が必要。
   - 2026-08-13: PCSX内蔵menuでevdevとSDL joystickが同じ`event2`を二重登録する状態を実機FDで確認。Pixel2のPCSXはraw evdevだけをcontroller入力元とする`002e250`へ修正し、全4 SAを並列build、署名Runtime `0.1.0-dev-002e250`を適用。health昇格、実機root checksum 3470件/失敗0。PCSX menuの十字/A決定/B戻るは物理再確認待ち。
   - 2026-08-13: `3234b0d`でPCSX menuの物理Function、十字、A決定、B戻るを実機合格。RA、PicoArch、DraStic、PPSSPP、OpenBORは引き続き個別物理確認が必要。
+- [x] V90SのRetroArch factory configuration機能面をPixel2へ移植する
+  - 2026-08-15: 3,374 unique keyをPixel2 DRM/udev/button/audio/storage contractへ適合。旧57-key factoryは既知SHA一致時だけatomic置換し、変更済みuser cfgには不足keyだけを補完するmigrationを追加。署名Runtime `0.1.0-dev-aa3a3ab`を適用し、healthy、root 4241/4241 checksum、RGUIのDRM/event2取得、FE復帰を確認。[検証記録](docs/validation/2026-08-15-pixel2-retroarch-v90s-config-port.md)
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
   - 2026-08-14: WonderSwan `Puzzle Bobble.ws` (`mednafen_wswan`)でSELECTによる縦/横切替後の表示が180度逆さになることをDRM overlay planeのRGB565 captureで確認。`465b957`でWonderSwan系のみ`video_allow_rotate=false`とし、core内content回転後にPixel2固定panel補正を適用。署名Runtime `0.1.0-dev-465b957`のhealth昇格と縦向き正方向captureは合格。SELECT切替後の横向き物理captureは継続。
   - 2026-08-14: 回転修正後に共通4:3固定でWonderSwan映像が伸長されることを実機確認。`e327fb9`でcore-provided aspectへ切り替えたが、SELECT後の144x224 frameへPixel2固定回転分のaspect反転が二重適用され、物理方向640x411になる誤りを目視指摘で再確認。`f7bd277`で`ASPECT_RATIO_CORE`だけDRM側の重複反転を相殺し、物理SELECT 1回後の正式Runtime captureを309x480（144:224と丸め誤差内で一致）へ修正。署名Runtime `0.1.0-dev-f7bd277`はhealth昇格済み。最終LCD目視確認は継続。
