@@ -80,6 +80,59 @@ merge_key_file() {
     fi
 }
 
+migrate_legacy_incomplete_values() {
+    migrate_next="${config}.next.$$"
+    migrate_count="$state_dir/migrate-legacy-count.$$"
+    $bb awk '
+        $0 == "input_exit_emulator_btn = \"9\"" {
+            $0 = "input_exit_emulator_btn = \"nul\""; changed++
+        }
+        $0 == "input_menu_toggle_gamepad_combo = \"0\"" {
+            $0 = "input_menu_toggle_gamepad_combo = \"4\""; changed++
+        }
+        $0 == "input_toggle_fast_forward_axis = \"+5\"" {
+            $0 = "input_toggle_fast_forward_axis = \"nul\""; changed++
+        }
+        $0 == "input_toggle_fast_forward_btn = \"nul\"" {
+            $0 = "input_toggle_fast_forward_btn = \"7\""; changed++
+        }
+        $0 == "input_toggle_slowmotion_axis = \"+4\"" {
+            $0 = "input_toggle_slowmotion_axis = \"nul\""; changed++
+        }
+        $0 == "input_toggle_slowmotion_btn = \"nul\"" {
+            $0 = "input_toggle_slowmotion_btn = \"6\""; changed++
+        }
+        $0 == "savefiles_in_content_dir = \"false\"" {
+            $0 = "savefiles_in_content_dir = \"true\""; changed++
+        }
+        $0 == "savestates_in_content_dir = \"false\"" {
+            $0 = "savestates_in_content_dir = \"true\""; changed++
+        }
+        $0 == "sort_savefiles_by_content_enable = \"false\"" {
+            $0 = "sort_savefiles_by_content_enable = \"true\""; changed++
+        }
+        $0 == "sort_savefiles_enable = \"false\"" {
+            $0 = "sort_savefiles_enable = \"true\""; changed++
+        }
+        $0 == "sort_savestates_by_content_enable = \"false\"" {
+            $0 = "sort_savestates_by_content_enable = \"true\""; changed++
+        }
+        $0 == "sort_savestates_enable = \"false\"" {
+            $0 = "sort_savestates_enable = \"true\""; changed++
+        }
+        { print }
+        END { print changed + 0 > count_file }
+    ' count_file="$migrate_count" "$config" >"$migrate_next"
+    legacy_changed=$($bb sed -n '1p' "$migrate_count" 2>/dev/null || printf '0')
+    $bb rm -f "$migrate_count"
+    if [ "$legacy_changed" -gt 0 ]; then
+        $bb sync
+        $bb mv "$migrate_next" "$config"
+    else
+        $bb rm -f "$migrate_next"
+    fi
+}
+
 write_marker() {
     printf '%s\n' "$factory_sha256" >"$marker.next"
     $bb sync
@@ -96,6 +149,12 @@ elif set -- $($bb sha256sum "$config") &&
           [ "$1" = "$legacy_incomplete_full_sha256" ]; }; then
     atomic_copy "$factory" "$config"
     main_result=replaced-legacy
+elif [ -r "$marker" ] &&
+        [ "$($bb sed -n '1p' "$marker")" = "$legacy_incomplete_full_sha256" ]; then
+    migrate_legacy_incomplete_values
+    merge_key_file "$factory" "$config" config
+    main_result=migrated-legacy
+    main_added=$((legacy_changed + merge_added))
 elif [ ! -r "$marker" ] ||
         [ "$($bb sed -n '1p' "$marker")" != "$factory_sha256" ]; then
     merge_key_file "$factory" "$config" config

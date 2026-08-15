@@ -40,4 +40,36 @@ grep -q "^input_player1_btn_up = \"99\"$" \
     "$active/remaps/ParaLLEl N64/ParaLLEl N64.rmp"
 grep -q "^input_player1_btn_down = \"18\"$" \
     "$active/remaps/ParaLLEl N64/ParaLLEl N64.rmp"
+
+# A previous factory cfg becomes byte-different when RetroArch saves it. Use
+# its generation marker to migrate only values that still equal the old
+# Pixel2 defaults, while retaining an unrelated explicit user value.
+sed -i \
+    -e "s/input_exit_emulator_btn = \"nul\"/input_exit_emulator_btn = \"9\"/" \
+    -e "s/input_menu_toggle_gamepad_combo = \"4\"/input_menu_toggle_gamepad_combo = \"0\"/" \
+    -e "s/input_toggle_fast_forward_axis = \"nul\"/input_toggle_fast_forward_axis = \"+5\"/" \
+    -e "s/input_toggle_fast_forward_btn = \"7\"/input_toggle_fast_forward_btn = \"nul\"/" \
+    -e "s/input_toggle_slowmotion_axis = \"nul\"/input_toggle_slowmotion_axis = \"+4\"/" \
+    -e "s/input_toggle_slowmotion_btn = \"6\"/input_toggle_slowmotion_btn = \"nul\"/" \
+    -e "s/savefiles_in_content_dir = \"true\"/savefiles_in_content_dir = \"false\"/" \
+    -e "s/savestates_in_content_dir = \"true\"/savestates_in_content_dir = \"false\"/" \
+    -e "s/sort_savefiles_by_content_enable = \"true\"/sort_savefiles_by_content_enable = \"false\"/" \
+    -e "s/sort_savefiles_enable = \"true\"/sort_savefiles_enable = \"false\"/" \
+    -e "s/sort_savestates_by_content_enable = \"true\"/sort_savestates_by_content_enable = \"false\"/" \
+    -e "s/sort_savestates_enable = \"true\"/sort_savestates_enable = \"false\"/" \
+    -e "s/input_save_state_btn = \"5\"/input_save_state_btn = \"42\"/" \
+    "$active/retroarch.cfg"
+printf "%s\n" "9f4aaebdab3cc3a9be24b203161e63f63f1887e4eb0b79c82618086d3cbc4b24" \
+    > "$root/state/retroarch/factory-config.sha256"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/migrate.log
+grep -q "retroarch_config=result-migrated-legacy added=12" /tmp/migrate.log
+grep -q "^input_exit_emulator_btn = \"nul\"$" "$active/retroarch.cfg"
+grep -q "^input_menu_toggle_gamepad_combo = \"4\"$" "$active/retroarch.cfg"
+grep -q "^input_toggle_fast_forward_btn = \"7\"$" "$active/retroarch.cfg"
+grep -q "^input_toggle_slowmotion_btn = \"6\"$" "$active/retroarch.cfg"
+grep -q "^savefiles_in_content_dir = \"true\"$" "$active/retroarch.cfg"
+grep -q "^savestates_in_content_dir = \"true\"$" "$active/retroarch.cfg"
+grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 '

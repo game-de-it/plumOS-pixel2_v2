@@ -151,6 +151,7 @@ grep -q '^menu_show_core_updater = "false"$' \
 grep -q '^menu_show_online_updater = "false"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q 'main_result=replaced-legacy' "$ROOT/bin/plumos-retroarch-config-merge"
+grep -q 'main_result=migrated-legacy' "$ROOT/bin/plumos-retroarch-config-merge"
 grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
 grep -q 'ID_INPUT_JOYSTICK=1' "$ROOT/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-audio-output' "$ROOT/bin/plumos-retroarch-launch"
