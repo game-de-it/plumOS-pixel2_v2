@@ -1,7 +1,7 @@
 # Pixel2 global power menu and sleep validation
 
 Date: 2026-08-15 to 2026-08-16
-Final tested Runtime: `0.1.0-dev-c5d9c16`
+Final tested Runtime: `0.1.0-dev-e9a69a9`
 
 ## Result
 
@@ -10,6 +10,10 @@ standalone emulators, and Apps. The stock `rk805 pwrkey` is monitored by the
 always-running hardware-key service. The normal FE handles Power directly;
 outside the FE, the service starts the same FE in power-overlay mode after
 pausing only the processes that own `/dev/fb0`, DRM, Mali, or `/dev/disp`.
+For an active DRM owner, the service temporarily acquires a duplicate of the
+owner's DRM file descriptor, disables its active KMS planes, drops DRM master,
+and gives the overlay control of the display. It restores DRM master and the
+exact plane state before resuming the owner.
 
 The menu exposes Sleep, Reboot, Shutdown, and Cancel. Cancel and sleep return
 only resume processes that this overlay stopped. Reboot and shutdown resume
@@ -140,14 +144,38 @@ The FE path was physically accepted on `0.1.0-dev-c5d9c16`:
 5. one physical Power press cleared the marker, restored brightness 28 and
    `bl_power=0`, returned to the FE, and FE controls remained functional.
 
+The RetroArch overlay path was physically accepted on
+`0.1.0-dev-e9a69a9`:
+
+1. Power paused the running game and displayed the global power menu over RA;
+2. selecting Sleep fully powered down the display;
+3. unplugging and reconnecting the power/USB cable left the display asleep and
+   restarted the ADB gadget without waking the screen;
+4. one physical Power press restored the game, video, and controls;
+5. the original RA process remained alive throughout the sequence.
+
+The live logs recorded the complete ownership handoff and recovery:
+
+```text
+action=power-menu overlay=1 rc=0
+drm-planes=suspend owner=1637 count=2
+drm-master=drop owner=1637 fd=5 rc=0
+action=adb-usb-restart online=1 rc=0
+action=software-sleep-wake rc=0
+drm-master=restore owner=1637 rc=0
+drm-planes=restore owner=1637 count=2 rc=0
+display-owner=resume owner=1637
+```
+
 ## Remaining physical gate
 
-The normal FE sleep/USB/wake path is complete. The operator still needs to
-validate the overlay path while non-FE display owners are active:
+The normal FE and RetroArch sleep/USB/wake paths are complete. The operator
+still needs to validate:
 
-1. Power opens the overlay while RA, PicoArch, standalone emulators, and Apps
-   each own the screen;
-2. Cancel returns normally for each family;
-3. sleep/wake returns video, input, and audio for each family.
+1. Cancel returns normally from the RA overlay;
+2. Power opens the overlay while PicoArch, standalone emulators, and Apps each
+   own the screen;
+3. Cancel and sleep/wake return video, input, and audio for each remaining
+   family.
 
 These are physical acceptance gates, not missing implementation.

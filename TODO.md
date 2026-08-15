@@ -40,8 +40,12 @@
       した後、connector DPMS OFFとCRTC切断でDSI panelを完全消灯する。USBを
       sleep中に抜き差ししても消灯を維持し、2秒後のpolicy-aware ADB再起動で
       ADBが自動復帰、物理Power 1回で輝度28・FE操作まで正常復帰することを確認。
-      RA/PicoArch/SA/Appsがdisplay ownerのoverlay経路と復帰後の操作・音声は
-      operator確認を継続する。
+    - 2026-08-16: Runtime `0.1.0-dev-e9a69a9`でRAのDRM masterとactive KMS
+      plane 2枚をoverlayへ安全にhandoffする経路を実機確認。ゲーム中にPower
+      menuを表示し、Sleep、USB電源の切断・再接続、物理Power 1回の順で同じRA
+      processへ映像・入力とも復帰した。ADBも画面を起こさず自動復帰した。
+      RAのCancel、およびPicoArch/SA/Appsのoverlay表示、Cancel、復帰後の
+      映像・入力・音声はoperator確認を継続する。
   - [x] FTP/SFTP/SambaをPixel2 componentとして実装する
     - 2026-08-14: 初期bring-upの「SSH/ADBだけを表示」を撤回し、V90S/MFと同じ5 serviceをpackage化。保存設定のboot再開、component checksum、release gateへ統合した。USB Wi-Fi実機でのFTP/SFTP/Samba接続は未検証。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
