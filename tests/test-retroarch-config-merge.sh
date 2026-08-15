@@ -87,4 +87,23 @@ grep -q "retroarch_config=result-migrated-regression added=2" /tmp/regression.lo
 grep -q "^input_exit_emulator_btn = \"9\"$" "$active/retroarch.cfg"
 grep -q "^input_menu_toggle_gamepad_combo = \"0\"$" "$active/retroarch.cfg"
 grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
+
+# Correct the Pixel2 factory generation that disabled plain-DRM OSD. Only the
+# two matching factory values are changed; an unrelated hotkey survives.
+cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
+sed -i \
+    -e "s|video_font_enable = \"true\"|video_font_enable = \"false\"|" \
+    -e "s|video_font_path = \"/mnt/plumos/fonts/default.otf\"|video_font_path = \"\"|" \
+    -e "s|input_save_state_btn = \"5\"|input_save_state_btn = \"42\"|" \
+    "$active/retroarch.cfg"
+printf "%s\n" "2db551beda3cd62e4f87d15d77a56ae2df1905fa3bc3925dbf5aaee803a4dcc6" \
+    > "$root/state/retroarch/factory-config.sha256"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/osd.log
+grep -q "retroarch_config=result-migrated-osd added=2" /tmp/osd.log
+grep -q "^video_font_enable = \"true\"$" "$active/retroarch.cfg"
+grep -q "^video_font_path = \"/mnt/plumos/fonts/default.otf\"$" \
+    "$active/retroarch.cfg"
+grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 '

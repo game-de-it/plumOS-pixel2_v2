@@ -162,6 +162,8 @@ required = {
     "sort_savestates_enable": "\"true\"",
     "system_directory": "\"/mnt/plumos-user/bios\"",
     "video_driver": "\"drm\"",
+    "video_font_enable": "\"true\"",
+    "video_font_path": "\"/mnt/plumos/fonts/default.otf\"",
     "video_refresh_rate": "\"60.000000\"",
     "video_rotation": "\"3\"",
     "vrr_runloop_enable": "\"false\"",
@@ -188,9 +190,13 @@ grep -q 'legacy_incomplete_full_sha256=9f4aaebd' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'regressed_pixel2_sha256=8d9a8e71' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q 'osd_disabled_factory_sha256=2db551be' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'main_result=migrated-legacy' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'main_result=migrated-regression' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
+grep -q 'main_result=migrated-osd' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'main_result=replaced-legacy' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"

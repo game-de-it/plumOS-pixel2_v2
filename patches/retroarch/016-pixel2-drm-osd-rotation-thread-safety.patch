@@ -1,0 +1,190 @@
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -410,6 +410,34 @@
+       *logical_x = lw - 1;
+    if (*logical_y >= lh)
+       *logical_y = lh - 1;
++}
++
++static void drm_surface_map_logical_pixel(const struct drm_surface *surface,
++      unsigned int logical_x, unsigned int logical_y,
++      unsigned int *dst_x, unsigned int *dst_y)
++{
++   unsigned int lw = (unsigned int)surface->logical_width;
++   unsigned int lh = (unsigned int)surface->logical_height;
++
++   switch (surface->rotation & 3)
++   {
++      case 1:
++         *dst_x = lh - 1 - logical_y;
++         *dst_y = logical_x;
++         break;
++      case 2:
++         *dst_x = lw - 1 - logical_x;
++         *dst_y = lh - 1 - logical_y;
++         break;
++      case 3:
++         *dst_x = logical_y;
++         *dst_y = lw - 1 - logical_x;
++         break;
++      default:
++         *dst_x = logical_x;
++         *dst_y = logical_y;
++         break;
++   }
+ }
+ 
+ static bool drm_page_flip(struct drm_surface *surface)
+@@ -507,13 +535,23 @@
+       uint8_t *dst_base, int x, int y,
+       unsigned red, unsigned green, unsigned blue, unsigned alpha)
+ {
+-   if (x < 0 || y < 0 || x >= surface->src_width || y >= surface->src_height)
++   unsigned int dst_x;
++   unsigned int dst_y;
++
++   if (x < 0 || y < 0 ||
++       x >= surface->logical_width || y >= surface->logical_height)
+       return;
+ 
++   drm_surface_map_logical_pixel(surface, (unsigned int)x, (unsigned int)y,
++         &dst_x, &dst_y);
++   if (dst_x >= (unsigned int)surface->src_width ||
++       dst_y >= (unsigned int)surface->src_height)
++      return;
++
+    if (surface->bpp == 2)
+    {
+       uint16_t *dst = (uint16_t *)(dst_base +
+-            y * surface->pages[surface->flip_page].buf.stride) + x;
++            dst_y * surface->pages[surface->flip_page].buf.stride) + dst_x;
+       unsigned dst_red   = ((*dst >> 11) & 0x1f) * 255 / 31;
+       unsigned dst_green = ((*dst >>  5) & 0x3f) * 255 / 63;
+       unsigned dst_blue  = ( *dst        & 0x1f) * 255 / 31;
+@@ -527,7 +565,7 @@
+    else
+    {
+       uint32_t *dst = (uint32_t *)(dst_base +
+-            y * surface->pages[surface->flip_page].buf.stride) + x;
++            dst_y * surface->pages[surface->flip_page].buf.stride) + dst_x;
+       unsigned dst_red   = (*dst >> 16) & 0xff;
+       unsigned dst_green = (*dst >>  8) & 0xff;
+       unsigned dst_blue  =  *dst        & 0xff;
+@@ -553,18 +591,27 @@
+    unsigned green;
+    unsigned blue;
+    unsigned color_alpha = 255;
++   unsigned logical_width;
++   unsigned logical_height;
+ 
+-   if (!vid->font_driver || !vid->font_data || !msg || !*msg)
++   if (!vid || !surface || !dst_base || !vid->font_driver ||
++       !vid->font_driver->get_atlas || !vid->font_driver->get_glyph ||
++       !vid->font_data || !msg || !*msg)
+       return;
+ 
++   logical_width  = (unsigned)surface->logical_width;
++   logical_height = (unsigned)surface->logical_height;
++   if (!logical_width || !logical_height)
++      return;
++
+    atlas = vid->font_driver->get_atlas(vid->font_data);
+    if (!atlas || !atlas->buffer)
+       return;
+ 
+    if (params)
+    {
+-      start_x     = (int)(params->x * surface->src_width);
+-      pen_y       = (int)((1.0f - params->y) * surface->src_height);
++      start_x     = (int)(params->x * logical_width);
++      pen_y       = (int)((1.0f - params->y) * logical_height);
+       scale       = params->scale > 0.0f ? params->scale : 1.0f;
+       red         = FONT_COLOR_GET_RED(params->color);
+       green       = FONT_COLOR_GET_GREEN(params->color);
+@@ -574,10 +621,10 @@
+    else
+    {
+       start_x = settings
+-         ? (int)(settings->floats.video_msg_pos_x * surface->src_width) : 12;
++         ? (int)(settings->floats.video_msg_pos_x * logical_width) : 12;
+       pen_y = settings
+          ? (int)((1.0f - settings->floats.video_msg_pos_y) *
+-               surface->src_height) : surface->src_height - 12;
++               logical_height) : (int)logical_height - 12;
+       red   = settings ? (unsigned)(settings->floats.video_msg_color_r * 255.0f) : 255;
+       green = settings ? (unsigned)(settings->floats.video_msg_color_g * 255.0f) : 255;
+       blue  = settings ? (unsigned)(settings->floats.video_msg_color_b * 255.0f) : 255;
+@@ -594,8 +641,12 @@
+ 
+       if (code == '\n')
+       {
++         const struct font_glyph *line_glyph =
++            vid->font_driver->get_glyph(vid->font_data, 'M');
+          pen_x  = start_x;
+-         pen_y += (int)(vid->font_driver->get_glyph(vid->font_data, 'M')->height * scale);
++         pen_y += line_glyph
++            ? (int)(line_glyph->height * scale)
++            : (int)(16.0f * scale);
+          continue;
+       }
+ 
+@@ -605,6 +656,12 @@
+       if (!glyph)
+          continue;
+ 
++      if (glyph->atlas_offset_x >= atlas->width ||
++          glyph->atlas_offset_y >= atlas->height ||
++          glyph->width > atlas->width - glyph->atlas_offset_x ||
++          glyph->height > atlas->height - glyph->atlas_offset_y)
++         continue;
++
+       src = atlas->buffer + glyph->atlas_offset_x +
+          glyph->atlas_offset_y * atlas->width;
+ 
+@@ -636,6 +693,9 @@
+ {
+    struct drm_video *_drmvars  = data;
+    struct drm_page       *page = NULL;
++   char pending_osd_msg[sizeof(_drmvars->pending_osd_msg)];
++   struct font_params pending_osd_params;
++   bool pending_osd_msg_valid = false;
+    unsigned int x;
+    unsigned int y;
+    unsigned int logical_width = (unsigned int)surface->logical_width;
+@@ -698,12 +758,19 @@
+       drm_render_osd_msg(_drmvars, surface, dst_base, stat_msg, stat_params);
+    if (msg && *msg)
+       drm_render_osd_msg(_drmvars, surface, dst_base, msg, NULL);
++   slock_lock(_drmvars->pending_mutex);
+    if (_drmvars->pending_osd_msg_valid)
+    {
+-      drm_render_osd_msg(_drmvars, surface, dst_base,
+-            _drmvars->pending_osd_msg, &_drmvars->pending_osd_params);
++      strlcpy(pending_osd_msg, _drmvars->pending_osd_msg,
++            sizeof(pending_osd_msg));
++      pending_osd_params = _drmvars->pending_osd_params;
++      pending_osd_msg_valid = true;
+       _drmvars->pending_osd_msg_valid = false;
+    }
++   slock_unlock(_drmvars->pending_mutex);
++   if (pending_osd_msg_valid)
++      drm_render_osd_msg(_drmvars, surface, dst_base,
++            pending_osd_msg, &pending_osd_params);
+ 
+    /* Page flipping */
+    drm_page_flip(surface);
+@@ -1454,12 +1521,14 @@
+    if (!vid || !msg || !*msg)
+       return;
+ 
++   slock_lock(vid->pending_mutex);
+    strlcpy(vid->pending_osd_msg, msg, sizeof(vid->pending_osd_msg));
+    if (params)
+       vid->pending_osd_params = *params;
+    else
+       memset(&vid->pending_osd_params, 0, sizeof(vid->pending_osd_params));
+    vid->pending_osd_msg_valid = params != NULL;
++   slock_unlock(vid->pending_mutex);
+ }
+ 
+ static const video_poke_interface_t drm_poke_interface = {

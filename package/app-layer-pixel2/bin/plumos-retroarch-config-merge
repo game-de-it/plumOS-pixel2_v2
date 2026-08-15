@@ -14,6 +14,7 @@ marker=$state_dir/factory-config.sha256
 legacy_pixel2_sha256=b97c897bb7141a77d6fb17e77a66895540b9bd9cc177d7ee983afcb75e5e819e
 legacy_incomplete_full_sha256=9f4aaebdab3cc3a9be24b203161e63f63f1887e4eb0b79c82618086d3cbc4b24
 regressed_pixel2_sha256=8d9a8e71cc38e63d1c6084d6bcf99701507cb632ff2dd1f4ebf9963b82beae77
+osd_disabled_factory_sha256=2db551beda3cd62e4f87d15d77a56ae2df1905fa3bc3925dbf5aaee803a4dcc6
 
 [ -s "$factory" ] || {
     printf 'retroarch_config=result-error reason=factory-missing path=%s\n' "$factory" >&2
@@ -151,6 +152,29 @@ migrate_regressed_exit_values() {
     fi
 }
 
+migrate_osd_values() {
+    migrate_next="${config}.next.$$"
+    migrate_count="$state_dir/migrate-osd-count.$$"
+    $bb awk '
+        $0 == "video_font_enable = \"false\"" {
+            $0 = "video_font_enable = \"true\""; changed++
+        }
+        $0 == "video_font_path = \"\"" {
+            $0 = "video_font_path = \"/mnt/plumos/fonts/default.otf\""; changed++
+        }
+        { print }
+        END { print changed + 0 > count_file }
+    ' count_file="$migrate_count" "$config" >"$migrate_next"
+    osd_changed=$($bb sed -n '1p' "$migrate_count" 2>/dev/null || printf '0')
+    $bb rm -f "$migrate_count"
+    if [ "$osd_changed" -gt 0 ]; then
+        $bb sync
+        $bb mv "$migrate_next" "$config"
+    else
+        $bb rm -f "$migrate_next"
+    fi
+}
+
 write_marker() {
     printf '%s\n' "$factory_sha256" >"$marker.next"
     $bb sync
@@ -180,6 +204,12 @@ elif [ -r "$marker" ] &&
     merge_key_file "$factory" "$config" config
     main_result=migrated-regression
     main_added=$((regression_changed + merge_added))
+elif [ -r "$marker" ] &&
+        [ "$($bb sed -n '1p' "$marker")" = "$osd_disabled_factory_sha256" ]; then
+    migrate_osd_values
+    merge_key_file "$factory" "$config" config
+    main_result=migrated-osd
+    main_added=$((osd_changed + merge_added))
 elif [ ! -r "$marker" ] ||
         [ "$($bb sed -n '1p' "$marker")" != "$factory_sha256" ]; then
     merge_key_file "$factory" "$config" config
