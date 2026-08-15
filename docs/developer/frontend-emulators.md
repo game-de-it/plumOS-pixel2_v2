@@ -93,13 +93,32 @@ SELECT-switched 144x224 (9:14) layout.
 RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the
 D-pad as `ABS_X`/`ABS_Y` axes and the remaining controls as evdev keys on
 `pixel2_joypad`; the generated autoconfig therefore binds D-pad directions with
-axis entries. Persistent config keeps SELECT+START as the explicit exit chord,
-while the controller autoconfig binds raw `BTN_TRIGGER_HAPPY1` through compact
-udev index 14 directly to `input_menu_toggle_btn`. The autoconfig intentionally
-does not carry `input_enable_hotkey_btn`: the dedicated Function menu must not
-be gated by SELECT. Do not use a
+axis entries. The dedicated Function button is compact udev index 14 and opens
+the menu directly. START+SELECT is an independent menu fallback, not an
+immediate process-exit chord. Gameplay hotkeys use SELECT as their enable key:
+L/R load and save state, X captures a screenshot, Y toggles FPS, D-pad left/right
+changes the state slot, and L2/R2 toggles slow/fast motion. Pixel2 reports L2/R2
+as buttons 6/7, so another device's trigger-axis bindings must not be copied.
+Do not use a
 `linuxraw` Pixel2 default unless `/dev/input/js0` button numbering has been
 captured and validated on the real device.
+
+The RetroArch factory contract is a bundle, not only `retroarch.cfg`:
+
+- `retroarch.cfg` owns global input, saving, display, audio, and menu settings;
+- `retroarch-core-options.cfg` owns shipped core defaults;
+- `remaps/<core>/<core>.rmp` owns core-specific controller remaps.
+
+`plumos-retroarch-config-merge` installs all three and only appends absent keys
+to user-owned auxiliary files. The migration from the earlier incomplete
+Pixel2 factory changes the twelve known old defaults only when the recorded
+factory generation and old values both match; unrelated user values are kept.
+
+Normal saves and save states use the active ROM filesystem with content-folder
+and core sorting. `/mnt/plumos/saves/<system>` and
+`/mnt/plumos/states/<system>` remain fallback paths when content-local saving
+is disabled, and old files in those fallback paths are never deleted by the
+migration.
 
 ## Runtime Families
 
