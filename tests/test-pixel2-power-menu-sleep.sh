@@ -190,6 +190,12 @@ grep -q 'drmDropMaster(owner_drm_fd)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'drmSetMaster(owner_drm_fd)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'suspend_drm_planes' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'restore_drm_planes' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'PLUMOS_POWER_MENU_PREPAUSED_PID' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-power-menu-overlay"
 grep -q '^  handled)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-power-menu-overlay"
 grep -q 'plumos_fbdev_present_black(&ui->fbdev_renderer)' \

@@ -33,6 +33,7 @@ add_paused_pid() {
   case "$pid" in ''|*[!0-9]*|1) return 0 ;; esac
   [ "$pid" != "$$" ] || return 0
   [ "$pid" != "${PPID:-}" ] || return 0
+  [ "$pid" != "${PLUMOS_POWER_MENU_PREPAUSED_PID:-}" ] || return 0
   case " $PAUSED_PIDS " in *" $pid "*) return 0 ;; esac
   state="$(process_state "$pid")"
   case "$state" in ''|Z|T|t) return 0 ;; esac

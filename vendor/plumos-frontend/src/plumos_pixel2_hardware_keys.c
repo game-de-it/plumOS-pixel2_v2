@@ -18,6 +18,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #ifndef SYS_pidfd_open
 #define SYS_pidfd_open 434
@@ -34,10 +35,25 @@
 #define POWER_MENU_DEBOUNCE_MS 800
 #define USB_POWER_EVENT_GUARD_MS 1500
 #define ADB_USB_RESTART_DELAY_MS 2000
+#define DRM_PLANE_SNAPSHOT_LIMIT 16
 
 struct input_source {
   const char *name;
   int fd;
+};
+
+struct drm_plane_snapshot {
+  uint32_t plane_id;
+  uint32_t crtc_id;
+  uint32_t fb_id;
+  uint32_t crtc_x;
+  uint32_t crtc_y;
+  uint32_t crtc_w;
+  uint32_t crtc_h;
+  uint32_t src_x;
+  uint32_t src_y;
+  uint32_t src_w;
+  uint32_t src_h;
 };
 
 static volatile sig_atomic_t running = 1;
@@ -274,6 +290,117 @@ static int duplicate_process_fd(pid_t pid, int target_fd) {
   return duplicated;
 }
 
+static int process_is_stopped(pid_t pid) {
+  char path[64];
+  char line[512];
+  char *closing;
+  FILE *file;
+
+  if (snprintf(path, sizeof(path), "/proc/%ld/stat", (long)pid) >=
+      (int)sizeof(path)) {
+    return 0;
+  }
+  file = fopen(path, "r");
+  if (!file) {
+    return 0;
+  }
+  line[0] = '\0';
+  (void)fgets(line, sizeof(line), file);
+  fclose(file);
+  closing = strrchr(line, ')');
+  return closing && closing[1] == ' ' &&
+         (closing[2] == 'T' || closing[2] == 't');
+}
+
+static int stop_process_for_overlay(pid_t pid) {
+  int attempt;
+
+  if (pid <= 1 || kill(pid, SIGSTOP) < 0) {
+    return 0;
+  }
+  for (attempt = 0; attempt < 20; attempt++) {
+    if (process_is_stopped(pid)) {
+      return 1;
+    }
+    usleep(10000);
+  }
+  return process_is_stopped(pid);
+}
+
+static size_t suspend_drm_planes(
+    int drm_fd, struct drm_plane_snapshot *snapshots, size_t capacity) {
+  drmModePlaneRes *resources;
+  size_t count = 0;
+  uint32_t index;
+
+  if (drm_fd < 0 || !snapshots || capacity == 0) {
+    return 0;
+  }
+  (void)drmSetClientCap(drm_fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
+  resources = drmModeGetPlaneResources(drm_fd);
+  if (!resources) {
+    return 0;
+  }
+  for (index = 0; index < resources->count_planes && count < capacity;
+       index++) {
+    drmModePlane *plane = drmModeGetPlane(drm_fd, resources->planes[index]);
+    drmModeFB *framebuffer;
+    struct drm_plane_snapshot *snapshot;
+
+    if (!plane) {
+      continue;
+    }
+    if (!plane->crtc_id || !plane->fb_id) {
+      drmModeFreePlane(plane);
+      continue;
+    }
+    framebuffer = drmModeGetFB(drm_fd, plane->fb_id);
+    if (!framebuffer) {
+      drmModeFreePlane(plane);
+      continue;
+    }
+    snapshot = &snapshots[count];
+    snapshot->plane_id = plane->plane_id;
+    snapshot->crtc_id = plane->crtc_id;
+    snapshot->fb_id = plane->fb_id;
+    snapshot->crtc_x = plane->crtc_x;
+    snapshot->crtc_y = plane->crtc_y;
+    snapshot->crtc_w = framebuffer->width;
+    snapshot->crtc_h = framebuffer->height;
+    snapshot->src_x = plane->x;
+    snapshot->src_y = plane->y;
+    snapshot->src_w = framebuffer->width << 16;
+    snapshot->src_h = framebuffer->height << 16;
+    if (drmModeSetPlane(drm_fd, snapshot->plane_id, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0) == 0) {
+      count++;
+    }
+    drmModeFreeFB(framebuffer);
+    drmModeFreePlane(plane);
+  }
+  drmModeFreePlaneResources(resources);
+  return count;
+}
+
+static int restore_drm_planes(int drm_fd,
+                              const struct drm_plane_snapshot *snapshots,
+                              size_t count) {
+  size_t index;
+  int ok = 1;
+
+  for (index = 0; index < count; index++) {
+    const struct drm_plane_snapshot *snapshot = &snapshots[index];
+    if (drmModeSetPlane(
+            drm_fd, snapshot->plane_id, snapshot->crtc_id, snapshot->fb_id, 0,
+            snapshot->crtc_x, snapshot->crtc_y, snapshot->crtc_w,
+            snapshot->crtc_h, snapshot->src_x, snapshot->src_y,
+            snapshot->src_w, snapshot->src_h) != 0) {
+      ok = 0;
+    }
+  }
+  return ok;
+}
+
 static pid_t frontend_pid(void) {
   const char *runtime_root = getenv("PLUMOS_RUNTIME_ROOT");
   char path[512];
@@ -412,12 +539,23 @@ static int spawn_power_menu_overlay(void) {
     pid_t owner = external_drm_owner(&target_fd);
     int owner_drm_fd = -1;
     int handed_off = 0;
+    int owner_stopped = 0;
+    struct drm_plane_snapshot plane_snapshots[DRM_PLANE_SNAPSHOT_LIMIT];
+    size_t plane_count = 0;
     pid_t overlay;
     int status = 1 << 8;
 
     if (owner > 1 && target_fd >= 0) {
       owner_drm_fd = duplicate_process_fd(owner, target_fd);
       if (owner_drm_fd >= 0) {
+        owner_stopped = stop_process_for_overlay(owner);
+        if (owner_stopped) {
+          plane_count = suspend_drm_planes(
+              owner_drm_fd, plane_snapshots, DRM_PLANE_SNAPSHOT_LIMIT);
+          fprintf(stderr,
+                  "hardware-keys: drm-planes=suspend owner=%ld count=%zu\n",
+                  (long)owner, plane_count);
+        }
         if (drmDropMaster(owner_drm_fd) == 0) {
           handed_off = 1;
           fprintf(stderr,
@@ -433,6 +571,11 @@ static int spawn_power_menu_overlay(void) {
                 "hardware-keys: drm-master=duplicate owner=%ld fd=%d rc=%d\n",
                 (long)owner, target_fd, owner_drm_fd);
       }
+    }
+    if (owner_stopped) {
+      char owner_text[32];
+      snprintf(owner_text, sizeof(owner_text), "%ld", (long)owner);
+      (void)setenv("PLUMOS_POWER_MENU_PREPAUSED_PID", owner_text, 1);
     }
     overlay = fork();
     if (overlay == 0) {
@@ -457,9 +600,27 @@ static int spawn_power_menu_overlay(void) {
       fprintf(stderr,
               "hardware-keys: drm-master=restore owner=%ld rc=%d\n",
               (long)owner, restore_result == 0 ? 0 : -errno);
+      if (restore_result == 0 && plane_count > 0) {
+        int planes_ok =
+            restore_drm_planes(owner_drm_fd, plane_snapshots, plane_count);
+        fprintf(stderr,
+                "hardware-keys: drm-planes=restore owner=%ld count=%zu rc=%d\n",
+                (long)owner, plane_count, planes_ok ? 0 : -errno);
+      }
+    } else if (owner_drm_fd >= 0 && plane_count > 0) {
+      int planes_ok =
+          restore_drm_planes(owner_drm_fd, plane_snapshots, plane_count);
+      fprintf(stderr,
+              "hardware-keys: drm-planes=restore owner=%ld count=%zu rc=%d\n",
+              (long)owner, plane_count, planes_ok ? 0 : -errno);
     }
     if (owner_drm_fd >= 0) {
       close(owner_drm_fd);
+    }
+    if (owner_stopped) {
+      (void)kill(owner, SIGCONT);
+      fprintf(stderr, "hardware-keys: display-owner=resume owner=%ld\n",
+              (long)owner);
     }
     _exit(WIFEXITED(status) ? WEXITSTATUS(status) : 1);
   }
