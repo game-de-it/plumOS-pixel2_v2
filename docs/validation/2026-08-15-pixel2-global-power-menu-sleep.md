@@ -1,7 +1,7 @@
 # Pixel2 global power menu and sleep validation
 
 Date: 2026-08-15 to 2026-08-16
-Final tested Runtime: `0.1.0-dev-e9a69a9`
+Final tested Runtime: `0.1.0-dev-12b809b`
 
 ## Result
 
@@ -14,6 +14,12 @@ For an active DRM owner, the service temporarily acquires a duplicate of the
 owner's DRM file descriptor, disables its active KMS planes, drops DRM master,
 and gives the overlay control of the display. It restores DRM master and the
 exact plane state before resuming the owner.
+
+DraStic is the one two-process exception: its native AArch64 `runner` owns DRM,
+while the armhf emulator core advances the game without owning a display file
+descriptor. The service validates their executable paths, runtime PID record,
+and common launcher parent, then pauses and resumes both processes as one
+display owner. A stale or unrelated PID is never signalled.
 
 The menu exposes Sleep, Reboot, Shutdown, and Cancel. Cancel and sleep return
 only resume processes that this overlay stopped. Reboot and shutdown resume
@@ -167,14 +173,40 @@ drm-planes=restore owner=1637 count=2 rc=0
 display-owner=resume owner=1637
 ```
 
+The DraStic path was physically accepted on `0.1.0-dev-12b809b` after launching
+Nintendo DS content from the normal FE route. Power-menu display, Cancel,
+software Sleep, USB/power disconnect and reconnect while asleep, one-press
+wake, game continuation, video, controls, and audio all passed. The display
+runner and armhf core were paused and resumed together:
+
+```text
+display-companion=pause owner=1385 pid=1396 rc=0
+drm-planes=suspend owner=1385 count=1
+drm-master=drop owner=1385 fd=7 rc=0
+event=usb-power-transition online=0 guard_ms=1500 adb_restart_ms=0
+event=usb-power-transition online=1 guard_ms=1500 adb_restart_ms=2000
+action=adb-usb-restart online=1 rc=0
+action=software-sleep-wake rc=0
+drm-master=restore owner=1385 rc=0
+drm-planes=restore owner=1385 count=1 rc=0
+display-owner=resume owner=1385
+display-companion=resume owner=1385 pid=1396
+```
+
+An earlier test launched DraStic directly below an interactive ADB shell. ADB
+re-enumeration sent that diagnostic launcher `SIGHUP`, which terminated the
+core and left a stopped runner waiting in cleanup. Commit `12b809b` resumes the
+runner before TERM and bounds that cleanup. Physical acceptance was repeated
+from the production FE launcher, which is independent of the ADB session.
+
 ## Remaining physical gate
 
-The normal FE and RetroArch sleep/USB/wake paths are complete. The operator
-still needs to validate:
+The normal FE, RetroArch, and DraStic sleep/USB/wake paths are complete. The
+operator still needs to validate:
 
 1. Cancel returns normally from the RA overlay;
-2. Power opens the overlay while PicoArch, standalone emulators, and Apps each
-   own the screen;
+2. Power opens the overlay while PicoArch, the remaining standalone emulators,
+   and Apps each own the screen;
 3. Cancel and sleep/wake return video, input, and audio for each remaining
    family.
 

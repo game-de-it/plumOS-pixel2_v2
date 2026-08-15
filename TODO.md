@@ -46,6 +46,14 @@
       processへ映像・入力とも復帰した。ADBも画面を起こさず自動復帰した。
       RAのCancel、およびPicoArch/SA/Appsのoverlay表示、Cancel、復帰後の
       映像・入力・音声はoperator確認を継続する。
+    - 2026-08-16: DraSticはDRMを所有するAArch64 runnerと、画面FDを持たず
+      emulationを進めるarmhf coreが別processだったため、runnerだけを停止する
+      とsleep中もゲームが進行した。`11e6ef5`でruntime PID/exe・共通parentを
+      検証して両方を一体停止/復帰し、`12b809b`でADB切断時も停止中runnerの
+      cleanupが固まらないようSIGCONT後TERMとbounded waitを追加。署名Runtime
+      `0.1.0-dev-12b809b`でFE起動、power menu、Cancel、Sleep、sleep中USB電源
+      抜き差し、ADB再列挙、Power 1回復帰、ゲーム継続、映像・入力・音声を
+      operator合格とした。DraSticのsleep gateは完了。
   - [x] FTP/SFTP/SambaをPixel2 componentとして実装する
     - 2026-08-14: 初期bring-upの「SSH/ADBだけを表示」を撤回し、V90S/MFと同じ5 serviceをpackage化。保存設定のboot再開、component checksum、release gateへ統合した。USB Wi-Fi実機でのFTP/SFTP/Samba接続は未検証。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる

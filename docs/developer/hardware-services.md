@@ -87,6 +87,14 @@ stopped so the same power menu can overlay RetroArch, PicoArch, standalone
 emulators, and Apps. The overlay pauses only active display owners and restores
 exactly those processes on cancel or sleep return.
 
+DraStic uses a validated companion-process rule because its AArch64 DRM
+`runner` and armhf emulator core are siblings under the same launcher. When the
+runner owns the display, the service verifies the recorded core executable and
+common parent before pausing both. It resumes the runner first, restores DRM
+master and planes, and then resumes the core. This prevents emulation and audio
+from continuing invisibly during standby without allowing a stale PID record
+to target an unrelated process.
+
 The stock kernel advertises `freeze mem`, but the USB-powered validation unit
 returned `EBUSY` before either suspend state began. The helper therefore tries
 the requested kernel state first and falls back to Pixel2 software standby.
