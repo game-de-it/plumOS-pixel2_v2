@@ -124,6 +124,7 @@
   - 2026-08-15: 3,374 unique keyをPixel2 DRM/udev/button/audio/storage contractへ適合。旧57-key factoryは既知SHA一致時だけatomic置換し、変更済みuser cfgには不足keyだけを補完するmigrationを追加。署名Runtime `0.1.0-dev-aa3a3ab`を適用し、healthy、root 4241/4241 checksum、RGUIのDRM/event2取得、FE復帰を確認。[検証記録](docs/validation/2026-08-15-pixel2-retroarch-v90s-config-port.md)
   - 2026-08-15: 前記移植がmain cfgだけで、content-local save/state、L2/R2 hotkey変換、core-options、N64 remapを欠いていたことを訂正。`68abe6c`で3-file factory bundleと旧世代12項目の限定migrationを実装し、署名Runtime `0.1.0-dev-68abe6c`を適用。healthy、Frontend 191/191、RetroArch 59/59、root 4245/4245、既存state 2件のSHA不変を確認。[検証記録](docs/validation/2026-08-15-pixel2-retroarch-save-hotkeys.md)
   - 2026-08-15: `68abe6c`がPixel2で動作確認済みのSTART+SELECT直接終了をV90Sのmenu comboへ誤って変更した回帰を確認。`612cc19`で`enable=SELECT(8)`+`exit=START(9)`を復元し、FUNCTION menu(14)を維持。旧Runtimeの2値だけを直すmigrationを署名Runtimeへ適用し、既存fallback/content-local state 6件のSHA不変を確認。
+  - 2026-08-15: plain DRM OSDが物理480x640座標へ未回転描画され、pending messageもthread間で無保護だった。`70357bb`で論理640x480からの回転描画、mutex、glyph bounds、font既定値と限定migrationを実装。署名Runtime上でsave slot 8通知の正方向・全文表示、RA継続動作、RetroArch 59/59とFrontend 191/191 checksum、試験設定のbyte一致復元を確認。[検証記録](docs/validation/2026-08-15-pixel2-retroarch-osd.md)
 - [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
   - 2026-08-14: WonderSwan `Puzzle Bobble.ws` (`mednafen_wswan`)でSELECTによる縦/横切替後の表示が180度逆さになることをDRM overlay planeのRGB565 captureで確認。`465b957`でWonderSwan系のみ`video_allow_rotate=false`とし、core内content回転後にPixel2固定panel補正を適用。署名Runtime `0.1.0-dev-465b957`のhealth昇格と縦向き正方向captureは合格。SELECT切替後の横向き物理captureは継続。
   - 2026-08-14: 回転修正後に共通4:3固定でWonderSwan映像が伸長されることを実機確認。`e327fb9`でcore-provided aspectへ切り替えたが、SELECT後の144x224 frameへPixel2固定回転分のaspect反転が二重適用され、物理方向640x411になる誤りを目視指摘で再確認。`f7bd277`で`ASPECT_RATIO_CORE`だけDRM側の重複反転を相殺し、物理SELECT 1回後の正式Runtime captureを309x480（144:224と丸め誤差内で一致）へ修正。署名Runtime `0.1.0-dev-f7bd277`はhealth昇格済み。最終LCD目視確認は継続。
@@ -219,6 +220,8 @@
 
 - [x] USB FunctionFS/configfs ADBをbring-up時の既定保守経路にする
 - [x] 設定未作成時はUSB ADBを保守経路として起動し、FEの明示OFF/ONとrecovery markerを提供する
+- [x] UDC `not attached`時のbounded ADB再列挙を実装する
+  - 2026-08-15: adbd生存+gadget bindだけを正常扱いし、`FUNCTIONFS_BIND` timeoutから復旧しない欠陥を`0b9b609`で修正。起動を待たせない4秒後check、異常時だけのrebind/単発restartをSystemへ統合。署名System `0.1.0-dev-0b9b609`のslot B昇格後、更新bootと通常rebootの両方でFE/ADB、UDC configured、healthy no-opを確認。[検証記録](docs/validation/2026-08-15-pixel2-adb-enumeration-recovery.md)
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [x] ADB列挙とshellを実機検証する
 - [ ] USB Wi-FiとSSHを実機検証する
