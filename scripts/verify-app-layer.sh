@@ -17,6 +17,7 @@ for path in \
     bin/plumos-safe-shutdown bin/plumos-run-with-input-map \
     bin/plumos-frontend-launch bin/plumos-frontend-stop \
     bin/plumos-hardware-keys bin/plumos-hardware-keys-service \
+    bin/plumos-power-menu-overlay bin/plumos-rk817-resume \
     bin/plumos-display-control bin/plumos-volume-control \
     bin/plumos-network-control bin/plumos-network-services \
     bin/plumos-nextcommander-launch bin/plumos-music-player-launch \

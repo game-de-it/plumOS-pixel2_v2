@@ -44,10 +44,6 @@ case "${1:-stop}" in
             fi
         fi
         rm -f "$pid_file"
-        if [ -x "$root/bin/plumos-hardware-keys-service" ]; then
-            PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
-                "$root/bin/plumos-hardware-keys-service" stop >/dev/null 2>&1 || true
-        fi
         printf 'frontend=stopped\n'
         ;;
     *)

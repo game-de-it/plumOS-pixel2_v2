@@ -15149,12 +15149,14 @@ static int discover_input_event(char *out, size_t out_size) {
 }
 
 static int discover_power_input_event(char *out, size_t out_size) {
-  if (discover_named_input_event(out, out_size, "axp2202-pek", NULL) ||
+  if (discover_named_input_event(out, out_size, "rk805 pwrkey", NULL) ||
+      discover_named_input_event(out, out_size, "rk817 pwrkey", NULL) ||
+      discover_named_input_event(out, out_size, "axp2202-pek", NULL) ||
       discover_named_input_event(out, out_size, "soc:gpio_keys", NULL) ||
       discover_named_input_event(out, out_size, "gpio-keys", NULL)) {
     return 1;
   }
-  return copy_string(out, out_size, "/dev/input/event1");
+  return copy_string(out, out_size, "/dev/input/event0");
 }
 
 static int same_path(const char *a, const char *b) {

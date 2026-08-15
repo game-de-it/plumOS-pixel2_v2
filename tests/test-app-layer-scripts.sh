@@ -15,6 +15,7 @@ for script in \
     package/app-layer-pixel2/bin/plumos-retroarch-menu-launch \
     package/app-layer-pixel2/bin/plumos-ensure-udev-input-db \
     package/app-layer-pixel2/bin/plumos-safe-shutdown \
+    package/app-layer-pixel2/bin/plumos-power-menu-overlay \
     package/app-layer-pixel2/bin/plumos-run-with-input-map \
     package/app-layer-pixel2/bin/plumos-hardware-keys-service \
     package/app-layer-pixel2/bin/plumos-display-control \
@@ -28,6 +29,7 @@ for script in \
     bash -n "$ROOT_DIR/$script"
 done
 test -x "$ROOT_DIR/tests/test-retroarch-config-merge.sh"
+test -x "$ROOT_DIR/tests/test-pixel2-power-menu-sleep.sh"
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"
@@ -352,6 +354,12 @@ grep -q 'pixel2_joypad' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'gpio-keys' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'rk805 pwrkey' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'plumos-power-menu-overlay' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'POWER_MENU_DEBOUNCE_MS' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'KEY_VOLUMEUP' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'BTN_SELECT' \
@@ -372,6 +380,18 @@ grep -q 'rk817-dev-off' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'i2cset -f -y 0 0x20 0xf4' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
+grep -q 'printf.*sleep_backend.*power_state' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
+grep -q 'sleep=adb-restart-ok' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
+grep -q 'run_rk817_resume rearm' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
+grep -q 'pause_display_owners' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-power-menu-overlay"
+grep -q 'PLUMOS_POWER_MENU_SELECTION' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-power-menu-overlay"
+! grep -q 'plumos-hardware-keys-service.*stop' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-frontend-stop"
 grep -q 'docker/pixel2-tools/libretro-core-recipes.tsv' "$ROOT_DIR/scripts/build-libretro-cores.sh"
 ! grep -q '^mupen64plus_next|' \
     "$ROOT_DIR/docker/pixel2-tools/libretro-core-recipes.tsv"
@@ -541,8 +561,9 @@ grep -q '40-frontend' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-frontend-launch"
 grep -q 'process_is_live' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-hardware-keys-service"
-grep -q 'plumos-frontend-stop stop' \
+grep -q 'plumos-frontend-stop" stop' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
+"$ROOT_DIR/tests/test-pixel2-power-menu-sleep.sh"
 grep -q 'renderer->var.xres = renderer->physical_yres' \
     "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
 grep -q 'case BTN_EAST:' \

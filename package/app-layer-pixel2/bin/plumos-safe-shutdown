@@ -5,20 +5,45 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
 bb=${PLUMOS_BUSYBOX:-/bin/busybox}
+root=${PLUMOS_ROOT:-/mnt/plumos}
+runtime_root=${PLUMOS_RUNTIME_ROOT:-/run/plumos}
 action=
 dry_run=0
+sleep_backend=${PLUMOS_SLEEP_BACKEND:-mem}
+wakeup_sec=${PLUMOS_SLEEP_WAKEUP_SEC:-0}
+wait_sec=${PLUMOS_POWER_WAIT_SEC:-0}
+sleep_settle_sec=${PLUMOS_SLEEP_SETTLE_SEC:-1}
 log_dir=${PLUMOS_POWER_LOG_DIR:-/state/plumos/logs}
 log_file=$log_dir/power.log
+lock_dir=${PLUMOS_POWER_LOCK_DIR:-$runtime_root/power-action.lock}
+power_state=${PLUMOS_POWER_STATE:-/sys/power/state}
+rtc_wakealarm=${PLUMOS_RTC_WAKEALARM:-/sys/class/rtc/rtc0/wakealarm}
+adbd_control=${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}
+display_control=${PLUMOS_DISPLAY_CONTROL:-$root/bin/plumos-display-control}
+volume_control=${PLUMOS_VOLUME_CONTROL:-$root/bin/plumos-volume-control}
+rk817_resume=${PLUMOS_RK817_RESUME_HELPER:-$root/bin/plumos-rk817-resume}
 
-mkdir -p "$log_dir" 2>/dev/null || true
+mkdir -p "$log_dir" "$runtime_root" 2>/dev/null || true
 
 log() {
     printf '%s\n' "$*"
     printf '%s\n' "$*" >>"$log_file" 2>/dev/null || true
 }
 
+is_uint() {
+    case "${1:-}" in ''|*[!0-9]*) return 1 ;; esac
+}
+
 is_mounted() {
     $bb grep -qs " $1 " /proc/mounts 2>/dev/null
+}
+
+process_is_live() {
+    pid=$1
+    [ -r "/proc/$pid/stat" ] || return 1
+    state=$(sed 's/.*) //' "/proc/$pid/stat" 2>/dev/null | awk '{print $1}')
+    [ "$state" != Z ] || return 1
+    $bb kill -0 "$pid" 2>/dev/null
 }
 
 stop_pid_file() {
@@ -26,21 +51,55 @@ stop_pid_file() {
     name=$2
     [ -s "$pid_file" ] || return 0
     pid=$($bb cat "$pid_file" 2>/dev/null || true)
-    case "$pid" in
-        ''|*[!0-9]*|1|$$) return 0 ;;
-    esac
-    if $bb kill -0 "$pid" 2>/dev/null; then
+    case "$pid" in ''|*[!0-9]*|1|$$) return 0 ;; esac
+    if process_is_live "$pid"; then
         log "power=stop-process name=$name pid=$pid signal=TERM"
         $bb kill "$pid" 2>/dev/null || true
         for _ in 1 2 3; do
-            $bb kill -0 "$pid" 2>/dev/null || break
+            process_is_live "$pid" || break
             $bb sleep 1
         done
-        if $bb kill -0 "$pid" 2>/dev/null; then
+        if process_is_live "$pid"; then
             log "power=stop-process name=$name pid=$pid signal=KILL"
             $bb kill -9 "$pid" 2>/dev/null || true
         fi
     fi
+}
+
+display_owner_pids() {
+    found=""
+    for fd in /proc/[0-9]*/fd/*; do
+        target=$($bb readlink "$fd" 2>/dev/null || true)
+        case "$target" in
+            /dev/fb0|/dev/dri/*|/dev/mali*|/dev/disp) ;;
+            *) continue ;;
+        esac
+        pid=${fd#/proc/}
+        pid=${pid%%/*}
+        case "$pid" in ''|*[!0-9]*|1|$$) continue ;; esac
+        case " $found " in *" $pid "*) ;; *) found="$found $pid" ;; esac
+    done
+    printf '%s\n' "$found"
+}
+
+stop_display_owners() {
+    pids=$(display_owner_pids)
+    [ -n "$pids" ] || return 0
+    log "power=stop-display-owners pids=$(printf '%s' "$pids" | sed 's/^ *//') signal=TERM"
+    for pid in $pids; do $bb kill -CONT "$pid" 2>/dev/null || true; done
+    for pid in $pids; do $bb kill "$pid" 2>/dev/null || true; done
+    for _ in 1 2 3; do
+        alive=""
+        for pid in $pids; do process_is_live "$pid" && alive="$alive $pid"; done
+        [ -z "$alive" ] && return 0
+        $bb sleep 1
+    done
+    for pid in $pids; do
+        if process_is_live "$pid"; then
+            log "power=stop-display-owner pid=$pid signal=KILL"
+            $bb kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
 }
 
 umount_if_mounted() {
@@ -59,14 +118,16 @@ umount_if_mounted() {
 
 prepare_power_transition() {
     log "power=prepare-start action=$action"
-    if [ -x /mnt/plumos/bin/plumos-hardware-keys-service ]; then
-        /mnt/plumos/bin/plumos-hardware-keys-service stop >>"$log_file" 2>&1 || true
+    if [ -x "$root/bin/plumos-hardware-keys-service" ]; then
+        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+            "$root/bin/plumos-hardware-keys-service" stop >>"$log_file" 2>&1 || true
     fi
-    if [ -x /mnt/plumos/bin/plumos-frontend-stop ]; then
-        PLUMOS_ROOT=/mnt/plumos PLUMOS_RUNTIME_ROOT=/run/plumos \
-            /mnt/plumos/bin/plumos-frontend-stop stop >>"$log_file" 2>&1 || true
+    stop_display_owners
+    if [ -x "$root/bin/plumos-frontend-stop" ]; then
+        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+            "$root/bin/plumos-frontend-stop" stop >>"$log_file" 2>&1 || true
     else
-        stop_pid_file /run/plumos/frontend.pid frontend
+        stop_pid_file "$runtime_root/frontend.pid" frontend
     fi
     umount_if_mounted /roms || true
     umount_if_mounted /mnt/plumos-user || true
@@ -83,45 +144,145 @@ rk817_dev_off() {
     i2cset -f -y 0 0x20 0xf4 "$value"
 }
 
+run_rk817_resume() {
+    resume_action=$1
+    [ -x "$rk817_resume" ] || {
+        log "sleep=rk817-resume-skipped reason=helper-missing action=$resume_action"
+        return 0
+    }
+    if LD_LIBRARY_PATH="$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+        "$rk817_resume" "$resume_action" >>"$log_file" 2>&1; then
+        log "sleep=rk817-resume-ok action=$resume_action"
+    else
+        log "sleep=rk817-resume-failed action=$resume_action"
+    fi
+}
+
+adb_was_running() {
+    [ -x "$adbd_control" ] || return 1
+    "$adbd_control" status 2>/dev/null | grep -q '^running=1$'
+}
+
+restore_adb() {
+    [ "$1" -eq 1 ] || return 0
+    log 'sleep=adb-restart-begin'
+    "$adbd_control" stop >>"$log_file" 2>&1 || true
+    if "$adbd_control" start >>"$log_file" 2>&1; then
+        log 'sleep=adb-restart-ok'
+    else
+        log 'sleep=adb-restart-failed'
+    fi
+}
+
+set_wakealarm() {
+    [ "$wakeup_sec" -gt 0 ] || return 0
+    [ -e "$rtc_wakealarm" ] || {
+        log "sleep=wakealarm-skipped reason=missing seconds=$wakeup_sec"
+        return 0
+    }
+    printf '0\n' >"$rtc_wakealarm" 2>/dev/null || true
+    printf '+%s\n' "$wakeup_sec" >"$rtc_wakealarm" 2>/dev/null || true
+    log "sleep=wakealarm-armed seconds=$wakeup_sec"
+}
+
+sleep_action() {
+    case "$sleep_backend" in
+        none)
+            log 'sleep=result-none'
+            return 0
+            ;;
+        mem|freeze)
+            grep -qw "$sleep_backend" "$power_state" 2>/dev/null || {
+                log "sleep=result-unsupported backend=$sleep_backend states=$(cat "$power_state" 2>/dev/null || true)"
+                return 1
+            }
+            ;;
+    esac
+    adb_resume=0
+    adb_was_running && adb_resume=1
+    log "sleep=prepare backend=$sleep_backend adb_resume=$adb_resume"
+    run_rk817_resume arm
+    $bb sync
+    [ "$wait_sec" -eq 0 ] || $bb sleep "$wait_sec"
+    if [ "$dry_run" -eq 1 ]; then
+        log "sleep=result-dry-run backend=$sleep_backend"
+        return 0
+    fi
+    set_wakealarm
+    log "sleep=enter backend=$sleep_backend"
+    printf '%s\n' "$sleep_backend" >"$power_state"
+    log "sleep=resume backend=$sleep_backend"
+    run_rk817_resume arm
+    if [ -x "$volume_control" ]; then
+        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+            "$volume_control" apply >>"$log_file" 2>&1 || \
+            log 'sleep=volume-restore-failed'
+    fi
+    if [ -x "$display_control" ]; then
+        PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+            "$display_control" apply >>"$log_file" 2>&1 || \
+            log 'sleep=display-restore-failed'
+    fi
+    [ "$sleep_settle_sec" -eq 0 ] || $bb sleep "$sleep_settle_sec"
+    run_rk817_resume rearm
+    restore_adb "$adb_resume"
+    log "sleep=result-returned backend=$sleep_backend"
+}
+
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --reboot) action=reboot ;;
         --shutdown) action=shutdown ;;
+        --sleep) action=sleep ;;
         --dry-run) dry_run=1 ;;
-        --no-hold-resume|--no-poweroff|--poweroff) ;;
-        --power-backend|--sleep-backend|--wakeup-sec)
-            [ "$#" -ge 2 ] || exit 2
-            shift
-            ;;
+        --no-hold-resume|--hold-resume|--no-poweroff|--poweroff) ;;
+        --power-backend) [ "$#" -ge 2 ] || exit 2; shift ;;
+        --sleep-backend) [ "$#" -ge 2 ] || exit 2; shift; sleep_backend=$1 ;;
+        --wakeup-sec) [ "$#" -ge 2 ] || exit 2; shift; wakeup_sec=$1 ;;
+        --wait-sec) [ "$#" -ge 2 ] || exit 2; shift; wait_sec=$1 ;;
         *) printf 'plumos-safe-shutdown: unsupported argument: %s\n' "$1" >&2; exit 2 ;;
     esac
     shift
 done
 
-case "$action" in
-    reboot|shutdown) ;;
-    *) printf 'plumos-safe-shutdown: reboot or shutdown action required\n' >&2; exit 2 ;;
+case "$action" in reboot|shutdown|sleep) ;; *)
+    printf 'plumos-safe-shutdown: reboot, shutdown, or sleep action required\n' >&2
+    exit 2
 esac
+case "$sleep_backend" in mem|freeze|none) ;; *) exit 2 ;; esac
+is_uint "$wakeup_sec" || exit 2
+is_uint "$wait_sec" || exit 2
+is_uint "$sleep_settle_sec" || exit 2
 
-log "$(printf 'power=result-requested device=pixel2 action=%s dry_run=%s' \
-    "$action" "$dry_run"
-)"
-"$bb" sync
-[ "$dry_run" -eq 0 ] || exit 0
-prepare_power_transition
+if ! mkdir "$lock_dir" 2>/dev/null; then
+    log "power=result-already-running action=$action"
+    exit 0
+fi
+trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT INT TERM
 
+log "power=result-requested device=pixel2 action=$action dry_run=$dry_run"
 case "$action" in
-    reboot)
-        if [ -w /proc/sysrq-trigger ]; then
-            log 'power=reboot-method method=sysrq-trigger-b'
-            printf b >/proc/sysrq-trigger
-        fi
-        exec "$bb" reboot -f
+    sleep)
+        sleep_action
         ;;
-    shutdown)
-        rk817_dev_off || log 'power=shutdown-method method=rk817-dev-off rc=1'
-        $bb sleep 5
-        log 'power=shutdown-method method=busybox-poweroff-fallback'
-        exec "$bb" poweroff -f
+    reboot|shutdown)
+        $bb sync
+        [ "$dry_run" -eq 0 ] || exit 0
+        prepare_power_transition
+        case "$action" in
+            reboot)
+                if [ -w /proc/sysrq-trigger ]; then
+                    log 'power=reboot-method method=sysrq-trigger-b'
+                    printf b >/proc/sysrq-trigger
+                fi
+                exec "$bb" reboot -f
+                ;;
+            shutdown)
+                rk817_dev_off || log 'power=shutdown-method method=rk817-dev-off rc=1'
+                $bb sleep 5
+                log 'power=shutdown-method method=busybox-poweroff-fallback'
+                exec "$bb" poweroff -f
+                ;;
+        esac
         ;;
 esac

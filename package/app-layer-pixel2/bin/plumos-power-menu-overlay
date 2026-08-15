@@ -1,0 +1,172 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+LOG_DIR="${PLUMOS_POWER_MENU_LOG_DIR:-$PLUMOS_ROOT/logs}"
+LOG_FILE="${PLUMOS_POWER_MENU_OVERLAY_LOG:-$LOG_DIR/power-menu-overlay.log}"
+MENU="${PLUMOS_POWER_MENU_OVERLAY_UI:-$PLUMOS_ROOT/bin/plumos-frontend-pixel2}"
+SAFE_SHUTDOWN="${PLUMOS_POWER_MENU_SAFE_SHUTDOWN:-$PLUMOS_ROOT/bin/plumos-safe-shutdown}"
+LOCK_DIR="${PLUMOS_POWER_MENU_LOCK_DIR:-$RUNTIME_ROOT/power-menu-overlay.lock}"
+SELECTION_FILE="${PLUMOS_POWER_MENU_SELECTION_FILE:-$RUNTIME_ROOT/power-menu-overlay.$$.selection}"
+PAUSED_PIDS=""
+TERMINAL_ACTION=0
+
+mkdir -p "$LOG_DIR" "$RUNTIME_ROOT" 2>/dev/null || true
+
+log() {
+  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo unknown-time)" "$*" \
+    >>"$LOG_FILE" 2>/dev/null || true
+}
+
+process_state() {
+  if [ -r "/proc/$1/stat" ]; then
+    sed 's/.*) //' "/proc/$1/stat" 2>/dev/null | awk '{print $1}'
+  else
+    ps -o state= -p "$1" 2>/dev/null | sed 's/^[[:space:]]*//;s/^\(.\).*/\1/'
+  fi
+}
+
+add_paused_pid() {
+  pid="$1"
+  case "$pid" in ''|*[!0-9]*|1) return 0 ;; esac
+  [ "$pid" != "$$" ] || return 0
+  [ "$pid" != "${PPID:-}" ] || return 0
+  case " $PAUSED_PIDS " in *" $pid "*) return 0 ;; esac
+  state="$(process_state "$pid")"
+  case "$state" in ''|Z|T|t) return 0 ;; esac
+  if kill -0 "$pid" 2>/dev/null && kill -STOP "$pid" 2>/dev/null; then
+    PAUSED_PIDS="$PAUSED_PIDS $pid"
+  fi
+}
+
+pause_display_owners() {
+  if [ "${PLUMOS_POWER_MENU_OVERLAY_PIDS+x}" = x ]; then
+    for pid in ${PLUMOS_POWER_MENU_OVERLAY_PIDS:-}; do
+      add_paused_pid "$pid"
+    done
+    log "pause source=env pids=$(printf '%s' "$PAUSED_PIDS" | sed 's/^ *//;s/ *$//')"
+    return 0
+  fi
+  for fd in /proc/[0-9]*/fd/*; do
+    target="$(readlink "$fd" 2>/dev/null || true)"
+    case "$target" in
+      /dev/fb0|/dev/dri/*|/dev/mali*|/dev/disp) ;;
+      *) continue ;;
+    esac
+    pid="${fd#/proc/}"
+    pid="${pid%%/*}"
+    add_paused_pid "$pid"
+  done
+  log "pause source=scan pids=$(printf '%s' "$PAUSED_PIDS" | sed 's/^ *//;s/ *$//')"
+}
+
+resume_display_owners() {
+  [ -n "$PAUSED_PIDS" ] || return 0
+  log "resume pids=$(printf '%s' "$PAUSED_PIDS" | sed 's/^ *//;s/ *$//')"
+  kill -CONT $PAUSED_PIDS 2>/dev/null || true
+  PAUSED_PIDS=""
+}
+
+find_input() {
+  wanted="$1"
+  fallback="$2"
+  for event in /sys/class/input/event*; do
+    [ -r "$event/device/name" ] || continue
+    [ "$(cat "$event/device/name" 2>/dev/null)" = "$wanted" ] || continue
+    printf '/dev/input/%s\n' "${event##*/}"
+    return 0
+  done
+  printf '%s\n' "$fallback"
+}
+
+read_selection() {
+  sed -n 's/^action=//p' "$SELECTION_FILE" 2>/dev/null | head -n 1
+}
+
+run_power_action() {
+  action="$1"
+  case "$action" in
+    sleep)
+      "$SAFE_SHUTDOWN" --sleep --sleep-backend mem --no-poweroff --no-hold-resume \
+        >>"$LOG_DIR/frontend-power-action.log" 2>&1
+      ;;
+    reboot)
+      "$SAFE_SHUTDOWN" --reboot --no-hold-resume \
+        >>"$LOG_DIR/frontend-power-action.log" 2>&1
+      ;;
+    shutdown)
+      "$SAFE_SHUTDOWN" --shutdown --poweroff --power-backend auto --no-hold-resume \
+        >>"$LOG_DIR/frontend-power-action.log" 2>&1
+      ;;
+    *) return 2 ;;
+  esac
+}
+
+cleanup() {
+  if [ "$TERMINAL_ACTION" = 0 ]; then
+    resume_display_owners
+  fi
+  rm -f "$SELECTION_FILE" 2>/dev/null || true
+  rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  log 'skip reason=already-open'
+  exit 0
+fi
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap cleanup EXIT
+
+[ -x "$MENU" ] || { log "error menu-missing path=$MENU"; exit 127; }
+[ -x "$SAFE_SHUTDOWN" ] || { log "error safe-shutdown-missing path=$SAFE_SHUTDOWN"; exit 127; }
+
+controller_event="$(find_input pixel2_joypad /dev/input/event2)"
+power_event="$(find_input 'rk805 pwrkey' /dev/input/event0)"
+rm -f "$SELECTION_FILE" 2>/dev/null || true
+pause_display_owners
+log "menu begin controller=$controller_event power=$power_event"
+PLUMOS_ROOT="$PLUMOS_ROOT" \
+PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT" \
+PLUMOS_FRONTEND_MODE=manual \
+PLUMOS_RENDERER=fbdev \
+PLUMOS_FB=/dev/fb0 \
+PLUMOS_DRM_DEVICE=/dev/dri/card0 \
+PLUMOS_FBDEV_ROTATION=ccw \
+PLUMOS_INPUT_EVENT="$controller_event" \
+PLUMOS_POWER_INPUT_EVENT="$power_event" \
+PLUMOS_POWER_MENU_SELECTION="$SELECTION_FILE" \
+LD_LIBRARY_PATH="$PLUMOS_ROOT/frontend/lib:$PLUMOS_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+  "$MENU" --power-overlay --renderer fbdev --fb /dev/fb0 \
+    --fbdev-rotation ccw --event "$controller_event" --power-event "$power_event"
+menu_rc=$?
+selection="$(read_selection)"
+log "menu end rc=$menu_rc selection=${selection:-cancel}"
+
+case "$selection" in
+  sleep)
+    run_power_action sleep
+    action_rc=$?
+    resume_display_owners
+    exit "$action_rc"
+    ;;
+  reboot|shutdown)
+    resume_display_owners
+    TERMINAL_ACTION=1
+    run_power_action "$selection"
+    action_rc=$?
+    TERMINAL_ACTION=0
+    resume_display_owners
+    exit "$action_rc"
+    ;;
+  cancel|'')
+    resume_display_owners
+    exit "$menu_rc"
+    ;;
+  *)
+    log "selection ignored value=$selection"
+    resume_display_owners
+    exit "$menu_rc"
+    ;;
+esac
