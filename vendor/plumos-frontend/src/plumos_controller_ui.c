@@ -11992,6 +11992,11 @@ static int run_power_action(struct ui_state *ui, const char *action, int powerof
     snprintf(ui->status, sizeof(ui->status), "power %s running", action);
   }
   render_ui(ui);
+  if (strcmp(action, "sleep") == 0 && ui_renderer_fbdev_only(ui) &&
+      !plumos_fbdev_present_black(&ui->fbdev_renderer)) {
+    set_status(ui, "sleep display blank failed");
+    return 0;
+  }
   rc = run_runtime_shell_command(cmd);
   if (rc == -1) {
     if (terminal_action) {

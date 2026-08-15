@@ -650,6 +650,27 @@ static int plumos_fbdev_present(struct plumos_fbdev_renderer *r) {
   return 1;
 }
 
+static int plumos_fbdev_present_black(struct plumos_fbdev_renderer *r) {
+  unsigned char *target;
+
+  if (!r || !r->mem || r->frame_bytes <= 0) {
+    return 0;
+  }
+  target = r->shadow ? r->shadow : r->mem + r->active_offset;
+  memset(target, 0, (size_t)r->frame_bytes);
+  if (!plumos_fbdev_present(r)) {
+    return 0;
+  }
+#ifdef PLUMOS_FBDEV_ENABLE_DRM
+  if (r->drm_active) {
+    target = r->mem + r->active_offset;
+    memset(target, 0, (size_t)r->frame_bytes);
+    return plumos_fbdev_present(r);
+  }
+#endif
+  return 1;
+}
+
 #ifdef PLUMOS_FBDEV_ENABLE_PNG
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
