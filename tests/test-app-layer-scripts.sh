@@ -186,7 +186,7 @@ grep -q 'legacy_pixel2_sha256=b97c897b' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'legacy_incomplete_full_sha256=9f4aaebd' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
-grep -q 'result-replaced-legacy' \
+grep -q 'main_result=replaced-legacy' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
 grep -q 'retroarch_aux=result-%s target=core-options' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-config-merge"
