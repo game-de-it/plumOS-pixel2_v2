@@ -150,7 +150,8 @@ run_rk817_resume() {
         log "sleep=rk817-resume-skipped reason=helper-missing action=$resume_action"
         return 0
     }
-    if LD_LIBRARY_PATH="$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    if ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$root/config/alsa/alsa.conf}" \
+        LD_LIBRARY_PATH="$root/frontend/lib:$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
         "$rk817_resume" "$resume_action" >>"$log_file" 2>&1; then
         log "sleep=rk817-resume-ok action=$resume_action"
     else

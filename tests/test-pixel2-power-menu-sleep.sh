@@ -35,6 +35,12 @@ printf '%s %s\n' "${0##*/}" "$*" >>"$PLUMOS_TEST_CALLS"
 EOF
 done
 
+cat >"$TEST_ROOT/rk817" <<'EOF'
+#!/bin/sh
+printf '%s %s\n' "${0##*/}" "$*" >>"$PLUMOS_TEST_CALLS"
+printf 'rk817_alsa %s\n' "${ALSA_CONFIG_PATH:-missing}" >>"$PLUMOS_TEST_CALLS"
+EOF
+
 chmod 0755 "$TEST_ROOT/busybox" "$TEST_ROOT/adbd" \
     "$TEST_ROOT/display" "$TEST_ROOT/volume" "$TEST_ROOT/rk817"
 printf 'freeze mem\n' >"$TEST_ROOT/power-state"
@@ -61,6 +67,8 @@ PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
 [ "$(cat "$TEST_ROOT/wakealarm")" = +5 ]
 grep -q '^rk817 arm$' "$TEST_ROOT/calls"
 grep -q '^rk817 rearm$' "$TEST_ROOT/calls"
+grep -q "^rk817_alsa $TEST_ROOT/plumos/config/alsa/alsa.conf$" \
+    "$TEST_ROOT/calls"
 grep -q '^volume apply$' "$TEST_ROOT/calls"
 grep -q '^display apply$' "$TEST_ROOT/calls"
 grep -q '^stop$' "$TEST_ROOT/calls"

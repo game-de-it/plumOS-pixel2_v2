@@ -5,6 +5,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+static void configure_alsa(void) {
+  const char *root;
+  char path[512];
+
+  if (getenv("ALSA_CONFIG_PATH") && getenv("ALSA_CONFIG_PATH")[0]) {
+    return;
+  }
+  root = getenv("PLUMOS_ROOT");
+  if (!root || !root[0]) {
+    root = "/mnt/plumos";
+  }
+  snprintf(path, sizeof(path), "%s/config/alsa/alsa.conf", root);
+  if (access(path, R_OK) != 0) {
+    snprintf(path, sizeof(path), "%s/factory-defaults/alsa/alsa.conf", root);
+  }
+  if (access(path, R_OK) == 0) {
+    setenv("ALSA_CONFIG_PATH", path, 0);
+  }
+}
 
 static snd_mixer_elem_t *find_element(snd_mixer_t *mixer, const char *name) {
   snd_mixer_selem_id_t *id;
@@ -108,6 +129,7 @@ int main(int argc, char **argv) {
   if (!card || !card[0]) {
     card = "hw:0";
   }
+  configure_alsa();
   result = snd_mixer_open(&mixer, 0);
   if (result >= 0) {
     result = snd_mixer_attach(mixer, card);
