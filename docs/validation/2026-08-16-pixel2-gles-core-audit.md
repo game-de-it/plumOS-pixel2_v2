@@ -80,10 +80,18 @@ Evidence roots:
 - `output/live/2026-08-16-gles-core-audit/flycast-standard-after/`
 - `output/live/2026-08-16-dreamcast-menu-rotation/`
 
-The N64 and DuckSwan RGUI frames were toggled through RetroArch's standard
-`MENU_TOGGLE` command while the same managed binary, config, core, content,
-and presentation variables were active. Physical Function remains a separate
-input acceptance check; its mapping is unchanged by this patch.
+The N64 and DuckSwan RGUI frames were initially toggled through RetroArch's
+standard `MENU_TOGGLE` command while the same managed binary, config, core,
+content, and presentation variables were active. On the exact official Runtime
+`0.1.0-dev-2944596`, the operator then pressed the physical Function button
+while N64 was running and confirmed that Quick Menu was upright on the LCD.
+The final active XR24 plane 58 was captured at 480x640 and its logical view is
+upright at 640x480:
+
+- `output/live/2026-08-16-gles-core-audit/n64-official/physical-menu-logical.png`
+
+The physical Function mapping is unchanged by this patch, and its N64 menu
+orientation acceptance check is complete.
 
 ## Signed deployment
 
