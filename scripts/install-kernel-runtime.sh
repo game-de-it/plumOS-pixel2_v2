@@ -60,6 +60,7 @@ mediatek/mt7662u.bin
 mediatek/mt7662u_rom_patch.bin
 rt2870.bin
 rt73.bin
+rtlwifi/rtl8188eufw.bin
 rtlwifi/rtl8192cufw.bin
 rtlwifi/rtl8192cufw_A.bin
 rtlwifi/rtl8192cufw_B.bin

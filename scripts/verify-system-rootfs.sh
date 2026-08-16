@@ -112,6 +112,7 @@ grep -q '"boot_substrate": "stock-pixel2"' \
 test -f "$tmp/rootfs/lib/firmware/regulatory.db"
 test -f "$tmp/rootfs/lib/firmware/ath9k_htc/htc_9271-1.4.0.fw"
 test -f "$tmp/rootfs/lib/firmware/mt7601u.bin"
+test -f "$tmp/rootfs/lib/firmware/rtlwifi/rtl8188eufw.bin"
 test -f "$tmp/rootfs/lib/firmware/rtlwifi/rtl8192cufw.bin"
 (cd "$tmp/rootfs" && sha256sum -c usr/lib/plumos/kernel-runtime.sha256 >/dev/null)
 

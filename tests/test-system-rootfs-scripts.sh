@@ -119,6 +119,10 @@ grep -q 'umount /.plumos-dispatcher-old' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'stock-handoff.log' "$ROOT_DIR/rootfs/pixel2/usr/lib/systemd/systemd"
 grep -q 'mount-source storage=stock-initramfs' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q '5.10.198' "$ROOT_DIR/scripts/install-kernel-runtime.sh"
+grep -q '^rtlwifi/rtl8188eufw.bin$' \
+    "$ROOT_DIR/scripts/install-kernel-runtime.sh"
+grep -q 'lib/firmware/rtlwifi/rtl8188eufw.bin' \
+    "$ROOT_DIR/scripts/verify-system-rootfs.sh"
 grep -q 'stock-pixel2' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'stock-pixel2' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
 grep -q 'system-pending-attempted' "$ROOT_DIR/rootfs/pixel2-dispatcher/init"
