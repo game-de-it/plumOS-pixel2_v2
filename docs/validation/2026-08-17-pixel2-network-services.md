@@ -128,4 +128,7 @@ ec596f84fa018a5fa302d5a8d7b1facad47f5e6a3d2820009b27b3d92e0bab95
 ```
 
 The device-side validation files were absent after each protocol test. This
-closes the remaining USB Wi-Fi transport-level acceptance item.
+closes protocol reachability and data-integrity acceptance. It does not close
+bulk-transfer performance acceptance; the separate throughput investigation
+is recorded in
+[`2026-08-17-pixel2-usb-wifi-throughput.md`](2026-08-17-pixel2-usb-wifi-throughput.md).

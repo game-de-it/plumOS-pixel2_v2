@@ -290,6 +290,12 @@
     component checksumは合格。さらに`192.168.10.147`のUSB Wi-Fi LAN越しで
     SSHログインとSFTP/FTP/Sambaのupload/download/deleteを反復し、全downloadの
     SHA-256一致と検証ファイル削除を確認した。
+- [ ] USB Wi-Fiのbulk-transfer性能を実機で合格させる
+  - 2026-08-17: `0bda:8179` / stock `r8188eu`で30 MiB SFTPが約59 KiB/sに停滞。
+    storage、CPU、USB autosuspend、SFTP固有処理、省電力/IPS、HT/A-MPDU、
+    `rtw_wifi_spec`を比較しても改善しなかった。別のWPA2-AES 2.4 GHz APまたは
+    2台目の同USB ID dongleでAP相性と個体不良を分離する。詳細は
+    [実機throughput調査](docs/validation/2026-08-17-pixel2-usb-wifi-throughput.md)。
 
 ## Image and hardware validation
 
