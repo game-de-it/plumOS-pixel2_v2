@@ -146,14 +146,31 @@ video_allow_rotate=true
 video_rotation=${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}
 aspect_ratio_index=0
 case "${core##*/}" in
+    flycast_libretro.so|\
+    flycast_xtreme_libretro.so)
+        # These cores require a real EGL/GLES context. RetroArch's plain DRM
+        # path either crashes the core or copies a wrongly oriented GL result,
+        # while the KMS/GBM GLES driver presents the same Panfrost output
+        # directly. Keep shared input and aspect settings authoritative.
+        video_driver=gl
+        # RetroArch's GL and software DRM backends use opposite winding on the
+        # Pixel2 portrait panel. Compensate the GL presentation direction.
+        video_rotation=1
+        ;;
     km_duckswanstation_xtreme_amped_libretro.so)
-        # DuckSwanStation requests an EGL/GLES context.  RetroArch's plain DRM
-        # path crashes this core on the stock RK3326 kernel, while the KMS/GBM
-        # GLES driver uses the same packaged Panfrost Mesa stack successfully.
+        # DuckSwanStation also needs the KMS/GBM GLES driver, but retains its
+        # already validated Pixel2 rotation policy.
         video_driver=gl
         ;;
 esac
 case "$system_id" in
+    dreamcast)
+        # Dreamcast content is always horizontal. Flycast nevertheless sends
+        # SET_ROTATION=0, which would replace Pixel2's user rotation after the
+        # GL driver starts. Reject that no-op core request and keep the panel
+        # correction selected by video_rotation.
+        video_allow_rotate=false
+        ;;
     wonderswan|wonderswancolor)
         # Match the proven plumOS portrait-panel contract: RetroArch sees an
         # unrotated logical viewport, Beetle WonderSwan performs its own

@@ -286,6 +286,14 @@ grep -q '^PLUMOS_INPUT_ANALOG_DPAD_MODE=none$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q 'input-map.env' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'flycast_xtreme_libretro.so)' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'video_driver=gl' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'video_rotation=1' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'dreamcast)' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'wonderswan|wonderswancolor)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'video_allow_rotate=false' \
