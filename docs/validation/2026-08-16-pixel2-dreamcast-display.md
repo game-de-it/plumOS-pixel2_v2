@@ -70,3 +70,39 @@ physical buffer into the Pixel2 logical direction produced a correctly
 oriented 640x480 Crazy Taxi frame with no pillarboxing. The exact Runtime is
 left running Crazy Taxi for operator LCD confirmation.
 
+## RetroArch menu orientation
+
+The first physical Function-menu check exposed a separate GL presentation
+path: Flycast content used the rotated `gl->mvp` matrix, while the RGUI texture
+was always drawn with `gl->mvp_no_rot`. The game could therefore be upright
+while the menu was rotated on the physical Pixel2 LCD.
+
+Commit `f46740d` adds a Pixel2 patch which selects the content matrix for the
+menu only when `PLUMOS_GL_MENU_ROTATION=content` is present. The Dreamcast
+launcher exports that setting; other systems retain RetroArch's normal GL menu
+policy. RetroArch and the frontend were built in parallel and the strict
+app-layer verification passed.
+
+The signed Runtime update contained the RetroArch binary, Dreamcast launcher,
+and their component/root metadata only. ROMs, BIOS, saves, and user settings
+were not replaced.
+
+```text
+package=plumos-pixel2-runtime-0.1.0-dev-f46740d.tar.gz
+sha256=6960117ac43f100ec756628c69da792bd473da102b945ba40383d034e941aa99
+source_version=0.1.0-dev-e514099
+payload_files=9
+deleted_files=0
+status=runtime_healthy
+frontend_checksums=194/194
+retroarch_checksums=59/59
+picoarch_checksums=11/11
+root_checksums=4248/4248
+```
+
+With Crazy Taxi running through `flycast_xtreme_libretro.so`, the operator
+opened RGUI using the physical Function button and confirmed the menu direction
+was correct. The final active XR24 plane was also captured at 480x640 and its
+Pixel2-logical 640x480 view showed upright `QUICK MENU` text:
+
+`output/live/2026-08-16-dreamcast-menu-rotation/dreamcast-menu-fixed-logical.png`
