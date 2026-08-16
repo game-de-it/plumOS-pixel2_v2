@@ -286,7 +286,7 @@ grep -q '^PLUMOS_INPUT_ANALOG_DPAD_MODE=none$' \
     "$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 grep -q 'input-map.env' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
-grep -q 'flycast_xtreme_libretro.so)' \
+grep -q 'flycast_xtreme_libretro.so|' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'video_driver=gl' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
@@ -297,6 +297,12 @@ grep -q 'aspect_ratio_index=24' \
 grep -q 'dreamcast)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'PLUMOS_GL_MENU_ROTATION=content' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'parallel_n64_libretro.so)' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'km_duckswanstation_xtreme_amped_libretro.so|' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'n64|psx)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'rotate_menu ? &gl->mvp : &gl->mvp_no_rot' \
     "$ROOT_DIR/patches/retroarch/017-pixel2-gl-menu-rotation.patch"

@@ -148,20 +148,17 @@ video_aspect_ratio=1.333333
 aspect_ratio_index=0
 case "${core##*/}" in
     flycast_libretro.so|\
-    flycast_xtreme_libretro.so)
-        # These cores require a real EGL/GLES context. RetroArch's plain DRM
-        # path either crashes the core or copies a wrongly oriented GL result,
-        # while the KMS/GBM GLES driver presents the same Panfrost output
-        # directly. Keep shared input and aspect settings authoritative.
+    flycast_xtreme_libretro.so|\
+    km_duckswanstation_xtreme_amped_libretro.so|\
+    parallel_n64_libretro.so)
+        # Hardware-rendered cores require a real EGL/GLES context. Keep their
+        # complete Pixel2 presentation contract together: KMS/GBM GL driver,
+        # GL's opposite panel winding, a full portrait scanout which becomes
+        # logical 4:3 after rotation, and the same matrix for the RGUI texture.
         video_driver=gl
-        # RetroArch's GL and software DRM backends use opposite winding on the
-        # Pixel2 portrait panel. Compensate the GL presentation direction.
         video_rotation=1
-        ;;
-    km_duckswanstation_xtreme_amped_libretro.so)
-        # DuckSwanStation also needs the KMS/GBM GLES driver, but retains its
-        # already validated Pixel2 rotation policy.
-        video_driver=gl
+        aspect_ratio_index=24
+        export PLUMOS_GL_MENU_ROTATION=content
         ;;
 esac
 case "$system_id" in
@@ -171,14 +168,11 @@ case "$system_id" in
         # GL driver starts. Reject that no-op core request and keep the panel
         # correction selected by video_rotation.
         video_allow_rotate=false
-        # The GL driver computes aspect in the physical 480x640 orientation.
-        # Full (index 24) fills that surface and becomes logical 640x480 after
-        # the odd rotation, preserving Dreamcast's native 4:3 output.
-        aspect_ratio_index=24
-        # RGUI is uploaded as an unrotated GL texture. Apply the same final
-        # Pixel2 presentation matrix as the Dreamcast frame so the menu stays
-        # landscape without changing the normal GL policy for other systems.
-        export PLUMOS_GL_MENU_ROTATION=content
+        ;;
+    n64|psx)
+        # Current Pixel2 GLES routes for these systems are horizontal. Do not
+        # let a no-op core rotation replace the fixed panel correction.
+        video_allow_rotate=false
         ;;
     wonderswan|wonderswancolor)
         # Match the proven plumOS portrait-panel contract: RetroArch sees an

@@ -160,13 +160,25 @@ grep -q '"device": "pixel2"' "$ROOT/config/frontend/menus.json"
 grep -q 'ID_INPUT_JOYSTICK=1' "$ROOT/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-audio-output' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'LIBGL_DRIVERS_PATH' "$ROOT/bin/plumos-retroarch-launch"
-grep -q 'flycast_xtreme_libretro.so)' "$ROOT/bin/plumos-retroarch-launch"
+grep -q 'flycast_xtreme_libretro.so|' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'video_driver=gl' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'video_rotation=1' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'aspect_ratio_index=24' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'dreamcast)' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'PLUMOS_GL_MENU_ROTATION=content' "$ROOT/bin/plumos-retroarch-launch"
+grep -q 'parallel_n64_libretro.so)' "$ROOT/bin/plumos-retroarch-launch"
+grep -q 'km_duckswanstation_xtreme_amped_libretro.so|' "$ROOT/bin/plumos-retroarch-launch"
+grep -q 'n64|psx)' "$ROOT/bin/plumos-retroarch-launch"
 grep -a -q 'PLUMOS_GL_MENU_ROTATION' "$ROOT/bin/retroarch"
+while IFS= read -r gles_binary; do
+    gles_basename="${gles_binary##*/}"
+    grep -F -q "$gles_basename" "$ROOT/bin/plumos-retroarch-launch" || {
+        printf 'error: hardware-gles core lacks Pixel2 launcher policy: %s\n' \
+            "$gles_basename" >&2
+        exit 1
+    }
+done < <(jq -r '.cores[] | select(.rendering == "hardware-gles") | .binary' \
+    "$ROOT/components/libretro-cores/manifest.json")
 test -s "$ROOT/emulator/dri/rockchip_dri.so"
 test -s "$ROOT/emulator/egl_vendor.d/50_mesa.json"
 grep -q 'plumos-audio-output' "$ROOT/bin/plumos-picoarch-launch"
