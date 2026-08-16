@@ -114,6 +114,27 @@ test -f "$tmp/rootfs/lib/firmware/ath9k_htc/htc_9271-1.4.0.fw"
 test -f "$tmp/rootfs/lib/firmware/mt7601u.bin"
 test -f "$tmp/rootfs/lib/firmware/rtlwifi/rtl8188eufw.bin"
 test -f "$tmp/rootfs/lib/firmware/rtlwifi/rtl8192cufw.bin"
+test -f "$tmp/rootfs/lib/modules/$release/extra/8821cu.ko"
+test -f "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.json"
+test -f "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.required-kernel-symbols"
+test -f "$tmp/rootfs/usr/share/licenses/rtl8821cu/LICENSE"
+test "$(modinfo -b "$tmp/rootfs" -k "$release" -F name 8821cu)" = 8821cu
+test "$(modinfo -b "$tmp/rootfs" -k "$release" -F vermagic 8821cu)" = \
+    "$release SMP mod_unload aarch64"
+modinfo -b "$tmp/rootfs" -k "$release" -F alias 8821cu | \
+    grep -Fq 'usb:v0BDApC811'
+modinfo -b "$tmp/rootfs" -k "$release" -F alias 8821cu | \
+    grep -Fq 'usb:v0BDApC820'
+grep -Fq 'usb:v0BDApC811' "$tmp/rootfs/lib/modules/$release/modules.alias"
+grep -Fq 'usb:v0BDApC820' "$tmp/rootfs/lib/modules/$release/modules.alias"
+grep -Fq '"kernel_ref": "883a9e03084bf1a2f1769ad6b369f5090bbd6588"' \
+    "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.json"
+grep -Fq '"driver_ref": "96c65c58b544241178638e810b333dcc9aa26b91"' \
+    "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.json"
+grep -Fxq __raw_spin_lock_init \
+    "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.required-kernel-symbols"
+grep -Fxq rcu_read_unlock_strict \
+    "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.required-kernel-symbols"
 (cd "$tmp/rootfs" && sha256sum -c usr/lib/plumos/kernel-runtime.sha256 >/dev/null)
 
 if [ "$(uname -m)" = aarch64 ]; then

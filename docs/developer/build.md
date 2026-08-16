@@ -14,6 +14,7 @@ stay out of git.
 
 ```sh
 ./scripts/docker-build.sh frontend
+./scripts/docker-build.sh kernel-modules
 ./scripts/docker-build.sh retroarch
 ./scripts/docker-build.sh cores --filter all
 ./scripts/docker-build.sh core-catalog --filter all --concurrency 4
@@ -43,6 +44,11 @@ launch profile, selectable language, or enabled-system theme asset lacks its
 managed implementation. `release-image` runs this gate automatically; a
 development `sd-image` remains available while the known work list is being
 implemented.
+
+`kernel-modules` pins the Pixel2 5.10.198 source and the V90S-proven `8821cu`
+source. Before accepting the external module it rebuilds stock `r8188eu` and
+requires its `srcversion` and `vermagic` to match the captured stock module.
+`system-rootfs` and `release-image` run the same gate automatically.
 
 ## App Layer
 

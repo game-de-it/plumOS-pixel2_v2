@@ -25,6 +25,16 @@ cat >"$plumos/bin/modprobe" <<'EOF'
 printf '%s\n' "$*" >>"$TEST_COMMAND_LOG"
 mkdir -p "$TEST_NET_SYSFS_ROOT/wlan0/wireless"
 EOF
+cat >"$plumos/bin/insmod" <<'EOF'
+#!/bin/sh
+printf 'insmod %s\n' "$*" >>"$TEST_COMMAND_LOG"
+mkdir -p "$TEST_NET_SYSFS_ROOT/wlan0/wireless"
+EOF
+cat >"$plumos/bin/eject" <<'EOF'
+#!/bin/sh
+printf 'eject %s\n' "$*" >>"$TEST_COMMAND_LOG"
+printf 'c811\n' >"$TEST_USB_PRODUCT_FILE"
+EOF
 cat >"$plumos/bin/wpa_supplicant" <<'EOF'
 #!/bin/sh
 pidfile=
@@ -99,6 +109,7 @@ export TEST_IP_FILE="$tmp/ip"
 export TEST_COMMAND_LOG="$tmp/commands.log"
 export TEST_WPA_PING_COUNT_FILE="$tmp/wpa-ping-count"
 export TEST_WPA_CLI_LOG="$tmp/wpa-cli.log"
+export TEST_USB_PRODUCT_FILE="$usb/1-1/idProduct"
 
 run_control() {
     env \
@@ -107,6 +118,7 @@ run_control() {
         PLUMOS_RUNTIME_ROOT="$run" \
         PLUMOS_USB_SYSFS_ROOT="$usb" \
         PLUMOS_NET_SYSFS_ROOT="$net" \
+        PLUMOS_DEV_ROOT="$tmp/dev" \
         PLUMOS_MODULES_DIR="$modules" \
         PLUMOS_ALT_MODULES_DIR="$tmp/no-alt-modules" \
         PLUMOS_ROOT_WPA_CONFIG="$tmp/root-wpa.conf" \
@@ -115,6 +127,7 @@ run_control() {
         PLUMOS_WPA_WAIT_SECONDS=1 \
         PLUMOS_DHCP_WAIT_SECONDS=1 \
         PLUMOS_WIFI_SCAN_WAIT_SECONDS=1 \
+        PLUMOS_USB_MODE_SWITCH_WAIT_ATTEMPTS=1 \
         PLUMOS_UDHCPC_SCRIPT="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-udhcpc-script" \
         "$CONTROL" "$@"
 }
@@ -144,6 +157,25 @@ if FAKE_WPA_STATE=SCANNING run_control --connect-file "$connect_file" \
 fi
 cmp "$tmp/known-good.conf" "$plumos/config/wpa_supplicant.conf"
 grep -Fxq 'stage=wpa_completed' "$tmp/failed-connect.out"
+
+# V90S-proven RTL8811CU dongles initially enumerate as a Realtek driver disk.
+# Verify the same bounded 1a2b -> c811 eject and 8821cu alias path on Pixel2.
+rm -rf "$net/wlan0"
+rm -f "$TEST_COMMAND_LOG" "$TEST_WPA_PING_COUNT_FILE"
+printf '1a2b\n' >"$usb/1-1/idProduct"
+mkdir -p "$usb/1-1:1.0/host0/target0:0:0/0:0:0:0/block/sr0" \
+    "$tmp/dev" "$modules/extra"
+touch "$tmp/dev/sr0" "$modules/extra/8821cu.ko"
+printf '%s\n' \
+    'alias usb:v0BDApC811d*dc*dsc*dp*icFFiscFFipFFin* 8821cu' \
+    >"$modules/modules.alias"
+mode_switch_scan="$(run_control --scan)"
+grep -Fq $'network\tsecured\t-42\tPixel2 Test' <<<"$mode_switch_scan"
+grep -Fxq 'eject -s '"$tmp/dev/sr0" "$TEST_COMMAND_LOG"
+grep -Fxq 'insmod '"$modules/extra/8821cu.ko" "$TEST_COMMAND_LOG"
+grep -Fxq c811 "$usb/1-1/idProduct"
+grep -Fq 'usb wifi mode-switch complete id=0bda:c811' \
+    "$plumos/logs/network-control.log"
 
 mkdir -p "$tmp/boot/config/system" "$tmp/boot/logs"
 printf 'network={}\n' >"$tmp/boot/wpa.conf"

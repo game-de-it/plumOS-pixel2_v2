@@ -8,7 +8,7 @@ usage() {
     printf '%s\n' \
         'Usage: scripts/docker-build.sh TARGET [ARGS...]' \
         '' \
-        'Targets: image frontend retroarch cores core-catalog picoarch standalone audio-router pyxel-runtime nextcommander music-player network-services portmaster shared-apps app-layer audit update-package system-rootfs sd-image release-image'
+        'Targets: image kernel-modules frontend retroarch cores core-catalog picoarch standalone audio-router pyxel-runtime nextcommander music-player network-services portmaster shared-apps app-layer audit update-package system-rootfs sd-image release-image'
 }
 
 if [ "${1:-}" = --inside ]; then
@@ -17,6 +17,7 @@ if [ "${1:-}" = --inside ]; then
     [ -n "$target" ] || { usage >&2; exit 2; }
     shift
     case "$target" in
+        kernel-modules) exec ./scripts/build-rtl8821cu-pixel2.sh --inside "$@" ;;
         frontend) exec ./scripts/build-frontend-component.sh --inside "$@" ;;
         retroarch) exec ./scripts/build-retroarch.sh --inside "$@" ;;
         cores) exec ./scripts/build-libretro-cores.sh --inside "$@" ;;
@@ -45,6 +46,7 @@ if [ "${1:-}" = --inside ]; then
         system-rootfs) exec ./scripts/build-system-rootfs.sh --inside "$@" ;;
         sd-image) exec ./scripts/build-sd-image.sh --inside "$@" ;;
         release-image)
+            ./scripts/build-rtl8821cu-pixel2.sh --inside
             ./scripts/build-frontend-component.sh --inside
             ./scripts/build-retroarch.sh --inside
             ./scripts/build-libretro-core-catalog-pixel2.sh --filter all

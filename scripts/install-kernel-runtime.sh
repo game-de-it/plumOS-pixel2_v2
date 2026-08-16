@@ -6,6 +6,7 @@ ROOTFS_DIR="${1:-}"
 STOCK_KERNEL_ROOT="$ROOT_DIR/artifacts/vendor/pixel2-stock"
 MODULES_SRC="$STOCK_KERNEL_ROOT/kernel/extracted/usr/lib/kernel-overlays/base/lib/modules"
 FIRMWARE_SRC="$ROOT_DIR/artifacts/vendor/pixel2-stock/kernel/extracted/usr/lib/kernel-overlays/base/lib/firmware"
+EXTERNAL_MODULE_ROOT="$ROOT_DIR/output/kernel-modules/pixel2"
 
 [ -d "$ROOTFS_DIR" ] || {
     printf 'usage: %s ROOTFS_DIR\n' "$0" >&2
@@ -34,8 +35,23 @@ case "$release" in
 esac
 
 mkdir -p "$ROOTFS_DIR/lib/modules" "$ROOTFS_DIR/lib/firmware" \
-    "$ROOTFS_DIR/usr/lib/plumos"
+    "$ROOTFS_DIR/usr/lib/plumos/kernel-modules" \
+    "$ROOTFS_DIR/usr/share/licenses/rtl8821cu"
 cp -a "$MODULES_SRC/$release" "$ROOTFS_DIR/lib/modules/"
+
+(cd "$EXTERNAL_MODULE_ROOT" && sha256sum -c checksums.sha256 >/dev/null) || {
+    printf 'error: Pixel2 external kernel modules missing or invalid; run ./scripts/docker-build.sh kernel-modules\n' >&2
+    exit 2
+}
+install -D -m 0644 \
+    "$EXTERNAL_MODULE_ROOT/$release/extra/8821cu.ko" \
+    "$ROOTFS_DIR/lib/modules/$release/extra/8821cu.ko"
+install -m 0644 "$EXTERNAL_MODULE_ROOT/rtl8821cu.json" \
+    "$ROOTFS_DIR/usr/lib/plumos/kernel-modules/rtl8821cu.json"
+install -m 0644 "$EXTERNAL_MODULE_ROOT/rtl8821cu.required-kernel-symbols" \
+    "$ROOTFS_DIR/usr/lib/plumos/kernel-modules/rtl8821cu.required-kernel-symbols"
+install -m 0644 "$EXTERNAL_MODULE_ROOT/licenses/rtl8821cu/LICENSE" \
+    "$ROOTFS_DIR/usr/share/licenses/rtl8821cu/LICENSE"
 
 # Minimal firmware set for the USB Wi-Fi families enabled by the Pixel2 kernel.
 # These files are captured from the stock kernel overlay; no stock executable,
@@ -66,10 +82,13 @@ rtlwifi/rtl8192cufw_A.bin
 rtlwifi/rtl8192cufw_B.bin
 EOF
 
+depmod -b "$ROOTFS_DIR" "$release"
+
 MANIFEST="$ROOTFS_DIR/usr/lib/plumos/kernel-runtime.sha256"
 (
     cd "$ROOTFS_DIR"
-    find "lib/modules/$release" lib/firmware -type f -print0 | \
+    find "lib/modules/$release" lib/firmware usr/lib/plumos/kernel-modules \
+        usr/share/licenses/rtl8821cu -type f -print0 | \
         LC_ALL=C sort -z | xargs -0 sha256sum
 ) >"$MANIFEST"
 printf 'kernel-runtime=result-ok release=%s firmware_source=stock-kernel-overlay boot_substrate=stock\n' \

@@ -11,9 +11,14 @@ LAN services. USB ADB remains available as a separate maintenance path.
 4. Enter the password and confirm.
 5. Check the IP address under `Network Settings -> Information`.
 
-The current validated adapter is USB ID `0bda:8179`, using the `r8188eu`
+The currently validated legacy adapter is USB ID `0bda:8179`, using the
+`r8188eu` driver. plumOS also includes the V90S-proven UGREEN AC650 / RTL8811CU
+path. This adapter can first appear as `0bda:1a2b Realtek DISK`; turning Wi-Fi
+on switches it to `0bda:c811` and loads the Pixel2-built `8821cu` driver.
+Adapters that enumerate directly as `0bda:c811` or `0bda:c820` use the same
 driver. The configuration is saved only after association and IPv4 acquisition
-succeed.
+succeed. Pixel2 physical acceptance of this second adapter remains required
+before release.
 
 ## Network services
 

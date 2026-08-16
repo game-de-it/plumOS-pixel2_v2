@@ -43,6 +43,9 @@ mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR/system-slots" "$DISPATCHER_DIR/bin" \
     "$ROOTFS_DIR/mnt/plumos" "$ROOTFS_DIR/mnt/plumos-user"
 cp -a "$ROOT_DIR/rootfs/pixel2/." "$ROOTFS_DIR/"
 "$ROOT_DIR/scripts/build-adbd-overlay.sh" --inside "$ROOTFS_DIR"
+if ! "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh" --inside --verify-output; then
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh" --inside
+fi
 "$ROOT_DIR/scripts/install-kernel-runtime.sh" "$ROOTFS_DIR"
 "$ROOT_DIR/scripts/install-frontend-rootfs.sh" "$ROOTFS_DIR"
 chmod 0755 "$ROOTFS_DIR/sbin/init" "$ROOTFS_DIR/usr/lib/systemd/systemd" \

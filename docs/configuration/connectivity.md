@@ -53,9 +53,17 @@ network={
 boot時にUSB WLAN interfaceを検出し、`wpa_supplicant`とBusyBox `udhcpc`を
 起動する。認証情報はimageやGitへ入れない。
 
-stock kernel 5.10.198から採取できた外付けmoduleは`r8188eu`に限られる。
-最終plumOS kernelでは、候補dongleを決めたうえでin-tree USB WLAN driverと
-必要なfirmwareを有効にする。
+stock kernel 5.10.198から採取した`r8188eu`に加え、V90Sで実機実績のある
+RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して
+再現可能にbuildしてSystemへ収録する。V90Sのkernel 4.9用module binaryは流用しない。
+
+UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
+Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、
+`0bda:c811`への再列挙を待って`8821cu`をloadする。直接`0bda:c811`または
+`0bda:c820`で現れるadapterもmodule aliasから検出する。driver buildはUSB
+autosuspendを無効、driver標準power savingを有効にしたV90Sと同じfeature
+contractである。転送性能に応じたpower parameter変更は、実機A/B測定なしに
+factory設定へ追加しない。
 
 ## SSH
 

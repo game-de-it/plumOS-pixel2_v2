@@ -12,6 +12,7 @@ for script in \
     "$ROOT_DIR/scripts/build-system-rootfs.sh" \
     "$ROOT_DIR/scripts/build-adbd-overlay.sh" \
     "$ROOT_DIR/scripts/install-kernel-runtime.sh" \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh" \
     "$ROOT_DIR/scripts/install-frontend-rootfs.sh" \
     "$ROOT_DIR/scripts/docker-build.sh" \
     "$ROOT_DIR/scripts/build-frontend-component.sh" \
@@ -123,6 +124,19 @@ grep -q 'mount-source storage=stock-initramfs' "$ROOT_DIR/rootfs/pixel2/sbin/ini
 grep -q '5.10.198' "$ROOT_DIR/scripts/install-kernel-runtime.sh"
 grep -q '^rtlwifi/rtl8188eufw.bin$' \
     "$ROOT_DIR/scripts/install-kernel-runtime.sh"
+grep -q 'build-rtl8821cu-pixel2.sh' \
+    "$ROOT_DIR/scripts/build-system-rootfs.sh"
+grep -q -- '--verify-output' "$ROOT_DIR/scripts/build-system-rootfs.sh"
+grep -q 'kernel-modules) exec ./scripts/build-rtl8821cu-pixel2.sh' \
+    "$ROOT_DIR/scripts/docker-build.sh"
+grep -q '96c65c58b544241178638e810b333dcc9aa26b91' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q 'EXPECTED_STOCK_SRCVERSION=33E331B2DEB16477EAAB1D6' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q 'lib/modules/\$release/extra/8821cu.ko' \
+    "$ROOT_DIR/scripts/install-kernel-runtime.sh"
+grep -q 'modinfo -b.*8821cu' \
+    "$ROOT_DIR/scripts/verify-system-rootfs.sh"
 grep -q 'lib/firmware/rtlwifi/rtl8188eufw.bin' \
     "$ROOT_DIR/scripts/verify-system-rootfs.sh"
 grep -q 'stock-pixel2' "$ROOT_DIR/scripts/build-system-rootfs.sh"
