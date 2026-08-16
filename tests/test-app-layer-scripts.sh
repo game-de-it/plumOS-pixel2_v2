@@ -292,6 +292,8 @@ grep -q 'video_driver=gl' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'video_rotation=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'aspect_ratio_index=24' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'dreamcast)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'wonderswan|wonderswancolor)' \
@@ -307,6 +309,8 @@ grep -q 'aspect_ratio_index=22' \
 grep -q 'video_allow_rotate = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'aspect_ratio_index = "%s"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'video_aspect_ratio = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'PLUMOS_DRM_PANEL_ROTATION' \
     "$ROOT_DIR/patches/retroarch/015-pixel2-drm-panel-rotation.patch"
