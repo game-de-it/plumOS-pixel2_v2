@@ -15,6 +15,7 @@ WPA_STATUS="${PLUMOS_WPA_STATUS:-$RUN_DIR/wpa_status.txt}"
 WPA_STATUS_PERSIST="${CONFIG_DIR}/wpa_status.txt"
 WPA_CONFIG="${PLUMOS_WPA_CONFIG:-${CONFIG_DIR}/wpa_supplicant.conf}"
 ROOT_WPA_CONFIG="${PLUMOS_ROOT_WPA_CONFIG:-/etc/wpa_supplicant/wpa_supplicant.conf}"
+WPA_CTRL_DIR="${PLUMOS_WPA_CTRL_DIR:-/run/wpa_supplicant}"
 WIFI_IFACE="${PLUMOS_WIFI_INTERFACE:-auto}"
 WIFI_IFACE_WAIT_SECONDS="${PLUMOS_WIFI_IFACE_WAIT_SECONDS:-5}"
 WPA_WAIT_SECONDS="${PLUMOS_WPA_WAIT_SECONDS:-15}"
@@ -517,13 +518,13 @@ write_runtime_status_off() {
 write_runtime_status_current() {
   iface="$1"
   ip_addr="$(get_iface_ip "$iface" || true)"
-  state="$(wpa_cli -i "$iface" status 2>/dev/null |
+  state="$(wpa_cli_iface "$iface" status 2>/dev/null |
     sed -n 's/^wpa_state=//p' | sed -n '1p')"
-  rssi="$(wpa_cli -i "$iface" signal_poll 2>/dev/null |
+  rssi="$(wpa_cli_iface "$iface" signal_poll 2>/dev/null |
     sed -n 's/^RSSI=//p' | sed -n '1p')"
-  linkspeed="$(wpa_cli -i "$iface" signal_poll 2>/dev/null |
+  linkspeed="$(wpa_cli_iface "$iface" signal_poll 2>/dev/null |
     sed -n 's/^LINKSPEED=//p' | sed -n '1p')"
-  frequency="$(wpa_cli -i "$iface" signal_poll 2>/dev/null |
+  frequency="$(wpa_cli_iface "$iface" signal_poll 2>/dev/null |
     sed -n 's/^FREQUENCY=//p' | sed -n '1p')"
 
   if [ -z "$state" ]; then
@@ -553,7 +554,7 @@ active_wpa_config() {
 write_scan_config() {
   conf="${RUN_DIR}/scan-wpa_supplicant.conf"
   {
-    echo "ctrl_interface=/run/wpa_supplicant"
+    echo "ctrl_interface=${WPA_CTRL_DIR}"
     echo "update_config=0"
     echo "country=JP"
   } > "$conf"
@@ -561,12 +562,18 @@ write_scan_config() {
   printf '%s\n' "$conf"
 }
 
+wpa_cli_iface() {
+  iface="$1"
+  shift
+  wpa_cli -p "$WPA_CTRL_DIR" -i "$iface" "$@"
+}
+
 start_wpa_supplicant() {
   iface="$1"
   conf="$2"
 
-  mkdir -p /run/wpa_supplicant "$RUN_DIR" 2>/dev/null || true
-  if wpa_cli -i "$iface" ping 2>/dev/null | grep -q PONG; then
+  mkdir -p "$WPA_CTRL_DIR" "$RUN_DIR" 2>/dev/null || true
+  if wpa_cli_iface "$iface" ping 2>/dev/null | grep -q PONG; then
     log "wpa_supplicant already responding iface=${iface}"
     return 0
   fi
@@ -593,7 +600,7 @@ wait_for_wpa_control() {
   limit="$2"
   n=0
   while [ "$n" -lt "$limit" ]; do
-    if wpa_cli -i "$iface" ping 2>/dev/null | grep -q PONG; then
+    if wpa_cli_iface "$iface" ping 2>/dev/null | grep -q PONG; then
       return 0
     fi
     sleep 1
@@ -607,7 +614,7 @@ wait_for_wpa_completed() {
   limit="$2"
   n=0
   while [ "$n" -lt "$limit" ]; do
-    state="$(wpa_cli -i "$iface" status 2>/dev/null |
+    state="$(wpa_cli_iface "$iface" status 2>/dev/null |
       sed -n 's/^wpa_state=//p' | sed -n '1p')"
     [ "$state" = COMPLETED ] && return 0
     sleep 1
@@ -677,12 +684,12 @@ gateway_ping() {
 wifi_runtime_on() {
   iface="$1"
   [ -n "$(get_iface_ip "$iface" || true)" ] || return 1
-  wpa_cli -i "$iface" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'
+  wpa_cli_iface "$iface" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'
 }
 
 wifi_link_associated() {
   iface="$1"
-  wpa_cli -i "$iface" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'
+  wpa_cli_iface "$iface" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'
 }
 
 start_enabled_network_services() {
@@ -861,7 +868,7 @@ scan_networks() {
   fi
 
   iface_up "$iface"
-  if ! wpa_cli -i "$iface" ping 2>/dev/null | grep -q PONG; then
+  if ! wpa_cli_iface "$iface" ping 2>/dev/null | grep -q PONG; then
     scan_conf="$(write_scan_config)"
     if start_wpa_supplicant "$iface" "$scan_conf"; then
       started_for_scan=1
@@ -876,15 +883,15 @@ scan_networks() {
   fi
 
   if command -v wpa_cli >/dev/null 2>&1 &&
-     wpa_cli -i "$iface" ping 2>/dev/null | grep -q PONG; then
-    wpa_cli -i "$iface" scan >> "$LOG_FILE" 2>&1 || true
+     wpa_cli_iface "$iface" ping 2>/dev/null | grep -q PONG; then
+    wpa_cli_iface "$iface" scan >> "$LOG_FILE" 2>&1 || true
     scan_results="${RUN_DIR}/scan-results.$$"
     scan_rows="${RUN_DIR}/scan-rows.$$"
     scan_elapsed=0
     while [ "$scan_elapsed" -lt "$SCAN_WAIT_SECONDS" ]; do
       sleep 1
       scan_elapsed=$((scan_elapsed + 1))
-      wpa_cli -i "$iface" scan_results > "$scan_results" 2>/dev/null || true
+      wpa_cli_iface "$iface" scan_results > "$scan_results" 2>/dev/null || true
       awk '
         BEGIN { FS = "\t" }
         NR > 1 {
@@ -1014,7 +1021,7 @@ write_candidate_config() {
   out="$3"
 
   {
-    echo "ctrl_interface=/run/wpa_supplicant"
+    echo "ctrl_interface=${WPA_CTRL_DIR}"
     echo "update_config=0"
     echo "country=JP"
     echo

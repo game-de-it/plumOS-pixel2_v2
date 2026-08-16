@@ -36,6 +36,7 @@ exit 0
 EOF
 cat >"$plumos/bin/wpa_cli" <<'EOF'
 #!/bin/sh
+printf '%s\n' "$*" >>"$TEST_WPA_CLI_LOG"
 case "$*" in
     *' ping')
         ping_count=0
@@ -97,6 +98,7 @@ export TEST_NET_SYSFS_ROOT="$net"
 export TEST_IP_FILE="$tmp/ip"
 export TEST_COMMAND_LOG="$tmp/commands.log"
 export TEST_WPA_PING_COUNT_FILE="$tmp/wpa-ping-count"
+export TEST_WPA_CLI_LOG="$tmp/wpa-cli.log"
 
 run_control() {
     env \
@@ -108,6 +110,7 @@ run_control() {
         PLUMOS_MODULES_DIR="$modules" \
         PLUMOS_ALT_MODULES_DIR="$tmp/no-alt-modules" \
         PLUMOS_ROOT_WPA_CONFIG="$tmp/root-wpa.conf" \
+        PLUMOS_WPA_CTRL_DIR="$run/wpa_supplicant" \
         PLUMOS_WIFI_IFACE_WAIT_SECONDS=1 \
         PLUMOS_WPA_WAIT_SECONDS=1 \
         PLUMOS_DHCP_WAIT_SECONDS=1 \
@@ -120,6 +123,8 @@ scan_output="$(FAKE_WPA_PING_READY_AFTER=3 run_control --scan)"
 grep -Fq $'network\tsecured\t-42\tPixel2 Test' <<<"$scan_output"
 grep -Fxq r8188eu "$TEST_COMMAND_LOG"
 [ "$(cat "$TEST_WPA_PING_COUNT_FILE")" -ge 3 ]
+grep -Fq -- "-p $run/wpa_supplicant -i wlan0 ping" "$TEST_WPA_CLI_LOG"
+grep -Fq -- "-p $run/wpa_supplicant -i wlan0 scan_results" "$TEST_WPA_CLI_LOG"
 rm -f "$TEST_WPA_PING_COUNT_FILE"
 
 connect_file="$tmp/connect"
