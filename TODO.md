@@ -57,6 +57,12 @@
     - 2026-08-16: PicoArchは署名Runtime `0.1.0-dev-45b4505`でPower menuからの
       sleep/wakeと、ゲーム画面・内蔵menu双方の物理D-pad操作をoperator合格とした。
       `d1f5ea1`でPixel2固有`BTN_DPAD_*`をgame/menu bindへ追加済み。
+    - 2026-08-16: Gambatteで音声だけ継続してLCDが黒くなる状態を、fbdevには有効な
+      frameがある一方KMS active planeがない問題と特定。`d242dfc`で初回frameと
+      `SIGCONT`後だけUNBLANK/PANし、Gambatte固有RGB565 byte swapも既存XU20の
+      実績から移植した。署名Runtime `0.1.0-dev-d242dfc`はhealthy、component
+      checksum合格、実機色表示をoperator合格。現Runtimeでの物理Function menu
+      表示だけ継続確認する。
   - [x] FTP/SFTP/SambaをPixel2 componentとして実装する
     - 2026-08-14: 初期bring-upの「SSH/ADBだけを表示」を撤回し、V90S/MFと同じ5 serviceをpackage化。保存設定のboot再開、component checksum、release gateへ統合した。USB Wi-Fi実機でのFTP/SFTP/Samba接続は未検証。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
