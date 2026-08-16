@@ -37,7 +37,18 @@ EOF
 cat >"$plumos/bin/wpa_cli" <<'EOF'
 #!/bin/sh
 case "$*" in
-    *' ping') printf 'PONG\n' ;;
+    *' ping')
+        ping_count=0
+        [ ! -r "$TEST_WPA_PING_COUNT_FILE" ] || \
+            ping_count="$(cat "$TEST_WPA_PING_COUNT_FILE")"
+        ping_count=$((ping_count + 1))
+        printf '%s\n' "$ping_count" >"$TEST_WPA_PING_COUNT_FILE"
+        if [ "$ping_count" -ge "${FAKE_WPA_PING_READY_AFTER:-1}" ]; then
+            printf 'PONG\n'
+        else
+            printf 'FAIL\n'
+        fi
+        ;;
     *' status')
         printf 'wpa_state=%s\n' "${FAKE_WPA_STATE:-COMPLETED}"
         ;;
@@ -85,6 +96,7 @@ chmod 0755 "$plumos/bin/"*
 export TEST_NET_SYSFS_ROOT="$net"
 export TEST_IP_FILE="$tmp/ip"
 export TEST_COMMAND_LOG="$tmp/commands.log"
+export TEST_WPA_PING_COUNT_FILE="$tmp/wpa-ping-count"
 
 run_control() {
     env \
@@ -104,9 +116,11 @@ run_control() {
         "$CONTROL" "$@"
 }
 
-scan_output="$(run_control --scan)"
+scan_output="$(FAKE_WPA_PING_READY_AFTER=3 run_control --scan)"
 grep -Fq $'network\tsecured\t-42\tPixel2 Test' <<<"$scan_output"
 grep -Fxq r8188eu "$TEST_COMMAND_LOG"
+[ "$(cat "$TEST_WPA_PING_COUNT_FILE")" -ge 3 ]
+rm -f "$TEST_WPA_PING_COUNT_FILE"
 
 connect_file="$tmp/connect"
 printf 'Cafe "Five"\ncorrect horse battery staple\n' >"$connect_file"

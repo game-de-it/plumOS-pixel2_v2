@@ -20,6 +20,7 @@ WIFI_IFACE_WAIT_SECONDS="${PLUMOS_WIFI_IFACE_WAIT_SECONDS:-5}"
 WPA_WAIT_SECONDS="${PLUMOS_WPA_WAIT_SECONDS:-15}"
 DHCP_WAIT_SECONDS="${PLUMOS_DHCP_WAIT_SECONDS:-10}"
 SCAN_WAIT_SECONDS="${PLUMOS_WIFI_SCAN_WAIT_SECONDS:-8}"
+WPA_CONTROL_WAIT_SECONDS="${PLUMOS_WPA_CONTROL_WAIT_SECONDS:-5}"
 USB_SYSFS_ROOT="${PLUMOS_USB_SYSFS_ROOT:-/sys/bus/usb/devices}"
 NET_SYSFS_ROOT="${PLUMOS_NET_SYSFS_ROOT:-/sys/class/net}"
 DEV_ROOT="${PLUMOS_DEV_ROOT:-/dev}"
@@ -587,6 +588,20 @@ start_wpa_supplicant() {
   return 1
 }
 
+wait_for_wpa_control() {
+  iface="$1"
+  limit="$2"
+  n=0
+  while [ "$n" -lt "$limit" ]; do
+    if wpa_cli -i "$iface" ping 2>/dev/null | grep -q PONG; then
+      return 0
+    fi
+    sleep 1
+    n=$((n + 1))
+  done
+  return 1
+}
+
 wait_for_wpa_completed() {
   iface="$1"
   limit="$2"
@@ -850,6 +865,13 @@ scan_networks() {
     scan_conf="$(write_scan_config)"
     if start_wpa_supplicant "$iface" "$scan_conf"; then
       started_for_scan=1
+      if ! wait_for_wpa_control "$iface" "$WPA_CONTROL_WAIT_SECONDS"; then
+        log "scan failed stage=wpa_control_timeout iface=${iface}"
+        stop_wifi_processes "$iface"
+        echo "result=failed"
+        echo "stage=wpa_control_timeout"
+        return 1
+      fi
     fi
   fi
 
