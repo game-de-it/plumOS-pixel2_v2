@@ -2,18 +2,43 @@
 set -u
 
 PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
 RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
-RUN_DIR="${PLUMOS_NETWORK_RUN_DIR:-$RUNTIME_ROOT/network-control}"
+PATH="${PLUMOS_ROOT}/bin:${PLUMOS_ROOT}/gnu/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
+
 LOG_DIR="${PLUMOS_ROOT}/logs"
 CONFIG_DIR="${PLUMOS_ROOT}/config"
-NETWORK_CONFIG_DIR="${PLUMOS_ROOT}/config/network"
+RUN_DIR="${PLUMOS_NETWORK_RUN_DIR:-$RUNTIME_ROOT/network-control}"
 LOG_FILE="${LOG_DIR}/network-control.log"
 WPA_STATUS="${PLUMOS_WPA_STATUS:-$RUN_DIR/wpa_status.txt}"
+WPA_STATUS_PERSIST="${CONFIG_DIR}/wpa_status.txt"
 WPA_CONFIG="${PLUMOS_WPA_CONFIG:-${CONFIG_DIR}/wpa_supplicant.conf}"
-ROOT_WIFI_SERVICE="/usr/lib/plumos/init.d/20-usb-wifi"
+ROOT_WPA_CONFIG="${PLUMOS_ROOT_WPA_CONFIG:-/etc/wpa_supplicant/wpa_supplicant.conf}"
+WIFI_IFACE="${PLUMOS_WIFI_INTERFACE:-auto}"
+WIFI_IFACE_WAIT_SECONDS="${PLUMOS_WIFI_IFACE_WAIT_SECONDS:-5}"
+WPA_WAIT_SECONDS="${PLUMOS_WPA_WAIT_SECONDS:-15}"
+DHCP_WAIT_SECONDS="${PLUMOS_DHCP_WAIT_SECONDS:-10}"
+SCAN_WAIT_SECONDS="${PLUMOS_WIFI_SCAN_WAIT_SECONDS:-8}"
+USB_SYSFS_ROOT="${PLUMOS_USB_SYSFS_ROOT:-/sys/bus/usb/devices}"
+NET_SYSFS_ROOT="${PLUMOS_NET_SYSFS_ROOT:-/sys/class/net}"
+DEV_ROOT="${PLUMOS_DEV_ROOT:-/dev}"
+KERNEL_RELEASE="${PLUMOS_KERNEL_RELEASE:-$(uname -r)}"
+MODULES_DIR="${PLUMOS_MODULES_DIR:-/lib/modules/${KERNEL_RELEASE}}"
+ALT_MODULES_DIR="${PLUMOS_ALT_MODULES_DIR:-/usr/lib/modules/${KERNEL_RELEASE}}"
+USB_MODE_SWITCH_WAIT_ATTEMPTS="${PLUMOS_USB_MODE_SWITCH_WAIT_ATTEMPTS:-5}"
+EJECT_BIN="${PLUMOS_EJECT_BIN:-eject}"
+UDHCPC_SCRIPT="${PLUMOS_UDHCPC_SCRIPT:-${PLUMOS_ROOT}/bin/plumos-udhcpc-script}"
+WPA_PID_FILE="${RUN_DIR}/wpa_supplicant.pid"
+ENSURE_WIFI_STAGE_FILE="${RUN_DIR}/ensure-wifi-stage.$$"
+NETWORK_SERVICES="${PLUMOS_ROOT}/bin/plumos-network-services"
+TIME_SYNC="${PLUMOS_ROOT}/bin/plumos-time-sync"
+DNS_RUNTIME="${PLUMOS_ROOT}/bin/plumos-dns-runtime"
+WIFI_RECOVERY="${PLUMOS_ROOT}/bin/plumos-wifi-recovery"
 
 ACTION=status
 CONNECT_FILE=
+ENSURE_WIFI_STAGE=
 
 usage() {
   cat <<'USAGE'
@@ -26,167 +51,1116 @@ Options:
   --scan          Print visible SSIDs as tab-separated network rows.
   --connect-file FILE
                   Connect using SSID/PSK read from a mode-0600 temp file.
+  -h, --help      Show this help.
 USAGE
 }
 
-mkdir -p "$RUN_DIR" "$LOG_DIR" "$NETWORK_CONFIG_DIR" 2>/dev/null || true
+mkdir -p "$LOG_DIR" "$CONFIG_DIR" "$RUN_DIR" 2>/dev/null || true
+
+set_ensure_wifi_stage() {
+  ENSURE_WIFI_STAGE="$1"
+  printf '%s\n' "$ENSURE_WIFI_STAGE" > "$ENSURE_WIFI_STAGE_FILE" 2>/dev/null || true
+}
+
+last_ensure_wifi_stage() {
+  if [ -n "$ENSURE_WIFI_STAGE" ]; then
+    printf '%s\n' "$ENSURE_WIFI_STAGE"
+    return 0
+  fi
+  if [ -r "$ENSURE_WIFI_STAGE_FILE" ]; then
+    stage="$(sed -n '1p' "$ENSURE_WIFI_STAGE_FILE" 2>/dev/null || true)"
+    if [ -n "$stage" ]; then
+      printf '%s\n' "$stage"
+      return 0
+    fi
+  fi
+  printf '%s\n' no_wifi_interface
+}
+
+uptime_now() {
+  if [ -r /proc/uptime ]; then
+    read -r up _ < /proc/uptime || up=unknown
+    printf '%s' "$up"
+  else
+    printf '%s' unknown
+  fi
+}
 
 log() {
-  printf '%s service=network-control %s\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf unknown-time)" \
-    "$*" >>"$LOG_FILE" 2>/dev/null || true
+  printf '%s uptime=%s %s\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || printf unknown-time)" \
+    "$(uptime_now)" "$*" >> "$LOG_FILE" 2>/dev/null || true
+}
+
+run_limited() {
+  seconds="$1"
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$seconds" "$@"
+    return $?
+  fi
+  "$@"
+}
+
+trim_cr() {
+  tr -d '\r'
+}
+
+ip_tool() {
+  command -v ip >/dev/null 2>&1
+}
+
+iface_exists() {
+  [ -n "${1:-}" ] && [ -e "${NET_SYSFS_ROOT}/$1" ]
+}
+
+iface_is_wifi() {
+  iface="$1"
+  [ -d "${NET_SYSFS_ROOT}/$iface/wireless" ] && return 0
+  [ -e "${NET_SYSFS_ROOT}/$iface/phy80211" ] && return 0
+  case "$iface" in
+    wlan*|mlan*|p2p*) return 0 ;;
+  esac
+  return 1
 }
 
 find_wifi_iface() {
-  for iface in /sys/class/net/wlan* /sys/class/net/wlp*; do
-    [ -e "$iface" ] || continue
-    basename "$iface"
+  iface=
+
+  if [ "$WIFI_IFACE" != auto ]; then
+    if iface_exists "$WIFI_IFACE"; then
+      printf '%s\n' "$WIFI_IFACE"
+      return 0
+    fi
+    return 1
+  fi
+
+  for net in "${NET_SYSFS_ROOT}"/*; do
+    [ -e "$net" ] || continue
+    iface="$(basename "$net")"
+    [ "$iface" = lo ] && continue
+    if iface_is_wifi "$iface"; then
+      printf '%s\n' "$iface"
+      return 0
+    fi
+  done
+
+  for iface in wlan0 wlan1 mlan0 p2p0; do
+    if iface_exists "$iface"; then
+      printf '%s\n' "$iface"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+usb_device_seen() {
+  for dev in "${USB_SYSFS_ROOT}"/*-*; do
+    [ -r "$dev/idVendor" ] && [ -r "$dev/idProduct" ] && return 0
+  done
+  return 1
+}
+
+find_known_usb_wifi_storage() {
+  for dev in "${USB_SYSFS_ROOT}"/*; do
+    [ -r "$dev/idVendor" ] || continue
+    [ -r "$dev/idProduct" ] || continue
+    vendor="$(trim_cr < "$dev/idVendor" 2>/dev/null | tr '[:lower:]' '[:upper:]' || true)"
+    product="$(trim_cr < "$dev/idProduct" 2>/dev/null | tr '[:lower:]' '[:upper:]' || true)"
+    if [ "$vendor" = 0BDA ] && [ "$product" = 1A2B ]; then
+      printf '%s\n' "$dev"
+      return 0
+    fi
+  done
+  return 1
+}
+
+find_switched_rtl8811cu() {
+  for dev in "${USB_SYSFS_ROOT}"/*; do
+    [ -r "$dev/idVendor" ] || continue
+    [ -r "$dev/idProduct" ] || continue
+    vendor="$(trim_cr < "$dev/idVendor" 2>/dev/null | tr '[:lower:]' '[:upper:]' || true)"
+    product="$(trim_cr < "$dev/idProduct" 2>/dev/null | tr '[:lower:]' '[:upper:]' || true)"
+    if [ "$vendor" = 0BDA ] && [ "$product" = C811 ]; then
+      printf '%s\n' "$dev"
+      return 0
+    fi
+  done
+  return 1
+}
+
+find_usb_cdrom_block() {
+  dev="$1"
+  for block_path in "$dev":*/host*/target*/*/block/sr*; do
+    [ -e "$block_path" ] || continue
+    basename "$block_path"
     return 0
   done
   return 1
 }
 
-iface_ip() {
-  iface="$1"
-  ip -4 address show dev "$iface" 2>/dev/null |
-    sed -n 's/^[[:space:]]*inet \([0-9.]*\)\/.*/\1/p' |
-    sed -n '1p'
-}
+switch_known_usb_wifi_mode() {
+  storage_dev="$(find_known_usb_wifi_storage 2>/dev/null || true)"
+  [ -n "$storage_dev" ] || return 0
 
-wpa_running() {
-  [ -s /run/plumos/wpa_supplicant.pid ] &&
-    kill -0 "$(cat /run/plumos/wpa_supplicant.pid 2>/dev/null)" 2>/dev/null
-}
-
-write_status() {
-  state=DISCONNECTED
-  ip_addr=
-  iface="$(find_wifi_iface 2>/dev/null || true)"
-  if [ -z "$iface" ]; then
-    state=NO_WIFI_INTERFACE
-  elif wpa_running; then
-    state=COMPLETED
-    ip_addr="$(iface_ip "$iface" || true)"
+  log "usb wifi mode-switch detected id=0bda:1a2b sysfs=$(basename "$storage_dev")"
+  if [ ! -x "$EJECT_BIN" ] && ! command -v "$EJECT_BIN" >/dev/null 2>&1; then
+    log "usb wifi mode-switch failed reason=eject_missing"
+    return 1
   fi
-  tmp="$WPA_STATUS.tmp.$$"
+
+  attempt=0
+  block=
+  while [ "$attempt" -lt "$USB_MODE_SWITCH_WAIT_ATTEMPTS" ]; do
+    block="$(find_usb_cdrom_block "$storage_dev" 2>/dev/null || true)"
+    [ -n "$block" ] && break
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+  if [ -z "$block" ] || [ ! -e "${DEV_ROOT}/${block}" ]; then
+    log "usb wifi mode-switch failed reason=cdrom_missing"
+    return 1
+  fi
+
+  log "usb wifi mode-switch eject begin block=${block}"
+  if ! run_limited 5 "$EJECT_BIN" -s "${DEV_ROOT}/${block}" >> "$LOG_FILE" 2>&1; then
+    log "usb wifi mode-switch failed reason=eject_nonzero block=${block}"
+    return 1
+  fi
+
+  attempt=0
+  while [ "$attempt" -lt "$USB_MODE_SWITCH_WAIT_ATTEMPTS" ]; do
+    switched_dev="$(find_switched_rtl8811cu 2>/dev/null || true)"
+    if [ -n "$switched_dev" ]; then
+      log "usb wifi mode-switch complete id=0bda:c811 sysfs=$(basename "$switched_dev")"
+      return 0
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+  log "usb wifi mode-switch failed reason=c811_timeout"
+  return 1
+}
+
+detect_usb_wifi_modules() {
+  tmp="${RUN_DIR}/usb-wifi-modules.$$"
+  : > "$tmp" 2>/dev/null || true
+
+  for dev in "${USB_SYSFS_ROOT}"/*; do
+    [ -r "$dev/idVendor" ] || continue
+    [ -r "$dev/idProduct" ] || continue
+    vendor="$(trim_cr < "$dev/idVendor" 2>/dev/null | tr '[:lower:]' '[:upper:]' || true)"
+    product="$(trim_cr < "$dev/idProduct" 2>/dev/null | tr '[:lower:]' '[:upper:]' || true)"
+    [ -n "$vendor" ] || continue
+    [ -n "$product" ] || continue
+
+    for alias_file in \
+      "${MODULES_DIR}/modules.alias" \
+      "${MODULES_DIR}/modules.alias.standard" \
+      "${ALT_MODULES_DIR}/modules.alias" \
+      "${ALT_MODULES_DIR}/modules.alias.standard"; do
+      [ -r "$alias_file" ] || continue
+      grep -i "usb:v${vendor}p${product}" "$alias_file" 2>/dev/null |
+        awk '{ print $3 }' >> "$tmp" 2>/dev/null || true
+    done
+  done
+
+  grep -E '^(r8188eu|rtl8192cu|rtl8xxxu|8192eu|8723bu|8812au|8821cu|88x2bu|8188eu)$' \
+    "$tmp" 2>/dev/null | sort -u
+  rm -f "$tmp" 2>/dev/null || true
+}
+
+module_loaded() {
+  module="$1"
+  grep -q "^${module}[[:space:]]" /proc/modules 2>/dev/null
+}
+
+load_module_file() {
+  ko="$1"
+  module="$(basename "$ko" .ko | tr '-' '_')"
+  if module_loaded "$module"; then
+    log "module already loaded module=${module}"
+    return 0
+  fi
+  if [ ! -f "$ko" ]; then
+    log "module missing path=${ko}"
+    return 0
+  fi
+  if run_limited 8 insmod "$ko" >> "$LOG_FILE" 2>&1; then
+    log "module loaded path=${ko}"
+  else
+    log "module load returned nonzero path=${ko}"
+  fi
+}
+
+load_wifi_driver() {
+  driver="$1"
+
+  case "$driver" in
+    r8188eu)
+      if run_limited 8 modprobe r8188eu >> "$LOG_FILE" 2>&1; then
+        log "module loaded module=r8188eu"
+      else
+        log "module load returned nonzero module=r8188eu"
+      fi
+      ;;
+    rtl8192cu)
+      load_module_file "${MODULES_DIR}/rtlwifi.ko"
+      load_module_file "${MODULES_DIR}/rtl_usb.ko"
+      load_module_file "${MODULES_DIR}/rtl8192c-common.ko"
+      load_module_file "${MODULES_DIR}/rtl8192cu.ko"
+      ;;
+    rtl8xxxu)
+      load_module_file "${MODULES_DIR}/rtl8xxxu.ko"
+      ;;
+    8192eu|8723bu|8812au|8821cu|88x2bu)
+      load_module_file "${MODULES_DIR}/extra/${driver}.ko"
+      ;;
+    8188eu)
+      if [ -f "${MODULES_DIR}/extra/8188eu.ko" ]; then
+        load_module_file "${MODULES_DIR}/extra/8188eu.ko"
+      else
+        log "driver candidate 8188eu missing; trying 8192eu overlay"
+        load_module_file "${MODULES_DIR}/extra/8192eu.ko"
+      fi
+      ;;
+    *)
+      log "unsupported usb wifi driver candidate=${driver}"
+      ;;
+  esac
+}
+
+ensure_wifi_iface() {
+  wait_limit="${1:-$WIFI_IFACE_WAIT_SECONDS}"
+  set_ensure_wifi_stage ""
+
+  if iface="$(find_wifi_iface 2>/dev/null)"; then
+    printf '%s\n' "$iface"
+    return 0
+  fi
+
+  switch_known_usb_wifi_mode || true
+
+  drivers="$(detect_usb_wifi_modules | tr '\n' ' ')"
+  if [ -z "$drivers" ]; then
+    if usb_device_seen; then
+      set_ensure_wifi_stage no_supported_usb_wifi_driver
+      log "wifi iface unavailable stage=$(last_ensure_wifi_stage)"
+    else
+      set_ensure_wifi_stage no_usb_wifi_dongle
+      log "wifi iface unavailable stage=$(last_ensure_wifi_stage)"
+    fi
+    return 1
+  fi
+
+  log "usb wifi driver candidates=${drivers}"
+  for driver in $drivers; do
+    load_wifi_driver "$driver"
+  done
+
+  i=0
+  while [ "$i" -lt "$wait_limit" ]; do
+    if iface="$(find_wifi_iface 2>/dev/null)"; then
+      printf '%s\n' "$iface"
+      return 0
+    fi
+    sleep 1
+    i=$((i + 1))
+  done
+
+  set_ensure_wifi_stage no_wifi_interface
+  log "wifi iface unavailable stage=$(last_ensure_wifi_stage)"
+  return 1
+}
+
+iface_up() {
+  iface="$1"
+  if ip_tool; then
+    ip link set "$iface" up >> "$LOG_FILE" 2>&1 || true
+  fi
+  if command -v ifconfig >/dev/null 2>&1; then
+    ifconfig "$iface" up >> "$LOG_FILE" 2>&1 || true
+  fi
+}
+
+iface_clear_ip() {
+  iface="$1"
+  if ip_tool; then
+    ip addr flush dev "$iface" >> "$LOG_FILE" 2>&1 || true
+  fi
+  if command -v ifconfig >/dev/null 2>&1; then
+    ifconfig "$iface" 0.0.0.0 >> "$LOG_FILE" 2>&1 || true
+  fi
+}
+
+iface_down() {
+  iface="$1"
+  iface_clear_ip "$iface"
+  if ip_tool; then
+    ip link set "$iface" down >> "$LOG_FILE" 2>&1 || true
+  fi
+  if command -v ifconfig >/dev/null 2>&1; then
+    ifconfig "$iface" down >> "$LOG_FILE" 2>&1 || true
+  fi
+}
+
+get_iface_ip() {
+  iface="$1"
+  if ip_tool; then
+    ip addr show dev "$iface" 2>/dev/null |
+      awk '/^[[:space:]]*inet / { sub(/\/.*/, "", $2); print $2; exit }'
+    return $?
+  fi
+  if command -v ifconfig >/dev/null 2>&1; then
+    ifconfig "$iface" 2>/dev/null |
+      sed -n -e 's/.*inet addr:\([^ ]*\).*/\1/p' \
+             -e 's/.*inet \([0-9][0-9.]*\).*/\1/p' |
+      sed -n '1p'
+  fi
+}
+
+process_running_name() {
+  name="$1"
+  for proc in /proc/[0-9]*; do
+    [ -r "$proc/comm" ] || continue
+    [ "$(cat "$proc/comm" 2>/dev/null || true)" = "$name" ] && return 0
+  done
+  return 1
+}
+
+kill_pid_if_matches() {
+  pid_file="$1"
+  expected="$2"
+  [ -s "$pid_file" ] || return 0
+  pid="$(sed -n '1p' "$pid_file" 2>/dev/null | tr -d '[:space:]' || true)"
+  case "$pid" in
+    ''|*[!0-9]*) rm -f "$pid_file"; return 0 ;;
+  esac
+  kill -0 "$pid" 2>/dev/null || { rm -f "$pid_file"; return 0; }
+  cmdline="$(tr '\000' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)"
+  comm="$(cat "/proc/${pid}/comm" 2>/dev/null || true)"
+  case "${cmdline} ${comm}" in
+    *"$expected"*)
+      kill "$pid" 2>/dev/null || true
+      sleep 1
+      kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+      log "stopped pid=${pid} expected=${expected}"
+      ;;
+    *)
+      log "refuse stop pid=${pid} expected=${expected} cmdline=${cmdline}"
+      ;;
+  esac
+  rm -f "$pid_file" 2>/dev/null || true
+}
+
+kill_cmdline_for_iface() {
+  iface="$1"
+  needle="$2"
+  for proc in /proc/[0-9]*; do
+    pid="$(basename "$proc")"
+    [ "$pid" = "$$" ] && continue
+    [ -r "$proc/cmdline" ] || continue
+    cmdline="$(tr '\000' ' ' < "$proc/cmdline" 2>/dev/null || true)"
+    case "$cmdline" in
+      *"$needle"*"-i ${iface}"*|*"$needle"*"-i${iface}"*|*"$needle"*" ${iface} "*)
+        kill "$pid" 2>/dev/null || true
+        log "stopped iface process pid=${pid} needle=${needle} iface=${iface}"
+        ;;
+    esac
+  done
+}
+
+stop_dhcp_processes() {
+  iface="$1"
+  kill_cmdline_for_iface "$iface" udhcpc
+  kill_cmdline_for_iface "$iface" dhclient
+  sleep 1
+}
+
+stop_wifi_processes() {
+  iface="$1"
+  kill_pid_if_matches "$WPA_PID_FILE" wpa_supplicant
+  kill_cmdline_for_iface "$iface" wpa_supplicant
+  stop_dhcp_processes "$iface"
+}
+
+status_temp="${RUN_DIR}/wpa_status.tmp"
+
+write_runtime_status_values() {
+  state="$1"
+  ip_addr="$2"
+  rssi="$3"
+  linkspeed="$4"
+  frequency="$5"
   {
     printf 'wpa_state=%s\n' "$state"
     printf 'ip_address=%s\n' "$ip_addr"
-    printf 'RSSI=\n'
-    printf 'LINKSPEED=\n'
-    printf 'FREQUENCY=\n'
-  } >"$tmp" && mv -f "$tmp" "$WPA_STATUS"
-  printf 'state=%s\n' "$state"
-  [ -z "$ip_addr" ] || printf 'ip=%s\n' "$ip_addr"
-}
+    printf 'RSSI=%s\n' "$rssi"
+    printf 'LINKSPEED=%s\n' "$linkspeed"
+    printf 'FREQUENCY=%s\n' "$frequency"
+  } > "$status_temp" 2>/dev/null || true
 
-stop_wifi() {
-  if [ -s /run/plumos/wpa_supplicant.pid ]; then
-    pid="$(cat /run/plumos/wpa_supplicant.pid 2>/dev/null || true)"
-    case "$pid" in ''|*[!0-9]*) ;; *) kill "$pid" 2>/dev/null || true ;; esac
-    rm -f /run/plumos/wpa_supplicant.pid
-  fi
-  for pidfile in /run/plumos/udhcpc-*.pid; do
-    [ -s "$pidfile" ] || continue
-    pid="$(cat "$pidfile" 2>/dev/null || true)"
-    case "$pid" in ''|*[!0-9]*) ;; *) kill "$pid" 2>/dev/null || true ;; esac
-    rm -f "$pidfile"
+  for status_path in "$WPA_STATUS" "$WPA_STATUS_PERSIST"; do
+    [ -n "$status_path" ] || continue
+    mkdir -p "$(dirname "$status_path")" 2>/dev/null || true
+    cp "$status_temp" "$status_path" 2>/dev/null || true
   done
-  iface="$(find_wifi_iface 2>/dev/null || true)"
-  [ -z "$iface" ] || ip link set "$iface" down 2>/dev/null || true
-  write_status >/dev/null || true
-  log 'result=wifi-off'
-  printf 'result=stopped\n'
+  rm -f "$status_temp" 2>/dev/null || true
 }
 
-start_wifi() {
-  [ -s "$WPA_CONFIG" ] || {
-    write_status >/dev/null || true
-    log 'result=failed stage=config-missing'
-    printf 'result=failed\nstage=config-missing\n'
-    return 1
-  }
-  if [ -x "$ROOT_WIFI_SERVICE" ]; then
-    "$ROOT_WIFI_SERVICE" start >>"$LOG_FILE" 2>&1 || true
-  fi
-  write_status >/dev/null || true
-  iface="$(find_wifi_iface 2>/dev/null || true)"
-  if [ -z "$iface" ]; then
-    log 'result=failed stage=no_wifi_interface'
-    printf 'result=failed\nstage=no_wifi_interface\n'
-    return 1
-  fi
-  ip_addr="$(iface_ip "$iface" || true)"
-  if [ -n "$ip_addr" ]; then
-    printf 'result=connected\nip=%s\n' "$ip_addr"
-  else
-    printf 'result=ready\nstage=waiting_dhcp\n'
-  fi
+write_runtime_status_off() {
+  write_runtime_status_values DISCONNECTED "" "" "" ""
 }
 
-scan_wifi() {
-  iface="$(find_wifi_iface 2>/dev/null || true)"
-  [ -n "$iface" ] || return 0
-  if command -v iw >/dev/null 2>&1; then
-    iw dev "$iface" scan 2>/dev/null |
-      awk '
-        /^BSS / { ssid=""; signal="" }
-        /^[ \t]*signal:/ { signal=$2 }
-        /^[ \t]*SSID:/ {
-          ssid=substr($0, index($0, "SSID:") + 6)
-          if (ssid != "") printf "network\tWPA\t%s\t%s\n", signal, ssid
-        }'
-  fi
-}
+write_runtime_status_current() {
+  iface="$1"
+  ip_addr="$(get_iface_ip "$iface" || true)"
+  state="$(wpa_cli -i "$iface" status 2>/dev/null |
+    sed -n 's/^wpa_state=//p' | sed -n '1p')"
+  rssi="$(wpa_cli -i "$iface" signal_poll 2>/dev/null |
+    sed -n 's/^RSSI=//p' | sed -n '1p')"
+  linkspeed="$(wpa_cli -i "$iface" signal_poll 2>/dev/null |
+    sed -n 's/^LINKSPEED=//p' | sed -n '1p')"
+  frequency="$(wpa_cli -i "$iface" signal_poll 2>/dev/null |
+    sed -n 's/^FREQUENCY=//p' | sed -n '1p')"
 
-connect_from_file() {
-  file="$1"
-  [ -r "$file" ] || return 1
-  ssid="$(sed -n 's/^ssid=//p' "$file" 2>/dev/null | sed -n '1p')"
-  psk="$(sed -n 's/^psk=//p' "$file" 2>/dev/null | sed -n '1p')"
-  [ -n "$ssid" ] || return 1
-  mkdir -p "${WPA_CONFIG%/*}" || return 1
-  {
-    printf 'ctrl_interface=/run/wpa_supplicant\n'
-    printf 'update_config=1\n'
-    printf 'country=JP\n'
-    printf 'network={\n'
-    printf '\tssid="%s"\n' "$ssid"
-    if [ -n "$psk" ]; then
-      printf '\tpsk="%s"\n' "$psk"
+  if [ -z "$state" ]; then
+    if [ -n "$ip_addr" ]; then
+      state=COMPLETED
+    elif process_running_name wpa_supplicant; then
+      state=SCANNING
     else
-      printf '\tkey_mgmt=NONE\n'
+      state=DISCONNECTED
     fi
-    printf '}\n'
-  } >"$WPA_CONFIG" || return 1
+  fi
+  write_runtime_status_values "$state" "$ip_addr" "$rssi" "$linkspeed" "$frequency"
+}
+
+active_wpa_config() {
+  if [ -r "$WPA_CONFIG" ]; then
+    printf '%s\n' "$WPA_CONFIG"
+    return 0
+  fi
+  if [ -r "$ROOT_WPA_CONFIG" ]; then
+    printf '%s\n' "$ROOT_WPA_CONFIG"
+    return 0
+  fi
+  return 1
+}
+
+write_scan_config() {
+  conf="${RUN_DIR}/scan-wpa_supplicant.conf"
+  {
+    echo "ctrl_interface=/run/wpa_supplicant"
+    echo "update_config=0"
+    echo "country=JP"
+  } > "$conf"
+  chmod 0600 "$conf" 2>/dev/null || true
+  printf '%s\n' "$conf"
+}
+
+start_wpa_supplicant() {
+  iface="$1"
+  conf="$2"
+
+  mkdir -p /run/wpa_supplicant "$RUN_DIR" 2>/dev/null || true
+  if wpa_cli -i "$iface" ping 2>/dev/null | grep -q PONG; then
+    log "wpa_supplicant already responding iface=${iface}"
+    return 0
+  fi
+  if ! command -v wpa_supplicant >/dev/null 2>&1; then
+    log "wpa_supplicant missing"
+    return 1
+  fi
+
+  if wpa_supplicant -B -P "$WPA_PID_FILE" -i "$iface" -c "$conf" >> "$LOG_FILE" 2>&1; then
+    log "wpa_supplicant started iface=${iface} config=${conf}"
+    return 0
+  fi
+  if wpa_supplicant -B -P "$WPA_PID_FILE" -D nl80211,wext -i "$iface" -c "$conf" >> "$LOG_FILE" 2>&1; then
+    log "wpa_supplicant started iface=${iface} driver=nl80211,wext config=${conf}"
+    return 0
+  fi
+
+  log "wpa_supplicant start failed iface=${iface} config=${conf}"
+  return 1
+}
+
+wait_for_wpa_completed() {
+  iface="$1"
+  limit="$2"
+  n=0
+  while [ "$n" -lt "$limit" ]; do
+    state="$(wpa_cli -i "$iface" status 2>/dev/null |
+      sed -n 's/^wpa_state=//p' | sed -n '1p')"
+    [ "$state" = COMPLETED ] && return 0
+    sleep 1
+    n=$((n + 1))
+  done
+  return 1
+}
+
+request_dhcp() {
+  iface="$1"
+
+  if command -v dhclient >/dev/null 2>&1; then
+    lease_file="${RUN_DIR}/dhclient-${iface}.leases"
+    pid_file="${RUN_DIR}/dhclient-${iface}.pid"
+    run_limited 15 dhclient -v -1 -lf "$lease_file" -pf "$pid_file" "$iface" >> "$LOG_FILE" 2>&1 || true
+    return 0
+  fi
+
+  if command -v udhcpc >/dev/null 2>&1; then
+    if [ ! -x "$UDHCPC_SCRIPT" ]; then
+      log "dhcp hook missing path=${UDHCPC_SCRIPT}"
+      return 1
+    fi
+    run_limited 15 udhcpc -i "$iface" -n -q -t 5 -T 2 \
+      -s "$UDHCPC_SCRIPT" >> "$LOG_FILE" 2>&1
+    return $?
+  fi
+
+  log "dhcp client missing"
+  return 1
+}
+
+wait_for_ip_seconds() {
+  iface="$1"
+  limit="$2"
+  n=0
+  while [ "$n" -lt "$limit" ]; do
+    ip_addr="$(get_iface_ip "$iface" || true)"
+    if [ -n "$ip_addr" ]; then
+      printf '%s\n' "$ip_addr"
+      return 0
+    fi
+    sleep 1
+    n=$((n + 1))
+  done
+  return 1
+}
+
+default_gateway() {
+  if ip_tool; then
+    ip route show default 2>/dev/null | awk '{ print $3; exit }'
+    return 0
+  fi
+  route -n 2>/dev/null | awk '$1 == "0.0.0.0" { print $2; exit }'
+}
+
+gateway_ping() {
+  gateway="$1"
+  [ -n "$gateway" ] || { printf '%s\n' skipped; return 0; }
+  if run_limited 4 ping -c 1 -W 2 "$gateway" >> "$LOG_FILE" 2>&1; then
+    printf '%s\n' ok
+  else
+    printf '%s\n' failed
+  fi
+}
+
+wifi_runtime_on() {
+  iface="$1"
+  [ -n "$(get_iface_ip "$iface" || true)" ] || return 1
+  wpa_cli -i "$iface" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'
+}
+
+wifi_link_associated() {
+  iface="$1"
+  wpa_cli -i "$iface" status 2>/dev/null | grep -q '^wpa_state=COMPLETED'
+}
+
+start_enabled_network_services() {
+  [ -x "$NETWORK_SERVICES" ] || return 0
+  if PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_SDCARD_ROOT="$PLUMOS_SDCARD_ROOT" \
+      "$NETWORK_SERVICES" start-enabled >> "$LOG_FILE" 2>&1; then
+    log "network services refreshed after IPv4 became available"
+  else
+    log "network services refresh returned nonzero"
+  fi
+}
+
+start_time_sync() {
+  [ -x "$TIME_SYNC" ] || return 0
+  if [ -x "$DNS_RUNTIME" ]; then
+    PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT" \
+      "$DNS_RUNTIME" prepare >> "$LOG_FILE" 2>&1 || {
+        log "runtime DNS preparation failed before time sync"
+        return 0
+      }
+  fi
+  PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT" \
+    "$TIME_SYNC" sync >> "$LOG_FILE" 2>&1 &
+}
+
+wifi_on() {
+  if [ -x "$WIFI_RECOVERY" ]; then
+    "$WIFI_RECOVERY" start >> "$LOG_FILE" 2>&1 ||
+      log "wifi recovery monitor failed to start"
+  fi
+  if ! iface="$(ensure_wifi_iface "$WIFI_IFACE_WAIT_SECONDS")"; then
+    stage="$(last_ensure_wifi_stage)"
+    write_runtime_status_values "$stage" "" "" "" ""
+    echo "result=failed"
+    echo "stage=${stage}"
+    return 1
+  fi
+
+  iface_up "$iface"
+  conf="$(active_wpa_config 2>/dev/null || true)"
+  if [ -z "$conf" ]; then
+    log "wifi_on ready iface=${iface} stage=missing_config"
+    write_runtime_status_current "$iface"
+    echo "result=ready"
+    echo "stage=missing_config"
+    echo "iface=${iface}"
+    return 0
+  fi
+  if wifi_runtime_on "$iface"; then
+    ip_addr="$(get_iface_ip "$iface" || true)"
+    write_runtime_status_current "$iface"
+    log "wifi_on preserve existing iface=${iface} ip=${ip_addr:-none}"
+    start_time_sync
+    start_enabled_network_services
+    echo "result=connected"
+    echo "ip=${ip_addr:-none}"
+    return 0
+  fi
+
+  if wifi_link_associated "$iface"; then
+    log "wifi_on renew DHCP iface=${iface} reason=associated_without_ipv4"
+    stop_dhcp_processes "$iface"
+    request_dhcp "$iface" || true
+    ip_addr="$(wait_for_ip_seconds "$iface" "$DHCP_WAIT_SECONDS" || true)"
+    write_runtime_status_current "$iface"
+    if [ -z "$ip_addr" ]; then
+      echo "result=failed"
+      echo "stage=dhcp_ip"
+      return 1
+    fi
+    log "wifi_on DHCP renewed iface=${iface} ip=${ip_addr}"
+    start_time_sync
+    start_enabled_network_services
+    echo "result=connected"
+    echo "ip=${ip_addr}"
+    return 0
+  fi
+
+  stop_wifi_processes "$iface"
+  iface_up "$iface"
+  if ! start_wpa_supplicant "$iface" "$conf"; then
+    write_runtime_status_values WPA_START_FAILED "" "" "" ""
+    echo "result=failed"
+    echo "stage=wpa_supplicant_start"
+    return 1
+  fi
+  if ! wait_for_wpa_completed "$iface" "$WPA_WAIT_SECONDS"; then
+    write_runtime_status_current "$iface"
+    echo "result=failed"
+    echo "stage=wpa_completed"
+    return 1
+  fi
+
+  request_dhcp "$iface" || true
+  ip_addr="$(wait_for_ip_seconds "$iface" "$DHCP_WAIT_SECONDS" || true)"
+  write_runtime_status_current "$iface"
+  if [ -z "$ip_addr" ]; then
+    echo "result=failed"
+    echo "stage=dhcp_ip"
+    return 1
+  fi
+
+  log "wifi_on success iface=${iface} ip=${ip_addr}"
+  start_time_sync
+  start_enabled_network_services
+  echo "result=connected"
+  echo "ip=${ip_addr}"
+  return 0
+}
+
+wifi_off() {
+  if [ -x "$WIFI_RECOVERY" ]; then
+    "$WIFI_RECOVERY" stop >> "$LOG_FILE" 2>&1 ||
+      log "wifi recovery monitor failed to stop"
+  fi
+  if iface="$(find_wifi_iface 2>/dev/null)"; then
+    stop_wifi_processes "$iface"
+    iface_down "$iface"
+    log "wifi_off iface=${iface}"
+  else
+    kill_pid_if_matches "$WPA_PID_FILE" wpa_supplicant
+    log "wifi_off no_iface"
+  fi
+  write_runtime_status_off
+  echo "result=stopped"
+  return 0
+}
+
+print_status() {
+  if iface="$(find_wifi_iface 2>/dev/null)"; then
+    ip_addr="$(get_iface_ip "$iface" || true)"
+    if wifi_runtime_on "$iface"; then
+      echo "wifi=on"
+    else
+      echo "wifi=off"
+    fi
+    echo "iface=${iface}"
+    echo "ip=${ip_addr:-none}"
+    echo "dongle=present"
+    if process_running_name wpa_supplicant; then
+      echo "wpa_supplicant=running"
+    else
+      echo "wpa_supplicant=stopped"
+    fi
+    write_runtime_status_current "$iface"
+    return 0
+  fi
+
+  if usb_device_seen; then
+    echo "wifi=off"
+    echo "iface=none"
+    echo "ip=none"
+    echo "dongle=present_no_wifi_iface"
+    echo "wpa_supplicant=stopped"
+    write_runtime_status_values NO_WIFI_INTERFACE "" "" "" ""
+    return 1
+  fi
+
+  echo "wifi=off"
+  echo "iface=none"
+  echo "ip=none"
+  echo "dongle=missing"
+  echo "wpa_supplicant=stopped"
+  write_runtime_status_values NO_USB_WIFI_DONGLE "" "" "" ""
+  return 2
+}
+
+scan_networks() {
+  started_for_scan=0
+  if ! iface="$(ensure_wifi_iface "$WIFI_IFACE_WAIT_SECONDS")"; then
+    stage="$(last_ensure_wifi_stage)"
+    log "scan failed stage=${stage}"
+    echo "result=failed"
+    echo "stage=${stage}"
+    return 1
+  fi
+
+  iface_up "$iface"
+  if ! wpa_cli -i "$iface" ping 2>/dev/null | grep -q PONG; then
+    scan_conf="$(write_scan_config)"
+    if start_wpa_supplicant "$iface" "$scan_conf"; then
+      started_for_scan=1
+    fi
+  fi
+
+  if command -v wpa_cli >/dev/null 2>&1 &&
+     wpa_cli -i "$iface" ping 2>/dev/null | grep -q PONG; then
+    wpa_cli -i "$iface" scan >> "$LOG_FILE" 2>&1 || true
+    scan_results="${RUN_DIR}/scan-results.$$"
+    scan_rows="${RUN_DIR}/scan-rows.$$"
+    scan_elapsed=0
+    while [ "$scan_elapsed" -lt "$SCAN_WAIT_SECONDS" ]; do
+      sleep 1
+      scan_elapsed=$((scan_elapsed + 1))
+      wpa_cli -i "$iface" scan_results > "$scan_results" 2>/dev/null || true
+      awk '
+        BEGIN { FS = "\t" }
+        NR > 1 {
+          ssid = $5
+          for (i = 6; i <= NF; i++) {
+            ssid = ssid "\t" $i
+          }
+          if (ssid == "") {
+            next
+          }
+          security = ($4 ~ /WPA|WEP/) ? "secured" : "open"
+          print "network\t" security "\t" $3 "\t" ssid
+        }
+      ' "$scan_results" > "$scan_rows"
+      if [ -s "$scan_rows" ]; then
+        cat "$scan_rows"
+        network_count="$(wc -l < "$scan_rows" | tr -d '[:space:]')"
+        log "scan completed source=wpa_cli iface=${iface} networks=${network_count} wait=${scan_elapsed}s"
+        rm -f "$scan_results" "$scan_rows" 2>/dev/null || true
+        [ "$started_for_scan" -eq 1 ] && stop_wifi_processes "$iface"
+        return 0
+      fi
+    done
+    rm -f "$scan_results" "$scan_rows" 2>/dev/null || true
+    log "scan completed source=wpa_cli iface=${iface} networks=0 wait=${scan_elapsed}s"
+    [ "$started_for_scan" -eq 1 ] && stop_wifi_processes "$iface"
+    return 0
+  fi
+
+  if command -v iwlist >/dev/null 2>&1; then
+    run_limited 8 iwlist "$iface" scanning 2>/dev/null |
+      awk -F: '
+        function flush() {
+          if (ssid != "") {
+            print "network\t" security "\t" signal "\t" ssid
+          }
+        }
+        /Cell [0-9]+/ {
+          flush()
+          ssid = ""
+          signal = "-"
+          security = "secured"
+        }
+        /Encryption key:off/ { security = "open" }
+        /Signal level=/ {
+          signal = $0
+          sub(/^.*Signal level=/, "", signal)
+          sub(/ .*/, "", signal)
+        }
+        /ESSID:/ {
+          ssid = $2
+          sub(/^"/, "", ssid)
+          sub(/"$/, "", ssid)
+        }
+        END { flush() }
+      '
+    log "scan completed source=iwlist iface=${iface}"
+    [ "$started_for_scan" -eq 1 ] && stop_wifi_processes "$iface"
+    return 0
+  fi
+
+  log "scan failed stage=no_scan_backend"
+  [ "$started_for_scan" -eq 1 ] && stop_wifi_processes "$iface"
+  echo "result=failed"
+  echo "stage=no_scan_backend"
+  return 1
+}
+
+wpa_quote() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/^/"/; s/$/"/'
+}
+
+is_hex64() {
+  case "$1" in
+    ????????????????????????????????????????????????????????????????)
+      case "$1" in
+        *[!0-9A-Fa-f]*) return 1 ;;
+        *) return 0 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+read_connect_file() {
+  file="$1"
+  if [ ! -r "$file" ]; then
+    echo "result=failed"
+    echo "stage=connect_file_missing"
+    return 1
+  fi
+  IFS= read -r CONNECT_SSID < "$file" || CONNECT_SSID=
+  CONNECT_SSID="$(printf '%s' "$CONNECT_SSID" | trim_cr)"
+  CONNECT_PSK="$(sed -n '2p' "$file" 2>/dev/null | trim_cr || true)"
+  case "$CONNECT_SSID$CONNECT_PSK" in
+    *'
+'*)
+      echo "result=failed"
+      echo "stage=connect_file_newline"
+      return 1
+      ;;
+  esac
+  if [ -z "$CONNECT_SSID" ]; then
+    echo "result=failed"
+    echo "stage=ssid_empty"
+    return 1
+  fi
+  if [ -n "$CONNECT_PSK" ]; then
+    psk_len=${#CONNECT_PSK}
+    if [ "$psk_len" -lt 8 ] || [ "$psk_len" -gt 64 ]; then
+      echo "result=failed"
+      echo "stage=psk_length"
+      return 1
+    fi
+    if [ "$psk_len" -eq 64 ] && ! is_hex64 "$CONNECT_PSK"; then
+      echo "result=failed"
+      echo "stage=psk_hex"
+      return 1
+    fi
+  fi
+  return 0
+}
+
+write_candidate_config() {
+  ssid="$1"
+  psk="$2"
+  out="$3"
+
+  {
+    echo "ctrl_interface=/run/wpa_supplicant"
+    echo "update_config=0"
+    echo "country=JP"
+    echo
+    echo "network={"
+    printf '    ssid=%s\n' "$(wpa_quote "$ssid")"
+    if [ -n "$psk" ]; then
+      if is_hex64 "$psk"; then
+        printf '    psk=%s\n' "$psk"
+      else
+        printf '    psk=%s\n' "$(wpa_quote "$psk")"
+      fi
+    else
+      echo "    key_mgmt=NONE"
+    fi
+    echo "}"
+  } > "$out"
+  chmod 0600 "$out" 2>/dev/null || true
+}
+
+commit_wpa_config() {
+  candidate="$1"
+  mkdir -p "$CONFIG_DIR" /etc/wpa_supplicant 2>/dev/null || true
+  cp "$candidate" "$WPA_CONFIG" 2>/dev/null || true
   chmod 0600 "$WPA_CONFIG" 2>/dev/null || true
-  start_wifi
+
+  if [ -d "$(dirname "$ROOT_WPA_CONFIG")" ] && [ -w "$(dirname "$ROOT_WPA_CONFIG")" ]; then
+    tmp="${ROOT_WPA_CONFIG}.plumos-tmp"
+    if cp "$candidate" "$tmp" 2>/dev/null && mv "$tmp" "$ROOT_WPA_CONFIG" 2>/dev/null; then
+      chmod 0600 "$ROOT_WPA_CONFIG" 2>/dev/null || true
+      log "root wpa config updated path=${ROOT_WPA_CONFIG}"
+    else
+      rm -f "$tmp" 2>/dev/null || true
+      log "root wpa config update skipped path=${ROOT_WPA_CONFIG}"
+    fi
+  fi
+}
+
+restart_previous_config_best_effort() {
+  iface="$1"
+  conf="$(active_wpa_config 2>/dev/null || true)"
+  [ -n "$conf" ] || return 0
+  stop_wifi_processes "$iface"
+  iface_clear_ip "$iface"
+  iface_up "$iface"
+  start_wpa_supplicant "$iface" "$conf" || return 0
+  wait_for_wpa_completed "$iface" 8 >/dev/null 2>&1 || true
+  request_dhcp "$iface" || true
+  write_runtime_status_current "$iface"
+}
+
+connect_wifi_from_file() {
+  candidate="${RUN_DIR}/wpa_supplicant-connect.$$"
+  ip_addr=
+
+  umask 077
+  if ! read_connect_file "$1"; then
+    return 2
+  fi
+  write_candidate_config "$CONNECT_SSID" "$CONNECT_PSK" "$candidate"
+
+  if ! iface="$(ensure_wifi_iface "$WIFI_IFACE_WAIT_SECONDS")"; then
+    stage="$(last_ensure_wifi_stage)"
+    log "connect failed stage=${stage}"
+    rm -f "$candidate" 2>/dev/null || true
+    write_runtime_status_values "$stage" "" "" "" ""
+    echo "result=failed"
+    echo "stage=${stage}"
+    return 1
+  fi
+
+  log "connect begin iface=${iface}"
+  stop_wifi_processes "$iface"
+  iface_clear_ip "$iface"
+  iface_up "$iface"
+
+  if ! start_wpa_supplicant "$iface" "$candidate"; then
+    log "connect failed stage=wpa_supplicant_start"
+    rm -f "$candidate" 2>/dev/null || true
+    restart_previous_config_best_effort "$iface"
+    echo "result=failed"
+    echo "stage=wpa_supplicant_start"
+    return 1
+  fi
+  if ! wait_for_wpa_completed "$iface" "$WPA_WAIT_SECONDS"; then
+    log "connect failed stage=wpa_completed"
+    rm -f "$candidate" 2>/dev/null || true
+    write_runtime_status_current "$iface"
+    restart_previous_config_best_effort "$iface"
+    echo "result=failed"
+    echo "stage=wpa_completed"
+    return 1
+  fi
+
+  request_dhcp "$iface" || true
+  ip_addr="$(wait_for_ip_seconds "$iface" "$DHCP_WAIT_SECONDS" || true)"
+  write_runtime_status_current "$iface"
+  if [ -z "$ip_addr" ]; then
+    log "connect failed stage=dhcp_ip"
+    rm -f "$candidate" 2>/dev/null || true
+    restart_previous_config_best_effort "$iface"
+    echo "result=failed"
+    echo "stage=dhcp_ip"
+    return 1
+  fi
+
+  commit_wpa_config "$candidate"
+  rm -f "$candidate" 2>/dev/null || true
+  gateway="$(default_gateway || true)"
+  gateway_status="$(gateway_ping "$gateway")"
+  write_runtime_status_current "$iface"
+  log "connect success iface=${iface} ip=${ip_addr} gateway=${gateway:-none} gateway_ping=${gateway_status}"
+  start_time_sync
+  echo "result=connected"
+  echo "ip=${ip_addr}"
+  echo "gateway=${gateway:-none}"
+  echo "gateway_ping=${gateway_status}"
+  return 0
 }
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --wifi)
-      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
-      case "$2" in on|off|status) ACTION="wifi-$2" ;; *) usage >&2; exit 2 ;; esac
-      shift 2
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "error: --wifi expects on, off, or status" >&2
+        exit 2
+      fi
+      case "$1" in
+        on|off|status) ACTION="$1" ;;
+        *)
+          echo "error: invalid --wifi value: $1" >&2
+          exit 2
+          ;;
+      esac
       ;;
-    --scan) ACTION=scan; shift ;;
+    --scan)
+      ACTION=scan
+      ;;
     --connect-file)
-      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
-      ACTION=connect-file
-      CONNECT_FILE="$2"
-      shift 2
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "error: --connect-file expects a path" >&2
+        exit 2
+      fi
+      ACTION=connect
+      CONNECT_FILE="$1"
       ;;
-    -h|--help|help) usage; exit 0 ;;
-    *) usage >&2; exit 2 ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
   esac
+  shift
 done
 
+rc=0
 case "$ACTION" in
-  wifi-on) start_wifi ;;
-  wifi-off) stop_wifi ;;
-  wifi-status|status) write_status ;;
-  scan) scan_wifi ;;
-  connect-file) connect_from_file "$CONNECT_FILE" ;;
-  *) usage >&2; exit 2 ;;
+  on) wifi_on || rc=$? ;;
+  off) wifi_off || rc=$? ;;
+  scan) scan_networks || rc=$? ;;
+  connect) connect_wifi_from_file "$CONNECT_FILE" || rc=$? ;;
+  status) print_status || rc=$? ;;
+  *) usage >&2; rc=2 ;;
 esac
+rm -f "$ENSURE_WIFI_STAGE_FILE" 2>/dev/null || true
+exit "$rc"

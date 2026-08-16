@@ -1,0 +1,51 @@
+#!/bin/sh
+set -u
+
+BB="${PLUMOS_BUSYBOX:-/bin/busybox}"
+interface="${interface:-}"
+action="${1:-}"
+run_dir="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+runtime_resolv="${run_dir}/resolv.conf"
+
+[ -n "$interface" ] || exit 1
+
+install_dns() {
+    [ -n "${dns:-}" ] || return 0
+    "$BB" mkdir -p "$run_dir"
+    if "$BB" grep -q ' /etc/resolv.conf ' /proc/mounts 2>/dev/null; then
+        target=/etc/resolv.conf
+    else
+        target="$runtime_resolv"
+    fi
+    : >"$target" || return 0
+    for server in $dns; do
+        printf 'nameserver %s\n' "$server" >>"$target"
+    done
+    if [ "$target" = "$runtime_resolv" ]; then
+        "$BB" mount --bind "$runtime_resolv" /etc/resolv.conf 2>/dev/null || true
+    fi
+}
+
+case "$action" in
+    deconfig)
+        "$BB" ifconfig "$interface" 0.0.0.0 up
+        ;;
+    bound|renew)
+        [ -n "${ip:-}" ] || exit 1
+        subnet="${subnet:-255.255.255.0}"
+        if [ -n "${broadcast:-}" ]; then
+            "$BB" ifconfig "$interface" "$ip" netmask "$subnet" \
+                broadcast "$broadcast" up
+        else
+            "$BB" ifconfig "$interface" "$ip" netmask "$subnet" up
+        fi
+        "$BB" route del default dev "$interface" 2>/dev/null || true
+        for gateway in ${router:-}; do
+            "$BB" route add default gw "$gateway" dev "$interface"
+            break
+        done
+        install_dns
+        ;;
+esac
+
+exit 0

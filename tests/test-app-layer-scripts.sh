@@ -21,6 +21,7 @@ for script in \
     package/app-layer-pixel2/bin/plumos-display-control \
     package/app-layer-pixel2/bin/plumos-volume-control \
     package/app-layer-pixel2/bin/plumos-network-control \
+    package/app-layer-pixel2/bin/plumos-udhcpc-script \
     package/app-layer-pixel2/bin/plumos-network-services \
     package/app-layer-pixel2/bin/plumos-time-sync \
     package/app-layer-pixel2/bin/plumos-storage-health \
@@ -30,6 +31,8 @@ for script in \
 done
 test -x "$ROOT_DIR/tests/test-retroarch-config-merge.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-power-menu-sleep.sh"
+test -x "$ROOT_DIR/tests/test-pixel2-network-control.sh"
+"$ROOT_DIR/tests/test-pixel2-network-control.sh"
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"

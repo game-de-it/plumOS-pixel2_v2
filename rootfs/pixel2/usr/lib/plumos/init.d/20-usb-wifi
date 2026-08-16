@@ -2,21 +2,13 @@
 set -u
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
-CONFIG=/state/plumos/config/wpa_supplicant.conf
-LOG=/state/plumos/logs/usb-wifi.log
-PID=/run/plumos/wpa_supplicant.pid
+CONFIG=${PLUMOS_WIFI_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}
+SETTINGS=${PLUMOS_SYSTEM_SETTINGS_JSON:-/mnt/plumos/config/system/settings.json}
+LOG=${PLUMOS_WIFI_LOG:-/state/plumos/logs/usb-wifi.log}
+CONTROL=${PLUMOS_NETWORK_CONTROL:-/mnt/plumos/bin/plumos-network-control}
 
 log() {
     printf '%s service=usb-wifi %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
-}
-
-find_interface() {
-    for iface in /sys/class/net/wlan* /sys/class/net/wlp*; do
-        [ -e "$iface" ] || continue
-        basename "$iface"
-        return 0
-    done
-    return 1
 }
 
 start_wifi() {
@@ -24,20 +16,25 @@ start_wifi() {
         log 'result=disabled reason=config-missing'
         return 0
     }
-    chmod 0600 "$CONFIG"
-    for module in r8188eu rtl8xxxu mt7601u rt2800usb ath9k_htc; do
-        modprobe "$module" 2>/dev/null || true
-    done
-    mdev -s 2>/dev/null || true
-    iface=$(find_interface) || {
-        log 'result=failed reason=interface-missing'
-        return 1
+    if [ -r "$SETTINGS" ] &&
+        grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \
+            "$SETTINGS" 2>/dev/null; then
+        log 'result=disabled reason=saved-off'
+        return 0
+    fi
+    [ -x "$CONTROL" ] || {
+        log 'result=failed reason=network-control-missing'
+        return 0
     }
-    ip link set "$iface" up
-    wpa_supplicant -B -P "$PID" -i "$iface" -c "$CONFIG" -f "$LOG"
-    udhcpc -b -q -i "$iface" -p "/run/plumos/udhcpc-${iface}.pid" \
-        >>"$LOG" 2>&1
-    log "result=started interface=$iface"
+    # Association and DHCP may legitimately take tens of seconds. Keep them
+    # outside the boot critical path; the FE reads the runtime status file.
+    (
+        PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
+            "$CONTROL" --wifi on >>"$LOG" 2>&1
+        rc=$?
+        log "result=background-complete rc=$rc"
+    ) &
+    log 'result=background-started'
 }
 
 case "${1:-}" in
