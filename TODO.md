@@ -54,14 +54,20 @@
       `0.1.0-dev-12b809b`でFE起動、power menu、Cancel、Sleep、sleep中USB電源
       抜き差し、ADB再列挙、Power 1回復帰、ゲーム継続、映像・入力・音声を
       operator合格とした。DraSticのsleep gateは完了。
+    - 2026-08-16: PicoArchは署名Runtime `0.1.0-dev-45b4505`でPower menuからの
+      sleep/wakeと、ゲーム画面・内蔵menu双方の物理D-pad操作をoperator合格とした。
+      `d1f5ea1`でPixel2固有`BTN_DPAD_*`をgame/menu bindへ追加済み。
   - [x] FTP/SFTP/SambaをPixel2 componentとして実装する
     - 2026-08-14: 初期bring-upの「SSH/ADBだけを表示」を撤回し、V90S/MFと同じ5 serviceをpackage化。保存設定のboot再開、component checksum、release gateへ統合した。USB Wi-Fi実機でのFTP/SFTP/Samba接続は未検証。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
-      検出し、再接続2秒後にユーザー設定を尊重してADB gadgetを再起動する。
-      software sleep中の実機で画面を起こさずADBが自動再列挙することを確認。
+      検出する。`45b4505`では通常`recover`と物理再接続`replug`を分離し、再接続
+      2秒後だけUDC rebind、失敗時は単発clean restartを行う。全mutating actionを
+      PID lockで直列化し、二重adbd/JDWP/FunctionFS競合を防止した。署名System/
+      Runtime `0.1.0-dev-45b4505`を実機適用し、USB抜き差し後のFunctionFS
+      BIND/ENABLE、adbd 1 process、UDC configured、ADB shell復帰を確認。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
@@ -151,6 +157,9 @@
   - 2026-08-13: RA、PicoArch、PCSX-ReARMed、DraStic、PPSSPP、OpenBORのFunction menu契約を実装し、source contract testを追加。`e9c8f38`から全対象をbuildし、署名Runtimeを実機へ適用。health昇格、対象22 SHA一致、root checksum 3470件合格。各runtimeの物理menu/exit確認が必要。
   - 2026-08-13: PCSX内蔵menuでevdevとSDL joystickが同じ`event2`を二重登録する状態を実機FDで確認。Pixel2のPCSXはraw evdevだけをcontroller入力元とする`002e250`へ修正し、全4 SAを並列build、署名Runtime `0.1.0-dev-002e250`を適用。health昇格、実機root checksum 3470件/失敗0。PCSX menuの十字/A決定/B戻るは物理再確認待ち。
   - 2026-08-13: `3234b0d`でPCSX menuの物理Function、十字、A決定、B戻るを実機合格。RA、PicoArch、DraStic、PPSSPP、OpenBORは引き続き個別物理確認が必要。
+  - 2026-08-16: PicoArchはFunctionから内蔵menuを表示し、`d1f5ea1`適用後に
+    game/menuの十字操作とsleep復帰を実機合格。RA、DraStic、PPSSPP、OpenBORの
+    個別menu/exit確認は継続する。
 - [x] RetroArch factory configuration一式をPixel2へ実装する
   - 2026-08-15: 3,374 unique keyをPixel2 DRM/udev/button/audio/storage contractへ適合。旧57-key factoryは既知SHA一致時だけatomic置換し、変更済みuser cfgには不足keyだけを補完するmigrationを追加。署名Runtime `0.1.0-dev-aa3a3ab`を適用し、healthy、root 4241/4241 checksum、RGUIのDRM/event2取得、FE復帰を確認。[検証記録](docs/validation/2026-08-15-pixel2-retroarch-v90s-config-port.md)
   - 2026-08-15: 前記移植がmain cfgだけで、content-local save/state、L2/R2 hotkey変換、core-options、N64 remapを欠いていたことを訂正。`68abe6c`で3-file factory bundleと旧世代12項目の限定migrationを実装し、署名Runtime `0.1.0-dev-68abe6c`を適用。healthy、Frontend 191/191、RetroArch 59/59、root 4245/4245、既存state 2件のSHA不変を確認。[検証記録](docs/validation/2026-08-15-pixel2-retroarch-save-hotkeys.md)
@@ -254,6 +263,10 @@
 - [x] 設定未作成時はUSB ADBを保守経路として起動し、FEの明示OFF/ONとrecovery markerを提供する
 - [x] UDC `not attached`時のbounded ADB再列挙を実装する
   - 2026-08-15: adbd生存+gadget bindだけを正常扱いし、`FUNCTIONFS_BIND` timeoutから復旧しない欠陥を`0b9b609`で修正。起動を待たせない4秒後check、異常時だけのrebind/単発restartをSystemへ統合。署名System `0.1.0-dev-0b9b609`のslot B昇格後、更新bootと通常rebootの両方でFE/ADB、UDC configured、healthy no-opを確認。[検証記録](docs/validation/2026-08-15-pixel2-adb-enumeration-recovery.md)
+- [x] USB再接続後のstale FunctionFS transportを再列挙する
+  - 2026-08-16: UDCが`configured`へ戻ってもhost transportがofflineのままになる
+    実機ログを根拠に`45b4505`で専用`replug`とaction lockを実装。物理抜き差し後に
+    ADB自動復帰、単一adbd、競合エラーなしを実機合格。
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [x] ADB列挙とshellを実機検証する
 - [ ] USB Wi-FiとSSHを実機検証する

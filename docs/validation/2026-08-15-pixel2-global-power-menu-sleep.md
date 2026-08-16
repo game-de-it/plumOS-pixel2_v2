@@ -90,8 +90,11 @@ transition is therefore part of the Pixel2 sleep contract.
 
 USB power changes are observed through `/sys/class/power_supply/usb/online`.
 The hardware-key service ignores PMIC Power events for 1500 ms after a cable
-transition. On reconnect it asynchronously restarts the policy-aware ADB
-service after 2000 ms, allowing ADB to re-enumerate without waking the display.
+transition. On reconnect it asynchronously requests the policy-aware ADB
+`replug` action after 2000 ms. That action performs a bounded UDC rebind and
+falls back to one clean adbd restart, allowing ADB to re-enumerate without
+waking the display. Mutating ADB actions are serialized so reconnect and the
+startup watchdog cannot launch competing daemons.
 
 This provides a working sleep/wake interaction without replacing the stock
 kernel. It is not equivalent to SoC/RAM power collapse while this stock-kernel
@@ -199,14 +202,19 @@ core and left a stopped runner waiting in cleanup. Commit `12b809b` resumes the
 runner before TERM and bounds that cleanup. Physical acceptance was repeated
 from the production FE launcher, which is independent of the ADB session.
 
+The PicoArch path was physically accepted on `0.1.0-dev-45b4505`. Sleep and
+wake returned to the same game, and the physical D-pad worked in both the game
+and PicoArch menu after `BTN_DPAD_*` was added to the Pixel2 game/menu binds in
+`d1f5ea1`.
+
 ## Remaining physical gate
 
-The normal FE, RetroArch, and DraStic sleep/USB/wake paths are complete. The
-operator still needs to validate:
+The normal FE, RetroArch, PicoArch, and DraStic sleep/USB/wake paths are
+complete. The operator still needs to validate:
 
 1. Cancel returns normally from the RA overlay;
-2. Power opens the overlay while PicoArch, the remaining standalone emulators,
-   and Apps each own the screen;
+2. Power opens the overlay while the remaining standalone emulators and Apps
+   each own the screen;
 3. Cancel and sleep/wake return video, input, and audio for each remaining
    family.
 
