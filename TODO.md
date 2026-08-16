@@ -285,6 +285,10 @@
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [x] ADB列挙とshellを実機検証する
 - [ ] USB Wi-Fi上でSSH/SFTP/FTP/Sambaの認証・往復転送と再起動復元を実機検証する
+  - 2026-08-17: `fd0fb34` RuntimeでADB/SSH/SFTP/FTP/Samba backendを実機確認。
+    password認証、upload/download/delete、同一SHA-256、更新再起動後の5項目ON保持、
+    component checksumは合格。最終RuntimeでUSB Wi-Fi LAN越しに同じ往復を反復する
+    transport gateだけを残す。
 
 ## Image and hardware validation
 
