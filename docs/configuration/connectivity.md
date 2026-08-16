@@ -59,12 +59,25 @@ stock kernel 5.10.198から採取できた外付けmoduleは`r8188eu`に限ら�
 
 ## SSH
 
-次のfileが存在する場合だけdropbearをport 22で起動する。NW ServiceのSSH/SFTP
-toggleは保存されるが、鍵がない場合は意図的にlistenしない。
+V90S/MFと同じNW Service契約に従い、SSHはfresh imageで既定ON、dropbearを
+port 22で起動する。初期accountは次の通り。
 
 ```text
-/plumos/root/.ssh/authorized_keys
+user: root
+password: plumos
 ```
 
-password loginとroot password loginは無効である。host keyは初回boot時に
-`/plumos/ssh`へ生成する。
+初期passwordは公開情報なので、信頼できるLANだけで使い、不要ならFEからSSHを
+OFFにする。`plumos-ssh-password set`で変更でき、salt付きSHA-512 hashだけを
+`/mnt/plumos/config/ssh/shadow`へ端末ローカル保存する。既存passwordはOS更新や
+service再起動で上書きしない。SFTPも同じaccountとport 22を使う。
+
+公開鍵認証も併用できる。鍵は永続root homeの次のfileへ置く。
+
+```text
+/root/.ssh/authorized_keys
+```
+
+host keyは初回起動時に`/mnt/plumos/config/ssh`へ生成する。FTPはanonymous、
+Sambaは`plumos / plumos`で`SDCARD` shareへ接続する。全serviceのON/OFFは
+`/mnt/plumos/config/network/services.conf`へ保存し、次回bootでも復元する。

@@ -124,10 +124,8 @@ fi
 mkdir -p "$NETWORK_DIR/samba/share"
 [ ! -d /usr/share/samba ] || cp -a /usr/share/samba/. "$NETWORK_DIR/samba/share/"
 
-cat >"$PLUMOS_DIR/ssh/start-ssh.sh" <<'EOF'
-#!/bin/sh
-exec /usr/lib/plumos/init.d/30-ssh start
-EOF
+install -m 0755 "$ROOT_DIR/package/app-layer-pixel2/ssh/start-ssh.sh" \
+    "$PLUMOS_DIR/ssh/start-ssh.sh"
 cat >"$PLUMOS_DIR/ssh/stop-ssh.sh" <<'EOF'
 #!/bin/sh
 pid_file="${PLUMOS_SSH_RUN_DIR:-/run/plumos/ssh}/dropbear.pid"
@@ -149,6 +147,8 @@ chmod 0755 "$PLUMOS_DIR/ssh/start-ssh.sh" "$PLUMOS_DIR/ssh/stop-ssh.sh"
 
 install -m 0755 "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     "$PLUMOS_DIR/bin/plumos-network-services"
+install -m 0755 "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ssh-password" \
+    "$PLUMOS_DIR/bin/plumos-ssh-password"
 install -m 0644 /usr/share/doc/busybox-static/copyright \
     "$PLUMOS_DIR/share/doc/network-services/busybox-copyright"
 install -m 0644 /usr/share/doc/openssh-sftp-server/copyright \
@@ -167,7 +167,9 @@ cat >"$PLUMOS_DIR/components/network-services/manifest.json" <<EOF
   "services": ["ssh", "ftp", "sftp", "samba", "adb"],
   "share_root": "/mnt/plumos-user",
   "ftp_runtime": "BusyBox $BUSYBOX_VERSION",
-  "ssh_runtime": "System Dropbear with packaged SFTP subsystem"
+  "ssh_runtime": "System Dropbear with plumOS password and SFTP integration",
+  "ssh_initial_user": "root",
+  "ssh_initial_password_policy": "device-local public default; user-changeable"
 }
 EOF
 (

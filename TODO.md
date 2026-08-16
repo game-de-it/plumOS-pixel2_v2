@@ -64,6 +64,10 @@
       checksum合格、実機色表示と物理Function menu表示をoperator合格とした。
   - [x] FTP/SFTP/SambaをPixel2 componentとして実装する
     - 2026-08-14: 初期bring-upの「SSH/ADBだけを表示」を撤回し、V90S/MFと同じ5 serviceをpackage化。保存設定のboot再開、component checksum、release gateへ統合した。USB Wi-Fi実機でのFTP/SFTP/Samba接続は未検証。
+    - 2026-08-17: Pixel2だけに残っていた鍵必須SSHを廃止し、V90S/MF共通の
+      `root / plumos`初期認証、端末ローカルsalt付きshadow、公開鍵併用、永続host
+      key、fresh imageのSSH既定ONへ統一。FTP/SFTP/Samba/ADBを含む実機protocol
+      round-tripと再起動復元をrelease gateとして継続する。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
@@ -276,7 +280,7 @@
     ADB自動復帰、単一adbd、競合エラーなしを実機合格。
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [x] ADB列挙とshellを実機検証する
-- [ ] USB Wi-FiとSSHを実機検証する
+- [ ] USB Wi-Fi上でSSH/SFTP/FTP/Sambaの認証・往復転送と再起動復元を実機検証する
 
 ## Image and hardware validation
 

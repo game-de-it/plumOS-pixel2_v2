@@ -73,7 +73,7 @@ Pixel2はWi-Fiを内蔵しないため、network service設定が未作成の初
 FunctionFS ADBを既定ONにする。FEが保存した`adb_enabled=0/1`を優先し、user FAT32
 rootの`plumos-enable-adb` markerは明示OFF後の復旧経路として扱う。新SYSTEMで
 default ON、明示OFF/ON、recovery markerをcold boot検証する。
-SSHは`authorized_keys`の有無に加えてUI toggleとboot状態の一致を別途確認する。
+SSHはV90S/MF共通の初期password、公開鍵、UI toggle、boot状態の一致を確認する。
 
 ## P1: application and standalone parity
 
@@ -156,7 +156,7 @@ acceptanceする。
 - supplied ROMでearly-start合格済みの73 systemについて、表示・操作・音声・終了を物理確認;
 - compatible contentが無い13 systemと、必須BIOS不足のChannel Fを補完して起動確認;
 - FE menuからのactual shutdownと、充電中reboot;
-- ADB再接続、USB Wi-Fi dongle、SSH public-key login;
+- ADB再接続、USB Wi-Fi dongle、SSH password/public-key login、SFTP/FTP/Samba transfer;
 - save/stateとactive settingsがupdate/deploy後も保持されること;
 - app-layer root/component checksumを含むatomic live deployment。
 

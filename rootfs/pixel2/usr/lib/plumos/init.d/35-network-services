@@ -7,9 +7,9 @@ SERVICE=/mnt/plumos/bin/plumos-network-services
 [ "${1:-}" = start ] || exit 2
 [ -x "$SERVICE" ] || exit 0
 mkdir -p "${LOG%/*}"
-# ADB is brought up earlier by 10-adbd. File-transfer services are optional and
-# may legitimately wait for WLAN or an SSH key, so they cannot block the FE or
-# turn such a condition into a fatal boot failure.
+# ADB is brought up earlier by 10-adbd. Network services start asynchronously,
+# so a missing WLAN cannot block the FE or turn a deferred Samba start into a
+# fatal boot failure.
 (
     PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
         "$SERVICE" start-enabled >>"$LOG" 2>&1

@@ -30,7 +30,6 @@ SMBD="${PLUMOS_ROOT}/network/samba/sbin/smbd"
 NMBD="${PLUMOS_ROOT}/network/samba/sbin/nmbd"
 ADBD_CONTROL="${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}"
 ADB_RECOVERY_MARKER="${PLUMOS_ADB_RECOVERY_MARKER:-${PLUMOS_SDCARD_ROOT}/plumos-enable-adb}"
-SSH_AUTHORIZED_KEYS="${PLUMOS_SSH_AUTHORIZED_KEYS:-/state/plumos/root/.ssh/authorized_keys}"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR" "$CONFIG_DIR"
 
@@ -114,13 +113,11 @@ service_enabled() {
     return 0
   fi
   [ -r "$SERVICES_CONF" ] || {
-    [ "$service" = "adb" ]
-    return $?
+    case "$service" in ssh|adb) return 0 ;; *) return 1 ;; esac
   }
   value="$(sed -n "s/^${key}=//p" "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
   [ -n "$value" ] || {
-    [ "$service" = "adb" ]
-    return $?
+    case "$service" in ssh|adb) return 0 ;; *) return 1 ;; esac
   }
   [ "$value" = "1" ] || [ "$value" = "true" ] || [ "$value" = "on" ]
 }
@@ -244,10 +241,6 @@ status_ssh() {
   if [ ! -x "$SSH_START" ]; then
     print_status ssh not_installed "SSH start script missing"
     return 1
-  fi
-  if service_enabled ssh && [ ! -s "$SSH_AUTHORIZED_KEYS" ]; then
-    print_status ssh waiting_credentials "SSH enabled; waiting for authorized_keys"
-    return 2
   fi
   print_status ssh stopped "SSH stopped"
   return 2
@@ -393,12 +386,13 @@ start_ssh() {
     return 1
   fi
   log "start" ssh
-  PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_SDCARD_ROOT="$PLUMOS_SDCARD_ROOT" "$SSH_START" >> "$LOG_FILE" 2>&1 || true
-  status_ssh || {
-    rc=$?
-    [ "$rc" -eq 2 ] && [ ! -s "$SSH_AUTHORIZED_KEYS" ] && return 0
-    return "$rc"
-  }
+  if ! PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_SDCARD_ROOT="$PLUMOS_SDCARD_ROOT" \
+      "$SSH_START" >> "$LOG_FILE" 2>&1; then
+    log "start failed reason=ssh_launcher" ssh
+    status_ssh || true
+    return 1
+  fi
+  status_ssh
 }
 
 stop_ssh() {

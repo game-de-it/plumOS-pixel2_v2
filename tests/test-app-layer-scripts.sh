@@ -571,14 +571,22 @@ env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     status adb >"$feature_tmp/network/adb-default.status" || true
 grep -q '^enabled=1$' "$feature_tmp/network/adb-default.status"
+env "${network_env[@]}" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
+    status ssh >"$feature_tmp/network/ssh-default.status" || true
+grep -q '^enabled=1$' "$feature_tmp/network/ssh-default.status"
 PLUMOS_TEST_ADBD_STATE=running env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     status adb >"$feature_tmp/network/adb-running.status"
 grep -q '^state=running$' "$feature_tmp/network/adb-running.status"
 grep -q '^summary=ADB connected over USB$' \
     "$feature_tmp/network/adb-running.status"
-grep -q 'waiting for authorized_keys' \
+! grep -q 'waiting for authorized_keys' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
+grep -q 'INITIAL_PASSWORD="${PLUMOS_SSH_INITIAL_PASSWORD:-plumos}"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ssh-password"
+grep -q 'auth=password,pubkey' \
+    "$ROOT_DIR/package/app-layer-pixel2/ssh/start-ssh.sh"
 grep -q "awk '{ print \$3 }'" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
 grep -q 'PLUMOS_ROOT/emulator/lib' \

@@ -41,8 +41,9 @@ handler、5 network services、11 mandatory componentsを検査する。さら�
 ## Persistence and boot contract
 
 network service設定は`/mnt/plumos/config/network/services.conf`へ統一する。
-`35-network-services`が起動時に`start-enabled`を実行する。ADBは設定未作成時だけON、
-明示値を優先し、FAT32 rootの`plumos-enable-adb`をrecovery overrideとする。
+`35-network-services`が起動時に`start-enabled`を実行する。設定未作成時はV90S/MF
+共通方針のSSHと、Pixel2の有線保守経路であるADBだけをONにする。明示値を優先し、
+FAT32 rootの`plumos-enable-adb`をADB recovery overrideとする。
 
 ## Hardware acceptance still required
 

@@ -20,7 +20,7 @@ for path in \
     bin/plumos-power-menu-overlay bin/plumos-rk817-resume \
     bin/plumos-display-control bin/plumos-volume-control \
     bin/plumos-network-control bin/plumos-udhcpc-script \
-    bin/plumos-network-services \
+    bin/plumos-network-services bin/plumos-ssh-password \
     bin/plumos-nextcommander-launch bin/plumos-music-player-launch \
     bin/plumos-retroarch-menu-launch bin/plumos-portmaster-launch \
     bin/plumos-portmaster-update \

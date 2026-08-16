@@ -6,7 +6,7 @@
 2. The stock initramfs mounts the boot volume and hands off to `/boot/SYSTEM`.
 3. plumOS `/sbin/init` mounts proc/sys/dev, `/mnt/plumos`, `/mnt/plumos-user`,
    `/state`, and `/roms`.
-4. init starts ADB, USB Wi-Fi, SSH, and frontend services from
+4. init starts ADB, USB Wi-Fi, network services, and frontend services from
    `/usr/lib/plumos/init.d/`.
 
 ## Service Order
@@ -14,9 +14,15 @@
 ```text
 10-adbd      USB FunctionFS/configfs ADB maintenance path
 20-usb-wifi  saved USB Wi-Fi configuration, if a dongle exists
-30-ssh       Dropbear when authorized_keys exists
+30-ssh       compatibility slot; delegates policy to network services
+35-network-services  saved SSH/FTP/SFTP/Samba/ADB state
 40-frontend  app-layer selection, hardware keys, ROM scan, FE
 ```
+
+On a fresh image, SSH and ADB default to ON. SSH uses the common plumOS
+`root / plumos` initial credential, generated as a device-local salted shadow
+entry. The public initial password can be changed without an OS update
+overwriting it; public-key authentication remains available.
 
 `40-frontend` does not hash the complete app layer during a normal boot. Signed
 updates and live deployment verify the complete Runtime before reboot; a
