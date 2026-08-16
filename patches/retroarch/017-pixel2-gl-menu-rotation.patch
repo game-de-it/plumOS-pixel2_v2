@@ -1,0 +1,24 @@
+diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -3295,7 +3295,10 @@ static INLINE void gl2_draw_texture(gl2_t *gl)
+ {
+    GLfloat color[16];
+    unsigned width         = gl->video_width;
+    unsigned height        = gl->video_height;
++   const char *menu_rotation = getenv("PLUMOS_GL_MENU_ROTATION");
++   bool rotate_menu       = menu_rotation &&
++      strcmp(menu_rotation, "content") == 0;
+ 
+    color[ 0]              = 1.0f;
+    color[ 1]              = 1.0f;
+@@ -3326,7 +3329,8 @@ static INLINE void gl2_draw_texture(gl2_t *gl)
+    gl->coords.vertices    = 4;
+ 
+    gl->shader->set_coords(gl->shader_data, &gl->coords);
+-   gl->shader->set_mvp(gl->shader_data, &gl->mvp_no_rot);
++   gl->shader->set_mvp(gl->shader_data,
++         rotate_menu ? &gl->mvp : &gl->mvp_no_rot);
+ 
+    glEnable(GL_BLEND);
+ 

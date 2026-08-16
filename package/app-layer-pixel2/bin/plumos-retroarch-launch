@@ -175,6 +175,10 @@ case "$system_id" in
         # Full (index 24) fills that surface and becomes logical 640x480 after
         # the odd rotation, preserving Dreamcast's native 4:3 output.
         aspect_ratio_index=24
+        # RGUI is uploaded as an unrotated GL texture. Apply the same final
+        # Pixel2 presentation matrix as the Dreamcast frame so the menu stays
+        # landscape without changing the normal GL policy for other systems.
+        export PLUMOS_GL_MENU_ROTATION=content
         ;;
     wonderswan|wonderswancolor)
         # Match the proven plumOS portrait-panel contract: RetroArch sees an

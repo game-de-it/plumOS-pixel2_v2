@@ -296,6 +296,10 @@ grep -q 'aspect_ratio_index=24' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'dreamcast)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'PLUMOS_GL_MENU_ROTATION=content' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'rotate_menu ? &gl->mvp : &gl->mvp_no_rot' \
+    "$ROOT_DIR/patches/retroarch/017-pixel2-gl-menu-rotation.patch"
 grep -q 'wonderswan|wonderswancolor)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'video_allow_rotate=false' \
