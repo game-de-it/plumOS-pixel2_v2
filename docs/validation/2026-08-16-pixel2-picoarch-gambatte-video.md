@@ -58,6 +58,7 @@ and `#212021`, and the operator reported that the physical LCD color appeared
 normal.  A controlled `SIGSTOP`, framebuffer blank, and `SIGCONT` cycle kept
 the same PicoArch process alive and logged a second scanout activation.
 
-Physical Function-menu presentation on this exact Runtime remains a separate
-operator check.  Its input implementation is unchanged from the previously
-accepted `0.1.0-dev-45b4505` PicoArch path.
+The operator also pressed the physical Function button on this exact Runtime
+and confirmed that PicoArch's menu was visible.  Together with the earlier
+menu D-pad acceptance, the Gambatte display, color, scanout-recovery, and
+physical menu-presentation gates are complete.
