@@ -65,6 +65,20 @@ grep -q 'RUNTIME_LIB_DIR/libSDL2-2.0.so.0' \
 grep -q 'libSDL2-2\.0\.so\.0' "$ROOT_DIR/scripts/build-picoarch-pixel2.sh"
 grep -q 'physical=%ux%u logical=%ux%u ccw' \
     "$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch_pixel2_fbdev.h"
+grep -q 'FBIOBLANK, FB_BLANK_UNBLANK' \
+    "$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch_pixel2_fbdev.h"
+grep -q 'FBIOPAN_DISPLAY' \
+    "$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch_pixel2_fbdev.h"
+grep -q 'sigaction(SIGCONT' \
+    "$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch_pixel2_fbdev.h"
+grep -q 'getenv("PLUMOS_PICOARCH_RGB565_BYTESWAP")' \
+    "$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch-pixel2-pixel-format.patch"
+grep -q '(pixel << 8) | (pixel >> 8)' \
+    "$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch-pixel2-pixel-format.patch"
+grep -q 'gambatte|gambatte_libretro.so) rgb565_byteswap_default=1' \
+    "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
+grep -q 'rgb565_byteswap=%s' \
+    "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
     python3 -m py_compile \
         "$ROOT_DIR/scripts/generate-pixel2-system-logos.py" \

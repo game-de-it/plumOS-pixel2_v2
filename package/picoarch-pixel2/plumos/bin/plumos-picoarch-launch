@@ -77,6 +77,16 @@ fi
 
 CONFIG="$PLUMOS_ROOT/config/standalone/picoarch.env"
 [ ! -r "$CONFIG" ] || . "$CONFIG"
+case "${CORE_ID##*/}" in
+  gambatte|gambatte_libretro.so) rgb565_byteswap_default=1 ;;
+  *) rgb565_byteswap_default=0 ;;
+esac
+PLUMOS_PICOARCH_RGB565_BYTESWAP="${PLUMOS_PICOARCH_RGB565_BYTESWAP:-$rgb565_byteswap_default}"
+case "$PLUMOS_PICOARCH_RGB565_BYTESWAP" in
+  0|1) ;;
+  *) fail "invalid RGB565 byte-swap setting: $PLUMOS_PICOARCH_RGB565_BYTESWAP" ;;
+esac
+export PLUMOS_PICOARCH_RGB565_BYTESWAP
 
 AUDIO_OUTPUT_HELPER="${PLUMOS_AUDIO_OUTPUT_HELPER:-$PLUMOS_ROOT/bin/plumos-audio-output}"
 [ -x "$AUDIO_OUTPUT_HELPER" ] || fail "audio output helper missing: $AUDIO_OUTPUT_HELPER"
@@ -134,6 +144,7 @@ fi
 printf 'system=%s core=%s content=%s content_type=%s effect=%s libretro_runtime=%s\n' \
   "$SYSTEM_ID" "$CORE_PATH" "$ROM_PATH" "$content_type" "$EFFECT" \
   "$LIBRETRO_RUNTIME_DIR" >> "$log_file"
+printf 'rgb565_byteswap=%s\n' "$PLUMOS_PICOARCH_RGB565_BYTESWAP" >> "$log_file"
 printf 'audio_device=%s alsa_config=%s %s\n' "$AUDIODEV" "$ALSA_CONFIG_PATH" \
   "$(printf '%s' "$audio_status" | tr '\n' ' ')" >> "$log_file"
 

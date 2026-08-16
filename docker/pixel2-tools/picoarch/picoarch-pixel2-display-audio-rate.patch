@@ -1,6 +1,8 @@
 --- a/plat_sdl.c
 +++ b/plat_sdl.c
-@@ -378,0 +379,25 @@ static void plat_sound_finish(void)
+@@ -393,3 +393,28 @@ static void plat_sound_finish(void)
+ }
+ 
 +static int plat_sound_input_rate(void)
 +{
 +	const char *value = getenv("PLUMOS_PICOARCH_AUDIO_TARGET_FPS");
@@ -26,10 +28,4 @@
 +	return (int)(input_rate + 0.5);
 +}
 +
-@@ -398 +422,0 @@ static int plat_sound_init(void)
--	audio.in_sample_rate = sample_rate;
-@@ -399,0 +424 @@ static int plat_sound_init(void)
-+	audio.in_sample_rate = plat_sound_input_rate();
-@@ -539 +564 @@ int plat_reinit(void)
--	audio.in_sample_rate = sample_rate;
-+	audio.in_sample_rate = plat_sound_input_rate();
+ static int plat_sound_init(void)

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <linux/fb.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +29,60 @@ static int pixel2_fb_thread_started;
 static int pixel2_fb_thread_stop;
 static int pixel2_fb_active = -1;
 static int pixel2_fb_pending = -1;
+static volatile sig_atomic_t pixel2_fb_scanout_reactivate = 1;
+static struct sigaction pixel2_fb_previous_sigcont;
+static int pixel2_fb_sigcont_installed;
+
+static void pixel2_fb_handle_sigcont(int signum)
+{
+	(void)signum;
+	pixel2_fb_scanout_reactivate = 1;
+}
+
+static int pixel2_fb_take_scanout_reactivate(void)
+{
+	sigset_t sigcont_set;
+	sigset_t previous_set;
+	int requested;
+
+	if (!pixel2_fb_scanout_reactivate)
+		return 0;
+	sigemptyset(&sigcont_set);
+	sigaddset(&sigcont_set, SIGCONT);
+	pthread_sigmask(SIG_BLOCK, &sigcont_set, &previous_set);
+	requested = pixel2_fb_scanout_reactivate != 0;
+	pixel2_fb_scanout_reactivate = 0;
+	pthread_sigmask(SIG_SETMASK, &previous_set, NULL);
+	return requested;
+}
+
+static int pixel2_fb_activate_scanout(uint32_t yoffset, const char *reason)
+{
+	struct fb_var_screeninfo next = pixel2_fb_var;
+	int blank_errno = 0;
+	int pan_errno = 0;
+
+	next.xoffset = 0;
+	next.yoffset = yoffset;
+	next.activate = FB_ACTIVATE_NOW;
+	if (ioctl(pixel2_fb_fd, FBIOBLANK, FB_BLANK_UNBLANK) < 0)
+		blank_errno = errno;
+	if (ioctl(pixel2_fb_fd, FBIOPAN_DISPLAY, &next) < 0)
+		pan_errno = errno;
+	else
+		pixel2_fb_var = next;
+	if (blank_errno || pan_errno) {
+		fprintf(stderr,
+			"Pixel2 PicoArch framebuffer scanout activation failed: reason=%s blank=%s pan=%s\n",
+			reason, blank_errno ? strerror(blank_errno) : "ok",
+			pan_errno ? strerror(pan_errno) : "ok");
+		return -1;
+	}
+	fprintf(stderr,
+		"Pixel2 PicoArch framebuffer scanout activated: reason=%s yoffset=%u\n",
+		reason, yoffset);
+	return 0;
+}
 
 static void pixel2_fb_present_pixels(const uint16_t *pixels)
 {
@@ -35,9 +90,11 @@ static void pixel2_fb_present_pixels(const uint16_t *pixels)
 	unsigned dst_width = pixel2_fb_var.xres;
 	unsigned dst_height = pixel2_fb_var.yres;
 	uint8_t *draw_base;
+	int reactivate;
 
 	if (!pixel2_fb_map || !pixels)
 		return;
+	reactivate = pixel2_fb_take_scanout_reactivate();
 	draw_base = pixel2_fb_map +
 		(size_t)pixel2_fb_draw_yoffset * pixel2_fb_fix.line_length;
 	/* Pixel2 exposes the landscape LCD as a physical 480x640 framebuffer.
@@ -62,6 +119,11 @@ static void pixel2_fb_present_pixels(const uint16_t *pixels)
 	}
 	if (pixel2_fb_double_buffer) {
 		struct fb_var_screeninfo next = pixel2_fb_var;
+		int blank_errno = 0;
+
+		if (reactivate &&
+		    ioctl(pixel2_fb_fd, FBIOBLANK, FB_BLANK_UNBLANK) < 0)
+			blank_errno = errno;
 		next.xoffset = 0;
 		next.yoffset = pixel2_fb_draw_yoffset;
 		/* The emulation/audio clock runs at the core's native rate. Waiting for
@@ -71,10 +133,21 @@ static void pixel2_fb_present_pixels(const uint16_t *pixels)
 		if (ioctl(pixel2_fb_fd, FBIOPAN_DISPLAY, &next) == 0) {
 			pixel2_fb_var = next;
 			pixel2_fb_draw_yoffset = next.yoffset == 0 ? next.yres : 0;
+			if (reactivate) {
+				fprintf(stderr,
+					"Pixel2 PicoArch framebuffer scanout activated: reason=frame-resume yoffset=%u blank=%s\n",
+					next.yoffset,
+					blank_errno ? strerror(blank_errno) : "ok");
+			}
 		} else {
 			pixel2_fb_double_buffer = 0;
 			pixel2_fb_draw_yoffset = pixel2_fb_var.yoffset;
+			pixel2_fb_scanout_reactivate = 1;
 		}
+	} else if (reactivate) {
+		if (pixel2_fb_activate_scanout(pixel2_fb_draw_yoffset,
+		    "frame-resume") < 0)
+			pixel2_fb_scanout_reactivate = 1;
 	}
 }
 
@@ -107,6 +180,8 @@ static void *pixel2_fb_present_thread(void *unused)
 
 static int pixel2_fb_init(void)
 {
+	struct sigaction sigcont_action;
+
 	pixel2_fb_fd = open("/dev/fb0", O_RDWR);
 	if (pixel2_fb_fd < 0 ||
 	    ioctl(pixel2_fb_fd, FBIOGET_FSCREENINFO, &pixel2_fb_fix) < 0 ||
@@ -152,6 +227,19 @@ static int pixel2_fb_init(void)
 	pixel2_fb_thread_stop = 0;
 	pixel2_fb_active = -1;
 	pixel2_fb_pending = -1;
+	pixel2_fb_scanout_reactivate = 1;
+	memset(&sigcont_action, 0, sizeof(sigcont_action));
+	sigcont_action.sa_handler = pixel2_fb_handle_sigcont;
+	sigemptyset(&sigcont_action.sa_mask);
+	sigcont_action.sa_flags = SA_RESTART;
+	if (sigaction(SIGCONT, &sigcont_action,
+	              &pixel2_fb_previous_sigcont) == 0) {
+		pixel2_fb_sigcont_installed = 1;
+	} else {
+		fprintf(stderr,
+			"Pixel2 PicoArch SIGCONT scanout hook failed: %s\n",
+			strerror(errno));
+	}
 	if (pthread_create(&pixel2_fb_thread, NULL,
 	                   pixel2_fb_present_thread, NULL) != 0)
 		return -1;
@@ -195,6 +283,10 @@ static void pixel2_fb_finish(void)
 		pthread_join(pixel2_fb_thread, NULL);
 		pixel2_fb_thread_started = 0;
 	}
+	if (pixel2_fb_sigcont_installed) {
+		sigaction(SIGCONT, &pixel2_fb_previous_sigcont, NULL);
+		pixel2_fb_sigcont_installed = 0;
+	}
 	if (pixel2_fb_map && pixel2_fb_map != MAP_FAILED) {
 		munmap(pixel2_fb_map, pixel2_fb_size);
 	}
@@ -207,6 +299,7 @@ static void pixel2_fb_finish(void)
 	free(pixel2_fb_frames[1]);
 	pixel2_fb_frames[0] = NULL;
 	pixel2_fb_frames[1] = NULL;
+	pixel2_fb_scanout_reactivate = 1;
 }
 
 #endif
