@@ -101,9 +101,17 @@ checkout_source "$DRIVER_REPO" "$DRIVER_REF" "$DRIVER_SRC"
 make -C "$KERNEL_SRC" CC=gcc HOSTCC=gcc ARCH=arm64 px30_linux_defconfig
 "$KERNEL_SRC/scripts/config" --file "$KERNEL_SRC/.config" \
     --set-str LOCALVERSION "" --disable LOCALVERSION_AUTO \
+    --disable DEBUG_SPINLOCK --disable FTRACE --disable FUNCTION_TRACER \
+    --disable KALLSYMS \
     --module R8188EU --module LIB80211 --module LIB80211_CRYPT_WEP \
     --module LIB80211_CRYPT_CCMP
 make -C "$KERNEL_SRC" CC=gcc HOSTCC=gcc ARCH=arm64 olddefconfig
+grep -q '^# CONFIG_DEBUG_SPINLOCK is not set$' "$KERNEL_SRC/.config"
+grep -q '^# CONFIG_FTRACE is not set$' "$KERNEL_SRC/.config"
+grep -q '^# CONFIG_KALLSYMS is not set$' "$KERNEL_SRC/.config"
+! grep -q '^CONFIG_FUNCTION_TRACER=y$' "$KERNEL_SRC/.config"
+grep -q '^CONFIG_INLINE_SPIN_LOCK=y$' "$KERNEL_SRC/.config"
+! grep -q '^CONFIG_UNINLINE_SPIN_UNLOCK=y$' "$KERNEL_SRC/.config"
 make -C "$KERNEL_SRC" -j"$JOBS" CC=gcc HOSTCC=gcc ARCH=arm64 modules_prepare
 test "$(make -s -C "$KERNEL_SRC" CC=gcc HOSTCC=gcc ARCH=arm64 kernelrelease)" = \
     "$KERNEL_RELEASE"
@@ -118,6 +126,14 @@ stock_srcversion="$(modinfo -F srcversion "$STOCK_MODULE")"
 rebuilt_srcversion="$(modinfo -F srcversion "$REBUILT_STOCK")"
 stock_vermagic="$(modinfo -F vermagic "$STOCK_MODULE")"
 rebuilt_vermagic="$(modinfo -F vermagic "$REBUILT_STOCK")"
+stock_module_struct_size="$(readelf -SW "$STOCK_MODULE" | \
+    awk '$2 == ".gnu.linkonce.this_module" {print $6}')"
+rebuilt_module_struct_size="$(readelf -SW "$REBUILT_STOCK" | \
+    awk '$2 == ".gnu.linkonce.this_module" {print $6}')"
+stock_module_exit_offset="$(readelf -rW "$STOCK_MODULE" | \
+    awk '/cleanup_module/ {print $1}')"
+rebuilt_module_exit_offset="$(readelf -rW "$REBUILT_STOCK" | \
+    awk '/cleanup_module/ {print $1}')"
 [ "$stock_srcversion" = "$EXPECTED_STOCK_SRCVERSION" ] && \
     [ "$rebuilt_srcversion" = "$stock_srcversion" ] || {
     printf 'error: Pixel2 stock kernel source fingerprint mismatch\n' >&2
@@ -126,6 +142,15 @@ rebuilt_vermagic="$(modinfo -F vermagic "$REBUILT_STOCK")"
 [ "$stock_vermagic" = "$KERNEL_RELEASE SMP mod_unload aarch64" ] && \
     [ "$rebuilt_vermagic" = "$stock_vermagic" ] || {
     printf 'error: Pixel2 stock kernel vermagic mismatch\n' >&2
+    exit 1
+}
+[ "$stock_module_struct_size" = 000300 ] && \
+    [ "$rebuilt_module_struct_size" = "$stock_module_struct_size" ] && \
+    [ "$stock_module_exit_offset" = 00000000000002d0 ] && \
+    [ "$rebuilt_module_exit_offset" = "$stock_module_exit_offset" ] || {
+    printf 'error: Pixel2 stock struct module layout mismatch size=%s/%s exit=%s/%s\n' \
+        "$stock_module_struct_size" "$rebuilt_module_struct_size" \
+        "$stock_module_exit_offset" "$rebuilt_module_exit_offset" >&2
     exit 1
 }
 
@@ -144,10 +169,10 @@ if readelf -S "$DRIVER_MODULE" | grep -q __versions; then
     exit 1
 fi
 
-# The published kernel tree has a partial Module.symvers. Keep the exact two
-# known host-side warnings visible; any new unresolved export is a build stop.
+# The published kernel tree has a partial Module.symvers. Keep the one known
+# host-side warning visible; any new unresolved export is a build stop.
 warnings="$(sed -n 's/^WARNING: modpost: "\([^"]*\)".*undefined!$/\1/p' "$build_log" | LC_ALL=C sort -u)"
-expected_warnings="$(printf '%s\n' __raw_spin_lock_init rcu_read_unlock_strict | LC_ALL=C sort)"
+expected_warnings=rcu_read_unlock_strict
 [ "$warnings" = "$expected_warnings" ] || {
     printf 'error: unexpected 8821cu modpost warning set:\n%s\n' "$warnings" >&2
     exit 1
@@ -170,6 +195,8 @@ cat >"$OUT/rtl8821cu.json" <<EOF
   "kernel_ref": "$KERNEL_REF",
   "stock_kabi_probe": "r8188eu",
   "stock_kabi_srcversion": "$stock_srcversion",
+  "stock_module_struct_size": "0x$stock_module_struct_size",
+  "stock_module_exit_offset": "0x$stock_module_exit_offset",
   "driver_source": "$DRIVER_REPO",
   "driver_ref": "$DRIVER_REF",
   "driver_version": "$EXPECTED_DRIVER_VERSION",

@@ -133,6 +133,18 @@ grep -q '96c65c58b544241178638e810b333dcc9aa26b91' \
     "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
 grep -q 'EXPECTED_STOCK_SRCVERSION=33E331B2DEB16477EAAB1D6' \
     "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q -- '--disable DEBUG_SPINLOCK' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q -- '--disable FTRACE' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q -- '--disable KALLSYMS' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q -- '--disable FUNCTION_TRACER' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q 'stock_module_struct_size' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q 'stock_module_exit_offset' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
 grep -q 'lib/modules/\$release/extra/8821cu.ko' \
     "$ROOT_DIR/scripts/install-kernel-runtime.sh"
 grep -q 'modinfo -b.*8821cu' \

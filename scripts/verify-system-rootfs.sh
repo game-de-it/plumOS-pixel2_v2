@@ -131,8 +131,15 @@ grep -Fq '"kernel_ref": "883a9e03084bf1a2f1769ad6b369f5090bbd6588"' \
     "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.json"
 grep -Fq '"driver_ref": "96c65c58b544241178638e810b333dcc9aa26b91"' \
     "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.json"
-grep -Fxq __raw_spin_lock_init \
-    "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.required-kernel-symbols"
+grep -Fq '"stock_module_struct_size": "0x000300"' \
+    "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.json"
+grep -Fq '"stock_module_exit_offset": "0x00000000000002d0"' \
+    "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.json"
+if grep -E -q '^(__raw_spin_lock_init|_raw_spin_(lock|unlock))$' \
+    "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.required-kernel-symbols"; then
+    printf 'error: 8821cu requires spinlock exports absent from stock kernel\n' >&2
+    exit 1
+fi
 grep -Fxq rcu_read_unlock_strict \
     "$tmp/rootfs/usr/lib/plumos/kernel-modules/rtl8821cu.required-kernel-symbols"
 (cd "$tmp/rootfs" && sha256sum -c usr/lib/plumos/kernel-runtime.sha256 >/dev/null)

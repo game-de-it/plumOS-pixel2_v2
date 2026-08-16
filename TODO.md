@@ -122,7 +122,8 @@
 - [ ] V90S実績のRTL8811CU/RTL8821CU USB Wi-FiをPixel2でrelease acceptanceする
   - [x] V90Sと同じ`8821cu` source系列をstock 5.10.198 ABI向けにpinned buildし、stock `r8188eu` srcversion/vermagic照合、module alias、license、provenance、System checksumへ統合する
   - [x] `0bda:1a2b` driver diskのbounded eject、`0bda:c811`再列挙、`8821cu` load、scan継続をhost fixtureで検証する
-  - [ ] 実機でkernel symbol preflight後にsigned inactive-slot Systemを適用し、2.4/5 GHz、DHCP、SSH/SFTP速度、抜き差し、cold boot復元を確認する
+  - [x] stock moduleの`__this_module` size/exit relocationをbuild gate化し、実機5.10.198でSHA一致moduleの`insmod`/`rmmod`を確認する
+  - [ ] signed inactive-slot Systemを適用し、実adapterで2.4/5 GHz、DHCP、SSH/SFTP速度、抜き差し、cold boot復元を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
 - [x] Pixel2向けRetroArchをpinned sourceからbuildする
