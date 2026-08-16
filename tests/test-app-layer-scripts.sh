@@ -587,6 +587,10 @@ grep -q 'INITIAL_PASSWORD="${PLUMOS_SSH_INITIAL_PASSWORD:-plumos}"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ssh-password"
 grep -q 'auth=password,pubkey' \
     "$ROOT_DIR/package/app-layer-pixel2/ssh/start-ssh.sh"
+grep -q 'ip link set lo up' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
+grep -q 'ip addr add 127.0.0.1/8 dev lo' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
 grep -q "awk '{ print \$3 }'" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
 grep -q 'PLUMOS_ROOT/emulator/lib' \

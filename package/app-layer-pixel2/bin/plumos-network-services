@@ -37,6 +37,20 @@ log() {
   printf '%s service=%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || true)" "${2:-network}" "$1" >> "$LOG_FILE"
 }
 
+ensure_loopback() {
+  if command -v ip >/dev/null 2>&1; then
+    ip link set lo up >/dev/null 2>&1 || return 1
+    ip -4 addr show dev lo 2>/dev/null | grep -q '127\.0\.0\.1/8' ||
+      ip addr add 127.0.0.1/8 dev lo >/dev/null 2>&1 || return 1
+    return 0
+  fi
+  if command -v ifconfig >/dev/null 2>&1; then
+    ifconfig lo 127.0.0.1 up >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
 close_inherited_display_fds() {
   for fd in 3 4 5 6 7 8 9; do
     target="$(readlink "/proc/$$/fd/${fd}" 2>/dev/null || true)"
@@ -602,6 +616,13 @@ run_one() {
 
 command="${1:-}"
 service="${2:-}"
+case "$command" in
+  start|restart|start-enabled)
+    if ! ensure_loopback; then
+      log "loopback setup failed" network
+    fi
+    ;;
+esac
 if [ "$command" = "start-enabled" ]; then
   rc=0
   for svc in ssh ftp sftp samba adb; do

@@ -22,6 +22,9 @@ fi
 is_mounted /proc || $bb mount -t proc proc /proc
 is_mounted /sys || $bb mount -t sysfs sysfs /sys
 is_mounted /dev || $bb mount -t devtmpfs devtmpfs /dev
+$bb ip link set lo up 2>/dev/null || true
+$bb ip -4 addr show dev lo 2>/dev/null | $bb grep -q '127\.0\.0\.1/8' ||
+    $bb ip addr add 127.0.0.1/8 dev lo 2>/dev/null || true
 $bb mkdir -p /dev/pts /dev/shm /run /tmp /boot /state /roms /root \
     /flash /storage /mnt/plumos /mnt/plumos-user
 is_mounted /dev/pts || $bb mount -t devpts devpts /dev/pts

@@ -68,6 +68,10 @@
       `root / plumos`初期認証、端末ローカルsalt付きshadow、公開鍵併用、永続host
       key、fresh imageのSSH既定ONへ統一。FTP/SFTP/Samba/ADBを含む実機protocol
       round-tripと再起動復元をrelease gateとして継続する。
+    - 2026-08-17: minimal initがloopbackを起動しておらずADB port forwardingが
+      SSHへ到達しない欠陥をtraceで特定。System initとapp-layer service managerの
+      双方で`lo`と`127.0.0.1/8`を保証し、実機password SSH loginとSFTP upload/
+      download同一SHA-256を確認した。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。

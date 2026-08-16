@@ -6,6 +6,8 @@ test -x "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/05-gpu"
 grep -q 'modprobe panfrost' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/05-gpu"
 grep -q '/dev/shm' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'ip link set lo up' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'ip addr add 127.0.0.1/8 dev lo' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 for script in \
     "$ROOT_DIR/scripts/build-system-rootfs.sh" \
     "$ROOT_DIR/scripts/build-adbd-overlay.sh" \

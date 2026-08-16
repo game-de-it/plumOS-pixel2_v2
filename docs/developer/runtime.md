@@ -5,7 +5,7 @@
 1. Stock RK3326 boot chain loads the stock kernel, DTB, and initramfs.
 2. The stock initramfs mounts the boot volume and hands off to `/boot/SYSTEM`.
 3. plumOS `/sbin/init` mounts proc/sys/dev, `/mnt/plumos`, `/mnt/plumos-user`,
-   `/state`, and `/roms`.
+   `/state`, and `/roms`, then brings up IPv4/IPv6 loopback.
 4. init starts ADB, USB Wi-Fi, network services, and frontend services from
    `/usr/lib/plumos/init.d/`.
 
