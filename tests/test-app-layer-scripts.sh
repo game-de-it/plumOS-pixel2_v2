@@ -413,6 +413,12 @@ grep -q 'open_power_menu_for_action(ui, "reboot")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'open_power_menu_for_action(ui, "shutdown")' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'wifi_back_to_network_settings(ui, connected_status)' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'wifi_connect_page && wifi_keyboard_row >= 0' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
+grep -q 'password_scale = wifi_keyboard_row >= 0 ? 3 : 2' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 font_source="$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 sed -n '/static int choose_mali_font_path/,/static int choose_mali_fallback_font_path/p' \
     "$font_source" | grep -q 'ui->plumos_root,'

@@ -11864,6 +11864,8 @@ static int run_wifi_connect_selected(struct ui_state *ui) {
   settle_input_after_child(ui);
 
   if (ui->wifi_result_success) {
+    char connected_status[128];
+
     if (save_system_config_bool(ui, "wifi_enabled", 1)) {
       ui->device.wifi_enabled = 1;
       ui->device.wifi_runtime_enabled = 1;
@@ -11873,8 +11875,9 @@ static int run_wifi_connect_selected(struct ui_state *ui) {
                "Gateway ping: %s",
                ui->wifi_result_gateway_ping[0] ? ui->wifi_result_gateway_ping : "skipped");
     }
-    snprintf(ui->status, sizeof(ui->status), "Wi-Fi connected IP=%s",
+    snprintf(connected_status, sizeof(connected_status), "Wi-Fi connected IP=%s",
              ui->wifi_result_ip[0] ? ui->wifi_result_ip : "-");
+    wifi_back_to_network_settings(ui, connected_status);
     return 1;
   }
   if (!ui->wifi_result_title[0]) {

@@ -3894,6 +3894,11 @@ static int plumos_fbdev_render_generic(struct plumos_fbdev_renderer *r,
   plumos_fbdev_find_wifi_keyboard_cursor(lines, line_count,
                                          &wifi_keyboard_row,
                                          &wifi_keyboard_col);
+  if (wifi_connect_page && wifi_keyboard_row >= 0) {
+    entry_scale = 3;
+    line_height = entry_scale * 12;
+    cell_width = 6 * entry_scale;
+  }
 
   for (i = 1; i < line_count && item_count < 18; i++) {
     const char *line = plumos_fbdev_ltrim(lines[i]);
@@ -3983,11 +3988,13 @@ static int plumos_fbdev_render_generic(struct plumos_fbdev_renderer *r,
     plumos_fbdev_fill_rect(r, 0, h - 76, w, 2, p->panel);
     if (wifi_password && wifi_password[0]) {
       const char *label = "Password:";
-      int label_width = plumos_fbdev_text_width_font(r, label, 2, 1);
-      plumos_fbdev_draw_text_font(r, 14, h - 56, label, 2, 1,
+      int password_scale = wifi_keyboard_row >= 0 ? 3 : 2;
+      int label_width = plumos_fbdev_text_width_font(
+          r, label, password_scale, 1);
+      plumos_fbdev_draw_text_font(r, 14, h - 56, label, password_scale, 1,
                                   p->muted, w - 8);
       plumos_fbdev_draw_text_font(r, 14 + label_width + 12, h - 56,
-                                  wifi_password, 2, 1,
+                                  wifi_password, password_scale, 1,
                                   p->selection_foreground, w - 8);
     } else if (footer1 && footer1[0]) {
       plumos_fbdev_draw_text_font(r, 14, h - 56, footer1, 2,
