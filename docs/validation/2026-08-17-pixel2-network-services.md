@@ -110,10 +110,22 @@ interface was present. The temporary address and all remote test files were
 removed. Samba was restored to `enabled=1`, `state=waiting_network`, which is
 the expected state until the USB Wi-Fi adapter obtains IPv4.
 
-## Remaining physical LAN gate
+## Physical USB Wi-Fi LAN acceptance
 
 The supported `0bda:8179` adapter previously associated and obtained
-`192.168.10.147`; FTP anonymous login and directory listing worked on that LAN
-path. Repeating SSH/SFTP/FTP/Samba round trips over WLAN after this final
-Runtime remains the last transport-level acceptance item. It does not block
-the backend/authentication result recorded above.
+`192.168.10.147`. On the final Runtime, the host connected directly over that
+WLAN address and confirmed:
+
+- SSH password login and remote command execution;
+- SFTP upload, download, and delete;
+- anonymous FTP upload, download, and delete;
+- Samba SMB2 upload, download, and delete with `plumos / plumos`.
+
+All three downloaded copies matched the source SHA-256:
+
+```text
+ec596f84fa018a5fa302d5a8d7b1facad47f5e6a3d2820009b27b3d92e0bab95
+```
+
+The device-side validation files were absent after each protocol test. This
+closes the remaining USB Wi-Fi transport-level acceptance item.

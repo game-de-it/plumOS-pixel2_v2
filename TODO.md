@@ -284,11 +284,12 @@
     ADB自動復帰、単一adbd、競合エラーなしを実機合格。
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
 - [x] ADB列挙とshellを実機検証する
-- [ ] USB Wi-Fi上でSSH/SFTP/FTP/Sambaの認証・往復転送と再起動復元を実機検証する
+- [x] USB Wi-Fi上でSSH/SFTP/FTP/Sambaの認証・往復転送と再起動復元を実機検証する
   - 2026-08-17: `fd0fb34` RuntimeでADB/SSH/SFTP/FTP/Samba backendを実機確認。
     password認証、upload/download/delete、同一SHA-256、更新再起動後の5項目ON保持、
-    component checksumは合格。最終RuntimeでUSB Wi-Fi LAN越しに同じ往復を反復する
-    transport gateだけを残す。
+    component checksumは合格。さらに`192.168.10.147`のUSB Wi-Fi LAN越しで
+    SSHログインとSFTP/FTP/Sambaのupload/download/deleteを反復し、全downloadの
+    SHA-256一致と検証ファイル削除を確認した。
 
 ## Image and hardware validation
 
