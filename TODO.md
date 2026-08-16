@@ -123,7 +123,8 @@
   - [x] V90Sと同じ`8821cu` source系列をstock 5.10.198 ABI向けにpinned buildし、stock `r8188eu` srcversion/vermagic照合、module alias、license、provenance、System checksumへ統合する
   - [x] `0bda:1a2b` driver diskのbounded eject、`0bda:c811`再列挙、`8821cu` load、scan継続をhost fixtureで検証する
   - [x] stock moduleの`__this_module` size/exit relocationをbuild gate化し、実機5.10.198でSHA一致moduleの`insmod`/`rmmod`を確認する
-  - [ ] signed inactive-slot Systemを適用し、実adapterで2.4/5 GHz、DHCP、SSH/SFTP速度、抜き差し、cold boot復元を確認する
+  - [x] signed inactive-slot System `0.1.0-dev-13ad915`を適用し、slot B readback、health promotion、収録module checksum、`modprobe`/`rmmod`、FE/ADB復帰を確認する
+  - [ ] 実adapterで1a2b->c811、2.4/5 GHz、DHCP、SSH/SFTP速度、抜き差し、cold boot復元を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
 - [x] Pixel2向けRetroArchをpinned sourceからbuildする

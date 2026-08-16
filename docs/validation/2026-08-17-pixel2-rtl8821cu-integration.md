@@ -92,6 +92,38 @@ usbcore=registered then deregistered rtl8821cu
 No matching Wi-Fi adapter was connected during this loader test. It proves the
 stock kernel ABI and cleanup path, not radio operation.
 
+## Signed System deployment
+
+The ABI correction was committed as `13ad915` and rebuilt into a signed System
+package:
+
+```text
+package=plumos-pixel2-system-0.1.0-dev-13ad915.tar.gz
+package_sha256=eda4eed49a019dcb15416478dd9c087c7d8583074ad4721669ed681c81ea76d8
+system_sha256=90cea37621a16f339feb7942dd1887e6a579dcce6e38e4f10dab157f66b595b8
+target_slot=b
+```
+
+The package and inactive slot both passed full readback. After the updater's
+staging reboot, the device booted System `0.1.0-dev-13ad915`; FE readiness
+promoted B to active and removed pending/attempted state. The installed System
+then passed:
+
+```text
+kernel-runtime checksum=40/40
+8821cu vermagic=5.10.198 SMP mod_unload aarch64
+8821cu module_sha256=5fb2db9bbbe46d9769c49bfd400c94e018b3a7362c16af7e2d1e7ca7005dd94f
+0bda:c811 alias=present
+0bda:c820 alias=present
+installed modprobe/rmmod=PASS
+frontend processes=1
+adbd processes=1
+last update result=system_healthy
+```
+
+Slot A remains the rollback generation. The actual RTL8811CU adapter was not
+connected during deployment, so RF/network acceptance remains open.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has
