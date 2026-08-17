@@ -64,6 +64,10 @@ grep -q '/mnt/plumos/config/network/services.conf' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'plumos-network-services' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
+grep -q 'plumos-wifi-recovery' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-control"
+grep -q 'busybox uevent' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-wifi-recovery"
 grep -q 'owner=plumos-network-services' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh"
 ! grep -q 'dropbear ' \

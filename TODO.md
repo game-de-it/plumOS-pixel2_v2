@@ -132,6 +132,8 @@
     - [ ] SFTP上りだけが5 GHzでも0.32--0.65 MiB/sに留まり、4 MiBでTCP retrans
       +22/timeout +4となる問題を解消する。tmpfs、request数、省電力OFFでは改善せず、
       FTPではretrans +2/timeout +0だった
+    - [x] Pixel2で欠落していたV90S方式のkernel uevent monitorとbounded recoveryを
+      移植し、wlan add/1a2b add、Wi-Fi OFF抑止、PID検証をhost testで確認した
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

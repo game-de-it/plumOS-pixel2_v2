@@ -1,0 +1,202 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+PROC_ROOT="${PLUMOS_PROC_ROOT:-/proc}"
+PATH="${PLUMOS_ROOT}/bin:${PLUMOS_ROOT}/gnu/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH PLUMOS_ROOT PLUMOS_SDCARD_ROOT PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT"
+
+RUN_DIR="${PLUMOS_WIFI_RECOVERY_RUN_DIR:-$RUNTIME_ROOT/wifi-recovery}"
+LOG_DIR="${PLUMOS_ROOT}/logs"
+LOG_FILE="${LOG_DIR}/wifi-recovery.log"
+PID_FILE="${RUN_DIR}/uevent.pid"
+RECOVERY_LOCK_DIR="${RUN_DIR}/recover.lock"
+SYSTEM_SETTINGS="${PLUMOS_SYSTEM_SETTINGS_JSON:-${PLUMOS_ROOT}/config/system/settings.json}"
+WPA_CONFIG="${PLUMOS_WPA_CONFIG:-${PLUMOS_ROOT}/config/wpa_supplicant.conf}"
+BUSYBOX="${PLUMOS_BUSYBOX:-${PLUMOS_ROOT}/network/bin/busybox}"
+[ -x "$BUSYBOX" ] || BUSYBOX=/bin/busybox
+UEVENT_HELPER="${PLUMOS_ROOT}/bin/plumos-wifi-uevent"
+NETWORK_CONTROL="${PLUMOS_ROOT}/bin/plumos-network-control"
+SETTLE_SECONDS="${PLUMOS_WIFI_RECOVERY_SETTLE_SECONDS:-3}"
+
+mkdir -p "$RUN_DIR" "$LOG_DIR" 2>/dev/null || true
+
+log() {
+  printf '%s service=wifi-recovery %s\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || true)" "$*" \
+    >> "$LOG_FILE" 2>/dev/null || true
+}
+
+usage() {
+  cat <<'USAGE'
+Usage: plumos-wifi-recovery COMMAND
+
+Commands:
+  start    Start the blocking kernel-uevent monitor.
+  stop     Stop the monitor.
+  sync     Start or stop the monitor from the saved Wi-Fi setting.
+  recover  Perform one bounded Wi-Fi/DHCP recovery when Wi-Fi is enabled.
+  status   Print requested and monitor state.
+USAGE
+}
+
+wifi_requested() {
+  if [ -r "$SYSTEM_SETTINGS" ]; then
+    value="$(sed -n \
+      -e 's/.*"wifi_enabled"[[:space:]]*:[[:space:]]*true.*/true/p' \
+      -e 's/.*"wifi_enabled"[[:space:]]*:[[:space:]]*false.*/false/p' \
+      "$SYSTEM_SETTINGS" 2>/dev/null | tail -n 1)"
+    [ "$value" = false ] && return 1
+    [ "$value" = true ] && return 0
+  fi
+  [ -s "$WPA_CONFIG" ]
+}
+
+read_monitor_pid() {
+  [ -s "$PID_FILE" ] || return 1
+  pid="$(sed -n '1p' "$PID_FILE" 2>/dev/null | tr -d '[:space:]')"
+  case "$pid" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  printf '%s\n' "$pid"
+}
+
+monitor_running() {
+  pid="$(read_monitor_pid 2>/dev/null || true)"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  [ -r "${PROC_ROOT}/${pid}/cmdline" ] || return 1
+  cmdline="$(tr '\000' ' ' < "${PROC_ROOT}/${pid}/cmdline" 2>/dev/null || true)"
+  case "$cmdline" in
+    *"busybox uevent ${UEVENT_HELPER}"*) return 0 ;;
+  esac
+  return 1
+}
+
+close_inherited_display_fds() {
+  for fd in 3 4 5 6 7 8 9; do
+    [ -e "${PROC_ROOT}/$$/fd/${fd}" ] || continue
+    target="$(readlink "${PROC_ROOT}/$$/fd/${fd}" 2>/dev/null || true)"
+    case "$target" in
+      /dev/fb0|/dev/dri/*) eval "exec ${fd}<&- ${fd}>&-" 2>/dev/null || true ;;
+    esac
+  done
+}
+
+start_monitor() {
+  if monitor_running; then
+    return 0
+  fi
+  [ -x "$BUSYBOX" ] || { log "start_failed reason=busybox_missing"; return 1; }
+  "$BUSYBOX" --list 2>/dev/null | grep -qx uevent || {
+    log "start_failed reason=uevent_applet_missing"
+    return 1
+  }
+  [ -x "$UEVENT_HELPER" ] || { log "start_failed reason=helper_missing"; return 1; }
+
+  rm -f "$PID_FILE"
+  (
+    cd /
+    close_inherited_display_fds
+    export PLUMOS_ROOT PLUMOS_SDCARD_ROOT PLUMOS_RUNTIME_ROOT
+    exec "$BUSYBOX" uevent "$UEVENT_HELPER" >> "$LOG_FILE" 2>&1 < /dev/null
+  ) &
+  pid="$!"
+  printf '%s\n' "$pid" > "$PID_FILE"
+  wait_count=0
+  while [ "$wait_count" -lt 10 ]; do
+    if monitor_running; then
+      log "monitor_started pid=${pid}"
+      return 0
+    fi
+    if ! kill -0 "$pid" 2>/dev/null; then
+      log "start_failed reason=process_exited"
+      rm -f "$PID_FILE"
+      return 1
+    fi
+    "$BUSYBOX" usleep 50000 2>/dev/null || break
+    wait_count=$((wait_count + 1))
+  done
+  log "start_failed reason=process_identity_timeout pid=${pid}"
+  return 1
+}
+
+stop_monitor() {
+  if monitor_running; then
+    pid="$(read_monitor_pid)"
+    kill "$pid" 2>/dev/null || true
+    wait_count=0
+    while kill -0 "$pid" 2>/dev/null && [ "$wait_count" -lt 20 ]; do
+      "$BUSYBOX" usleep 50000 2>/dev/null || break
+      wait_count=$((wait_count + 1))
+    done
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+    log "monitor_stopped pid=${pid}"
+  fi
+  rm -f "$PID_FILE"
+}
+
+recover_once() {
+  wifi_requested || { log "recover_skipped reason=wifi_disabled"; return 0; }
+  [ -x "$NETWORK_CONTROL" ] || {
+    log "recover_failed reason=network_control_missing"
+    return 1
+  }
+  if ! mkdir "$RECOVERY_LOCK_DIR" 2>/dev/null; then
+    log "recover_coalesced"
+    return 0
+  fi
+  trap 'rmdir "$RECOVERY_LOCK_DIR" 2>/dev/null || true' EXIT HUP INT TERM
+
+  sleep "$SETTLE_SECONDS"
+  wifi_requested || {
+    log "recover_skipped reason=wifi_disabled_after_settle"
+    return 0
+  }
+  log "recover_begin"
+  if "$NETWORK_CONTROL" --wifi on >> "$LOG_FILE" 2>&1; then
+    log "recover_complete"
+    return 0
+  else
+    rc="$?"
+    log "recover_failed rc=${rc}"
+    return "$rc"
+  fi
+}
+
+schedule_initial_recovery() {
+  (
+    cd /
+    close_inherited_display_fds
+    export PLUMOS_ROOT PLUMOS_SDCARD_ROOT PLUMOS_RUNTIME_ROOT
+    exec /bin/sh "$0" recover >> "$LOG_FILE" 2>&1 < /dev/null
+  ) &
+  pid="$!"
+  log "initial_recovery_scheduled pid=${pid}"
+}
+
+status_mode() {
+  printf 'wifi_requested=%s\n' "$(wifi_requested && echo 1 || echo 0)"
+  printf 'monitor_running=%s\n' "$(monitor_running && echo 1 || echo 0)"
+  printf 'pid=%s\n' "$(read_monitor_pid 2>/dev/null || echo none)"
+  printf 'mode=kernel_uevent\n'
+}
+
+case "${1:-status}" in
+  start) start_monitor ;;
+  stop) stop_monitor ;;
+  sync)
+    if wifi_requested; then
+      start_monitor || exit $?
+      schedule_initial_recovery
+    else
+      stop_monitor
+    fi
+    ;;
+  recover) recover_once ;;
+  status) status_mode ;;
+  -h|--help|help) usage ;;
+  *) printf 'error: unknown command: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+esac

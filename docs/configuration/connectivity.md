@@ -53,6 +53,12 @@ network={
 boot時にUSB WLAN interfaceを検出し、`wpa_supplicant`とBusyBox `udhcpc`を
 起動する。認証情報はimageやGitへ入れない。
 
+Wi-Fiが保存設定でONの場合は`plumos-wifi-recovery`がBusyBoxのkernel uevent
+monitorを1つ起動する。USB Wi-Fiの抜き差しで`wlan*`が再生成されたときだけ、3秒の
+settle後に既存のbounded `plumos-network-control --wifi on`を1回実行し、association、
+DHCP、network serviceを復元する。Wi-FiがOFFの場合はPIDとcmdlineを照合してmonitorを
+停止する。dongle未接続時の定期pollingや無限retryは行わない。
+
 stock kernel 5.10.198から採取した`r8188eu`に加え、V90Sで実機実績のある
 RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して
 再現可能にbuildしてSystemへ収録する。V90Sのkernel 4.9用module binaryは流用しない。

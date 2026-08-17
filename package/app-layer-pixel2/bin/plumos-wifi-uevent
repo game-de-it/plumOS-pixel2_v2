@@ -1,0 +1,32 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RECOVERY_CONTROL="${PLUMOS_ROOT}/bin/plumos-wifi-recovery"
+
+[ "${ACTION:-}" = add ] || exit 0
+
+case "${SUBSYSTEM:-}" in
+  net)
+    iface="${INTERFACE:-}"
+    if [ -z "$iface" ] && [ -n "${DEVPATH:-}" ]; then
+      iface="${DEVPATH##*/}"
+    fi
+    case "$iface" in
+      wlan*|mlan*|p2p*) ;;
+      *) exit 0 ;;
+    esac
+    ;;
+  usb)
+    case "${PRODUCT:-}" in
+      0bda/1a2b/*|0BDA/1A2B/*|bda/1a2b/*|BDA/1A2B/*) ;;
+      *) exit 0 ;;
+    esac
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+[ -x "$RECOVERY_CONTROL" ] || exit 0
+exec "$RECOVERY_CONTROL" recover >/dev/null 2>&1
