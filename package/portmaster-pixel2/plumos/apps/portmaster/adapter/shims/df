@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+busybox="${PLUMOS_BUSYBOX:-/bin/busybox}"
+exec "$busybox" df "$@"

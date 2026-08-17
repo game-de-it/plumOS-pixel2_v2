@@ -9,6 +9,7 @@ CONTROL="$PACKAGE/apps/portmaster/adapter/control.txt"
 RUNTIME="$PACKAGE/bin/plumos-portmaster-runtime"
 GUI_LAUNCH="$PACKAGE/bin/plumos-portmaster-launch"
 PORT_LAUNCH="$PACKAGE/bin/plumos-portmaster-port-launch"
+DF_SHIM="$PACKAGE/apps/portmaster/adapter/shims/df"
 
 python3 -m py_compile "$BOOTSTRAP" "$RENDERER"
 python3 - "$BOOTSTRAP" <<'PY'
@@ -45,6 +46,6 @@ grep -q 'DRI_DIR}/rockchip_dri.so' "$GUI_LAUNCH"
 grep -q 'PLUMOS_PORTMASTER_FIT:-0' "$GUI_LAUNCH"
 grep -q 'DRI_DIR}/rockchip_dri.so' "$PORT_LAUNCH"
 ! grep -q 'kms_swrast' "$GUI_LAUNCH" "$PORT_LAUNCH"
+grep -q 'exec "$busybox" df "$@"' "$DF_SHIM"
 
 printf 'portmaster_pixel2_runtime=result-ok\n'
-
