@@ -1,0 +1,46 @@
+#!/bin/sh
+set -eu
+
+# Pixel2 keeps the system root deliberately small and does not ship procps.
+# PortMaster GUI uses only `pgrep -f PATTERN`; provide that read-only subset
+# from procfs instead of widening the base image or permitting broad kills.
+PROC_ROOT="${PLUMOS_PORTMASTER_PROC_ROOT:-/proc}"
+full=0
+
+case "${1:-}" in
+  -f) full=1; shift ;;
+  -*)
+    printf 'plumOS PortMaster pgrep: unsupported option: %s\n' "$1" >&2
+    exit 2
+    ;;
+esac
+
+[ "$#" -eq 1 ] || {
+  printf 'usage: pgrep [-f] PATTERN\n' >&2
+  exit 2
+}
+pattern=$1
+found=1
+
+for process_dir in "$PROC_ROOT"/[0-9]*; do
+  [ -d "$process_dir" ] || continue
+  pid=${process_dir##*/}
+  [ "$pid" = "$$" ] && continue
+
+  if [ "$full" -eq 1 ]; then
+    [ -r "$process_dir/cmdline" ] || continue
+    candidate="$(tr '\000' ' ' < "$process_dir/cmdline" 2>/dev/null || true)"
+  else
+    [ -r "$process_dir/comm" ] || continue
+    candidate="$(cat "$process_dir/comm" 2>/dev/null || true)"
+  fi
+  [ -n "$candidate" ] || continue
+
+  if printf '%s\n' "$candidate" | awk -v expression="$pattern" \
+      '$0 ~ expression { matched=1 } END { exit !matched }'; then
+    printf '%s\n' "$pid"
+    found=0
+  fi
+done
+
+exit "$found"
