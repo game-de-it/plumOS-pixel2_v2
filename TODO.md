@@ -161,6 +161,10 @@
         物理抜き差しなしでuptime 2.05秒に`0bda:c820`、9.38秒に`8821cu`、10.25秒に
         `wlan0`、保存SSIDの`.110`へ復帰した。Wi-Fi saved-ON reboot gateは合格し、
         true power-off cold bootは引き続き実機gateとする。
+      - 2026-08-17: 8821CUを挿したまま完全電源OFFからcold bootし、uptime 2.05秒で
+        `0bda:c820`、8.97秒で`8821cu`、10.07秒で`wlan0`を確認。保存済み5 GHz
+        `k-home-1`へ`192.168.10.110`で自動接続し、gateway 5/5、RX/TX error 0。
+        tested direct-`c820` adapterのsaved-Wi-Fi cold-boot gateは合格。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

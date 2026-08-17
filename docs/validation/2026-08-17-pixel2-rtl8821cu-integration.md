@@ -317,6 +317,15 @@ boot re-enumeration service correctly skipped its later reset because the
 downstream device was already present. This closes the saved-Wi-Fi reboot
 gate; upstream ADB and charging-state reboot remain separate physical gates.
 
+A subsequent true power-off cold boot passed with the same direct-`c820`
+adapter left inserted. The stock kernel enumerated `0bda:c820` at uptime 2.05
+seconds, loaded `8821cu` at 8.97 seconds, and reported `wlan0` ready at 10.07
+seconds. The saved 5 GHz `k-home-1` network associated automatically with
+`192.168.10.110`. Five gateway probes had zero loss, RX/TX error counters were
+zero, and the boot re-enumeration service again skipped because the downstream
+device was already present. This closes the saved-Wi-Fi cold-boot gate for the
+tested direct-`c820` adapter.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has
@@ -335,5 +344,5 @@ Release acceptance remains open until the real device passes all of:
 3. FE Information and all enabled network-service states;
 4. SSH/SFTP transfer and measured throughput/error counters;
 5. dongle unplug/replug recovery (pass on the tested direct-`c820` adapter);
-6. saved Wi-Fi recovery after a true power-off cold boot (saved-ON safe reboot
-   passes without a physical replug).
+6. saved Wi-Fi recovery after a true power-off cold boot (pass on the tested
+   direct-`c820` adapter without a physical replug).
