@@ -243,6 +243,20 @@ respect to association/DHCP, and the existing recovery lock coalesces overlap.
 The direct network-control path remains only as compatibility fallback for an
 older Runtime without the shared recovery helper.
 
+After signed System `0.1.0-dev-4b24314` became healthy, the operator replaced
+the ADB cable with the direct `0bda:c820` adapter and made no frontend Wi-Fi
+change. The monitor loaded `8821cu.ko`, created `wlan0`, associated with
+`k-home-1` at 5220 MHz, and obtained `192.168.10.120`; SSH, FTP, SFTP, and
+Samba all returned to running. This proves the automatic ADB-to-dongle
+hotplug path.
+
+The first successful recovery occupied the blocking BusyBox helper while
+several USB/net add events queued. They were processed after the recovery lock
+was released, causing four harmless but unnecessary connected-state recovery
+calls. Recovery now checks the read-only network status after settling and
+skips queued events once Wi-Fi already has IPv4. This preserves event-driven
+behavior without adding a timer or polling loop.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has

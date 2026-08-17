@@ -41,14 +41,28 @@ esac
 EOF
 cat >"$root/bin/plumos-network-control" <<'EOF'
 #!/bin/sh
-printf '%s\n' "$*" >>"$TEST_RECOVERY_CALLS"
-printf 'result=connected\nip=192.0.2.120\n'
+case "$*" in
+  '--wifi status')
+    if [ -e "$TEST_RECOVERY_CONNECTED" ]; then
+      printf 'wifi=on\nip=192.0.2.120\n'
+    else
+      printf 'wifi=off\nip=none\n'
+    fi
+    ;;
+  '--wifi on')
+    printf '%s\n' "$*" >>"$TEST_RECOVERY_CALLS"
+    : >"$TEST_RECOVERY_CONNECTED"
+    printf 'result=connected\nip=192.0.2.120\n'
+    ;;
+  *) exit 2 ;;
+esac
 EOF
 chmod 0755 "$root/network/bin/busybox" "$root/bin/plumos-network-control"
 
 printf 'network={}\n' >"$root/config/wpa_supplicant.conf"
 printf '{"wifi_enabled": true}\n' >"$root/config/system/settings.json"
 export TEST_RECOVERY_CALLS="$tmp/recovery-calls"
+export TEST_RECOVERY_CONNECTED="$tmp/recovery-connected"
 
 recovery_env=(
   PLUMOS_ROOT="$root"
@@ -76,17 +90,27 @@ env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=net INTERFACE=wlan0 \
   "$root/bin/plumos-wifi-uevent"
 [ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 1 ]
 
+rm -f "$TEST_RECOVERY_CONNECTED"
 env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0bda/1a2b/200 \
   "$root/bin/plumos-wifi-uevent"
 [ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 2 ]
 
 # Pixel2's tested RTL8821CU adapter enumerates directly as c820. Both direct
 # aliases must load the driver without relying on a later wlan uevent.
+rm -f "$TEST_RECOVERY_CONNECTED"
 env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0bda/c811/200 \
   "$root/bin/plumos-wifi-uevent"
+rm -f "$TEST_RECOVERY_CONNECTED"
 env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0BDA/C820/200 \
   "$root/bin/plumos-wifi-uevent"
 [ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 4 ]
+
+# Queued USB/net add events after DHCP must not repeat service and DHCP work.
+env "${recovery_env[@]}" ACTION=add SUBSYSTEM=net INTERFACE=wlan0 \
+  "$root/bin/plumos-wifi-uevent"
+[ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 4 ]
+grep -q 'recover_skipped reason=already_connected' \
+  "$root/logs/wifi-recovery.log"
 
 env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0bda/8179/200 \
   "$root/bin/plumos-wifi-uevent"

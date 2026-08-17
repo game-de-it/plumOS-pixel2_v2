@@ -58,8 +58,9 @@ monitorを1つ起動する。USB Wi-Fiの抜き差しで`wlan*`が再生成さ�
 RTL8821CUが`0bda:1a2b`、`0bda:c811`、`0bda:c820`として追加されたときだけ、3秒の
 settle後に既存のbounded `plumos-network-control --wifi on`を1回実行し、driver load、
 association、DHCP、network serviceを復元する。同時に届くUSB/net eventはlockで1回へ
-まとめる。Wi-FiがOFFの場合はPIDとcmdlineを照合してmonitorを停止する。dongle未接続時の
-定期pollingや無限retryは行わない。
+まとめ、先行eventですでにIPv4接続済みならキューに残った後続eventを処理しない。
+Wi-FiがOFFの場合はPIDとcmdlineを照合してmonitorを停止する。dongle未接続時の定期pollingや
+無限retryは行わない。
 
 stock kernel 5.10.198から採取した`r8188eu`に加え、V90Sで実機実績のある
 RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して

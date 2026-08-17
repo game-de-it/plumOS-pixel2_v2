@@ -140,6 +140,9 @@
       - 2026-08-17: V90S `138514a`のcold-boot contractに対して、Pixel2はFE起動時の
         `recovery sync`を欠き、早すぎる一回限りの独自boot callだけになっていた。
         boot/FEの両方をmonitor + initial recoveryへ統一。署名System実機試験は継続する。
+      - 2026-08-17: ADBからdirect `c820`へ差し替えるだけで5 GHz `k-home-1`、DHCP
+        `192.168.10.120`、全network serviceが自動復帰した。USB/net addのqueueにより
+        接続後も4回再実行されたため、接続済みevent抑止とcold boot再試験を継続する。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

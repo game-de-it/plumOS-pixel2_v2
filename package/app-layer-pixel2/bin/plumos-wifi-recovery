@@ -155,6 +155,12 @@ recover_once() {
     log "recover_skipped reason=wifi_disabled_after_settle"
     return 0
   }
+  status="$($NETWORK_CONTROL --wifi status 2>/dev/null || true)"
+  if printf '%s\n' "$status" | grep -qx 'wifi=on' &&
+      printf '%s\n' "$status" | grep -Eq '^ip=[0-9]'; then
+    log "recover_skipped reason=already_connected"
+    return 0
+  fi
   log "recover_begin"
   if "$NETWORK_CONTROL" --wifi on >> "$LOG_FILE" 2>&1; then
     log "recover_complete"
