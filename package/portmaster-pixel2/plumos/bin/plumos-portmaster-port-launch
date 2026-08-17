@@ -113,7 +113,8 @@ cleanup() {
   fi
   rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE" "$MOUNTS_FILE"
   if [ "$restore_frontend" -eq 1 ] && ! frontend_running; then
-    nohup "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-launch" >/dev/null 2>&1 &
+    "$BB" setsid "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-launch" \
+      >/dev/null 2>&1 </dev/null &
   fi
 }
 

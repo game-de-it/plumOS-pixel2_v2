@@ -68,7 +68,8 @@ cleanup() {
   # boundary before returning control to the frontend or accepting a reboot.
   sync
   if [ "$restore_frontend" -eq 1 ] && ! frontend_running; then
-    nohup "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-launch" >/dev/null 2>&1 &
+    "$BB" setsid "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-launch" \
+      >/dev/null 2>&1 </dev/null &
   fi
 }
 
