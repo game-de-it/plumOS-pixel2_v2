@@ -66,12 +66,18 @@ for slot in a b; do
 done
 cmp "$WORK/Image" "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/Image"
 cmp "$WORK/rk3326s-gkd-pixel2.dtb" \
-    "$ROOT_DIR/artifacts/vendor/pixel2-stock/boot/rk3326s-gkd-pixel2.dtb"
+    "$ROOT_DIR/output/boot/pixel2/rk3326s-gkd-pixel2.dtb"
+expected_runtime_dtb_sha=$(awk -F= '$1 == "runtime_dtb_sha256" { print $2 }' \
+    "$WORK/plumos-image.manifest")
+actual_runtime_dtb_sha=$(sha256sum "$WORK/rk3326s-gkd-pixel2.dtb" | awk '{print $1}')
+[ "$actual_runtime_dtb_sha" = "$expected_runtime_dtb_sha" ]
 python3 "$ROOT_DIR/scripts/verify-pixel2-boot-splash.py" \
     "$WORK/oemsplash-1080.png"
 cmp "$WORK/oemsplash-1080.png" \
     "$ROOT_DIR/package/boot-assets-pixel2/oemsplash-1080.png"
 grep -q '^boot_substrate=stock-pixel2$' "$WORK/plumos-image.manifest"
+grep -q '^runtime_dtb_policy=stock-plus-otg-vbus-supply$' \
+    "$WORK/plumos-image.manifest"
 grep -q '^boot_splash=oemsplash-1080.png$' "$WORK/plumos-image.manifest"
 grep -q '^boot_splash_geometry=480x640$' "$WORK/plumos-image.manifest"
 expected_splash_sha=$(awk -F= '$1 == "boot_splash_sha256" { print $2 }' \

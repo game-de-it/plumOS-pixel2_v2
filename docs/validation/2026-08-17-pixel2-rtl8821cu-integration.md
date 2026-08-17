@@ -288,6 +288,23 @@ of these conditions hold: Wi-Fi is saved ON with credentials, upstream USB
 VBUS is absent, and no downstream USB device is already enumerated. A Mac/PC
 ADB cable and an already-working USB device are explicit no-op paths.
 
+The signed System carrying that service booted from slot A and became healthy.
+Its log proves the worker unbound DWC2 at uptime 5.5 seconds and rebound it at
+7.6 seconds, but the downstream device was still absent. Kernel diagnostics
+explain the difference from the successful live reset: the exact stock runtime
+DTB has no `vbus-supply` on `/usb@ff300000`, so DWC2 reports a dummy regulator
+and cannot remove 5 V from a device that remained powered across reboot. The
+physical replug at uptime 501 seconds immediately enumerated `0bda:c820`.
+
+The release DTB is therefore generated from the checksum-registered stock DTB
+with exactly one property added: `/usb@ff300000/vbus-supply` points to the
+existing RK817 `OTG_SWITCH` phandle. Both trees are decompiled and a strict
+gate removes that one line and requires identical DTS text afterward. The
+stock `Image`, embedded initramfs, kernel ABI, U-Boot DTB, and runtime-DTB
+`dr_mode = "otg"` remain unchanged. No forced host role is introduced, so ADB
+and charging behavior remain physical release gates alongside saved-Wi-Fi
+boot recovery.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has

@@ -36,7 +36,8 @@ output/                    generated artifacts; untracked
 - Pixel2 is the target. MF and V90S are references, not proof of identical
   hardware behavior.
 - Stock Pixel2 boot artifacts own the Rockchip boot prefix, vendor kernel,
-  DTB, and stock initramfs handoff needed to load `/boot/SYSTEM`.
+  registered DTB input, and stock initramfs handoff needed to load
+  `/boot/SYSTEM`; the installed runtime DTB adds only the gated DWC2 VBUS link.
 - plumOS owns `/sbin/init` inside `SYSTEM`, app-layer runtime, frontend,
   emulators, services, settings, and power policy after the stock initramfs
   hands off to `SYSTEM`.

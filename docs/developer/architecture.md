@@ -4,7 +4,8 @@
 
 ```text
 Pixel2 stock boot substrate
-  Rockchip boot prefix / stock Image 5.10.198 / stock DTB / stock initramfs
+  Rockchip boot prefix / stock Image 5.10.198 / stock initramfs
+  stock-derived DTB + one gated DWC2 VBUS supply property
                        |
 plumOS SYSTEM on PLUMOS_BOOT
   /sbin/init / init.d services / ADB / USB Wi-Fi / rootfs diagnostics

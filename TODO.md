@@ -151,6 +151,11 @@
         実機上で`ff300000.usb`だけをunbind/bindすると1秒以内に再列挙し、`.110`へ自動
         復帰した。Wi-Fi保存ON、upstream VBUSなし、downstream未列挙時だけ同じresetを
         非同期実行するSystem serviceを追加し、signed Systemでのreboot再試験を継続する。
+      - 2026-08-17: signed System `49a4f15`はslot Aでhealthyになり、serviceもuptime
+        5.5--7.6秒でDWC2 resetを実行したが、VBUSが切れず物理抜き差しまで列挙されなかった。
+        stock DTBで`vbus-supply`が欠落しDWC2がdummy regulatorを使うことを確定。stock DTBを
+        inputに既存RK817 `OTG_SWITCH`への1 propertyだけを追加し、他差分を拒否する生成gateを
+        追加した。stock kernel/initramfsと`dr_mode=otg`は維持し、実機boot/充電rebootを再検証する。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
@@ -270,7 +275,7 @@
 - [ ] ext4 `/storage` のfilesystem label、UUID、初回resize markerを確認する
 - [x] boot artifactのprovenance、hash、サイズをmanifest化する
 - [x] stock内蔵initramfsをboot substrateとして許容し、`SYSTEM`内init以降をplumOS所有にする方針を決定する
-- [x] release imageをstock `Image`/stock DTB/stock kernel ABIへ戻す
+- [x] release imageをstock `Image`/stock由来のbounded DTB/stock kernel ABIへ戻す
 - [x] stock initramfsの`SYSTEM` handoff contractをhostで再確認する
 - [x] stock initramfsの`SYSTEM` handoff contractを実機で再確認する
 - [x] stock initramfs hookとplumOS init早期logを実機SDから回収する

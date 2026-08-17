@@ -5,8 +5,10 @@ Status: Accepted
 
 ## Decision
 
-Pixel2 uses the stockOS Rockchip boot prefix, stock `Image`, stock Pixel2 DTB
-and the initramfs embedded in that stock `Image` as the boot substrate.
+Pixel2 uses the stockOS Rockchip boot prefix, stock `Image`, and the initramfs
+embedded in that stock `Image` as the boot substrate. The runtime DTB is
+generated from the exact stock Pixel2 DTB with one bounded hardware fix:
+`/usb@ff300000/vbus-supply` references the stock RK817 `OTG_SWITCH` regulator.
 plumOS ownership begins at the SquashFS `SYSTEM` handoff: the mounted
 `SYSTEM` image provides `/sbin/init`, runtime services, frontend launch,
 emulator launch, audio routing, connectivity, update tooling and diagnostics.
@@ -21,7 +23,7 @@ Allowed stock-derived boot artifacts:
 
 1. 16 MiB Rockchip boot prefix;
 2. stock Linux `Image` including its embedded initramfs;
-3. stock runtime DTB and U-Boot DTB when required by the bootloader;
+3. stock U-Boot DTB and the stock runtime DTB as the registered patch input;
 4. stock kernel modules and firmware required by the retained `5.10.198`
    kernel ABI.
 
@@ -51,7 +53,12 @@ experience: FE, emulators, ALSA/audio routing, connectivity and updates.
 ## Implementation notes
 
 - The image builder must install stock `Image` and stock
-  `rk3326s-gkd-pixel2.dtb` into `PLUMOS_BOOT`.
+  `rk3326s-gkd-pixel2.dtb` plus the single-property VBUS linkage into
+  `PLUMOS_BOOT`. A decompiled-tree gate rejects any additional DTB change.
+- The stock DTB leaves the DWC2 `vbus-supply` absent, so unbinding the
+  controller cannot power-cycle an already-inserted USB device. Linking the
+  existing `otg_switch` lets the unmodified stock DWC2 driver own VBUS while
+  retaining stock `dr_mode = "otg"`; no forced host default is added.
 - The System builder must target the stock `5.10.198` module ABI instead of
   `6.12.79-plumos-pixel2`.
 - Host verifiers must compare boot files against `artifacts/vendor/pixel2-stock`
@@ -61,7 +68,8 @@ experience: FE, emulators, ALSA/audio routing, connectivity and updates.
   as the analyzed boot source.
 - The boot handoff must be validated on real hardware by proving:
   `/proc/version` is stock `5.10.198`, `/proc/1/root` is the generated plumOS
-  `SYSTEM`, FE starts, ADB works, and charging-state reboot returns to plumOS.
+  `SYSTEM`, FE starts, ADB works, Wi-Fi survives saved-ON boot, and
+  charging-state reboot returns to plumOS.
 
 ## Supersedes
 

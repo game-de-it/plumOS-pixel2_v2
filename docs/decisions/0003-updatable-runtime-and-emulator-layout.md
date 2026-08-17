@@ -37,10 +37,12 @@ never reformatted.
 ### Rockchip boot prefix and kernel
 
 The captured 16 MiB prefix remains an immutable, checksummed hardware input.
-The stock `Image`, the Pixel2 DTB, and the stock initramfs embedded in that
-`Image` remain fixed release image inputs during the first update
-implementation. Updating them requires a complete SD image until a separately
-recoverable boot update contract exists.
+The stock `Image`, the registered stock Pixel2 DTB input, and the stock
+initramfs embedded in that `Image` remain fixed release image inputs during the
+first update implementation. The installed runtime DTB may contain only the
+gated RK817 OTG VBUS linkage recorded by decision 0004. Updating boot artifacts
+requires a complete SD image until a separately recoverable boot update
+contract exists.
 
 ### System A/B on PLUMOS_BOOT
 
@@ -213,7 +215,8 @@ System and runtime after the stock handoff.
 ## Release gates
 
 - reproducible System, app-layer and filesystem hashes;
-- exact stock `Image` and DTB verification;
+- exact stock `Image` and stock-DTB input verification, plus a one-property
+  runtime-DTB diff gate;
 - exact Rockchip prefix verification;
 - System slot and runtime/component checksum verification;
 - no foreign distribution product identity in runtime artifacts;
