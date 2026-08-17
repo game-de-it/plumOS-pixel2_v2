@@ -32,6 +32,7 @@ static int internal_render;
 
 static SDL_Renderer *(*real_create_renderer)(SDL_Window *, int, Uint32);
 static const char *(*real_get_error)(void);
+static void (*real_get_window_size)(SDL_Window *, int *, int *);
 static void (*real_destroy_renderer)(SDL_Renderer *);
 static SDL_Texture *(*real_create_texture)(SDL_Renderer *, Uint32, int, int, int);
 static void (*real_destroy_texture)(SDL_Texture *);
@@ -89,6 +90,18 @@ static struct renderer_state *allocate_state(void) {
             return &states[index];
     }
     return NULL;
+}
+
+void SDL_GetWindowSize(SDL_Window *window, int *width, int *height) {
+    LOAD(get_window_size, GetWindowSize);
+    if (real_get_window_size)
+        real_get_window_size(window, width, height);
+    if (!rotation_enabled())
+        return;
+    if (width)
+        *width = 640;
+    if (height)
+        *height = 480;
 }
 
 SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags) {
