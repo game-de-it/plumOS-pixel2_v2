@@ -2,7 +2,8 @@
 
 Date: 2026-08-17
 
-Status: host integration PASS; stock-kernel load/unload PASS; adapter acceptance OPEN
+Status: host integration PASS; stock-kernel load/unload PASS; 2.4 GHz adapter
+acceptance PARTIAL; 5 GHz/replug/cold-boot acceptance OPEN
 
 ## Scope
 
@@ -124,6 +125,55 @@ last update result=system_healthy
 Slot A remains the rollback generation. The actual RTL8811CU adapter was not
 connected during deployment, so RF/network acceptance remains open.
 
+## Physical `0bda:c820` result
+
+After the signed System deployment, a Realtek RTL8821CU adapter was connected
+to Pixel2's only USB port. Unlike the UGREEN storage-mode adapter, this device
+enumerates directly as a composite `0bda:c820` device and therefore does not
+exercise the `1a2b -> c811` mode-switch path. It passed the direct-alias path:
+
+```text
+USB ID=0bda:c820 (802.11ac NIC)
+module=8821cu
+wlan0 driver=rtl8821cu
+kernel=5.10.198
+System=0.1.0-dev-13ad915
+IPv4=192.168.10.120/24
+default gateway=192.168.10.1
+```
+
+The first association used WPA2-PSK on channel 13 at 2472 MHz. Signal stayed
+between -34 and -46 dBm and the reported transmit bitrate was 72.2 Mbit/s.
+Twenty gateway pings had zero loss and a 1.753 ms average, with one 9.246 ms
+maximum sample. The adapter advertises both 2.4 GHz HT and 5 GHz VHT support;
+the same access point's `k-home-1` BSSID was visible at 5220 MHz and -45 dBm.
+
+The 2.4 GHz throughput comparison used zero-filled data so storage contents and
+user files were not involved. The SFTP round trip used a temporary file on
+`PLUMOS_USER`, compared SHA-256 on both ends, and removed both copies:
+
+| Path | Result |
+| --- | --- |
+| SSH device to Mac, 64 MiB | 12.70 s, about 5.04 MiB/s |
+| SSH Mac to device `/dev/null`, 8 MiB | 16.18 s, about 0.49 MiB/s |
+| SFTP device to Mac, 8 MiB | 2.10 s, about 3.81 MiB/s |
+| SFTP Mac to device, 2 MiB | 34.739 s, about 59 KiB/s; SHA-256 matched |
+
+`iw` initially reported power save enabled and the module reported
+`rtw_power_mgnt=2`, `rtw_ips_mode=1`, and USB autosuspend disabled. A runtime
+`iw ... set power_save off` comparison changed SSH upload only from about 0.49
+to 0.54 MiB/s and download from about 5.04 to 5.64 MiB/s. That is not enough to
+explain or repair the asymmetric SFTP result, so no persistent power setting
+was changed. RX errors/drops and TX errors stayed at zero; the pre-existing TX
+drop counter stayed at eight through the tests.
+
+This proves the Pixel2-built module, `c820` alias, 2.4 GHz association, DHCP,
+gateway, SSH/SFTP integrity, and 5 GHz scan capability. It does not yet accept
+bulk upload performance. The same approximately 59 KiB/s SFTP upload symptom
+seen with stock `r8188eu` survived a different adapter and driver. A 5 GHz
+association is the next controlled comparison to separate the shared 2.4 GHz
+AP/channel path from Pixel2's receive path.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has
@@ -135,8 +185,10 @@ A/B rollback remains available.
 
 Release acceptance remains open until the real device passes all of:
 
-1. initial `1a2b` mode switch and `c811` binding without manual commands;
-2. 2.4 GHz and 5 GHz scan, association, DHCP, and gateway reachability;
+1. initial `1a2b` mode switch and `c811` binding without manual commands (the
+   tested adapter is a direct `c820` device);
+2. 5 GHz association, DHCP, gateway reachability, and upload comparison (2.4
+   GHz and 5 GHz scanning already pass);
 3. FE Information and all enabled network-service states;
 4. SSH/SFTP transfer and measured throughput/error counters;
 5. dongle unplug/replug recovery;

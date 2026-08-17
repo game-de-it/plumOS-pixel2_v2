@@ -125,6 +125,11 @@
   - [x] stock moduleの`__this_module` size/exit relocationをbuild gate化し、実機5.10.198でSHA一致moduleの`insmod`/`rmmod`を確認する
   - [x] signed inactive-slot System `0.1.0-dev-13ad915`を適用し、slot B readback、health promotion、収録module checksum、`modprobe`/`rmmod`、FE/ADB復帰を確認する
   - [ ] 実adapterで1a2b->c811、2.4/5 GHz、DHCP、SSH/SFTP速度、抜き差し、cold boot復元を確認する
+    - [x] `0bda:c820`実adapterを`rtl8821cu`へ直接bindし、2.4 GHz接続、DHCP
+      `192.168.10.120`、gateway 20/20 ping、SSH/SFTP SHA一致、5 GHz scanを確認した
+    - [ ] 5 GHzへassociationして上り速度を比較し、別adapterでも残った約59 KiB/sの
+      2.4 GHz SFTP uploadをAP/channel経路とPixel2 RX経路に切り分ける
+    - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
 - [x] Pixel2向けRetroArchをpinned sourceからbuildする
