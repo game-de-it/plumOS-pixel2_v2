@@ -229,6 +229,20 @@ three RTL8821CU USB IDs. Its existing recovery lock coalesces the USB add and
 the subsequent wlan add into one bounded network-control attempt. Unrelated
 Realtek IDs remain ignored.
 
+A second audit against V90S commit `138514a` found a separate cold-boot
+integration gap. V90S invokes `plumos-wifi-recovery sync` when the frontend
+starts; that call both starts the monitor and schedules an initial recovery
+after the boot path has settled. Pixel2 had copied the current helper but did
+not call its `sync` command from the frontend. Instead, System service
+`20-usb-wifi` made one earlier direct network-control attempt. Once that early
+attempt reported `no_usb_wifi_dongle`, there was no later initial recovery.
+
+Pixel2 now uses the same monitor plus initial-recovery contract from both the
+early Wi-Fi service and frontend startup. Both calls are non-blocking with
+respect to association/DHCP, and the existing recovery lock coalesces overlap.
+The direct network-control path remains only as compatibility fallback for an
+older Runtime without the shared recovery helper.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has

@@ -66,6 +66,10 @@ grep -q 'plumos-network-services' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
 grep -q 'plumos-wifi-recovery' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-control"
+grep -q '"$RECOVERY" sync' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi"
+grep -q 'plumos-wifi-recovery" sync' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'busybox uevent' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-wifi-recovery"
 grep -q 'owner=plumos-network-services' \

@@ -99,6 +99,16 @@ start_frontend() {
             printf 'frontend=warning hardware-keys-service-failed\n' >>"$LOG"
     fi
 
+    # V90S cold-boot contract: resync the monitor at FE startup and schedule a
+    # fresh bounded recovery after the earlier boot services have settled.
+    # The recovery itself remains asynchronous and does not delay the FE.
+    if [ -x "$ROOT/bin/plumos-wifi-recovery" ]; then
+        PLUMOS_ROOT="$ROOT" PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
+            PLUMOS_RUNTIME_ROOT=/run/plumos \
+            "$ROOT/bin/plumos-wifi-recovery" sync >>"$LOG" 2>&1 || \
+            printf 'frontend=warning wifi-recovery-sync-failed\n' >>"$LOG"
+    fi
+
     printf 'frontend=result-starting renderer=fbdev input=%s fb=/dev/fb0\n' \
         "$input" >>"$LOG"
     PLUMOS_ROOT="$ROOT" "$ROOT/bin/plumos-library-scan" --defer-thumbnails \

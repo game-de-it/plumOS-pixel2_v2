@@ -6,6 +6,7 @@ CONFIG=${PLUMOS_WIFI_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}
 SETTINGS=${PLUMOS_SYSTEM_SETTINGS_JSON:-/mnt/plumos/config/system/settings.json}
 LOG=${PLUMOS_WIFI_LOG:-/state/plumos/logs/usb-wifi.log}
 CONTROL=${PLUMOS_NETWORK_CONTROL:-/mnt/plumos/bin/plumos-network-control}
+RECOVERY=${PLUMOS_WIFI_RECOVERY:-/mnt/plumos/bin/plumos-wifi-recovery}
 
 log() {
     printf '%s service=usb-wifi %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
@@ -22,19 +23,31 @@ start_wifi() {
         log 'result=disabled reason=saved-off'
         return 0
     fi
+    # Match the V90S lifecycle: one sync starts the blocking uevent monitor and
+    # schedules the initial bounded recovery. This keeps association and DHCP
+    # outside the boot critical path while retaining hotplug after a failed
+    # initial attempt.
+    if [ -x "$RECOVERY" ]; then
+        PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
+            "$RECOVERY" sync >>"$LOG" 2>&1 || \
+            log 'result=failed reason=recovery-sync'
+        log 'result=background-started mode=recovery-sync'
+        return 0
+    fi
+
+    # Compatibility fallback for an older Runtime that predates the shared
+    # recovery helper.
     [ -x "$CONTROL" ] || {
         log 'result=failed reason=network-control-missing'
         return 0
     }
-    # Association and DHCP may legitimately take tens of seconds. Keep them
-    # outside the boot critical path; the FE reads the runtime status file.
     (
         PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
             "$CONTROL" --wifi on >>"$LOG" 2>&1
         rc=$?
         log "result=background-complete rc=$rc"
     ) &
-    log 'result=background-started'
+    log 'result=background-started mode=legacy-network-control'
 }
 
 case "${1:-}" in

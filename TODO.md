@@ -137,6 +137,9 @@
       - 2026-08-17: direct `c820`追加を監視対象に含めていなかったため、抜き差し後は
         手動OFF/ONまでmoduleがloadされなかった。Runtime `42bcb46`の実機ログで原因を
         確定し、direct aliasもbounded recoveryへ接続した。物理再試験は継続する。
+      - 2026-08-17: V90S `138514a`のcold-boot contractに対して、Pixel2はFE起動時の
+        `recovery sync`を欠き、早すぎる一回限りの独自boot callだけになっていた。
+        boot/FEの両方をmonitor + initial recoveryへ統一。署名System実機試験は継続する。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

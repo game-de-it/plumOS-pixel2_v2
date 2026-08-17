@@ -187,4 +187,21 @@ PLUMOS_NETWORK_CONTROL="$tmp/should-not-run" \
     "$BOOT_SERVICE" start
 grep -Fq 'result=disabled reason=saved-off' "$tmp/boot/logs/wifi.log"
 
+cat >"$tmp/boot/recovery" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >>"$TEST_BOOT_RECOVERY_CALLS"
+EOF
+chmod 0755 "$tmp/boot/recovery"
+export TEST_BOOT_RECOVERY_CALLS="$tmp/boot/recovery-calls"
+printf '{"wifi_enabled": true}\n' >"$tmp/boot/config/system/settings.json"
+PLUMOS_WIFI_CONFIG="$tmp/boot/wpa.conf" \
+PLUMOS_SYSTEM_SETTINGS_JSON="$tmp/boot/config/system/settings.json" \
+PLUMOS_WIFI_LOG="$tmp/boot/logs/wifi.log" \
+PLUMOS_WIFI_RECOVERY="$tmp/boot/recovery" \
+PLUMOS_NETWORK_CONTROL="$tmp/should-not-run" \
+    "$BOOT_SERVICE" start
+grep -Fxq 'sync' "$TEST_BOOT_RECOVERY_CALLS"
+grep -Fq 'result=background-started mode=recovery-sync' \
+    "$tmp/boot/logs/wifi.log"
+
 printf 'pixel2_network_control=result-ok\n'
