@@ -14,7 +14,6 @@ LIB_DIR="${RUN_ROOT}/lib"
 NEXTCOMMANDER_LIB="${PLUMOS_ROOT}/apps/nextcommander/lib"
 PYTHON_LIB="${PLUMOS_ROOT}/apps/python/lib"
 EMULATOR_LIB="${PLUMOS_ROOT}/emulator/lib"
-PYGAME_LIB="${PLUMOS_ROOT}/apps/pyxel/site/pygame.libs"
 SONAME_MAP="${PLUMOS_ROOT}/config/standalone/soname-links.tsv"
 
 link_one() {
@@ -102,14 +101,6 @@ prepare() {
     "${ADAPTER_DIR}/lib/aarch64/libSDL2_mixer-2.0.so.0"
   link_one libmodplug.so.1 \
     "${ADAPTER_DIR}/lib/aarch64/libmodplug.so.1"
-  fluidsynth_library=""
-  for candidate in "${PYGAME_LIB}"/libfluidsynth-*.so.3.*; do
-    if [ -f "$candidate" ]; then
-      fluidsynth_library="$candidate"
-      break
-    fi
-  done
-  link_one libfluidsynth.so.3 "$fluidsynth_library"
   link_one libvorbisfile.so.3 \
     "${PLUMOS_ROOT}/lib/libretro/libvorbisfile.so.3" \
     "${PLUMOS_ROOT}/lib/libvorbisfile.so.3.3.8"

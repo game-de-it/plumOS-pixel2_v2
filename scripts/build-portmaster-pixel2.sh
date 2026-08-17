@@ -40,6 +40,10 @@ THEORA_COMPAT_VERSION="1.1.1"
 THEORA_COMPAT_ARCHIVE="libtheora-${THEORA_COMPAT_VERSION}.tar.xz"
 THEORA_COMPAT_URL="https://downloads.xiph.org/releases/theora/${THEORA_COMPAT_ARCHIVE}"
 THEORA_COMPAT_SHA256="f36da409947aa2b3dcc6af0a8c2e3144bc19db2ed547d64e9171c59c66561c61"
+SDL2_MIXER_VERSION="2.6.2"
+SDL2_MIXER_ARCHIVE="SDL2_mixer-${SDL2_MIXER_VERSION}.tar.gz"
+SDL2_MIXER_URL="https://github.com/libsdl-org/SDL_mixer/releases/download/release-${SDL2_MIXER_VERSION}/${SDL2_MIXER_ARCHIVE}"
+SDL2_MIXER_SHA256="8cdea810366decba3c33d32b8071bccd1c309b2499a54946d92b48e6922aa371"
 MESON_BOOTSTRAP_VERSION="1.4.2"
 MESON_BOOTSTRAP_ARCHIVE="meson-${MESON_BOOTSTRAP_VERSION}.tar.gz"
 MESON_BOOTSTRAP_URL="https://github.com/mesonbuild/meson/archive/refs/tags/${MESON_BOOTSTRAP_VERSION}.tar.gz"
@@ -52,7 +56,7 @@ PIXMAN_RUNTIME_VERSION="0.42.2-1"
 SQUASHFS_TOOLS_VERSION="1:4.5.1-1"
 ZIP_VERSION="3.0-13"
 BASH_RUNTIME_VERSION="5.2.15-2+b13"
-ADAPTER_VERSION="18"
+ADAPTER_VERSION="19"
 
 usage() {
     cat <<EOF
@@ -272,6 +276,23 @@ actual_theora_compat_sha256="$(sha256sum "$theora_compat_archive_path" | awk '{p
     exit 1
 }
 
+sdl2_mixer_archive_path="$CACHE_DIR/$SDL2_MIXER_ARCHIVE"
+if [ ! -f "$sdl2_mixer_archive_path" ] ||
+   [ "$(sha256sum "$sdl2_mixer_archive_path" | awk '{print $1}')" != "$SDL2_MIXER_SHA256" ]; then
+    sdl2_mixer_archive_tmp="$sdl2_mixer_archive_path.tmp.$$"
+    rm -f "$sdl2_mixer_archive_tmp"
+    curl --fail --location --retry 3 \
+        --output "$sdl2_mixer_archive_tmp" "$SDL2_MIXER_URL"
+    mv -f "$sdl2_mixer_archive_tmp" "$sdl2_mixer_archive_path"
+fi
+
+actual_sdl2_mixer_sha256="$(sha256sum "$sdl2_mixer_archive_path" | awk '{print $1}')"
+[ "$actual_sdl2_mixer_sha256" = "$SDL2_MIXER_SHA256" ] || {
+    printf 'error: SDL2_mixer source SHA-256 mismatch: expected %s, got %s\n' \
+        "$SDL2_MIXER_SHA256" "$actual_sdl2_mixer_sha256" >&2
+    exit 1
+}
+
 meson_bootstrap_archive_path="$CACHE_DIR/$MESON_BOOTSTRAP_ARCHIVE"
 if [ ! -f "$meson_bootstrap_archive_path" ] ||
    [ "$(sha256sum "$meson_bootstrap_archive_path" | awk '{print $1}')" != "$MESON_BOOTSTRAP_SHA256" ]; then
@@ -488,6 +509,49 @@ install -m 0755 /usr/share/misc/config.sub "$theora_compat_src/config.sub"
     make DESTDIR="$theora_compat_install" install
 )
 
+sdl2_mixer_src="$BUILD_DIR/sdl2-mixer-src"
+sdl2_mixer_build="$BUILD_DIR/sdl2-mixer-build"
+rm -rf "$sdl2_mixer_src" "$sdl2_mixer_build"
+mkdir -p "$sdl2_mixer_src" "$sdl2_mixer_build"
+tar -xzf "$sdl2_mixer_archive_path" --strip-components=1 \
+    -C "$sdl2_mixer_src"
+cmake -S "$sdl2_mixer_src" -B "$sdl2_mixer_build" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_SHARED_LIBS=ON \
+    -DSDL2MIXER_INSTALL=OFF \
+    -DSDL2MIXER_SAMPLES=OFF \
+    -DSDL2MIXER_CMD=OFF \
+    -DSDL2MIXER_FLAC=ON \
+    -DSDL2MIXER_FLAC_DRFLAC=ON \
+    -DSDL2MIXER_FLAC_LIBFLAC=OFF \
+    -DSDL2MIXER_MOD=ON \
+    -DSDL2MIXER_MOD_MODPLUG=ON \
+    -DSDL2MIXER_MOD_MODPLUG_SHARED=ON \
+    -DSDL2MIXER_MOD_XMP=OFF \
+    -DSDL2MIXER_MP3=ON \
+    -DSDL2MIXER_MP3_DRMP3=ON \
+    -DSDL2MIXER_MP3_MPG123=OFF \
+    -DSDL2MIXER_MIDI=ON \
+    -DSDL2MIXER_MIDI_FLUIDSYNTH=OFF \
+    -DSDL2MIXER_MIDI_NATIVE=OFF \
+    -DSDL2MIXER_MIDI_TIMIDITY=ON \
+    -DSDL2MIXER_OPUS=OFF \
+    -DSDL2MIXER_VORBIS=STB \
+    -DSDL2MIXER_WAVE=ON
+cmake --build "$sdl2_mixer_build" --parallel "${JOBS:-2}" \
+    --target SDL2_mixer
+sdl2_mixer_library="$(find "$sdl2_mixer_build" -type f \
+    -name 'libSDL2_mixer-2.0.so.*' | sort | tail -n 1)"
+[ -n "$sdl2_mixer_library" ] && [ -f "$sdl2_mixer_library" ] || {
+    printf 'error: constrained SDL2_mixer shared library was not produced\n' >&2
+    exit 1
+}
+if readelf -d "$sdl2_mixer_library" |
+   grep -Eq 'Shared library: \[(libfluidsynth|libpulse|libdbus)'; then
+    printf 'error: constrained SDL2_mixer unexpectedly requires FluidSynth/PulseAudio/DBus\n' >&2
+    exit 1
+fi
+
 meson_bootstrap_src="$BUILD_DIR/meson-bootstrap-src"
 cairo_compat_src="$BUILD_DIR/cairo-compat-src"
 cairo_compat_build="$BUILD_DIR/cairo-compat-build"
@@ -695,7 +759,7 @@ install -m 0644 "$cairo_compat_library" \
     "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/libcairo.so.2"
 install -m 0644 "$pixman_library" \
     "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/libpixman-1.so.0"
-for library in libSDL2_gfx-1.0.so.0 libSDL2_mixer-2.0.so.0; do
+for library in libSDL2_gfx-1.0.so.0; do
     source_library="$(find /usr/lib/aarch64-linux-gnu -type f \
         -name "${library}*" | sort | tail -n 1)"
     [ -n "$source_library" ] && [ -f "$source_library" ] || {
@@ -706,6 +770,8 @@ for library in libSDL2_gfx-1.0.so.0 libSDL2_mixer-2.0.so.0; do
     install -m 0644 "$source_library" \
         "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/$library"
 done
+install -m 0644 "$sdl2_mixer_library" \
+    "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/libSDL2_mixer-2.0.so.0"
 install -m 0644 \
     "$stage_dir/plumos/apps/portmaster/upstream/PortMaster/runtimes/love_11.5/libs.aarch64/libmodplug.so.1" \
     "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/libmodplug.so.1"
@@ -737,8 +803,8 @@ install -m 0644 /usr/share/doc/libpixman-1-0/copyright \
     "$stage_dir/plumos/licenses/libpixman-copyright.txt"
 install -m 0644 /usr/share/doc/libsdl2-gfx-1.0-0/copyright \
     "$stage_dir/plumos/licenses/libsdl2-gfx-copyright.txt"
-install -m 0644 /usr/share/doc/libsdl2-mixer-2.0-0/copyright \
-    "$stage_dir/plumos/licenses/libsdl2-mixer-copyright.txt"
+install -m 0644 "$sdl2_mixer_src/LICENSE.txt" \
+    "$stage_dir/plumos/licenses/sdl2-mixer-Zlib.txt"
 mkdir -p \
     "$stage_dir/plumos/state/portmaster/config" \
     "$stage_dir/plumos/state/portmaster/libs" \
@@ -774,6 +840,7 @@ cat > "$stage_dir/plumos/components/portmaster/manifest.json" <<EOF
   "upstream_url": "${URL}",
   "upstream_sha256": "${actual_sha256}",
   "cairo_compat_version": "${CAIRO_COMPAT_VERSION}",
+  "sdl2_mixer_version": "${SDL2_MIXER_VERSION}",
   "runtime_abi": "plumos-pixel2-portmaster-v1",
   "depends_on": ["frontend", "nextcommander", "pyxel"],
   "display": "SDL2 KMSDRM 640x480",
@@ -807,7 +874,7 @@ rsync -a "$stage_dir/plumos/" "$OUT_DIR/plumos/"
         -o -path 'licenses/cairo-*' \
         -o -path 'licenses/libpixman-*' \
         -o -path 'licenses/libsdl2-gfx-*' \
-        -o -path 'licenses/libsdl2-mixer-*' \
+        -o -path 'licenses/sdl2-mixer-*' \
         -o -path 'components/portmaster/manifest.json' \) \
         -print |
         sort |
@@ -841,6 +908,8 @@ readline_compat_sha256=${actual_readline_compat_sha256}
 meson_bootstrap_version=${MESON_BOOTSTRAP_VERSION}
 meson_bootstrap_sha256=${actual_meson_bootstrap_sha256}
 cairo_compat_version=${CAIRO_COMPAT_VERSION}
+sdl2_mixer_version=${SDL2_MIXER_VERSION}
+sdl2_mixer_sha256=${actual_sdl2_mixer_sha256}
 cairo_compat_sha256=${actual_cairo_compat_sha256}
 pixman_runtime_version=${actual_pixman_runtime_version}
 squashfs_tools_version=${actual_squashfs_tools_version}
