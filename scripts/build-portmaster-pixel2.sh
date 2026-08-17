@@ -51,6 +51,7 @@ CAIRO_COMPAT_SHA256="445ed8208a6e4823de1226a74ca319d3600e83f6369f99b14265006599c
 PIXMAN_RUNTIME_VERSION="0.42.2-1"
 SQUASHFS_TOOLS_VERSION="1:4.5.1-1"
 ZIP_VERSION="3.0-13"
+BASH_RUNTIME_VERSION="5.2.15-2+b13"
 ADAPTER_VERSION="18"
 
 usage() {
@@ -106,6 +107,16 @@ actual_zip_version="$(dpkg-query -W -f='${Version}' zip)"
 }
 [ -x /usr/bin/zip ] || {
     printf 'error: /usr/bin/zip is unavailable\n' >&2
+    exit 1
+}
+actual_bash_runtime_version="$(dpkg-query -W -f='${Version}' bash)"
+[ "$actual_bash_runtime_version" = "$BASH_RUNTIME_VERSION" ] || {
+    printf 'error: bash runtime version mismatch: expected %s, got %s\n' \
+        "$BASH_RUNTIME_VERSION" "$actual_bash_runtime_version" >&2
+    exit 1
+}
+[ -x /bin/bash ] || {
+    printf 'error: /bin/bash is unavailable\n' >&2
     exit 1
 }
 lzo_library="$(find /usr/lib/aarch64-linux-gnu -type f -name 'liblzo2.so.*' | sort | tail -n 1)"
@@ -623,6 +634,10 @@ install -m 0755 /usr/bin/unsquashfs \
     "$stage_dir/plumos/apps/portmaster/adapter/bin/aarch64/unsquashfs"
 install -m 0755 /usr/bin/zip \
     "$stage_dir/plumos/apps/portmaster/adapter/bin/aarch64/zip"
+install -m 0755 /bin/bash \
+    "$stage_dir/plumos/apps/portmaster/adapter/bin/aarch64/bash"
+install -m 0644 /usr/share/doc/bash/copyright \
+    "$stage_dir/plumos/licenses/bash-copyright.txt"
 install -m 0644 "$openal_library" \
     "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/libopenal.so.1"
 install -m 0644 "$lzo_library" \
@@ -786,6 +801,7 @@ rsync -a "$stage_dir/plumos/" "$OUT_DIR/plumos/"
         -o -path 'licenses/readline-compat-*' \
         -o -path 'licenses/squashfs-tools-*' \
         -o -path 'licenses/zip-*' \
+        -o -path 'licenses/bash-*' \
         -o -path 'licenses/liblzo2-*' \
         -o -path 'licenses/libtheora-*' \
         -o -path 'licenses/cairo-*' \

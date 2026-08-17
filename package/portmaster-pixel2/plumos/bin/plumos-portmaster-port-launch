@@ -26,6 +26,7 @@ START_FILE="${RUN_ROOT}/port.starttime"
 SCRIPT_FILE="${RUN_ROOT}/port.script"
 MOUNTS_FILE="${RUN_ROOT}/port.mounts"
 DRI_DIR="${RUN_ROOT}/dri"
+PORT_BASH="${APP_ROOT}/adapter/bin/aarch64/bash"
 child=""
 restore_frontend=0
 script="${1:-}"
@@ -182,6 +183,11 @@ if port_requires_armhf; then
   exit 78
 fi
 
+[ -x "$PORT_BASH" ] || {
+  printf 'PortMaster bash runtime is missing: %s\n' "$PORT_BASH" >&2
+  exit 127
+}
+
 if [ -f "$PID_FILE" ]; then
   old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
   if [ -d "/proc/${old_pid}" ]; then
@@ -260,7 +266,7 @@ fi
 
 printf '\n[%s] script=%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$script" \
   "$(printf '%s' "$audio_status" | tr '\n' ' ')" >> "$LOG_FILE"
-LD_LIBRARY_PATH="${RUN_ROOT}/lib" setsid bash "$script" "$@" >> "$LOG_FILE" 2>&1 &
+LD_LIBRARY_PATH="${RUN_ROOT}/lib" setsid "$PORT_BASH" "$script" "$@" >> "$LOG_FILE" 2>&1 &
 child=$!
 printf '%s\n' "$child" > "$PID_FILE"
 sed 's/.*) //' "/proc/${child}/stat" | awk '{print $20}' > "$START_FILE"

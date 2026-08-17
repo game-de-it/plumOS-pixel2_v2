@@ -10,6 +10,7 @@ RUNTIME="$PACKAGE/bin/plumos-portmaster-runtime"
 GUI_LAUNCH="$PACKAGE/bin/plumos-portmaster-launch"
 PORT_LAUNCH="$PACKAGE/bin/plumos-portmaster-port-launch"
 DF_SHIM="$PACKAGE/apps/portmaster/adapter/shims/df"
+BUILDER="$ROOT_DIR/scripts/build-portmaster-pixel2.sh"
 
 python3 -m py_compile "$BOOTSTRAP" "$RENDERER"
 python3 - "$BOOTSTRAP" <<'PY'
@@ -47,5 +48,11 @@ grep -q 'PLUMOS_PORTMASTER_FIT:-0' "$GUI_LAUNCH"
 grep -q 'DRI_DIR}/rockchip_dri.so' "$PORT_LAUNCH"
 ! grep -q 'kms_swrast' "$GUI_LAUNCH" "$PORT_LAUNCH"
 grep -q 'exec "$busybox" df "$@"' "$DF_SHIM"
+grep -q 'PORT_BASH="${APP_ROOT}/adapter/bin/aarch64/bash"' "$PORT_LAUNCH"
+grep -q 'setsid "$PORT_BASH" "$script"' "$PORT_LAUNCH"
+grep -q 'BASH_RUNTIME_VERSION="5.2.15-2+b13"' "$BUILDER"
+grep -q 'adapter/bin/aarch64/bash' "$BUILDER"
+grep -q 'licenses/bash-copyright.txt' "$BUILDER"
+grep -q -- "-path 'licenses/bash-\*'" "$BUILDER"
 
 printf 'portmaster_pixel2_runtime=result-ok\n'
