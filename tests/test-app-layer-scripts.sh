@@ -622,6 +622,7 @@ grep -q 'lib/libretro/libvorbisfile.so.3' \
 grep -q 'lib/libretro/libopusfile.so.0' \
     "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-runtime"
 "$ROOT_DIR/tests/test-portmaster-pgrep.sh"
+"$ROOT_DIR/tests/test-portmaster-pixel2-runtime.sh"
 grep -q 'retroarch" --menu -v' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"
 grep -q 'plumos-ensure-udev-input-db' \

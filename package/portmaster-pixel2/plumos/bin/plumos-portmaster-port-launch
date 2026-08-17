@@ -25,6 +25,7 @@ PID_FILE="${RUN_ROOT}/port.pid"
 START_FILE="${RUN_ROOT}/port.starttime"
 SCRIPT_FILE="${RUN_ROOT}/port.script"
 MOUNTS_FILE="${RUN_ROOT}/port.mounts"
+DRI_DIR="${RUN_ROOT}/dri"
 child=""
 restore_frontend=0
 script="${1:-}"
@@ -191,7 +192,11 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 "$BB" sh "${PLUMOS_ROOT}/bin/plumos-portmaster-runtime" prepare >/dev/null || exit 1
-mkdir -p "$RUN_ROOT" "$(dirname "$LOG_FILE")" "$STATE_ROOT/home"
+mkdir -p "$RUN_ROOT" "$DRI_DIR" "$(dirname "$LOG_FILE")" "$STATE_ROOT/home"
+if [ -f "${PLUMOS_ROOT}/emulator/dri/rockchip_dri.so" ]; then
+  ln -sf "${PLUMOS_ROOT}/emulator/dri/rockchip_dri.so" \
+    "${DRI_DIR}/rockchip_dri.so"
+fi
 audio_output="${PLUMOS_ROOT}/bin/plumos-audio-output"
 [ -x "$audio_output" ] || {
   printf 'plumos-portmaster-port-launch: audio router is missing\n' >&2
@@ -243,9 +248,9 @@ export SDL_GAMECONTROLLERCONFIG_FILE="${RUN_ROOT}/gamecontrollerdb.txt"
 export SDL_GAMECONTROLLERCONFIG="$(cat "$SDL_GAMECONTROLLERCONFIG_FILE")"
 export AUDIODEV="plumos_output"
 export SDL_VIDEO_KMSDRM_DEVICE_INDEX="${SDL_VIDEO_KMSDRM_DEVICE_INDEX:-0}"
-export LIBGL_DRIVERS_PATH="${PLUMOS_ROOT}/apps/pyxel/dri"
-export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
-export MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-kms_swrast}"
+export LIBGL_DRIVERS_PATH="${DRI_DIR}"
+export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-${PLUMOS_ROOT}/emulator/egl_vendor.d/50_mesa.json}"
+unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE
 mkdir -p "$XDG_CACHE_HOME" "$HM_PORTS_DIR"
 
 if ! frontend_is_ancestor && frontend_running; then

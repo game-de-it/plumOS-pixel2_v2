@@ -27,6 +27,15 @@ DATA_ROOT = Path(
 PORTMASTER_DIR = DATA_ROOT / "upstream" / "PortMaster"
 SELF_UPDATE_CALL = b"            if portmaster_check_update(pm, config, temp_dir):"
 PLUMOS_SELF_UPDATE_CALL = b"            if plumos_portmaster_check_update(pm, config, temp_dir):"
+RENDERER_INIT = (
+    b"        renderer = sdl2.ext.Renderer(self.window, "
+    b"flags=sdl2.SDL_RENDERER_ACCELERATED)"
+)
+PIXEL2_RENDERER_INIT = (
+    b"        from plumos_pixel2_renderer import Pixel2Renderer\n"
+    b"        renderer = Pixel2Renderer(self.window, "
+    b"flags=sdl2.SDL_RENDERER_ACCELERATED)"
+)
 
 
 def canonicalize_existing_item_case(root: Path, expected_name: str) -> bool:
@@ -184,6 +193,13 @@ def disable_upstream_self_update(source: bytes) -> bytes:
     return source.replace(SELF_UPDATE_CALL, PLUMOS_SELF_UPDATE_CALL, 1)
 
 
+def install_pixel2_renderer(source: bytes) -> bytes:
+    """Route the official GUI through the Pixel2 landscape presenter."""
+    if source.count(RENDERER_INIT) != 1:
+        raise RuntimeError("unsupported PortMaster renderer layout")
+    return source.replace(RENDERER_INIT, PIXEL2_RENDERER_INIT, 1)
+
+
 def plumos_portmaster_check_update(*_args, **_kwargs) -> bool:
     return False
 
@@ -204,6 +220,7 @@ def main() -> int:
         "plumos_portmaster_check_update": plumos_portmaster_check_update,
     }
     source = disable_upstream_self_update(pugwash.read_bytes())
+    source = install_pixel2_renderer(source)
     exec(compile(source, str(pugwash), "exec"), globals_dict)
     return 0
 

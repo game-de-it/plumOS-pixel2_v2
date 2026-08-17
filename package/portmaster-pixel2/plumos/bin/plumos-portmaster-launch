@@ -22,6 +22,7 @@ PM_DIR="${DATA_ROOT}/upstream/PortMaster"
 LOG_FILE="${PLUMOS_ROOT}/logs/apps/portmaster.log"
 PID_FILE="${RUN_ROOT}/portmaster.pid"
 MOUNTS_FILE="${RUN_ROOT}/state.mounts"
+DRI_DIR="${RUN_ROOT}/dri"
 child_pid=""
 restore_frontend=0
 [ -x "$BB" ] || BB=/bin/busybox
@@ -82,8 +83,17 @@ terminate_child() {
 trap cleanup EXIT
 trap terminate_child HUP INT TERM
 
-mkdir -p "$RUN_ROOT" "$STATE_ROOT/config" "$STATE_ROOT/libs" \
+mkdir -p "$RUN_ROOT" "$DRI_DIR" "$STATE_ROOT/config" "$STATE_ROOT/libs" \
   "$STATE_ROOT/themes" "$STATE_ROOT/home" "$(dirname "$LOG_FILE")"
+
+# Pixel2 exposes a Rockchip KMS display node and a separate Panfrost render
+# node.  Keep the Debian combined driver's Rockchip name so Mesa's kmsro path
+# can pair both nodes; forcing the Panfrost name against card0 makes Mesa fall
+# through to unavailable zink/software drivers.
+if [ -f "${PLUMOS_ROOT}/emulator/dri/rockchip_dri.so" ]; then
+  ln -sf "${PLUMOS_ROOT}/emulator/dri/rockchip_dri.so" \
+    "${DRI_DIR}/rockchip_dri.so"
+fi
 
 if [ -f "$PID_FILE" ]; then
   old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
@@ -168,13 +178,12 @@ export AUDIODEV="plumos_output"
 export SDL_VIDEO_KMSDRM_DEVICE_INDEX="${SDL_VIDEO_KMSDRM_DEVICE_INDEX:-0}"
 export SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-${PLUMOS_ROOT}/apps/pyxel/lib/libEGL.so.1}"
 export SDL_VIDEO_GL_DRIVER="${SDL_VIDEO_GL_DRIVER:-${PLUMOS_ROOT}/apps/pyxel/lib/libGLESv2.so.2}"
-export LIBGL_DRIVERS_PATH="${PLUMOS_ROOT}/apps/pyxel/dri"
-export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-${PLUMOS_ROOT}/apps/pyxel/egl_vendor.d/50_mesa.json}"
-export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
-export MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-kms_swrast}"
+export LIBGL_DRIVERS_PATH="${DRI_DIR}"
+export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-${PLUMOS_ROOT}/emulator/egl_vendor.d/50_mesa.json}"
+unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE
 export MESA_SHADER_CACHE_DISABLE="${MESA_SHADER_CACHE_DISABLE:-true}"
 fit_library="${PLUMOS_PORTMASTER_FIT_LIBRARY:-${PLUMOS_ROOT}/apps/pyxel/lib/plumos-pyxel-fit.so}"
-if [ -r "$fit_library" ] && [ "${PLUMOS_PORTMASTER_FIT:-1}" != 0 ]; then
+if [ -r "$fit_library" ] && [ "${PLUMOS_PORTMASTER_FIT:-0}" != 0 ]; then
   export PLUMOS_PYXEL_FIT=1
   export PLUMOS_PYXEL_FIT_WIDTH=640
   export PLUMOS_PYXEL_FIT_HEIGHT=480
