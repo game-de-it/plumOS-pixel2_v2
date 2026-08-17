@@ -27,6 +27,7 @@ SCRIPT_FILE="${RUN_ROOT}/port.script"
 MOUNTS_FILE="${RUN_ROOT}/port.mounts"
 DRI_DIR="${RUN_ROOT}/dri"
 PORT_BASH="${APP_ROOT}/adapter/bin/aarch64/bash"
+SDL_ROTATE_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-sdl-rotate.so"
 child=""
 restore_frontend=0
 script="${1:-}"
@@ -260,6 +261,12 @@ export LIBGL_DRIVERS_PATH="${DRI_DIR}"
 export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-${PLUMOS_ROOT}/emulator/egl_vendor.d/50_mesa.json}"
 unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE
 export MESA_SHADER_CACHE_DISABLE="${MESA_SHADER_CACHE_DISABLE:-true}"
+[ -r "$SDL_ROTATE_LIB" ] || {
+  printf 'PortMaster Pixel2 SDL rotation library is missing: %s\n' "$SDL_ROTATE_LIB" >&2
+  exit 127
+}
+export PLUMOS_PORTMASTER_SDL_ROTATION=270
+export LD_PRELOAD="${SDL_ROTATE_LIB}${LD_PRELOAD:+:${LD_PRELOAD}}"
 mkdir -p "$XDG_CACHE_HOME" "$HM_PORTS_DIR"
 
 if ! frontend_is_ancestor && frontend_running; then

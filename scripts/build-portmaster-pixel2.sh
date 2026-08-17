@@ -56,7 +56,7 @@ PIXMAN_RUNTIME_VERSION="0.42.2-1"
 SQUASHFS_TOOLS_VERSION="1:4.5.1-1"
 ZIP_VERSION="3.0-13"
 BASH_RUNTIME_VERSION="5.2.15-2+b13"
-ADAPTER_VERSION="21"
+ADAPTER_VERSION="22"
 
 usage() {
     cat <<EOF
@@ -86,7 +86,7 @@ case "${1:-}" in
         ;;
 esac
 
-for tool in cmake curl dpkg-query make md5sum meson ninja sha256sum tar unzip python3 rsync zip; do
+for tool in cc cmake curl dpkg-query make md5sum meson ninja sha256sum tar unzip python3 rsync zip; do
     command -v "$tool" >/dev/null 2>&1 || {
         printf 'error: required tool is unavailable: %s\n' "$tool" >&2
         exit 1
@@ -694,6 +694,10 @@ mkdir -p \
     "$stage_dir/plumos/apps/portmaster/adapter/bin/aarch64" \
     "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64" \
     "$stage_dir/plumos/licenses"
+cc -O2 -fPIC -Wall -Wextra -Werror -shared -I/usr/include/SDL2 \
+    -Wl,-z,defs -Wl,-soname,libplumos-portmaster-sdl-rotate.so \
+    -o "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/libplumos-portmaster-sdl-rotate.so" \
+    "$PACKAGE_DIR/src/plumos_portmaster_sdl_rotate.c" -ldl
 install -m 0755 /usr/bin/unsquashfs \
     "$stage_dir/plumos/apps/portmaster/adapter/bin/aarch64/unsquashfs"
 install -m 0755 /usr/bin/zip \
