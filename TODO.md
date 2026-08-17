@@ -127,8 +127,11 @@
   - [ ] 実adapterで1a2b->c811、2.4/5 GHz、DHCP、SSH/SFTP速度、抜き差し、cold boot復元を確認する
     - [x] `0bda:c820`実adapterを`rtl8821cu`へ直接bindし、2.4 GHz接続、DHCP
       `192.168.10.120`、gateway 20/20 ping、SSH/SFTP SHA一致、5 GHz scanを確認した
-    - [ ] 5 GHzへassociationして上り速度を比較し、別adapterでも残った約59 KiB/sの
-      2.4 GHz SFTP uploadをAP/channel経路とPixel2 RX経路に切り分ける
+    - [x] 5 GHzへassociationし、434 Mbit/s link、DHCP/gateway、SSH 2.11 MiB/s、
+      FTP 2.19--3.22 MiB/s、SFTP下り3.69 MiB/sを確認した
+    - [ ] SFTP上りだけが5 GHzでも0.32--0.65 MiB/sに留まり、4 MiBでTCP retrans
+      +22/timeout +4となる問題を解消する。tmpfs、request数、省電力OFFでは改善せず、
+      FTPではretrans +2/timeout +0だった
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
@@ -307,6 +310,10 @@
     `rtw_wifi_spec`を比較しても改善しなかった。別のWPA2-AES 2.4 GHz APまたは
     2台目の同USB ID dongleでAP相性と個体不良を分離する。詳細は
     [実機throughput調査](docs/validation/2026-08-17-pixel2-usb-wifi-throughput.md)。
+  - 2026-08-17: 別driver/adapterの`0bda:c820` / `8821cu`を5 GHzへ接続すると
+    SSH/FTP上りは2.1--3.2 MiB/sまで改善。一方SFTP上りは0.32--0.65 MiB/sで、
+    SFTP traffic中だけTCP retrans/timeoutが顕著に増える。storage、client request数、
+    cfg80211省電力を除外し、SFTP receive traffic pattern固有の課題として継続する。
 
 ## Image and hardware validation
 

@@ -2,8 +2,8 @@
 
 Date: 2026-08-17
 
-Status: host integration PASS; stock-kernel load/unload PASS; 2.4 GHz adapter
-acceptance PARTIAL; 5 GHz/replug/cold-boot acceptance OPEN
+Status: host integration PASS; stock-kernel load/unload PASS; 2.4/5 GHz
+adapter acceptance PASS; SFTP upload/replug/cold-boot acceptance OPEN
 
 ## Scope
 
@@ -170,9 +170,46 @@ drop counter stayed at eight through the tests.
 This proves the Pixel2-built module, `c820` alias, 2.4 GHz association, DHCP,
 gateway, SSH/SFTP integrity, and 5 GHz scan capability. It does not yet accept
 bulk upload performance. The same approximately 59 KiB/s SFTP upload symptom
-seen with stock `r8188eu` survived a different adapter and driver. A 5 GHz
-association is the next controlled comparison to separate the shared 2.4 GHz
-AP/channel path from Pixel2's receive path.
+seen with stock `r8188eu` survived a different adapter and driver. The 5 GHz
+controlled comparison below separates the shared 2.4 GHz AP/channel path from
+the remaining SFTP behavior.
+
+## Physical 5 GHz comparison
+
+The same adapter was then associated with `k-home-1` at 5220 MHz without
+changing the driver or saved service settings. It kept `192.168.10.120`,
+reported a 434.0 Mbit/s transmit bitrate at -48 to -49 dBm, and passed twenty
+gateway pings with zero loss and a 1.465 ms average.
+
+| 5 GHz path | Result |
+| --- | --- |
+| SSH device to Mac, 64 MiB | 10.28 s, about 6.23 MiB/s |
+| SSH Mac to device `/dev/null`, 32 MiB | 15.19 s, about 2.11 MiB/s |
+| SFTP device to Mac, 8 MiB | 2.17 s, about 3.69 MiB/s |
+| SFTP Mac to `PLUMOS_USER`, 8 MiB | 25.11 s, about 0.32 MiB/s; SHA-256 matched |
+| anonymous FTP Mac to `PLUMOS_USER`, 8 MiB | 3.658 s, about 2.19 MiB/s; SHA-256 matched |
+
+This accepts the 8821CU 5 GHz radio, DHCP, gateway, SSH, FTP, and read-side
+SFTP paths. The approximately fivefold SFTP-upload improvement over 2.4 GHz
+also proves that the previous AP/channel path was a major bottleneck, but the
+remaining SFTP asymmetry is not accepted yet.
+
+An 8 MiB SFTP upload to RAM-backed `/tmp` took 26.09 seconds, essentially the
+same as the FAT32 result, while FTP to the same user storage reached 2.19 to
+3.22 MiB/s. Increasing the OpenSSH client outstanding request count from 64 to
+256 changed the RAM-backed SFTP run only from 26.09 to 22.83 seconds. During a
+controlled 4 MiB comparison, SFTP added 22 TCP retransmissions and four TCP
+timeouts; FTP added two retransmissions and no timeout. A repeated 8 MiB SFTP
+run with cfg80211 power save disabled took 23.60 seconds and added 53
+retransmissions and twenty timeouts, so power save was restored to ON and no
+persistent tuning was applied. The Wi-Fi netdev RX/TX error counters stayed at
+zero and its TX drop count stayed at eight.
+
+The remaining SFTP issue is therefore above storage and below ordinary
+filesystem semantics: its SSH/SFTP receive traffic pattern triggers TCP
+retransmission on this path, while FTP and a raw SSH stream remain usable.
+This must remain a separate release item instead of invalidating the verified
+8821CU driver and 5 GHz integration.
 
 ## Physical release gate
 
@@ -187,8 +224,8 @@ Release acceptance remains open until the real device passes all of:
 
 1. initial `1a2b` mode switch and `c811` binding without manual commands (the
    tested adapter is a direct `c820` device);
-2. 5 GHz association, DHCP, gateway reachability, and upload comparison (2.4
-   GHz and 5 GHz scanning already pass);
+2. 2.4/5 GHz association, DHCP, and gateway reachability (pass on the tested
+   direct-`c820` adapter);
 3. FE Information and all enabled network-service states;
 4. SSH/SFTP transfer and measured throughput/error counters;
 5. dongle unplug/replug recovery;
