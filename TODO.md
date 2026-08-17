@@ -104,11 +104,13 @@
   - [x] PortMaster
   - [x] Update PortMaster
   - [x] Ports systemからPortMaster install済みscriptを起動する導線
+  - [x] Wi-Fi経由の公式catalog更新、Ready-to-Run portのinstall・起動・音声・入力handoff・表示・FE復帰を実機検証する
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
   - 2026-08-15: 実機backend監査でScraping plan、File Manager、Music Player、RetroArch RGUI、Pyxel Setup、PortMasterを合格。RetroArch Appのudev準備漏れ、FE stop/launch helper欠落、zombie誤認を`85fffad`で修正。Update PortMasterのnetwork installと7 AppsのFE物理選択は継続。
   - 2026-08-15: File ManagerのMF button order誤流用と、回転rendererが論理640幅を物理480幅でclipする不具合を`9b4070d`、`0106a75`で修正。署名Runtime、全幅DRM capture、event2経由のD-pad/A/B/FUNCTION/Quit、FE再取得に合格。実物buttonのoperator目視は継続。
   - 2026-08-15: File Managerが外部commandを`execvp("cp")`等で起動する一方、Pixel2 Systemには個別の`/bin/cp`等が無く、copy/move/link/rename/delete/mkdirが失敗していた。`883fd1d`でPixel2だけBusyBox本体へapplet名を渡す実行方式に変更し、複数選択progress判定も修正。署名Runtime `0.1.0-dev-883fd1d`を適用し、実際のX/A操作によるcopy、コピー元/先SHA-256一致、FE復帰に合格。
   - 2026-08-15: Music PlayerがLinuxの`BTN_A=304`、`BTN_B=305`を物理labelとして扱い、Pixel2の物理A=305/B=304と逆転していた。FUNCTION=704も未処理だった。`b370bfa`でA=再生、B/FUNCTION=終了へ修正し、D-pad、A/B/X/Y、START/SELECT、L/R、FUNCTIONの実機EV_KEY経路、3曲遷移、音声開始、clean exit、FE復帰に合格。
+  - 2026-08-17: V90S/XU20/MFのPortMaster履歴を基に不足ABI、audio、UINPUT、KMS handoffを補完。RTL8821CU Wi-Fi上で公式catalogを更新し、Ready-to-Run OpenSyobonをinstall。共通SDL interposerで640x480 logical viewをPixel2の480x640 scanoutへ正しく回転し、GUI/game capture、ALSA RUNNING、gptokeyb UINPUT、終了後FE復帰、Wi-Fi維持、mutable install保持、実機root checksumに合格。詳細は`docs/validation/2026-08-17-pixel2-portmaster-ports.md`。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する
