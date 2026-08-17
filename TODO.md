@@ -146,6 +146,11 @@
       - 2026-08-17: dongle接続状態のrebootではLED消灯・SSH未復帰を再現。Wi-Fiより先に
         起動するADBが保存ONだけを見て唯一のOTG portをdevice roleへ強制していた。
         upstream VBUSなしではADB intentを保持したままhost roleにするarbiterを追加した。
+      - 2026-08-17: arbiter適用後のrebootではADBはhost待機へ正しく移行したが、DWC2が
+        挿しっぱなしの`c820`を列挙せず、物理抜き差し時のuptime 733秒で初めて現れた。
+        実機上で`ff300000.usb`だけをunbind/bindすると1秒以内に再列挙し、`.110`へ自動
+        復帰した。Wi-Fi保存ON、upstream VBUSなし、downstream未列挙時だけ同じresetを
+        非同期実行するSystem serviceを追加し、signed Systemでのreboot再試験を継続する。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

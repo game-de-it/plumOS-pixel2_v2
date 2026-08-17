@@ -26,6 +26,7 @@ for script in \
     "$ROOT_DIR/rootfs/pixel2/sbin/init" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/systemd/systemd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"; do
@@ -56,6 +57,12 @@ grep -q '/sys/class/power_supply/usb/online' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'waiting-usb-upstream role=host' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+test -x "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
+"$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
+grep -q 'ff300000.usb' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
+grep -q 'usb-upstream-online' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'transport=nonblocking FunctionFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 ! grep -q 'PLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"

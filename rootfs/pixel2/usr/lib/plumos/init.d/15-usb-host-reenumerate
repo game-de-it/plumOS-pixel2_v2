@@ -1,0 +1,119 @@
+#!/bin/sh
+set -u
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+USB_ONLINE="${PLUMOS_USB_HOST_USB_ONLINE:-/sys/class/power_supply/usb/online}"
+USB_DEVICES_ROOT="${PLUMOS_USB_HOST_DEVICES_ROOT:-/sys/bus/usb/devices}"
+DWC2_DRIVER="${PLUMOS_USB_HOST_DWC2_DRIVER:-/sys/bus/platform/drivers/dwc2}"
+PLATFORM_DEVICE="${PLUMOS_USB_HOST_PLATFORM_DEVICE:-/sys/bus/platform/devices/ff300000.usb}"
+DEVICE_ID="${PLUMOS_USB_HOST_DEVICE_ID:-ff300000.usb}"
+WPA_CONFIG="${PLUMOS_USB_HOST_WPA_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}"
+SETTINGS="${PLUMOS_USB_HOST_SETTINGS:-/mnt/plumos/config/system/settings.json}"
+LOG="${PLUMOS_USB_HOST_LOG:-/state/plumos/logs/usb-host-reenumerate.log}"
+RESET_DELAY="${PLUMOS_USB_HOST_RESET_DELAY:-2}"
+ENUMERATION_WAIT="${PLUMOS_USB_HOST_ENUMERATION_WAIT:-3}"
+
+log() {
+    mkdir -p "${LOG%/*}"
+    printf '%s service=usb-host-reenumerate %s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
+}
+
+wifi_requested() {
+    [ -s "$WPA_CONFIG" ] || return 1
+    if [ -r "$SETTINGS" ] &&
+        grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \
+            "$SETTINGS" 2>/dev/null; then
+        return 1
+    fi
+    return 0
+}
+
+usb_upstream_online() {
+    [ -r "$USB_ONLINE" ] || return 1
+    value=$(tr -d '[:space:]' <"$USB_ONLINE" 2>/dev/null || true)
+    [ "$value" = 1 ]
+}
+
+downstream_present() {
+    for device in "$USB_DEVICES_ROOT"/*; do
+        [ -r "$device/idVendor" ] || continue
+        case "${device##*/}" in usb*) continue ;; esac
+        return 0
+    done
+    return 1
+}
+
+worker() {
+    wifi_requested || {
+        log 'result=skipped reason=wifi-not-requested'
+        return 0
+    }
+    [ -r "$USB_ONLINE" ] || {
+        log "result=skipped reason=usb-upstream-signal-missing path=$USB_ONLINE"
+        return 0
+    }
+    if usb_upstream_online; then
+        log 'result=skipped reason=usb-upstream-online'
+        return 0
+    fi
+    if downstream_present; then
+        log 'result=skipped reason=downstream-already-enumerated'
+        return 0
+    fi
+    [ -d "$PLATFORM_DEVICE" ] || {
+        log "result=skipped reason=controller-missing device=$DEVICE_ID"
+        return 0
+    }
+    [ -w "$DWC2_DRIVER/bind" ] || {
+        log "result=failed reason=bind-unavailable driver=$DWC2_DRIVER"
+        return 1
+    }
+
+    if [ -L "$PLATFORM_DEVICE/driver" ]; then
+        [ -w "$DWC2_DRIVER/unbind" ] || {
+            log "result=failed reason=unbind-unavailable driver=$DWC2_DRIVER"
+            return 1
+        }
+        printf '%s\n' "$DEVICE_ID" >"$DWC2_DRIVER/unbind" || {
+            log 'result=failed stage=unbind'
+            return 1
+        }
+        log "stage=unbound device=$DEVICE_ID"
+        sleep "$RESET_DELAY"
+    fi
+
+    printf '%s\n' "$DEVICE_ID" >"$DWC2_DRIVER/bind" || {
+        log 'result=failed stage=bind'
+        return 1
+    }
+    log "stage=bound device=$DEVICE_ID"
+
+    elapsed=0
+    while [ "$elapsed" -lt "$ENUMERATION_WAIT" ]; do
+        if downstream_present; then
+            log "result=reenumerated elapsed=$elapsed"
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    log 'result=reset-complete downstream=absent'
+}
+
+start_worker() {
+    # Do not add DWC2 reset time to the boot critical path.  Service 20 starts
+    # the Wi-Fi uevent monitor while this worker holds the controller unbound,
+    # so the subsequent USB add is observed; its initial recovery is also a
+    # fallback if enumeration wins the race.
+    "$0" worker </dev/null >>"$LOG" 2>&1 &
+    log "result=scheduled pid=$!"
+}
+
+case "${1:-}" in
+    start) start_worker ;;
+    worker) worker ;;
+    *) printf 'usage: %s {start|worker}\n' "$0" >&2; exit 2 ;;
+esac

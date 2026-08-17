@@ -270,6 +270,24 @@ Only `usb/online=1` may select device role and bind FunctionFS. With
 selects host role for Wi-Fi. The existing hardware-key transition handler can
 still start/rebind ADB when a Mac/PC cable is connected later.
 
+The first physical reboot with that arbitration installed proved the ADB
+portion but exposed a second, lower-level Pixel2 difference from V90S. At
+uptime 0 the DWC2 root hub was registered and ADB logged
+`waiting-usb-upstream role=host`, but no downstream USB device was present in
+sysfs. The initial Wi-Fi recovery therefore failed with
+`stage=no_usb_wifi_dongle`. The already-inserted direct `c820` appeared only at
+uptime 733 seconds when it was physically unplugged and replugged; association
+and DHCP then completed normally at `192.168.10.110`.
+
+A bounded live probe unbound only `ff300000.usb` from the `dwc2` platform
+driver, waited two seconds, and rebound the same controller. The inserted
+adapter re-enumerated as `0bda:c820` within one second and the saved Wi-Fi path
+returned to `192.168.10.110` without a physical replug. The System now performs
+that controller-local reset asynchronously before Wi-Fi startup only when all
+of these conditions hold: Wi-Fi is saved ON with credentials, upstream USB
+VBUS is absent, and no downstream USB device is already enumerated. A Mac/PC
+ADB cable and an already-working USB device are explicit no-op paths.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has
