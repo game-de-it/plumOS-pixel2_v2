@@ -257,6 +257,19 @@ calls. Recovery now checks the read-only network status after settling and
 skips queued events once Wi-Fi already has IPv4. This preserves event-driven
 behavior without adding a timer or polling loop.
 
+The subsequent reboot with the adapter left attached did not power its LED and
+never returned SSH. This is below Wi-Fi recovery: System starts ADB before
+Wi-Fi, and the Pixel2 ADB service forced the only dual-role OTG port to
+`device` whenever ADB was saved ON, even when no upstream USB VBUS existed.
+Consequently the kernel could not enumerate the dongle and emitted no USB
+event for the monitor.
+
+Pixel2 now arbitrates the shared port from the hardware power-supply signal.
+Only `usb/online=1` may select device role and bind FunctionFS. With
+`usb/online=0`, ADB remains enabled as user intent but releases the gadget and
+selects host role for Wi-Fi. The existing hardware-key transition handler can
+still start/rebind ADB when a Mac/PC cable is connected later.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has

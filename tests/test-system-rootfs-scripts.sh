@@ -52,6 +52,10 @@ grep -q 'pixel2_joypad' \
 grep -q 'physical_yres' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q '/sys/class/power_supply/usb/online' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'waiting-usb-upstream role=host' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'transport=nonblocking FunctionFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 ! grep -q 'PLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"

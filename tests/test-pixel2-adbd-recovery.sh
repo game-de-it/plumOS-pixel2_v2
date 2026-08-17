@@ -15,10 +15,12 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$TMP/gadget" "$TMP/udc/fake-udc" "$TMP/run" "$TMP/log" \
-    "$TMP/config" "$TMP/proc"
+    "$TMP/config" "$TMP/proc" "$TMP/usb-role/controller"
 printf '%s\n' fake-udc >"$TMP/gadget/UDC"
 printf '%s\n' configured >"$TMP/udc/fake-udc/state"
 printf '%s\n' adb_enabled=1 >"$TMP/config/services.conf"
+printf '%s\n' 1 >"$TMP/usb-online"
+printf '%s\n' device >"$TMP/usb-role/controller/role"
 
 sleep 30 &
 ADBD_PID=$!
@@ -34,6 +36,8 @@ service_env=(
     PLUMOS_ADB_ACTION_LOCK="$TMP/run/adbd-action.lock"
     PLUMOS_ADB_LOG="$TMP/log/adbd.log"
     PLUMOS_ADB_PROC_ROOT="$TMP/proc"
+    PLUMOS_ADB_USB_ONLINE="$TMP/usb-online"
+    PLUMOS_ADB_USB_ROLE_GLOB="$TMP/usb-role/*/role"
     PLUMOS_ADB_SERVICES_CONF="$TMP/config/services.conf"
     PLUMOS_ADB_OPT_IN_MARKER="$TMP/config/enable-adb"
     PLUMOS_ADB_RECOVERY_WAIT=2
@@ -79,5 +83,16 @@ rmdir "$TMP/run/adbd-action.lock" 2>/dev/null || {
     rm -f "$TMP/run/adbd-action.lock/pid"
     rmdir "$TMP/run/adbd-action.lock"
 }
+
+# With a dongle attached there is no upstream VBUS. ADB must release its
+# gadget and leave the only Pixel2 OTG port in host role.
+printf '%s\n' 0 >"$TMP/usb-online"
+env "${service_env[@]}" "$SERVICE" replug
+grep -q 'result=replug-host role=host reason=no-upstream-vbus' \
+    "$TMP/log/adbd.log"
+test "$(cat "$TMP/usb-role/controller/role")" = host
+test ! -s "$TMP/gadget/UDC"
+status="$(env "${service_env[@]}" "$SERVICE" status)"
+grep -Fxq 'state=waiting_usb' <<<"$status"
 
 printf '%s\n' 'pixel2_adbd_recovery=result-ok'

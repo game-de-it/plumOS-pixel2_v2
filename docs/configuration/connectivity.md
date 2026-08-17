@@ -66,6 +66,12 @@ stock kernel 5.10.198から採取した`r8188eu`に加え、V90Sで実機実績�
 RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して
 再現可能にbuildしてSystemへ収録する。V90Sのkernel 4.9用module binaryは流用しない。
 
+Pixel2のUSB portは1つのdual-role OTGでADBとUSB Wi-Fiが排他的に共有する。
+`/sys/class/power_supply/usb/online=1`（Mac/PCからVBUSあり）の場合だけADBがdevice
+roleを要求する。`online=0`ではADBの保存済みON設定を変更せずgadgetを解放し、host roleで
+dongleを列挙する。後でMac/PCケーブルへ差し替えるとhardware-key serviceが既存のbounded
+ADB replugを呼び、device roleとFunctionFSを復元する。
+
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
 Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、
 `0bda:c811`への再列挙を待って`8821cu`をloadする。直接`0bda:c811`または

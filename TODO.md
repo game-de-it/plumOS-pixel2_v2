@@ -143,6 +143,9 @@
       - 2026-08-17: ADBからdirect `c820`へ差し替えるだけで5 GHz `k-home-1`、DHCP
         `192.168.10.120`、全network serviceが自動復帰した。USB/net addのqueueにより
         接続後も4回再実行されたため、接続済みevent抑止とcold boot再試験を継続する。
+      - 2026-08-17: dongle接続状態のrebootではLED消灯・SSH未復帰を再現。Wi-Fiより先に
+        起動するADBが保存ONだけを見て唯一のOTG portをdevice roleへ強制していた。
+        upstream VBUSなしではADB intentを保持したままhost roleにするarbiterを追加した。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

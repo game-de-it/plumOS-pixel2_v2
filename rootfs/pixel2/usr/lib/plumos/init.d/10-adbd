@@ -12,6 +12,8 @@ ACTION_LOCK="${PLUMOS_ADB_ACTION_LOCK:-/run/plumos/adbd-action.lock}"
 LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
 SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
 PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
+USB_ONLINE="${PLUMOS_ADB_USB_ONLINE:-/sys/class/power_supply/usb/online}"
+USB_ROLE_GLOB="${PLUMOS_ADB_USB_ROLE_GLOB:-/sys/class/usb_role/*/role}"
 SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 RECOVERY_DELAY="${PLUMOS_ADB_RECOVERY_DELAY:-4}"
@@ -148,6 +150,21 @@ adb_enabled_by_policy() {
     esac
 }
 
+usb_upstream_offline() {
+    [ -r "$USB_ONLINE" ] || return 1
+    value=$(tr -d '[:space:]' <"$USB_ONLINE" 2>/dev/null || true)
+    [ "$value" = 0 ]
+}
+
+set_usb_role() {
+    requested=$1
+    for role_file in $USB_ROLE_GLOB; do
+        [ -w "$role_file" ] || continue
+        printf '%s\n' "$requested" >"$role_file" 2>>"$LOG" || true
+        log "usb_role path=$role_file value=$(cat "$role_file" 2>/dev/null || true)"
+    done
+}
+
 stop_adbd() {
     stop_recovery
     if [ -e "$GADGET/UDC" ]; then
@@ -176,6 +193,16 @@ start_adbd() {
         log 'result=failed reason=binary-missing'
         return 1
     }
+    # Pixel2 has one dual-role port. A Wi-Fi dongle supplies no upstream VBUS;
+    # forcing device role in that state prevents the host controller from
+    # enumerating or powering the dongle. Keep ADB enabled as saved intent but
+    # leave the port in host role until a Mac/PC cable makes usb/online=1.
+    if usb_upstream_offline; then
+        stop_adbd
+        set_usb_role host
+        log 'result=waiting-usb-upstream role=host'
+        return 0
+    fi
     if pid_running && gadget_bound; then
         log "result=already-running pid=$(cat "$PID")"
         return 0
@@ -186,11 +213,7 @@ start_adbd() {
     fi
     [ -d /sys/kernel/config/usb_gadget ] || \
         mount -t configfs configfs /sys/kernel/config
-    for role_file in /sys/class/usb_role/*/role; do
-        [ -w "$role_file" ] || continue
-        printf 'device\n' >"$role_file" 2>>"$LOG" || true
-        log "usb_role path=$role_file value=$(cat "$role_file" 2>/dev/null || true)"
-    done
+    set_usb_role device
     mdev -s 2>/dev/null || true
     sleep 1
     udc_path=$(udc_path 2>/dev/null) || {
@@ -315,6 +338,12 @@ replug_adbd() {
         log 'result=replug-skipped reason=disabled'
         return 0
     fi
+    if usb_upstream_offline; then
+        stop_adbd
+        set_usb_role host
+        log 'result=replug-host role=host reason=no-upstream-vbus'
+        return 0
+    fi
     if pid_running && gadget_bound; then
         state=$(udc_state 2>/dev/null || true)
         log "action=rebind reason=usb-replug state=${state:-unknown}"
@@ -345,6 +374,8 @@ status_adbd() {
         udc_state=$(cat "$udc_path/state" 2>/dev/null || true)
     if ! adb_enabled_by_policy; then
         state=disabled
+    elif usb_upstream_offline; then
+        state=waiting_usb
     elif pid_running && [ "$bound" -eq 1 ]; then
         case "$udc_state" in
             configured|suspended) state=running ;;
