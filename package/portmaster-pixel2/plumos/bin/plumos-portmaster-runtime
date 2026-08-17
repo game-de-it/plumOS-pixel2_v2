@@ -92,6 +92,9 @@ prepare() {
 
   link_one libSDL2-2.0.so.0 \
     "${PLUMOS_ROOT}/apps/pyxel/lib/libSDL2-2.0.so.0"
+  link_one libgcc_s.so.1 \
+    "${PLUMOS_ROOT}/lib/libgcc_s.so.1" \
+    "${NEXTCOMMANDER_LIB}/libgcc_s.so.1"
   link_one libSDL2_image-2.0.so.0 \
     "${PLUMOS_ROOT}/lib/libSDL2_image-2.0.so.0.600.3" \
     "${PLUMOS_ROOT}/apps/nextcommander/lib/libSDL2_image-2.0.so.0.600.3"
