@@ -19,7 +19,9 @@ case "${SUBSYSTEM:-}" in
     ;;
   usb)
     case "${PRODUCT:-}" in
-      0bda/1a2b/*|0BDA/1A2B/*|bda/1a2b/*|BDA/1A2B/*) ;;
+      0bda/1a2b/*|0BDA/1A2B/*|bda/1a2b/*|BDA/1A2B/*|\
+      0bda/c811/*|0BDA/C811/*|bda/c811/*|BDA/C811/*|\
+      0bda/c820/*|0BDA/C820/*|bda/c820/*|BDA/C820/*) ;;
       *) exit 0 ;;
     esac
     ;;

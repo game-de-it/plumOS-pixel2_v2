@@ -80,10 +80,22 @@ env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0bda/1a2b/200 \
   "$root/bin/plumos-wifi-uevent"
 [ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 2 ]
 
+# Pixel2's tested RTL8821CU adapter enumerates directly as c820. Both direct
+# aliases must load the driver without relying on a later wlan uevent.
+env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0bda/c811/200 \
+  "$root/bin/plumos-wifi-uevent"
+env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0BDA/C820/200 \
+  "$root/bin/plumos-wifi-uevent"
+[ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 4 ]
+
+env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0bda/8179/200 \
+  "$root/bin/plumos-wifi-uevent"
+[ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 4 ]
+
 printf '{"wifi_enabled": false}\n' >"$root/config/system/settings.json"
 env "${recovery_env[@]}" ACTION=add SUBSYSTEM=net INTERFACE=wlan0 \
   "$root/bin/plumos-wifi-uevent"
-[ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 2 ]
+[ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 4 ]
 grep -q 'recover_skipped reason=wifi_disabled' "$root/logs/wifi-recovery.log"
 
 env "${recovery_env[@]}" "$root/bin/plumos-wifi-recovery" sync

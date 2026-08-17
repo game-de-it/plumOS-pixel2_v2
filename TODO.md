@@ -133,7 +133,10 @@
       +22/timeout +4となる問題を解消する。tmpfs、request数、省電力OFFでは改善せず、
       FTPではretrans +2/timeout +0だった
     - [x] Pixel2で欠落していたV90S方式のkernel uevent monitorとbounded recoveryを
-      移植し、wlan add/1a2b add、Wi-Fi OFF抑止、PID検証をhost testで確認した
+      移植し、wlan add/1a2b/c811/c820 add、Wi-Fi OFF抑止、PID検証をhost testで確認した
+      - 2026-08-17: direct `c820`追加を監視対象に含めていなかったため、抜き差し後は
+        手動OFF/ONまでmoduleがloadされなかった。Runtime `42bcb46`の実機ログで原因を
+        確定し、direct aliasもbounded recoveryへ接続した。物理再試験は継続する。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

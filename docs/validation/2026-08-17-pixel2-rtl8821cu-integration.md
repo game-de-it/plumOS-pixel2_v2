@@ -211,6 +211,24 @@ retransmission on this path, while FTP and a raw SSH stream remain usable.
 This must remain a separate release item instead of invalidating the verified
 8821CU driver and 5 GHz integration.
 
+## Hotplug recovery diagnosis
+
+Signed Runtime `0.1.0-dev-42bcb46` installed the V90S-style blocking kernel
+uevent monitor and passed Runtime health promotion. On the first physical
+test, the monitor was running, but the direct adapter appeared at uptime
+1799.87 as `0bda:c820` and `8821cu.ko` was not loaded until the operator used
+Wi-Fi OFF/ON at uptime 1817. The saved connection then recovered at
+`192.168.10.120`.
+
+The cause was an incomplete event filter: it accepted the V90S storage-mode
+ID `0bda:1a2b` and a later `wlan*` add, but not Pixel2's already-observed
+direct `c811/c820` USB aliases. With no general userspace modalias loader in
+the minimal System, a direct USB add cannot produce a wlan add until the
+external module has first been loaded. The Pixel2 helper now accepts all
+three RTL8821CU USB IDs. Its existing recovery lock coalesces the USB add and
+the subsequent wlan add into one bounded network-control attempt. Unrelated
+Realtek IDs remain ignored.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has
