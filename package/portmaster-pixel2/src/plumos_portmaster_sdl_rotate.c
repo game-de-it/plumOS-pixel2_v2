@@ -249,11 +249,17 @@ void SDL_RenderPresent(SDL_Renderer *renderer) {
         real_render_present(renderer);
         return;
     }
-    if (real_get_renderer_output_size(renderer, &output_width, &output_height) != 0 ||
-        output_width < 1 || output_height < 1) {
+    if (real_get_renderer_output_size(renderer, &output_width, &output_height) != 0) {
         real_render_present(renderer);
         return;
     }
+    /*
+     * KMSDRM reports the landscape window size after SDL_GetWindowSize is
+     * interposed, even though its actual DRM target remains panel-native.
+     * The Pixel2 target is fixed by the stock boot/display substrate.
+     */
+    output_width = 480;
+    output_height = 640;
 
     real_render_get_logical_size(renderer, &logical_width, &logical_height);
     real_render_get_scale(renderer, &scale_x, &scale_y);
