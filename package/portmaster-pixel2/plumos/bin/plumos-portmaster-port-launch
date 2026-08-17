@@ -269,7 +269,7 @@ fi
 
 printf '\n[%s] script=%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$script" \
   "$(printf '%s' "$audio_status" | tr '\n' ' ')" >> "$LOG_FILE"
-LD_LIBRARY_PATH="${RUN_ROOT}/lib" setsid "$PORT_BASH" "$script" "$@" >> "$LOG_FILE" 2>&1 &
+setsid "$PORT_BASH" "$script" "$@" >> "$LOG_FILE" 2>&1 &
 child=$!
 printf '%s\n' "$child" > "$PID_FILE"
 sed 's/.*) //' "/proc/${child}/stat" | awk '{print $20}' > "$START_FILE"
