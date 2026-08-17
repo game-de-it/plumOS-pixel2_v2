@@ -49,7 +49,6 @@ MANAGED_CONFIG_PREFIXES = (
 )
 
 PERSISTENT_PREFIXES = (
-    "apps/portmaster/installed.json",
     "apps/portmaster/upstream/",
     "apps/portmaster/upstream.previous/",
 )

@@ -63,7 +63,6 @@ MANAGED_CONFIG_PREFIXES = (
     "config/system/input-map.json",
 )
 PERSISTENT_PREFIXES = (
-    "apps/portmaster/installed.json",
     "apps/portmaster/upstream/",
     "apps/portmaster/upstream.previous/",
 )

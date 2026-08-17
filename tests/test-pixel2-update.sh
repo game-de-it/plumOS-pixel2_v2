@@ -26,12 +26,13 @@ write_runtime_fixture() {
     root=$1
     version=$2
     tool_value=$3
-    mkdir -p "$root/bin" "$root/config/frontend" "$root/config/system" \
+    mkdir -p "$root/apps/portmaster" "$root/bin" "$root/config/frontend" "$root/config/system" \
         "$root/fonts" "$root/network/bin" "$root/ssh/libexec"
     printf '%s\n' "$version" >"$root/VERSION"
     printf '%s\n' "$VENDOR" >"$root/COMPAT_VENDOR"
     printf '%s\n' "$RUNTIME_ABI" >"$root/RUNTIME_ABI"
     printf '%s\n' "$tool_value" >"$root/bin/test-tool"
+    printf '%s\n' "$version" >"$root/apps/portmaster/installed.json"
     printf '%s\n' '{"device":"pixel2"}' >"$root/manifest.json"
     printf '%s\n' '{"device":"pixel2","contract":"complete"}' \
         >"$root/config/frontend/feature-contract.json"
@@ -161,7 +162,7 @@ with tarfile.open(Path(sys.argv[1]), "r:gz") as archive:
     manifest = json.load(archive.extractfile("META/manifest.json"))
 assert manifest["full_payload"] is False
 assert {entry["path"] for entry in manifest["files"]} == {
-    "VERSION", "bin/test-tool", "checksums.sha256"
+    "VERSION", "apps/portmaster/installed.json", "bin/test-tool", "checksums.sha256"
 }
 PY
 cp "$dist/plumos-pixel2-runtime-1.0.1.tar.gz" "$user_root/updates/"
@@ -169,6 +170,7 @@ run_updater request-latest >/dev/null
 run_updater apply-pending
 assert_file_value "$runtime_root/VERSION" 1.0.1
 assert_file_value "$runtime_root/bin/test-tool" new
+assert_file_value "$runtime_root/apps/portmaster/installed.json" 1.0.1
 assert_file_value "$runtime_root/config/user/settings.ini" preserve-me
 [ -f "$runtime_root/update-state/runtime-pending.json" ] || \
     fail 'Runtime update did not enter pending-health state'
