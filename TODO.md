@@ -156,6 +156,11 @@
         stock DTBで`vbus-supply`が欠落しDWC2がdummy regulatorを使うことを確定。stock DTBを
         inputに既存RK817 `OTG_SWITCH`への1 propertyだけを追加し、他差分を拒否する生成gateを
         追加した。stock kernel/initramfsと`dr_mode=otg`は維持し、実機boot/充電rebootを再検証する。
+      - 2026-08-17: patched runtime DTBを実機へreadback検証付きで配備し、stock DTBは
+        `/flash/rk3326s-gkd-pixel2.dtb.stock-a7a438f7`へ退避した。8821CUを挿したまま再起動し、
+        物理抜き差しなしでuptime 2.05秒に`0bda:c820`、9.38秒に`8821cu`、10.25秒に
+        `wlan0`、保存SSIDの`.110`へ復帰した。Wi-Fi saved-ON reboot gateは合格し、
+        true power-off cold bootは引き続き実機gateとする。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

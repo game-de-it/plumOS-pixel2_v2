@@ -305,6 +305,18 @@ stock `Image`, embedded initramfs, kernel ABI, U-Boot DTB, and runtime-DTB
 and charging behavior remain physical release gates alongside saved-Wi-Fi
 boot recovery.
 
+Commit `b1f6228` generated runtime-DTB SHA-256
+`89a32c94ebfae5983b1cf98209aaf8f11a6d8d2f7d29d66008d35125a2e328dc`.
+It was installed with a verified stock backup at
+`/flash/rk3326s-gkd-pixel2.dtb.stock-a7a438f7`, then read back before `/flash`
+was returned to read-only. With the 8821CU inserted throughout a safe reboot,
+the unmodified stock kernel enumerated `0bda:c820` at uptime 2.05 seconds,
+loaded `8821cu` at 9.38 seconds, reported `wlan0` ready at 10.25 seconds, and
+restored saved-SSID address `192.168.10.110` without a physical replug. The
+boot re-enumeration service correctly skipped its later reset because the
+downstream device was already present. This closes the saved-Wi-Fi reboot
+gate; upstream ADB and charging-state reboot remain separate physical gates.
+
 ## Physical release gate
 
 The public kernel tree has a partial `Module.symvers`, stock has
@@ -322,5 +334,6 @@ Release acceptance remains open until the real device passes all of:
    direct-`c820` adapter);
 3. FE Information and all enabled network-service states;
 4. SSH/SFTP transfer and measured throughput/error counters;
-5. dongle unplug/replug recovery;
-6. saved Wi-Fi recovery after a true power-off cold boot.
+5. dongle unplug/replug recovery (pass on the tested direct-`c820` adapter);
+6. saved Wi-Fi recovery after a true power-off cold boot (saved-ON safe reboot
+   passes without a physical replug).
