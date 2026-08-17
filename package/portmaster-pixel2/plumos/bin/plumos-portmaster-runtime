@@ -3,6 +3,7 @@ set -eu
 
 PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
 RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+BUSYBOX_BIN_DIR="${RUN_ROOT}/busybox-bin"
 APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
 STATE_ROOT="${PLUMOS_ROOT}/state/portmaster"
 DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${STATE_ROOT}/data}"
@@ -69,7 +70,12 @@ prepare() {
       exit 1
     }
   done
-  mkdir -p "$RUN_ROOT" "$LIB_DIR" "${PLUMOS_ROOT}/logs/apps"
+  mkdir -p "$RUN_ROOT" "$BUSYBOX_BIN_DIR" "$LIB_DIR" \
+    "${PLUMOS_ROOT}/logs/apps"
+  find "$BUSYBOX_BIN_DIR" -type l -delete 2>/dev/null || true
+  for applet in $(/bin/busybox --list); do
+    ln -sf /bin/busybox "${BUSYBOX_BIN_DIR}/${applet}"
+  done
   [ -e /dev/fd ] || ln -s /proc/self/fd /dev/fd 2>/dev/null || true
   [ -e /dev/stdin ] || ln -s /proc/self/fd/0 /dev/stdin 2>/dev/null || true
   [ -e /dev/stdout ] || ln -s /proc/self/fd/1 /dev/stdout 2>/dev/null || true

@@ -4,10 +4,12 @@ set -eu
 PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
 APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
 DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${PLUMOS_ROOT}/state/portmaster/data}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
 export PLUMOS_ROOT PLUMOS_PORTMASTER_APP_ROOT="$APP_ROOT"
 export PLUMOS_PORTMASTER_DATA_ROOT="$DATA_ROOT"
 
 "${PLUMOS_ROOT}/bin/plumos-portmaster-runtime" prepare >/dev/null
+export PATH="${APP_ROOT}/adapter/shims:${RUN_ROOT}/busybox-bin:${APP_ROOT}/adapter/bin/aarch64:${PLUMOS_ROOT}/bin:${PATH}"
 
 TIME_SYNC="${PLUMOS_TIME_SYNC_HELPER:-${PLUMOS_ROOT}/bin/plumos-time-sync}"
 if [ -x "$TIME_SYNC" ]; then
