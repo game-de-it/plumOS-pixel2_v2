@@ -166,6 +166,41 @@ prepare_compat_mount() {
   printf '%s\n' "$compat_target" >> "$MOUNTS_FILE"
 }
 
+prepare_patcher_compat() {
+  patcher_target="${PM_DIR}/utils/patcher.txt"
+  patcher_override="${PLUMOS_PORTMASTER_PATCHER_OVERRIDE:-${APP_ROOT}/adapter/overrides/patcher.txt}"
+  talkies_target="${PM_DIR}/utils/patcher/talkies.lua"
+  talkies_override="${RUN_ROOT}/patcher-talkies.lua"
+  box_y_line='  local boxY = windowHeight-(boxH+currentDialog.padding)'
+
+  for required in "$patcher_target" "$patcher_override" "$talkies_target"; do
+    [ -f "$required" ] || {
+      printf 'PortMaster patcher compatibility file is missing: %s\n' \
+        "$required" >&2
+      return 1
+    }
+  done
+  if is_mounted "$patcher_target" || is_mounted "$talkies_target"; then
+    printf 'PortMaster has a stale patcher compatibility mount\n' >&2
+    return 1
+  fi
+  [ "$(grep -Fxc "$box_y_line" "$talkies_target")" -eq 1 ] || {
+    printf 'PortMaster patcher dialog layout is unsupported: %s\n' \
+      "$talkies_target" >&2
+    return 1
+  }
+
+  # Keep the 640x480 dialog and its lowest text row clear of the LCD edge.
+  sed "s/${box_y_line}/${box_y_line}-12/" \
+    "$talkies_target" > "$talkies_override" || return 1
+  grep -Fq "${box_y_line}-12" "$talkies_override" || return 1
+
+  mount --bind "$patcher_override" "$patcher_target" || return 1
+  printf '%s\n' "$patcher_target" >> "$MOUNTS_FILE"
+  mount --bind "$talkies_override" "$talkies_target" || return 1
+  printf '%s\n' "$talkies_target" >> "$MOUNTS_FILE"
+}
+
 patch_known_port_runtime_path() {
   case "$(basename "$script" | tr '[:upper:]' '[:lower:]')" in
     'moonlight new.sh') ;;
@@ -252,6 +287,7 @@ fi
 : > "$MOUNTS_FILE"
 patch_known_port_runtime_path || exit 1
 prepare_compat_mount || exit 1
+prepare_patcher_compat || exit 1
 for name in config libs themes; do
   source_dir="${STATE_ROOT}/${name}"
   target_dir="${PM_DIR}/${name}"
@@ -267,6 +303,7 @@ export PLUMOS_ROOT PLUMOS_RUNTIME_ROOT="/run/plumos"
 export PLUMOS_PORTMASTER_APP_ROOT="$APP_ROOT"
 export PLUMOS_PORTMASTER_DATA_ROOT="$DATA_ROOT"
 export PLUMOS_PORTMASTER_MOUNTS_FILE="$MOUNTS_FILE"
+export PORT_BASH
 export HOME="${STATE_ROOT}/home"
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_CACHE_HOME="${RUN_ROOT}/cache"

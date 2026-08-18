@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+[ -x "${PORT_BASH:-}" ] || {
+  printf 'PortMaster bash runtime is unavailable: %s\n' "${PORT_BASH:-unset}" >&2
+  exit 127
+}
+[ -f "${PLUMOS_PORTMASTER_PATCH_SCRIPT:-}" ] || {
+  printf 'PortMaster patch script is unavailable: %s\n' \
+    "${PLUMOS_PORTMASTER_PATCH_SCRIPT:-unset}" >&2
+  exit 127
+}
+
+exec "$PORT_BASH" "$PLUMOS_PORTMASTER_PATCH_SCRIPT"

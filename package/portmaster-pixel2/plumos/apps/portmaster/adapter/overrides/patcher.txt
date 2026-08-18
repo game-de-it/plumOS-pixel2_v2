@@ -1,0 +1,21 @@
+#!/bin/bash
+# plumOS Pixel2 wrapper for PortMaster's common LÖVE patcher.
+
+source "$controlfolder/runtimes/love_11.5/love.txt"
+
+CHANGELOG=""
+if [ "$CHANGELOG" = true ]; then
+  CHANGELOG="-n"
+fi
+
+# Port patch scripts normally use #!/bin/bash.  Pixel2 deliberately keeps bash
+# inside the PortMaster component instead of exposing an unmanaged /bin/bash.
+# Let the LÖVE patcher execute a POSIX shim, which then enters the managed bash
+# runtime with the original script and all question-answer environment values.
+export PLUMOS_PORTMASTER_PATCH_SCRIPT="$PATCHER_FILE"
+PATCHER_FILE="${PLUMOS_PORTMASTER_PATCH_SHIM:-${PLUMOS_ROOT}/apps/portmaster/adapter/shims/run-patchscript}"
+
+$GPTOKEYB "$LOVE_GPTK" &
+$LOVE_RUN "$controlfolder/utils/patcher" -f "$PATCHER_FILE" -g "$PATCHER_GAME" -t "$PATCHER_TIME" "$CHANGELOG" -q "$PATCHER_QUESTIONS"
+
+pm_gptokeyb_finish
