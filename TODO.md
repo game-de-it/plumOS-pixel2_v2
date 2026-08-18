@@ -129,8 +129,9 @@
       `20-usb-wifi`がADBとは独立に同じDWC2を制御し、ADB bind後にhost reset可能な競合を
       特定した。ADB ONを唯一の最優先ownerとし、System host再列挙、Wi-Fi boot、Runtime
       hotplug/scan/connectを全て抑止する。ADB OFF時だけWi-Fiを許可するhost fixtureと全
-      app-layer gateは合格。署名System/Runtimeのoffline適用、cold boot、物理抜き差しを
-      継続する。
+      app-layer gateは合格。`1e065fb`の署名System/strict Runtimeをpackage化し、実updater
+      で署名・source version・ABI・target・manifestを検証済み。offline適用、cold boot、
+      物理抜き差しを継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する

@@ -110,6 +110,31 @@ port only after ADB is explicitly OFF. Host fixtures verify that saved Wi-Fi
 cannot write either DWC2 unbind or bind while ADB is enabled. A new signed
 System/Runtime deployment and cold-boot acceptance remain pending.
 
+## Fifth signed package
+
+Commit `1e065fb` was built as System and strict Runtime
+`0.1.0-dev-1e065fb`. System was based on installed `f8a5608`; the Runtime delta
+was based on installed `5535fa8`. The System rootfs and network services were
+built in parallel, then the frontend component was rebuilt so the two changed
+Runtime scripts and both component manifests/checksum lists remained atomic.
+
+ADB recovery, USB-host reset, Wi-Fi recovery, network-control, power/sleep,
+System init, full app-layer, strict app-layer checksum, and implementation audit
+gates passed. Both archives passed the real updater's signature, source-version,
+ABI, target, and manifest inspection:
+
+- System archive:
+  `d09809110093f364efb65439f990999281444b4c1be584dd2b6b74d30031d35c`;
+- System squashfs:
+  `336a109153801b64daef1c346c0fa8956605dc838951ea3d312524b495aa0485`;
+- Runtime archive:
+  `0ae854c136fdcdc5933287e46bbefab12acec3822406936786e5c28e61c71eb1`;
+- Runtime root checksum list:
+  `abeba9128fa6ca43078b870f3cd6693dc62b1f2a016795e18077002015e19a50`.
+
+Packages are retained under `output/live/2026-08-19-adb-usb-owner/`. No live
+device write was attempted because the host still had no ADB interface.
+
 ## Second offline deployment
 
 Commit `0694c47` was built as System and Runtime `0.1.0-dev-0694c47` after the
