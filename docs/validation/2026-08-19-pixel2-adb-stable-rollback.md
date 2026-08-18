@@ -204,3 +204,33 @@ Change `556704d` corrects both contracts:
 The ADB recovery, USB-mode, Wi-Fi recovery, USB host, network control, app-layer,
 power/sleep, and System rootfs host gates pass. A signed System plus Runtime
 deployment and physical Off -> ADB acceptance remain pending.
+
+## Signed live-mode deployment
+
+Frontend, Network Services, and System were rebuilt in parallel at final source
+ref `644c77d`, followed by a strict complete app-layer assembly. The explicit
+version is `0.1.0-dev-644c77d`; embedded System, Runtime, frontend component,
+and source refs agree. Packages were generated against the read-back installed
+versions rather than a stale development baseline:
+
+```text
+Runtime: 21fba08 -> 644c77d
+files:   15 changed, 0 deleted
+SHA-256: 5ccea38e48a08fdc4b9456d2bb1be4ff5f7c23bd68af990be3deb003b12492a4
+
+System:  1eab72a -> 644c77d
+SHA-256: f29f6cdd41d81d1dd6c6268f2218766972de8aa1c24bedac1926dd342d1856b8
+```
+
+Both packages passed Ed25519 signature, exact source version, Pixel2 target,
+ABI, manifest, archive checksum, and every payload hash/size/symlink check.
+They are retained under
+`output/live/2026-08-19-pixel2-live-usb-mode/`.
+
+Only those two packages and their checksum sidecars were copied to the FAT32
+update inbox. Card readback matches both hashes. System was copied last so the
+normal updater selects it first; after its A/B update and healthy boot, Runtime
+is the remaining compatible chain package. Active System A remains
+`64bfc14e...` (`1eab72a`) and inactive B remains `2a6170fe...` until the updater
+runs. The zero-byte ADB recovery marker, Runtime, ROM, BIOS, saves, settings,
+and all unrelated user files remain unchanged.

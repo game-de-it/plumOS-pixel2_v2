@@ -145,7 +145,11 @@
         gadget削除から完全再生成する。通常bootのstart-enabledはhealthy gadgetを
         維持し、Wi-Fi/OffはADBを即時停止する。ADB recovery、USB mode、Wi-Fi、
         USB host、network control、strict app-layer、power/sleep、System rootfsの
-        host gateは合格。署名System/Runtime適用後のOff -> ADB実機確認を継続する。
+        host gateは合格。最終ref `644c77d`のFrontend/Network/Systemを並列buildし、
+        strict Runtimeを生成。実カードの`System 1eab72a / Runtime 21fba08`をexact
+        sourceとする署名packageは署名・ABI・manifest・全payload検証に合格し、FAT32
+        update inboxへreadback一致で配置済み。Systemを最新mtimeとして通常A/B更新を
+        先行させ、その後Runtimeを適用してOff -> ADB実機確認を継続する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
