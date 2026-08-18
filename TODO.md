@@ -93,7 +93,9 @@
       ADB OFFがFAT ownership markerを削除する一方、ONが再作成しないため、保存Wi-Fi
       設定が唯一のOTG portをhost roleへ戻す欠陥を特定。ADB ONでmarkerを作成し、
       System起動watchdogもUDC `configured`かつtransport `offline`を単発replugする。
-      新System/Runtimeのoffline適用後、cold boot、抜き差し、OFF→ON→再起動を再確認する。
+      `0694c47`の署名Systemをactive Aへoffline適用し、署名・SHA-256 readback、zero-byte
+      marker、inactive B保持を確認。Runtime deltaも更新inboxへ配置済み。cold boot後に
+      Runtimeを適用し、抜き差し、OFF→ON→再起動を再確認する。
     - 2026-08-18: `8a98e3e`以降の物理抜き差しでADBがwaitingとなり、再起動・cold
       bootでも復帰しない回帰を確認。`usb/online=0`を根拠にhost roleへ変更すると、
       Mac接続後も同じ値が0のままになりdevice roleへ戻れない循環だった。`ecf4d16`の

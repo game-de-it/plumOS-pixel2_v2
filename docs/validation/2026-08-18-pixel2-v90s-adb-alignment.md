@@ -1,7 +1,7 @@
 # Pixel2 V90S-derived ADB alignment
 
 Date: 2026-08-18
-Status: host implementation PASS; second offline device deployment pending
+Status: host implementation PASS; second offline deployment PASS; physical acceptance pending
 
 ## Regression
 
@@ -63,3 +63,19 @@ installed and the following all pass:
 2. one physical cable unplug/replug returns the same maintenance path;
 3. removal of the marker plus saved Wi-Fi ON boots the tested 8821CU dongle;
 4. persistent ADB and hardware-key logs explain any failed transition.
+
+## Second offline deployment
+
+Commit `0694c47` was built as System and Runtime `0.1.0-dev-0694c47` after the
+ADB recovery, System rootfs, and full app-layer checksum gates passed. The
+signed System was installed to active slot A with readback SHA-256
+`4f5553c8f51449c7bf181aa53dd5a19c4b14516c8adf1068d897fc4ea54e4a35`.
+Its on-card manifest signature verified against the packaged Pixel2 public
+key. Inactive slot B was left unchanged.
+
+The Runtime delta from installed `0.1.0-dev-8a98e3e` was copied to the user
+update inbox with readback SHA-256
+`7fbb2f44bb5d3043a67e9c10c013466aa7469fa3e041c7d6611e455de86b8728`.
+The FAT32 `plumos-enable-adb` marker was recreated as a zero-byte file. The
+previous active-A generation `0be5e17` and its complete metadata were retained
+under `output/live/2026-08-18-adb-usb-reclaim/` for recovery.
