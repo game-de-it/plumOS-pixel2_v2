@@ -119,6 +119,11 @@
         `11a7f94`へoffline適用。署名、manifest/payload、readback SHA-256は一致し、
         inactive BとADB markerは保持。Runtime packageはinboxへreadback済みだが未適用とし、
         まずSystem adbdだけのcold bootを分離検証する。
+      - System-only `11a7f94` cold bootもFE `waiting`。macOSは`18d1:4ee7`親deviceだけでなく
+        ADB interface `255/66/1`、bulk IN/OUT、512-byte endpoint、configuration 1まで列挙。
+        host ADB 36 native backendを再起動しても、最初のCNXNでread/writeとも即座に
+        `e00002ed` (`kIOReturnNotResponding`)。FE表示やinterface欠落ではなく、端末側
+        bulk endpointが列挙後に応答不能なので、同bootの永続adbd/init logを回収する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで

@@ -77,3 +77,23 @@ the first physical test limited to the restored System adbd path. After a
 successful cold-boot shell, Runtime `21fba08 -> 11a7f94` will restore the
 physically accepted hardware-key replug path with app-layer metadata kept
 consistent. Cold-boot shell and physical cable replug remain pending.
+
+## First physical result
+
+The System-only cold boot still reported frontend ADB `waiting`. macOS did,
+however, enumerate the complete new gadget rather than only its parent:
+
+- product `plumOS Pixel2 ADB`, `18d1:4ee7` at 480 Mbit/s;
+- interface class/subclass/protocol `255/66/1`;
+- bulk OUT endpoint 2 and bulk IN endpoint 1, both 512-byte packets;
+- current USB configuration 1.
+
+Restarting host ADB 36.0.2 with the Apple native backend and without a cable
+replug did not create a transport. Its trace opened both endpoints and queued
+CNXN, but the first bulk read and write immediately failed with macOS status
+`e00002ed` (`kIOReturnNotResponding`). This rules out a stale frontend status
+label and a merely missing interface. The device has exposed FunctionFS
+descriptors but the bulk endpoint path is not responding.
+
+The exact boot's persistent `adbd.log`, `init.log`, and UDC state must be
+captured from the Runtime partition before another implementation change.
