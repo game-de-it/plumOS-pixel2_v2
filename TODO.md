@@ -97,6 +97,10 @@
       build、recovery fixture、System rootfs gateに合格。`21fba08 -> 5246728`の署名System
       package（SHA-256 `164f9c6e...`）も実updater inspect済み。offline deploy後のA/B
       promotion、実shell、cold boot、抜き差しを継続する。
+      - 62.5 GB実カードのSystem A=`21fba08`とinactive Bをread-only確認後、署名Systemと
+        sidecarだけをFAT32 update inboxへ追加。card readback、実updater inspect、両slot
+        SHA不変、zero-byte ADB marker保持を確認した。active slotを直接上書きせず、FEから
+        通常A/B更新を要求してinactive書込み・promotion・rollback契約を維持する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで

@@ -55,5 +55,23 @@ system_sha256=99ce6ed925d7a510b0feff966ff470613827f8677a5ff58a8f72b02f33e64592
 ```
 
 The package is retained under
-`output/live/2026-08-19-pixel2-adbd-sync-ffs/`. Offline deployment, System A/B
+`output/live/2026-08-19-pixel2-adbd-sync-ffs/`.
+
+## SD staging
+
+The attached 62.5 GB Pixel2 card was identified as `/dev/disk4`. Before any
+write, active System A was confirmed as `21fba08` with SHA-256
+`57b3e98d534bddb525c8cf67189a37f7f8c6cf7432abff0f273d08b76515167b`;
+inactive System B read back at
+`2a6170fea9dcec458636672eb44d8256bbe9676ff6994e378b0d14e5458f3259`.
+
+The signed `21fba08 -> 5246728` System package and its checksum sidecar were
+added to the FAT32 update inbox. Card readback matched package SHA-256
+`164f9c6e49a2077c25a7d780b547be2a2e2718714a72fce74031e73df0d25081`,
+and the real updater accepted its signature, exact source version, device,
+architecture, ABIs, manifest, and payload. Both existing System slots and the
+zero-byte ADB recovery marker remained byte-identical.
+
+This intentionally uses the normal signed A/B updater instead of overwriting
+the active slot offline. Frontend update request, inactive-slot readback,
 promotion, a real ADB shell, and repeated physical replug remain pending.
