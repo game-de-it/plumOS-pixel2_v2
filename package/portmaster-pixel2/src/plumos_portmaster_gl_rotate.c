@@ -11,6 +11,9 @@
 #ifndef GL_VERTEX_ARRAY_BINDING
 #define GL_VERTEX_ARRAY_BINDING 0x85B5
 #endif
+#ifndef GL_DEPTH24_STENCIL8
+#define GL_DEPTH24_STENCIL8 0x88F0
+#endif
 
 /*
  * SDL_Renderer ports are rotated by plumos_portmaster_sdl_rotate.  LÖVE and
@@ -32,6 +35,13 @@ static void (GL_APIENTRYP real_gl_gen_framebuffers)(GLsizei, GLuint *);
 static void (GL_APIENTRYP real_gl_delete_framebuffers)(GLsizei, const GLuint *);
 static void (GL_APIENTRYP real_gl_framebuffer_texture_2d)(GLenum, GLenum, GLenum,
                                                           GLuint, GLint);
+static void (GL_APIENTRYP real_gl_gen_renderbuffers)(GLsizei, GLuint *);
+static void (GL_APIENTRYP real_gl_delete_renderbuffers)(GLsizei, const GLuint *);
+static void (GL_APIENTRYP real_gl_bind_renderbuffer)(GLenum, GLuint);
+static void (GL_APIENTRYP real_gl_renderbuffer_storage)(GLenum, GLenum, GLsizei,
+                                                        GLsizei);
+static void (GL_APIENTRYP real_gl_framebuffer_renderbuffer)(GLenum, GLenum,
+                                                            GLenum, GLuint);
 static GLenum (GL_APIENTRYP real_gl_check_framebuffer_status)(GLenum);
 static void (GL_APIENTRYP real_gl_gen_textures)(GLsizei, GLuint *);
 static void (GL_APIENTRYP real_gl_delete_textures)(GLsizei, const GLuint *);
@@ -85,6 +95,7 @@ static void (GL_APIENTRYP real_gl_bind_vertex_array)(GLuint);
 
 static GLuint logical_fbo;
 static GLuint logical_texture;
+static GLuint logical_depth_stencil;
 static GLuint rotate_program;
 static GLuint rotate_vbo;
 static GLuint rotate_vao;
@@ -115,6 +126,7 @@ static void reset_context_state(SDL_GLContext context) {
     active_context = context;
     logical_fbo = 0;
     logical_texture = 0;
+    logical_depth_stencil = 0;
     rotate_program = 0;
     rotate_vbo = 0;
     rotate_vao = 0;
@@ -130,6 +142,11 @@ static int load_gl(void) {
     LOAD_GL(gl_gen_framebuffers, "glGenFramebuffers");
     LOAD_GL(gl_delete_framebuffers, "glDeleteFramebuffers");
     LOAD_GL(gl_framebuffer_texture_2d, "glFramebufferTexture2D");
+    LOAD_GL(gl_gen_renderbuffers, "glGenRenderbuffers");
+    LOAD_GL(gl_delete_renderbuffers, "glDeleteRenderbuffers");
+    LOAD_GL(gl_bind_renderbuffer, "glBindRenderbuffer");
+    LOAD_GL(gl_renderbuffer_storage, "glRenderbufferStorage");
+    LOAD_GL(gl_framebuffer_renderbuffer, "glFramebufferRenderbuffer");
     LOAD_GL(gl_check_framebuffer_status, "glCheckFramebufferStatus");
     LOAD_GL(gl_gen_textures, "glGenTextures");
     LOAD_GL(gl_delete_textures, "glDeleteTextures");
@@ -178,6 +195,8 @@ static int load_gl(void) {
         LOAD_GL(gl_bind_vertex_array, "glBindVertexArrayOES");
     return real_gl_bind_framebuffer && real_gl_get_integerv && real_gl_get_string &&
            real_gl_gen_framebuffers && real_gl_framebuffer_texture_2d &&
+           real_gl_gen_renderbuffers && real_gl_bind_renderbuffer &&
+           real_gl_renderbuffer_storage && real_gl_framebuffer_renderbuffer &&
            real_gl_check_framebuffer_status && real_gl_gen_textures &&
            real_gl_bind_texture && real_gl_tex_parameteri && real_gl_tex_image_2d &&
            real_gl_create_shader && real_gl_shader_source && real_gl_compile_shader &&
@@ -259,6 +278,7 @@ static int initialise_rotation(void) {
     GLint previous_texture = 0;
     GLint previous_buffer = 0;
     GLint previous_vao = 0;
+    GLint previous_renderbuffer = 0;
     const char *vertex_source;
     const char *fragment_source;
     const char *gl_version;
@@ -285,6 +305,7 @@ static int initialise_rotation(void) {
     real_gl_get_integerv(GL_TEXTURE_BINDING_2D, &previous_texture);
     real_gl_get_integerv(GL_ARRAY_BUFFER_BINDING, &previous_buffer);
     real_gl_get_integerv(GL_VERTEX_ARRAY_BINDING, &previous_vao);
+    real_gl_get_integerv(GL_RENDERBUFFER_BINDING, &previous_renderbuffer);
 
     internal_gl = 1;
     real_gl_gen_textures(1, &logical_texture);
@@ -299,6 +320,21 @@ static int initialise_rotation(void) {
     real_gl_bind_framebuffer(GL_FRAMEBUFFER, logical_fbo);
     real_gl_framebuffer_texture_2d(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                    GL_TEXTURE_2D, logical_texture, 0);
+    /*
+     * SDL's real default framebuffer includes the depth/stencil storage that
+     * LÖVE requests for a window.  Balatro uses stencil operations during its
+     * first rendered frame, while PortMaster's patcher does not.  Redirecting
+     * framebuffer zero to a colour-only FBO therefore violates the default
+     * framebuffer contract and can crash the Panfrost GL path.  Mirror the
+     * window contract on the logical framebuffer as packed depth/stencil.
+     */
+    real_gl_gen_renderbuffers(1, &logical_depth_stencil);
+    real_gl_bind_renderbuffer(GL_RENDERBUFFER, logical_depth_stencil);
+    real_gl_renderbuffer_storage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 640, 480);
+    real_gl_framebuffer_renderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                     GL_RENDERBUFFER, logical_depth_stencil);
+    real_gl_framebuffer_renderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
+                                     GL_RENDERBUFFER, logical_depth_stencil);
     if (real_gl_check_framebuffer_status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         fprintf(stderr, "[plumOS] PortMaster GL rotation framebuffer incomplete\n");
         goto fail;
@@ -349,6 +385,7 @@ static int initialise_rotation(void) {
     real_gl_bind_texture(GL_TEXTURE_2D, (GLuint)previous_texture);
     real_gl_bind_buffer(GL_ARRAY_BUFFER, (GLuint)previous_buffer);
     real_gl_bind_vertex_array((GLuint)previous_vao);
+    real_gl_bind_renderbuffer(GL_RENDERBUFFER, (GLuint)previous_renderbuffer);
     real_gl_bind_framebuffer(GL_FRAMEBUFFER, logical_fbo);
     internal_gl = 0;
     gl_ready = 1;
@@ -364,12 +401,16 @@ fail:
         real_gl_delete_vertex_arrays(1, &rotate_vao);
     if (logical_fbo && real_gl_delete_framebuffers)
         real_gl_delete_framebuffers(1, &logical_fbo);
+    if (logical_depth_stencil && real_gl_delete_renderbuffers)
+        real_gl_delete_renderbuffers(1, &logical_depth_stencil);
     if (logical_texture && real_gl_delete_textures)
         real_gl_delete_textures(1, &logical_texture);
     rotate_program = rotate_vbo = rotate_vao = logical_fbo = logical_texture = 0;
+    logical_depth_stencil = 0;
     real_gl_bind_texture(GL_TEXTURE_2D, (GLuint)previous_texture);
     real_gl_bind_buffer(GL_ARRAY_BUFFER, (GLuint)previous_buffer);
     real_gl_bind_vertex_array((GLuint)previous_vao);
+    real_gl_bind_renderbuffer(GL_RENDERBUFFER, (GLuint)previous_renderbuffer);
     real_gl_bind_framebuffer(GL_FRAMEBUFFER, (GLuint)previous_fbo);
     internal_gl = 0;
     return 0;
