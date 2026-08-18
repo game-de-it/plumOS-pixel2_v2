@@ -4,21 +4,21 @@ set -u
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH HOME=/root
 GADGET="${PLUMOS_ADB_GADGET:-/sys/kernel/config/usb_gadget/plumos_pixel2}"
+CONFIGFS_ROOT="${PLUMOS_ADB_CONFIGFS_ROOT:-/sys/kernel/config/usb_gadget}"
 UDC_CLASS="${PLUMOS_ADB_UDC_CLASS:-/sys/class/udc}"
 FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
 ADBD_BIN="${PLUMOS_ADB_BINARY:-/usr/sbin/adbd}"
 PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
+RECOVERY_PID="${PLUMOS_ADB_RECOVERY_PID:-/run/plumos/adbd-recovery.pid}"
 ACTION_LOCK="${PLUMOS_ADB_ACTION_LOCK:-/run/plumos/adbd-action.lock}"
-TRANSPORT_STATE="${PLUMOS_ADBD_TRANSPORT_STATE:-/run/plumos/adbd-protocol.state}"
-UEVENT_PID="${PLUMOS_ADB_UEVENT_PID:-/run/plumos/adbd-uevent.pid}"
-UEVENT_HELPER="${PLUMOS_ADB_UEVENT_HELPER:-/usr/lib/plumos/adbd-uevent}"
-BUSYBOX="${PLUMOS_ADB_BUSYBOX:-/bin/busybox}"
 LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
 SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
 PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
+PROC_MOUNTS="${PLUMOS_ADB_PROC_MOUNTS:-/proc/mounts}"
 USB_ROLE_GLOB="${PLUMOS_ADB_USB_ROLE_GLOB:-/sys/class/usb_role/*/role}"
 SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
+RECOVERY_DELAY="${PLUMOS_ADB_RECOVERY_DELAY:-4}"
 RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
 ACTION_LOCK_WAIT="${PLUMOS_ADB_ACTION_LOCK_WAIT:-12}"
 ACTION_LOCK_HELD=0
@@ -118,44 +118,23 @@ wait_udc_online() {
     udc_online
 }
 
-uevent_monitor_running() {
-    [ -s "$UEVENT_PID" ] || return 1
-    uevent_pid=$(tr -d '[:space:]' <"$UEVENT_PID" 2>/dev/null || true)
-    case "$uevent_pid" in ''|*[!0-9]*) return 1 ;; esac
-    kill -0 "$uevent_pid" 2>/dev/null || return 1
-    cmdline=$(tr '\000' ' ' <"$PROC_ROOT/$uevent_pid/cmdline" 2>/dev/null || true)
-    case "$cmdline" in *"busybox uevent $UEVENT_HELPER"*) return 0 ;; esac
-    return 1
+recovery_running() {
+    [ -s "$RECOVERY_PID" ] || return 1
+    recovery_pid=$(tr -d '[:space:]' <"$RECOVERY_PID" 2>/dev/null || true)
+    case "$recovery_pid" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$recovery_pid" 2>/dev/null
 }
 
-stop_uevent_monitor() {
-    if uevent_monitor_running; then
-        uevent_pid=$(cat "$UEVENT_PID")
-        kill "$uevent_pid" 2>/dev/null || true
-        sleep 1
-        kill -0 "$uevent_pid" 2>/dev/null && kill -9 "$uevent_pid" 2>/dev/null || true
-        log "recovery_monitor=stopped pid=$uevent_pid"
+stop_recovery() {
+    if [ "${PLUMOS_ADBD_RECOVERY_WORKER:-0}" = 1 ]; then
+        rm -f "$RECOVERY_PID"
+        return 0
     fi
-    rm -f "$UEVENT_PID"
-}
-
-start_uevent_monitor() {
-    [ "${PLUMOS_ADB_UEVENT_WORKER:-0}" != 1 ] || return 0
-    uevent_monitor_running && return 0
-    [ -x "$BUSYBOX" ] && [ -x "$UEVENT_HELPER" ] || {
-        log "recovery_monitor=failed reason=helper-missing"
-        return 1
-    }
-    mkdir -p "${UEVENT_PID%/*}"
-    "$BUSYBOX" uevent "$UEVENT_HELPER" </dev/null >>"$LOG" 2>&1 &
-    printf '%s\n' "$!" >"$UEVENT_PID"
-    sleep 1
-    if ! uevent_monitor_running; then
-        log 'recovery_monitor=failed reason=worker-exited'
-        rm -f "$UEVENT_PID"
-        return 1
+    if recovery_running; then
+        recovery_pid=$(cat "$RECOVERY_PID")
+        [ "$recovery_pid" = "$$" ] || kill "$recovery_pid" 2>/dev/null || true
     fi
-    log "recovery_monitor=started pid=$(cat "$UEVENT_PID") mode=kernel-uevent"
+    rm -f "$RECOVERY_PID"
 }
 
 adb_enabled_by_policy() {
@@ -180,17 +159,8 @@ adb_enabled_by_policy() {
     esac
 }
 
-set_usb_role() {
-    requested=$1
-    for role_file in $USB_ROLE_GLOB; do
-        [ -w "$role_file" ] || continue
-        printf '%s\n' "$requested" >"$role_file" 2>>"$LOG" || true
-        log "usb_role path=$role_file value=$(cat "$role_file" 2>/dev/null || true)"
-    done
-}
-
 stop_adbd() {
-    stop_uevent_monitor
+    stop_recovery
     if [ -e "$GADGET/UDC" ]; then
         : >"$GADGET/UDC" 2>>"$LOG" || true
     fi
@@ -205,7 +175,6 @@ stop_adbd() {
         kill -9 "$pid" 2>/dev/null || true
     fi
     rm -f "$PID"
-    rm -f "$TRANSPORT_STATE"
     log 'result=stopped'
 }
 
@@ -218,13 +187,7 @@ start_adbd() {
         log 'result=failed reason=binary-missing'
         return 1
     }
-    # Match the proven V90S contract: enabled ADB owns a bound FunctionFS
-    # gadget regardless of charger/power-supply state. Pixel2 has one shared
-    # OTG port, so Wi-Fi is permitted only after ADB is explicitly disabled.
-    # Never infer the USB owner from usb/online; that value can stay zero after
-    # host role and permanently strand a later Mac attachment.
     if pid_running && gadget_bound; then
-        start_uevent_monitor || return 1
         log "result=already-running pid=$(cat "$PID")"
         return 0
     fi
@@ -232,9 +195,13 @@ start_adbd() {
         log 'event=running-unbound action=clean-restart'
         stop_adbd
     fi
-    [ -d /sys/kernel/config/usb_gadget ] || \
+    [ -d "$CONFIGFS_ROOT" ] || \
         mount -t configfs configfs /sys/kernel/config
-    set_usb_role device
+    for role_file in $USB_ROLE_GLOB; do
+        [ -w "$role_file" ] || continue
+        printf 'device\n' >"$role_file" 2>>"$LOG" || true
+        log "usb_role path=$role_file value=$(cat "$role_file" 2>/dev/null || true)"
+    done
     mdev -s 2>/dev/null || true
     sleep 1
     udc_path=$(udc_path 2>/dev/null) || {
@@ -264,12 +231,10 @@ start_adbd() {
     printf '120\n' >"$GADGET/configs/c.1/MaxPower"
     [ -e "$GADGET/configs/c.1/ffs.adb" ] || \
         ln -s "$GADGET/functions/ffs.adb" "$GADGET/configs/c.1/ffs.adb"
-    grep -q " $FFS functionfs " /proc/mounts 2>/dev/null || \
+    grep -q " $FFS functionfs " "$PROC_MOUNTS" 2>/dev/null || \
         mount -t functionfs adb "$FFS"
 
-    rm -f "$TRANSPORT_STATE"
-    PLUMOS_ADBD_TRANSPORT_STATE="$TRANSPORT_STATE" \
-        "$ADBD_BIN" >>"$LOG" 2>&1 &
+    "$ADBD_BIN" >>"$LOG" 2>&1 &
     printf '%s\n' "$!" >"$PID"
     elapsed=0
     while [ "$elapsed" -lt 12 ]; do
@@ -292,7 +257,7 @@ start_adbd() {
         return 1
     }
     log "result=started udc=$udc access=default-on-no-explicit-setting"
-    start_uevent_monitor || return 1
+    [ "${PLUMOS_ADBD_RECOVERY_WORKER:-0}" = 1 ] || schedule_recovery
 }
 
 rebind_adbd() {
@@ -302,6 +267,28 @@ rebind_adbd() {
     sleep 1
     printf '%s\n' "$udc" >"$GADGET/UDC" 2>>"$LOG" || return 1
     wait_udc_online "$RECOVERY_WAIT"
+}
+
+schedule_recovery() {
+    recovery_running && return 0
+    mkdir -p "${RECOVERY_PID%/*}"
+    (
+        sleep "$RECOVERY_DELAY"
+        if adb_enabled_by_policy && pid_running && gadget_bound; then
+            state=$(udc_state 2>/dev/null || true)
+            case "$state" in
+                configured|suspended)
+                    log "result=watchdog-healthy state=$state"
+                    ;;
+                *)
+                    log "action=watchdog-recover reason=udc-${state:-unknown}"
+                    PLUMOS_ADBD_RECOVERY_WORKER=1 "$0" recover || true
+                    ;;
+            esac
+        fi
+        rm -f "$RECOVERY_PID"
+    ) </dev/null >>"$LOG" 2>&1 &
+    printf '%s\n' "$!" >"$RECOVERY_PID"
 }
 
 recover_adbd() {
@@ -375,13 +362,8 @@ status_adbd() {
             *) state=waiting_usb ;;
         esac
     fi
-    transport_state=unknown
-    [ ! -r "$TRANSPORT_STATE" ] || \
-        transport_state=$(tr -d '[:space:]' <"$TRANSPORT_STATE" 2>/dev/null || true)
-    [ -n "$transport_state" ] || transport_state=unknown
-    printf 'service=adb\nrunning=%s\ngadget_bound=%s\nudc_state=%s\ntransport_state=%s\nrecovery_monitor=%s\n' \
-        "$(pid_running && echo 1 || echo 0)" "$bound" "$udc_state" "$transport_state" \
-        "$(uevent_monitor_running && echo 1 || echo 0)"
+    printf 'service=adb\nrunning=%s\ngadget_bound=%s\nudc_state=%s\n' \
+        "$(pid_running && echo 1 || echo 0)" "$bound" "$udc_state"
     printf 'state=%s\nopted_in=%s\n' "$state" \
         "$(adb_enabled_by_policy && echo 1 || echo 0)"
 }

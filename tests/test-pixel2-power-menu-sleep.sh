@@ -176,7 +176,7 @@ grep -q 'USB_POWER_EVENT_GUARD_MS 1500' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q '/sys/class/power_supply/usb/online' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-! grep -q 'PLUMOS_ADBD_CONTROL' \
+grep -q 'PLUMOS_ADBD_CONTROL' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 ! grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"

@@ -99,3 +99,11 @@ read back, and then installed as System A. Final verification showed:
 ROM, BIOS, saves, settings, Runtime, and the update inbox were not changed.
 Cold-boot ADB shell and repeated physical replug remain pending physical
 acceptance.
+
+## Physical result
+
+System `5246728` still reported ADB `waiting` after a cold boot. The legacy
+synchronous FunctionFS change is therefore rejected for Pixel2 and must not be
+treated as a working fix. The subsequent rollback restores the physically
+accepted `45b4505` nonblocking FunctionFS and single-replug contract while
+preserving all unrelated later Pixel2 features.

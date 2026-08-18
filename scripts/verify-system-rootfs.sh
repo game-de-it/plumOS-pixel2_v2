@@ -33,15 +33,10 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/20-usb-wifi"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/30-ssh"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-test -x "$tmp/rootfs/usr/lib/plumos/adbd-uevent"
-grep -q 'busybox.*uevent' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'USB_STATE.*DISCONNECTED' "$tmp/rootfs/usr/lib/plumos/adbd-uevent"
-grep -q '/run/plumos/adbd-protocol.state' \
-    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+! grep -q 'busybox.*uevent' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'schedule_recovery' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q '"\$ADBD_CONTROL" recover' "$tmp/rootfs/usr/lib/plumos/adbd-uevent"
+grep -q 'schedule_recovery' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/sbin/adbd"
 test -x "$tmp/rootfs/usr/bin/plumos-frontend-pixel2"
 test -x "$tmp/rootfs/usr/bin/plumos-library-scan"
@@ -102,11 +97,11 @@ grep -q '"runtime_abi": "plumos-pixel2-app-layer-v1"' \
     "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -s "$tmp/rootfs/etc/plumos-system-version"
 test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
-grep -a -q '/run/plumos/adbd-transport.state' \
+! grep -a -q '/run/plumos/adbd-transport.state' \
     "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
-grep -q 'transport=legacy synchronous FunctionFS for Pixel2 stock kernel' \
+grep -q 'transport=nonblocking FunctionFS' \
     "$tmp/rootfs/usr/share/licenses/adbd/source.manifest"
-grep -q 'transport_state=/run/plumos/adbd-transport.state online|offline' \
+! grep -q '^transport_state=' \
     "$tmp/rootfs/usr/share/licenses/adbd/source.manifest"
 test -x "$tmp/rootfs/lib/ld-linux-aarch64.so.1"
 for directory in dev dev/pts proc sys run tmp boot state roms root \

@@ -77,16 +77,15 @@ ADBの保存設定またはFAT32 rootの`plumos-enable-adb`がONなら、後続�
 再列挙とWi-Fi hotplug recoveryは起動せず、DWC2をunbind/bindしない。ADBを明示OFFに
 したうえで保存済みWi-Fi設定がONかつ`wpa_supplicant.conf`が存在する場合だけ、通常bootは
 portをhost roleへ割り当てる。V90S `d1721a9`と同様に、
-ADB有効中はBusyBoxのkernel uevent monitorを1つ起動する。monitorは
-`android_usb/USB_STATE=DISCONNECTED`だけを受理し、1秒のsettle後に同じFunctionFS
-gadgetへbounded `recover`を1回実行する。UDCがすでに`configured`/`suspended`なら
-何もしない。重複eventはlockでまとめ、ADB OFF時にはgadgetをunbindする
-前にmonitorを停止する。roleをhostへ変更せず、idle時のpollingも行わない。
+ADBデーモンは、Pixel2で最初に実機合格した`45b4505`と同じ
+nonblocking FunctionFS経路を使う。起動4秒後にUDC状態を1回だけ確認し、
+`configured`/`suspended`なら何もしない。それ以外の場合だけbounded
+unbind/rebindを試し、失敗時はadbdを1回clean restartする。
 
-adbdが`/run/plumos/adbd-protocol.state`へ記録する`online`/`offline`は診断表示専用で
-ある。起動直後はhost discovery完了前に`offline`となるのが正常なため、この値を
-timerによるrebind条件にはしない。Systemは起動後のUDC状態をtimerで判定せず、
-hostがconfigurationを選ぶまでbound gadgetをそのまま維持する。回復履歴は
+物理USB抜き差しはhardware-key daemonが`usb/online` 0→1を検出し、2秒後に
+専用`replug`を1回要求する。`start`/`stop`/`restart`/`recover`/`replug`は
+同じPID lockで直列化し、複数adbdや連続UDC rebindを起動しない。kernel uevent
+monitor、protocol-stateファイル、複数の固定timerは使用しない。回復履歴は
 `/state/plumos/logs/adbd.log`へ永続保存する。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。

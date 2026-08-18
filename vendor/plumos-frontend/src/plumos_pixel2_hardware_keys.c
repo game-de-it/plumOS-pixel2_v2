@@ -34,6 +34,7 @@
 #define PERSIST_DELAY_MS 750
 #define POWER_MENU_DEBOUNCE_MS 800
 #define USB_POWER_EVENT_GUARD_MS 1500
+#define ADB_USB_RECOVERY_DELAY_MS 2000
 #define DRM_PLANE_SNAPSHOT_LIMIT 16
 
 struct input_source {
@@ -618,6 +619,24 @@ static int read_usb_online(void) {
   return value < 0 ? -1 : value != 0;
 }
 
+static int spawn_adbd_replug(void) {
+  const char *control = getenv("PLUMOS_ADBD_CONTROL");
+  pid_t child;
+
+  if (!control || !control[0]) {
+    control = "/usr/lib/plumos/init.d/10-adbd";
+  }
+  child = fork();
+  if (child < 0) {
+    return -errno;
+  }
+  if (child == 0) {
+    execl(control, control, "replug", (char *)NULL);
+    _exit(127);
+  }
+  return 0;
+}
+
 static int spawn_power_menu_overlay(void) {
   const char *root = getenv("PLUMOS_ROOT");
   char helper[512];
@@ -816,6 +835,7 @@ int main(void) {
   long long persist_due = 0;
   long long power_menu_debounce_due = 0;
   long long usb_power_event_guard_due = 0;
+  long long adb_usb_recovery_due = 0;
   int usb_online = -1;
   int select_down = 0;
   int held_direction = 0;
@@ -881,13 +901,26 @@ int main(void) {
       if (current_usb_online >= 0 && usb_online >= 0 &&
           current_usb_online != usb_online) {
         usb_power_event_guard_due = now + USB_POWER_EVENT_GUARD_MS;
+        adb_usb_recovery_due = current_usb_online
+                                   ? now + ADB_USB_RECOVERY_DELAY_MS
+                                   : 0;
         fprintf(stderr,
-                "hardware-keys: event=usb-power-transition online=%d guard_ms=%d\n",
-                current_usb_online, USB_POWER_EVENT_GUARD_MS);
+                "hardware-keys: event=usb-power-transition online=%d guard_ms=%d adb_recovery_ms=%d\n",
+                current_usb_online, USB_POWER_EVENT_GUARD_MS,
+                current_usb_online ? ADB_USB_RECOVERY_DELAY_MS : 0);
       }
       if (current_usb_online >= 0) {
         usb_online = current_usb_online;
       }
+    }
+    if (adb_usb_recovery_due > 0 && now >= adb_usb_recovery_due &&
+        usb_online == 1) {
+      int result = spawn_adbd_replug();
+
+      fprintf(stderr,
+              "hardware-keys: action=adb-usb-replug online=1 rc=%d\n",
+              result);
+      adb_usb_recovery_due = 0;
     }
     if (power_menu_requested) {
       power_menu_requested = 0;

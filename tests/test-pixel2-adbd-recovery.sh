@@ -16,6 +16,7 @@ trap cleanup EXIT
 
 mkdir -p "$TMP/gadget" "$TMP/udc/fake-udc" "$TMP/run" "$TMP/log" \
     "$TMP/config/system" "$TMP/proc" "$TMP/usb-role/controller" "$TMP/ffs"
+printf 'adb %s functionfs rw 0 0\n' "$TMP/ffs" >"$TMP/proc/mounts"
 printf '%s\n' fake-udc >"$TMP/gadget/UDC"
 printf '%s\n' configured >"$TMP/udc/fake-udc/state"
 printf '%s\n' adb_enabled=1 >"$TMP/config/services.conf"
@@ -29,22 +30,23 @@ printf '%s\n' "$ADBD_PID" >"$TMP/run/adbd.pid"
 
 service_env=(
     PLUMOS_ADB_GADGET="$TMP/gadget"
+    PLUMOS_ADB_CONFIGFS_ROOT="$TMP"
     PLUMOS_ADB_BINARY="$TMP/adbd-stub"
     PLUMOS_ADB_FFS="$TMP/ffs"
     PLUMOS_ADB_UDC_CLASS="$TMP/udc"
     PLUMOS_ADB_PID="$TMP/run/adbd.pid"
+    PLUMOS_ADB_RECOVERY_PID="$TMP/run/adbd-recovery.pid"
     PLUMOS_ADB_ACTION_LOCK="$TMP/run/adbd-action.lock"
-    PLUMOS_ADBD_TRANSPORT_STATE="$TMP/run/adbd-transport.state"
     PLUMOS_ADB_LOG="$TMP/log/adbd.log"
     PLUMOS_ADB_SERIAL_FILE="$TMP/config/adb-serial"
     PLUMOS_ADB_PROC_ROOT="$TMP/proc"
+    PLUMOS_ADB_PROC_MOUNTS="$TMP/proc/mounts"
     PLUMOS_ADB_USB_ROLE_GLOB="$TMP/usb-role/*/role"
     PLUMOS_ADB_SERVICES_CONF="$TMP/config/services.conf"
     PLUMOS_ADB_OPT_IN_MARKER="$TMP/config/enable-adb"
     PLUMOS_ADB_WPA_CONFIG="$TMP/config/wpa_supplicant.conf"
     PLUMOS_ADB_SETTINGS="$TMP/config/system/settings.json"
     PLUMOS_ADB_RECOVERY_WAIT=2
-    PLUMOS_ADB_UEVENT_WORKER=1
 )
 
 env "${service_env[@]}" "$SERVICE" recover
@@ -69,12 +71,10 @@ grep -q 'action=rebind reason=udc-not attached' "$TMP/log/adbd.log"
 grep -q 'result=recovered action=rebind state=configured' "$TMP/log/adbd.log"
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
-! grep -q 'schedule_recovery' "$SERVICE"
-! grep -q 'action=watchdog-' "$SERVICE"
-grep -q 'busybox.*uevent' "$SERVICE"
-grep -q 'recovery_monitor=' "$SERVICE"
-grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$SERVICE"
-grep -q 'transport_state=' "$SERVICE"
+grep -q 'schedule_recovery' "$SERVICE"
+grep -q 'action=watchdog-recover' "$SERVICE"
+! grep -q 'busybox.*uevent' "$SERVICE"
+! grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$SERVICE"
 
 # Mutating actions must not overlap.  This is the failure mode that previously
 # launched two adbd instances and collided on the JDWP/FunctionFS sockets.
@@ -102,26 +102,23 @@ test "$(cat "$TMP/gadget/UDC")" = fake-udc
 status="$(env "${service_env[@]}" "$SERVICE" status)"
 grep -Fxq 'state=running' <<<"$status"
 
-# A normal ADB cold boot always reclaims device role without consulting the
-# role-dependent usb/online signal. A slow host may leave the UDC at
-# `not attached` for longer than the former four-second watchdog; boot must
-# keep the original bound FunctionFS/adbd instance and wait without recovery.
+# The first physically accepted Pixel2 implementation binds device role at
+# cold boot and performs one bounded four-second health check. A configured
+# host must keep the original daemon and take the healthy no-op branch.
 kill "$ADBD_PID" 2>/dev/null || true
 wait "$ADBD_PID" 2>/dev/null || true
 ADBD_PID=
 rm -f "$TMP/run/adbd.pid" "$TMP/gadget/UDC"
 printf '%s\n' host >"$TMP/usb-role/controller/role"
-printf '%s\n' 'not attached' >"$TMP/udc/fake-udc/state"
+printf '%s\n' configured >"$TMP/udc/fake-udc/state"
 cat >"$TMP/adbd-stub" <<'EOF'
 #!/bin/sh
-[ -z "${PLUMOS_TEST_ADBD_TRANSPORT:-}" ] ||
-    printf '%s\n' "$PLUMOS_TEST_ADBD_TRANSPORT" >"$PLUMOS_ADBD_TRANSPORT_STATE"
 trap 'exit 0' TERM INT
 while :; do sleep 30; done
 EOF
 chmod +x "$TMP/adbd-stub"
 touch "$TMP/ffs/ep1" "$TMP/ffs/ep2"
-PLUMOS_TEST_ADBD_TRANSPORT=offline env "${service_env[@]}" "$SERVICE" start
+env "${service_env[@]}" "$SERVICE" start
 ADBD_PID="$(cat "$TMP/run/adbd.pid")"
 mkdir -p "$TMP/proc/$ADBD_PID"
 printf '%s\0' "$TMP/adbd-stub" >"$TMP/proc/$ADBD_PID/cmdline"
@@ -131,30 +128,8 @@ test "$(cat "$TMP/gadget/UDC")" = fake-udc
 sleep 5
 test "$(cat "$TMP/run/adbd.pid")" = "$ADBD_PID"
 kill -0 "$ADBD_PID"
-! grep -q 'watchdog-' "$TMP/log/adbd.log"
-grep -q '/run/plumos/adbd-protocol.state' "$SERVICE"
-! grep -q 'adbd-transport.state' \
-    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-
-# Match V90S: recovery is driven by the kernel disconnect uevent, not by the
-# normal offline protocol state observed before host ADB discovery completes.
-cat >"$TMP/adbd-control" <<'EOF'
-#!/bin/sh
-printf '%s\n' "$1" >>"$PLUMOS_TEST_ADBD_CALLS"
-EOF
-chmod +x "$TMP/adbd-control"
-env SUBSYSTEM=android_usb USB_STATE=DISCONNECTED \
-    PLUMOS_ADBD_CONTROL="$TMP/adbd-control" \
-    PLUMOS_TEST_ADBD_CALLS="$TMP/adbd-calls" \
-    PLUMOS_ADB_RECOVERY_SETTLE_SECONDS=0 \
-    PLUMOS_ADB_UEVENT_LOCK="$TMP/run/adbd-uevent-test.lock" \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
-grep -Fxq recover "$TMP/adbd-calls"
-env SUBSYSTEM=usb USB_STATE=DISCONNECTED \
-    PLUMOS_ADBD_CONTROL="$TMP/adbd-control" \
-    PLUMOS_TEST_ADBD_CALLS="$TMP/adbd-calls" \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
-test "$(wc -l <"$TMP/adbd-calls" | tr -d ' ')" -eq 1
+grep -q 'result=watchdog-healthy state=configured' "$TMP/log/adbd.log"
+! grep -q 'adbd-transport.state' "$SERVICE"
 
 # ADB ON owns Pixel2's single OTG port even when Wi-Fi credentials and the
 # saved Wi-Fi ON setting both exist.

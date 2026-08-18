@@ -32,7 +32,6 @@ for script in \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"; do
     bash -n "$script"
 done
-bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
 
 python3 -m py_compile \
     "$ROOT_DIR/scripts/plumos-system-update.py" \
@@ -68,24 +67,19 @@ grep -q 'ff300000.usb' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'usb-upstream-online' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
-grep -q -- '-DPLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
-grep -q -- '-DPLUMOS_ADBD_SYNC_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
-grep -q 'transport=legacy synchronous FunctionFS for Pixel2 stock kernel' \
+! grep -q -- '-DPLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
+! grep -q -- '-DPLUMOS_ADBD_SYNC_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
+grep -q 'transport=nonblocking FunctionFS' \
     "$ROOT_DIR/scripts/build-adbd-overlay.sh"
-grep -q '0001-plumos-transport-state.patch' \
+! grep -q '0001-plumos-transport-state.patch' \
     "$ROOT_DIR/scripts/build-adbd-overlay.sh"
-grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' \
-    "$ROOT_DIR/package/adbd/0001-plumos-transport-state.patch"
 grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'recover_adbd' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'busybox.*uevent' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'USB_STATE.*DISCONNECTED' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
+! grep -q 'busybox.*uevent' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'schedule_recovery' \
+grep -q 'schedule_recovery' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q '"\$ADBD_CONTROL" recover' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
 grep -q 'adb_enabled_by_policy()' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'default-on-no-explicit-setting' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q '/mnt/plumos-user/plumos-enable-adb' \
