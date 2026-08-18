@@ -37,17 +37,46 @@ shift
 resolved_roms_root="$(readlink -f "$ROMS_ROOT" 2>/dev/null || true)"
 [ -n "$resolved_roms_root" ] && ROMS_ROOT="$resolved_roms_root"
 script="$(readlink -f "$script" 2>/dev/null || true)"
-case "$script" in
-  "${ROMS_ROOT}"/[Pp][Oo][Rr][Tt][Ss]/*.sh)
-    PORTS_ROOT="${script%/*}"
-    port_relative="${script#"${ROMS_ROOT}"/}"
-    port_relative="${port_relative#*/}"
-    case "$port_relative" in
-      */*) printf 'refusing nested PortMaster helper script: %s\n' "$script" >&2; exit 64 ;;
-    esac
-    ;;
-  *) printf 'refusing script outside %s/ports: %s\n' "$ROMS_ROOT" "$script" >&2; exit 64 ;;
-esac
+
+# Pixel2 mounts the same FAT32 ROM filesystem at both /roms and
+# /mnt/plumos-user/roms.  readlink cannot collapse bind-mount aliases, so a FE
+# path under the latter used to fail the string-only ownership check when
+# PLUMOS_ROM_ROOT was /roms.  Accept only aliases whose root and final script
+# are the same filesystem objects, then rewrite to the configured root.  This
+# keeps the path traversal boundary and gives the stop helper one canonical
+# ownership form.
+script_accepted=0
+for root_alias in \
+  "$ROMS_ROOT" \
+  "${PLUMOS_SDCARD_ROOT%/}/roms" \
+  /mnt/plumos-user/roms \
+  /roms; do
+  resolved_alias="$(readlink -f "$root_alias" 2>/dev/null || true)"
+  [ -n "$resolved_alias" ] || continue
+  [ "$resolved_alias" -ef "$ROMS_ROOT" ] 2>/dev/null || continue
+  case "$script" in
+    "${resolved_alias}"/[Pp][Oo][Rr][Tt][Ss]/*.sh)
+      port_path="${script#"${resolved_alias}"/}"
+      port_relative="${port_path#*/}"
+      case "$port_relative" in
+        */*)
+          printf 'refusing nested PortMaster helper script: %s\n' "$script" >&2
+          exit 64
+          ;;
+      esac
+      canonical_script="${ROMS_ROOT}/${port_path}"
+      [ "$canonical_script" -ef "$script" ] 2>/dev/null || continue
+      script="$canonical_script"
+      PORTS_ROOT="${script%/*}"
+      script_accepted=1
+      break
+      ;;
+  esac
+done
+[ "$script_accepted" -eq 1 ] || {
+  printf 'refusing script outside %s/ports: %s\n' "$ROMS_ROOT" "$script" >&2
+  exit 64
+}
 [ -f "$script" ] || { printf 'missing PortMaster script: %s\n' "$script" >&2; exit 127; }
 
 prepare_content_alias() {
