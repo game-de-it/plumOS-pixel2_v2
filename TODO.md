@@ -131,7 +131,10 @@
         `kIOReturnNotResponding`と一致する。`c41698a`でnonblocking FunctionFS、明示的な
         物理`replug`、PID lock、排他`usb_mode`は保持し、自律startup timerだけを完全撤去。
         slow-host fixtureは5秒間`not attached`でも同一adbd PIDを保持し、watchdog不在を
-        検証する。新Systemのoffline適用、cold boot shell、物理抜き差しを継続する。
+        検証する。修正を含むSystem `1eab72a`を署名package化し、実カードのinstalled
+        `11a7f94`に対するexact source・ABI・署名・payload検証に合格。System Aを5ファイル
+        退避後offline置換し、署名とSquashFS SHA-256 `64bfc14e...`のreadback、inactive B、
+        ADB marker保持を確認。cold boot shellと物理抜き差しを継続する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで

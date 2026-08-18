@@ -124,3 +124,39 @@ worker PID lifecycle. The recovery fixture now holds a cold-boot UDC in
 `not attached` for five seconds and verifies that the original adbd PID stays
 alive with no watchdog action. Explicit `recover` and `replug` behavior remain
 covered separately.
+
+## Corrected System package and offline deployment
+
+The correction and its evidence are included through source ref `1eab72a` in
+System `0.1.0-dev-1eab72a`. The complete A/B System rootfs build and verifier
+passed. Its signed package was inspected against the real installed System
+`0.1.0-dev-11a7f94`, including exact source version, signature, device,
+architecture, Runtime ABI, manifest, and payload:
+
+```text
+System SquashFS SHA-256:
+64bfc14ebc98c6e0476fb296531375848c8f5eab79e2e20851b1a77be3095e53
+
+package SHA-256:
+4c4444464b9a3b19bd7d371b00308d0d187c71389f142c6c111a8912c1ed1300
+```
+
+The package is retained under
+`output/live/2026-08-19-pixel2-adb-slow-host-attach/` and was read back from
+the FAT32 update inbox at the same package hash.
+
+Before replacing active System A, all five `11a7f94` slot files were copied to
+`/offline-backup-system-a-11a7f94-pre-slow-host-fix/` on PLUMOS_USER. The
+new five files were staged under temporary names, compared with their signed
+sources, then renamed into the active slot. Final card readback verified:
+
+- System A version `0.1.0-dev-1eab72a`;
+- System A SquashFS, slot checksum, legacy manifest, and signed JSON manifest
+  all agree on SHA-256 `64bfc14e...`;
+- Ed25519 signature verification succeeds;
+- backup System A remains `4ee5dcb4...` (`11a7f94`);
+- inactive System B remains `2a6170fe...`;
+- the zero-byte FAT ADB recovery marker remains present.
+
+Runtime, ROM, BIOS, saves, settings, and System B were not modified. Cold-boot
+ADB shell and one physical cable replug remain the hardware acceptance gates.
