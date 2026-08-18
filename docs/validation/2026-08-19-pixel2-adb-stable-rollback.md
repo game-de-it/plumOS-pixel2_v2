@@ -55,5 +55,25 @@ runtime, exact source version, ABI, manifest, and payload validation. Packages
 are retained under
 `output/live/2026-08-19-pixel2-adb-stable-rollback/`.
 
-Offline SD deployment, cold-boot shell, and physical cable replug remain
-pending.
+## Offline SD deployment
+
+The attached 62.5 GB Pixel2 card was identified as `/dev/disk4`. Before any
+write, System A read back as failed synchronous build `5246728` with SHA-256
+`99ce6ed925d7a510b0feff966ff470613827f8677a5ff58a8f72b02f33e64592`.
+Its five managed files were copied to
+`/offline-backup-system-a-5246728-pre-stable-adb/` on PLUMOS_USER and the old
+signature verified. Inactive System B was
+`2a6170fea9dcec458636672eb44d8256bbe9676ff6994e378b0d14e5458f3259`.
+
+The signed System and Runtime packages were copied to the FAT32 update inbox
+and read back at the documented hashes. System A was then installed through
+temporary filenames. Final verification passed its Ed25519 signature,
+manifest source/version, manifest payload SHA, and SquashFS readback at
+`4ee5dcb43827ce37696de7f2cc666bab950982736f6d8c157862dbb3cc1bcd38`.
+System B and the zero-byte ADB recovery marker remained unchanged.
+
+The Runtime package is staged but intentionally not requested yet. This keeps
+the first physical test limited to the restored System adbd path. After a
+successful cold-boot shell, Runtime `21fba08 -> 11a7f94` will restore the
+physically accepted hardware-key replug path with app-layer metadata kept
+consistent. Cold-boot shell and physical cable replug remain pending.
