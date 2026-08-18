@@ -6,6 +6,7 @@ export PATH HOME=/root
 GADGET="${PLUMOS_ADB_GADGET:-/sys/kernel/config/usb_gadget/plumos_pixel2}"
 UDC_CLASS="${PLUMOS_ADB_UDC_CLASS:-/sys/class/udc}"
 FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
+ADBD_BIN="${PLUMOS_ADB_BINARY:-/usr/sbin/adbd}"
 PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
 RECOVERY_PID="${PLUMOS_ADB_RECOVERY_PID:-/run/plumos/adbd-recovery.pid}"
 ACTION_LOCK="${PLUMOS_ADB_ACTION_LOCK:-/run/plumos/adbd-action.lock}"
@@ -15,11 +16,13 @@ SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
 PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
 USB_ONLINE="${PLUMOS_ADB_USB_ONLINE:-/sys/class/power_supply/usb/online}"
 USB_ROLE_GLOB="${PLUMOS_ADB_USB_ROLE_GLOB:-/sys/class/usb_role/*/role}"
+USB_DEVICES_ROOT="${PLUMOS_ADB_USB_DEVICES_ROOT:-/sys/bus/usb/devices}"
 SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 RECOVERY_DELAY="${PLUMOS_ADB_RECOVERY_DELAY:-4}"
 RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
 ACTION_LOCK_WAIT="${PLUMOS_ADB_ACTION_LOCK_WAIT:-12}"
+ROLE_PROBE_WAIT="${PLUMOS_ADB_ROLE_PROBE_WAIT:-1}"
 ACTION_LOCK_HELD=0
 
 log() {
@@ -166,6 +169,42 @@ set_usb_role() {
     done
 }
 
+downstream_usb_present() {
+    for device in "$USB_DEVICES_ROOT"/*; do
+        [ -r "$device/idVendor" ] || continue
+        case "${device##*/}" in usb*) continue ;; esac
+        return 0
+    done
+    return 1
+}
+
+probe_usb_upstream() {
+    usb_upstream_offline || return 0
+    if downstream_usb_present; then
+        log 'result=device-role-probe-skipped reason=downstream-present'
+        return 1
+    fi
+
+    # usb/online can remain zero while DWC2 is in host role even when a Mac is
+    # supplying VBUS.  Probe device role before deciding that the port belongs
+    # to a Wi-Fi dongle; otherwise one host transition becomes permanent over
+    # reboot.  The probe is bounded and falls back to host when no upstream
+    # VBUS appears.
+    set_usb_role device
+    mdev -s 2>/dev/null || true
+    elapsed=0
+    while usb_upstream_offline && [ "$elapsed" -lt "$ROLE_PROBE_WAIT" ]; do
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    if ! usb_upstream_offline; then
+        log "result=device-role-probe-online elapsed=$elapsed"
+        return 0
+    fi
+    log "result=device-role-probe-timeout elapsed=$elapsed"
+    return 1
+}
+
 stop_adbd() {
     stop_recovery
     if [ -e "$GADGET/UDC" ]; then
@@ -191,7 +230,7 @@ start_adbd() {
         log "result=disabled reason=explicit-user-setting marker=$OPT_IN_MARKER"
         return 0
     fi
-    [ -x /usr/sbin/adbd ] || {
+    [ -x "$ADBD_BIN" ] || {
         log 'result=failed reason=binary-missing'
         return 1
     }
@@ -199,7 +238,7 @@ start_adbd() {
     # forcing device role in that state prevents the host controller from
     # enumerating or powering the dongle. Keep ADB enabled as saved intent but
     # leave the port in host role until a Mac/PC cable makes usb/online=1.
-    if usb_upstream_offline; then
+    if usb_upstream_offline && ! probe_usb_upstream; then
         stop_adbd
         set_usb_role host
         log 'result=waiting-usb-upstream role=host'
@@ -250,7 +289,7 @@ start_adbd() {
 
     rm -f "$TRANSPORT_STATE"
     PLUMOS_ADBD_TRANSPORT_STATE="$TRANSPORT_STATE" \
-        /usr/sbin/adbd >>"$LOG" 2>&1 &
+        "$ADBD_BIN" >>"$LOG" 2>&1 &
     printf '%s\n' "$!" >"$PID"
     elapsed=0
     while [ "$elapsed" -lt 12 ]; do
@@ -343,9 +382,12 @@ replug_adbd() {
         return 0
     fi
     if usb_upstream_offline; then
-        stop_adbd
-        set_usb_role host
-        log 'result=replug-host role=host reason=no-upstream-vbus'
+        # A transport-offline notification can beat the power-supply update
+        # during a physical unplug.  Switching to host here strands the next
+        # Mac attach because usb/online then stays zero.  Preserve the current
+        # device-role gadget; boot or an explicit Wi-Fi flow may later arbitrate
+        # the port after the signal has settled.
+        log 'result=replug-deferred reason=no-upstream-vbus action=preserve-role'
         return 0
     fi
     if pid_running && gadget_bound; then
