@@ -82,9 +82,12 @@ static void (GL_APIENTRYP real_gl_vertex_attrib_pointer)(GLuint, GLint, GLenum,
                                                          GLboolean, GLsizei,
                                                          const void *);
 static void (GL_APIENTRYP real_gl_active_texture)(GLenum);
+static void (GL_APIENTRYP real_gl_get_booleanv)(GLenum, GLboolean *);
 static GLboolean (GL_APIENTRYP real_gl_is_enabled)(GLenum);
 static void (GL_APIENTRYP real_gl_enable)(GLenum);
 static void (GL_APIENTRYP real_gl_disable)(GLenum);
+static void (GL_APIENTRYP real_gl_color_mask)(GLboolean, GLboolean, GLboolean,
+                                              GLboolean);
 static void (GL_APIENTRYP real_gl_viewport)(GLint, GLint, GLsizei, GLsizei);
 static void (GL_APIENTRYP real_gl_clear_color)(GLfloat, GLfloat, GLfloat, GLfloat);
 static void (GL_APIENTRYP real_gl_clear)(GLbitfield);
@@ -177,9 +180,11 @@ static int load_gl(void) {
     LOAD_GL(gl_disable_vertex_attrib_array, "glDisableVertexAttribArray");
     LOAD_GL(gl_vertex_attrib_pointer, "glVertexAttribPointer");
     LOAD_GL(gl_active_texture, "glActiveTexture");
+    LOAD_GL(gl_get_booleanv, "glGetBooleanv");
     LOAD_GL(gl_is_enabled, "glIsEnabled");
     LOAD_GL(gl_enable, "glEnable");
     LOAD_GL(gl_disable, "glDisable");
+    LOAD_GL(gl_color_mask, "glColorMask");
     LOAD_GL(gl_viewport, "glViewport");
     LOAD_GL(gl_clear_color, "glClearColor");
     LOAD_GL(gl_clear, "glClear");
@@ -207,8 +212,9 @@ static int load_gl(void) {
            real_gl_gen_buffers && real_gl_bind_buffer && real_gl_buffer_data &&
            real_gl_enable_vertex_attrib_array &&
            real_gl_disable_vertex_attrib_array && real_gl_vertex_attrib_pointer &&
-           real_gl_active_texture && real_gl_is_enabled && real_gl_enable &&
-           real_gl_disable && real_gl_viewport && real_gl_clear_color &&
+           real_gl_active_texture && real_gl_get_booleanv &&
+           real_gl_is_enabled && real_gl_enable && real_gl_disable &&
+           real_gl_color_mask && real_gl_viewport && real_gl_clear_color &&
            real_gl_clear && real_gl_draw_arrays && real_gl_gen_vertex_arrays &&
            real_gl_bind_vertex_array;
 }
@@ -451,6 +457,7 @@ static int present_rotation(SDL_Window *window) {
     GLboolean cull;
     GLboolean depth;
     GLboolean scissor;
+    GLboolean color_mask[4] = {GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE};
 
     if (!initialise_rotation())
         return 0;
@@ -461,6 +468,7 @@ static int present_rotation(SDL_Window *window) {
     real_gl_get_integerv(GL_TEXTURE_BINDING_2D, &texture);
     real_gl_get_integerv(GL_VERTEX_ARRAY_BINDING, &vertex_array);
     real_gl_get_integerv(GL_VIEWPORT, viewport);
+    real_gl_get_booleanv(GL_COLOR_WRITEMASK, color_mask);
     blend = real_gl_is_enabled(GL_BLEND);
     cull = real_gl_is_enabled(GL_CULL_FACE);
     depth = real_gl_is_enabled(GL_DEPTH_TEST);
@@ -473,8 +481,10 @@ static int present_rotation(SDL_Window *window) {
     real_gl_disable(GL_CULL_FACE);
     real_gl_disable(GL_DEPTH_TEST);
     real_gl_disable(GL_SCISSOR_TEST);
-    real_gl_clear_color(0.0f, 0.0f, 0.0f, 1.0f);
-    real_gl_clear(GL_COLOR_BUFFER_BIT);
+    /* LÖVE may leave colour writes disabled after a stencil pass.  The
+     * physical presenter must always write all four channels; otherwise the
+     * previous KMS buffer is exposed for one swap and appears as flicker. */
+    real_gl_color_mask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     real_gl_use_program(rotate_program);
     real_gl_active_texture(GL_TEXTURE0);
     real_gl_get_integerv(GL_TEXTURE_BINDING_2D, &texture_zero);
@@ -499,6 +509,7 @@ static int present_rotation(SDL_Window *window) {
     if (cull) real_gl_enable(GL_CULL_FACE); else real_gl_disable(GL_CULL_FACE);
     if (depth) real_gl_enable(GL_DEPTH_TEST); else real_gl_disable(GL_DEPTH_TEST);
     if (scissor) real_gl_enable(GL_SCISSOR_TEST); else real_gl_disable(GL_SCISSOR_TEST);
+    real_gl_color_mask(color_mask[0], color_mask[1], color_mask[2], color_mask[3]);
     internal_gl = 0;
     return 1;
 }
