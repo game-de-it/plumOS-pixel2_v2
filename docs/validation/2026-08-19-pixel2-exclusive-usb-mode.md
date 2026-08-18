@@ -74,3 +74,28 @@ System/Runtime ABIs, manifests, and all declared payload hashes.
 
 The Runtime package contains 22 changed managed files and no deletion. Both
 archives are retained under `output/live/2026-08-19-exclusive-usb-mode/`.
+
+## Offline SD deployment
+
+The attached 62.5 GB card was identified as `/dev/disk4` with the expected
+PLUMOS_BOOT, Linux Runtime, and PLUMOS_USER partitions. System A read back at
+the prior deployed SHA-256
+`336a109153801b64daef1c346c0fa8956605dc838951ea3d312524b495aa0485`
+and was backed up with all five managed metadata files under
+`offline-backup-system-a-1e065fb/` before any replacement.
+
+Only System A's SquashFS, slot manifest, checksum, signed update manifest, and
+signature were replaced. The on-card SquashFS read back at
+`57b3e98d534bddb525c8cf67189a37f7f8c6cf7432abff0f273d08b76515167b`,
+its loose Ed25519 signature verified, and the manifest payload hash matched.
+Inactive B remained byte-identical at
+`2a6170fea9dcec458636672eb44d8256bbe9676ff6994e378b0d14e5458f3259`.
+
+The Runtime delta and its checksum were added to the FAT32 update inbox and
+read back at
+`20962355c66155228bb979442dd7b5207fa5f82549c112cf2df054c46e8ecb16`.
+The zero-byte ADB recovery marker was preserved. ROM, BIOS, settings, saves,
+installed ports, the Linux Runtime partition, and all unrelated update files
+were not modified. The Runtime delta still requires the normal frontend
+System Update request because merely placing a package in the inbox does not
+create an update transaction.

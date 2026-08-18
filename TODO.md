@@ -79,8 +79,9 @@
       ownership正本にした。旧設定はmigration fallback、FAT markerは緊急ADB override
       として保持。3 modeのhost fixture、FE cross-build、6言語key整合は合格。署名
       System/Runtime `0.1.0-dev-21fba08`を署名package化し、実updaterの署名・source
-      version・ABI・manifest検証に合格。SD適用後、cold boot ADB、抜き差し、Wi-Fi
-      切替を実機確認する。
+      version・ABI・manifest検証に合格。System Aを完全backup後offline置換し、署名・
+      readback、inactive B、ADB marker保持を確認。Runtime deltaもFAT32 inboxへ配置済み。
+      cold boot後にFEからRuntime updateを要求し、ADB、抜き差し、Wi-Fi切替を実機確認する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
