@@ -124,6 +124,13 @@
       5秒保持を含むhost gateに合格。active A `5535fa8`を完全backup後、`f8a5608`へ
       offline置換し署名・readbackを検証した。inactive Bと全user dataは保持。cold bootを
       継続する。
+    - 2026-08-19: `f8a5608`でもmacOSに親deviceだけが列挙され、FE `RUNNING`が実transport
+      を保証しないことを再確認。保存済みWi-Fi導入後も`15-usb-host-reenumerate`と
+      `20-usb-wifi`がADBとは独立に同じDWC2を制御し、ADB bind後にhost reset可能な競合を
+      特定した。ADB ONを唯一の最優先ownerとし、System host再列挙、Wi-Fi boot、Runtime
+      hotplug/scan/connectを全て抑止する。ADB OFF時だけWi-Fiを許可するhost fixtureと全
+      app-layer gateは合格。署名System/Runtimeのoffline適用、cold boot、物理抜き差しを
+      継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する

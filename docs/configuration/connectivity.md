@@ -16,9 +16,9 @@ adb shell
 
 Pixel2には内蔵Wi-Fiがないため、設定がまだ存在しないfresh imageではADBを既定ON
 にする。START > Network > NW Service > ADBをONにすると保存設定を1にし、FAT32
-user partitionへ`plumos-enable-adb`も作成する。これが「最後にADBを明示ONにした」
-USB所有権の記録となり、保存済みWi-Fi設定より優先して次回bootでdevice roleを
-取り戻す。FE操作時に接続中のUSB gadgetを破壊しないため、変更は再起動後に反映する。
+user partitionへ`plumos-enable-adb`も作成する。ADBがONである限り、保存済みWi-Fi
+設定の有無に関係なく唯一のOTG portをdevice roleとして占有する。FE操作時に接続中の
+USB gadgetを破壊しないため、変更は再起動後に反映する。
 設定画面へ到達できない場合は、SDカードのFAT32 user partition直下へ次の空fileを
 置くとrecovery opt-inになる。
 
@@ -26,9 +26,9 @@ USB所有権の記録となり、保存済みWi-Fi設定より優先して次回
 plumos-enable-adb
 ```
 
-ADBをOFFにすると保存設定を0にし、このrecovery markerも削除する。これにより
-保存済みWi-Fi設定があれば次回bootでhost roleへ戻せる。markerは明示OFFより強い
-recovery overrideでもある。ADB有効中も
+ADBをOFFにすると保存設定を0にし、このrecovery markerも削除する。保存済みWi-Fi
+設定があれば、この状態で再起動した場合だけportをhost roleへ割り当てる。markerは
+明示OFFより強いrecovery overrideでもある。ADB有効中も
 信頼できないhostへUSB接続しないこと。
 
 ## USB Wi-Fi
@@ -73,9 +73,10 @@ ADBはV90Sで実績のあるFunctionFS contractと同様に、保存ON時はchar
 参照せずdevice roleとbound gadgetを維持する。`usb/online`はroleをhostへ変更すると
 Mac/PC接続中でも0のままになるため、USB ownerの判定には使用しない。
 
-保存済みWi-Fi設定がONで`wpa_supplicant.conf`が存在する場合だけ、通常bootはportを
-host roleへ割り当てる。FAT32 rootの`plumos-enable-adb`は明示的なrecovery overrideで、
-保存済みWi-Fiより優先してADB device roleを復元する。V90S `d1721a9`と同様に、
+ADBの保存設定またはFAT32 rootの`plumos-enable-adb`がONなら、後続のUSB host
+再列挙とWi-Fi hotplug recoveryは起動せず、DWC2をunbind/bindしない。ADBを明示OFFに
+したうえで保存済みWi-Fi設定がONかつ`wpa_supplicant.conf`が存在する場合だけ、通常bootは
+portをhost roleへ割り当てる。V90S `d1721a9`と同様に、
 ADB有効中はBusyBoxのkernel uevent monitorを1つ起動する。monitorは
 `android_usb/USB_STATE=DISCONNECTED`だけを受理し、1秒のsettle後に同じFunctionFS
 gadgetへbounded `recover`を1回実行する。UDCがすでに`configured`/`suspended`なら

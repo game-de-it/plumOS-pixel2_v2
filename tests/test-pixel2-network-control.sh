@@ -12,13 +12,14 @@ usb="$tmp/usb"
 net="$tmp/net"
 modules="$tmp/modules"
 run="$tmp/run"
-mkdir -p "$plumos/bin" "$plumos/config" "$plumos/logs" \
+mkdir -p "$plumos/bin" "$plumos/config/network" "$plumos/logs" \
     "$usb/1-1" "$net" "$modules" "$run" "$tmp/user"
 printf '0bda\n' >"$usb/1-1/idVendor"
 printf '8179\n' >"$usb/1-1/idProduct"
 printf '%s\n' \
     'alias usb:v0BDAp8179d*dc*dsc*dp*ic*isc*ip*in* r8188eu' \
     >"$modules/modules.alias"
+printf 'adb_enabled=0\n' >"$plumos/config/network/services.conf"
 
 cat >"$plumos/bin/modprobe" <<'EOF'
 #!/bin/sh
@@ -180,8 +181,11 @@ grep -Fq 'usb wifi mode-switch complete id=0bda:c811' \
 mkdir -p "$tmp/boot/config/system" "$tmp/boot/logs"
 printf 'network={}\n' >"$tmp/boot/wpa.conf"
 printf '{"wifi_enabled": false}\n' >"$tmp/boot/config/system/settings.json"
+printf 'adb_enabled=0\n' >"$tmp/boot/services.conf"
 PLUMOS_WIFI_CONFIG="$tmp/boot/wpa.conf" \
 PLUMOS_SYSTEM_SETTINGS_JSON="$tmp/boot/config/system/settings.json" \
+PLUMOS_NETWORK_SERVICES_CONF="$tmp/boot/services.conf" \
+PLUMOS_NETWORK_ADB_MARKER="$tmp/boot/plumos-enable-adb" \
 PLUMOS_WIFI_LOG="$tmp/boot/logs/wifi.log" \
 PLUMOS_NETWORK_CONTROL="$tmp/should-not-run" \
     "$BOOT_SERVICE" start
@@ -196,6 +200,8 @@ export TEST_BOOT_RECOVERY_CALLS="$tmp/boot/recovery-calls"
 printf '{"wifi_enabled": true}\n' >"$tmp/boot/config/system/settings.json"
 PLUMOS_WIFI_CONFIG="$tmp/boot/wpa.conf" \
 PLUMOS_SYSTEM_SETTINGS_JSON="$tmp/boot/config/system/settings.json" \
+PLUMOS_NETWORK_SERVICES_CONF="$tmp/boot/services.conf" \
+PLUMOS_NETWORK_ADB_MARKER="$tmp/boot/plumos-enable-adb" \
 PLUMOS_WIFI_LOG="$tmp/boot/logs/wifi.log" \
 PLUMOS_WIFI_RECOVERY="$tmp/boot/recovery" \
 PLUMOS_NETWORK_CONTROL="$tmp/should-not-run" \
@@ -203,5 +209,28 @@ PLUMOS_NETWORK_CONTROL="$tmp/should-not-run" \
 grep -Fxq 'sync' "$TEST_BOOT_RECOVERY_CALLS"
 grep -Fq 'result=background-started mode=recovery-sync' \
     "$tmp/boot/logs/wifi.log"
+
+printf 'adb_enabled=1\n' >"$tmp/boot/services.conf"
+: >"$TEST_BOOT_RECOVERY_CALLS"
+PLUMOS_WIFI_CONFIG="$tmp/boot/wpa.conf" \
+PLUMOS_SYSTEM_SETTINGS_JSON="$tmp/boot/config/system/settings.json" \
+PLUMOS_NETWORK_SERVICES_CONF="$tmp/boot/services.conf" \
+PLUMOS_NETWORK_ADB_MARKER="$tmp/boot/plumos-enable-adb" \
+PLUMOS_WIFI_LOG="$tmp/boot/logs/wifi.log" \
+PLUMOS_WIFI_RECOVERY="$tmp/boot/recovery" \
+PLUMOS_NETWORK_CONTROL="$tmp/should-not-run" \
+    "$BOOT_SERVICE" start
+grep -Fxq 'stop' "$TEST_BOOT_RECOVERY_CALLS"
+grep -Fq 'result=disabled reason=adb-priority' "$tmp/boot/logs/wifi.log"
+
+# ADB ON has exclusive ownership of the OTG port. Runtime Wi-Fi actions must
+# fail before probing or changing USB devices.
+printf 'adb_enabled=1\n' >"$plumos/config/network/services.conf"
+if run_control --scan >"$tmp/adb-priority-scan.out" 2>&1; then
+    printf 'error: Wi-Fi scan unexpectedly bypassed ADB ownership\n' >&2
+    exit 1
+fi
+grep -Fxq 'result=failed' "$tmp/adb-priority-scan.out"
+grep -Fxq 'stage=usb_owned_by_adb' "$tmp/adb-priority-scan.out"
 
 printf 'pixel2_network_control=result-ok\n'

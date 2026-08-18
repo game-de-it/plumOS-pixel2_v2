@@ -156,18 +156,33 @@ env SUBSYSTEM=usb USB_STATE=DISCONNECTED \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
 test "$(wc -l <"$TMP/adbd-calls" | tr -d ' ')" -eq 1
 
-# Saved Wi-Fi is the only normal reason to assign Pixel2's shared port to host.
+# ADB ON owns Pixel2's single OTG port even when Wi-Fi credentials and the
+# saved Wi-Fi ON setting both exist.
 env "${service_env[@]}" "$SERVICE" stop
 ADBD_PID=
 printf '%s\n' 'network={ssid="test"}' >"$TMP/config/wpa_supplicant.conf"
 printf '%s\n' '{"wifi_enabled":true}' >"$TMP/config/system/settings.json"
 printf '%s\n' host >"$TMP/usb-role/controller/role"
 env "${service_env[@]}" "$SERVICE" start
-grep -q 'result=waiting-usb-wifi role=host' "$TMP/log/adbd.log"
+ADBD_PID="$(cat "$TMP/run/adbd.pid")"
+mkdir -p "$TMP/proc/$ADBD_PID"
+printf '%s\0' "$TMP/adbd-stub" >"$TMP/proc/$ADBD_PID/cmdline"
+grep -q 'result=started udc=fake-udc' "$TMP/log/adbd.log"
+test "$(cat "$TMP/usb-role/controller/role")" = device
+test "$(cat "$TMP/gadget/UDC")" = fake-udc
+
+# Wi-Fi may own the port only after ADB is explicitly disabled.  The ADB
+# service must leave host-role selection to the Wi-Fi boot service.
+env "${service_env[@]}" "$SERVICE" stop
+ADBD_PID=
+printf '%s\n' adb_enabled=0 >"$TMP/config/services.conf"
+printf '%s\n' host >"$TMP/usb-role/controller/role"
+env "${service_env[@]}" "$SERVICE" start
+grep -q 'result=disabled reason=explicit-user-setting' "$TMP/log/adbd.log"
+test ! -e "$TMP/run/adbd.pid"
 test "$(cat "$TMP/usb-role/controller/role")" = host
 
-# The documented FAT recovery marker overrides saved Wi-Fi and deterministically
-# restores the V90S-style ADB gadget.
+# The documented FAT recovery marker also overrides explicit ADB OFF.
 touch "$TMP/config/enable-adb"
 printf '%s\n' host >"$TMP/usb-role/controller/role"
 env "${service_env[@]}" "$SERVICE" start

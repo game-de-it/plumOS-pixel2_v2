@@ -8,6 +8,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 mkdir -p "$TMP/usb" "$TMP/dwc2" "$TMP/platform" "$TMP/config/system" \
     "$TMP/log"
+printf 'adb_enabled=0\n' >"$TMP/config/services.conf"
 printf 'network={}\n' >"$TMP/config/wpa_supplicant.conf"
 printf '{"wifi_enabled": true}\n' >"$TMP/config/system/settings.json"
 printf '0\n' >"$TMP/usb-online"
@@ -23,6 +24,8 @@ service_env=(
     PLUMOS_USB_HOST_DEVICE_ID=ff300000.usb
     PLUMOS_USB_HOST_WPA_CONFIG="$TMP/config/wpa_supplicant.conf"
     PLUMOS_USB_HOST_SETTINGS="$TMP/config/system/settings.json"
+    PLUMOS_USB_HOST_SERVICES_CONF="$TMP/config/services.conf"
+    PLUMOS_USB_HOST_ADB_MARKER="$TMP/config/plumos-enable-adb"
     PLUMOS_USB_HOST_LOG="$TMP/log/service.log"
     PLUMOS_USB_HOST_RESET_DELAY=0
     PLUMOS_USB_HOST_ENUMERATION_WAIT=0
@@ -56,5 +59,17 @@ env "${service_env[@]}" "$SERVICE" worker
 test ! -s "$TMP/dwc2/bind"
 test ! -s "$TMP/dwc2/unbind"
 grep -q 'result=skipped reason=wifi-not-requested' "$TMP/log/service.log"
+
+# ADB ON is authoritative: saved Wi-Fi must never reset DWC2 underneath the
+# bound FunctionFS gadget.
+printf 'adb_enabled=1\n' >"$TMP/config/services.conf"
+printf '{"wifi_enabled": true}\n' >"$TMP/config/system/settings.json"
+printf 'network={}\n' >"$TMP/config/wpa_supplicant.conf"
+: >"$TMP/dwc2/bind"
+: >"$TMP/dwc2/unbind"
+env "${service_env[@]}" "$SERVICE" worker
+test ! -s "$TMP/dwc2/bind"
+test ! -s "$TMP/dwc2/unbind"
+grep -q 'result=skipped reason=adb-priority' "$TMP/log/service.log"
 
 printf 'pixel2_usb_host_reenumerate=result-ok\n'

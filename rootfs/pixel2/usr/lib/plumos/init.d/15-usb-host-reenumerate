@@ -11,6 +11,8 @@ PLATFORM_DEVICE="${PLUMOS_USB_HOST_PLATFORM_DEVICE:-/sys/bus/platform/devices/ff
 DEVICE_ID="${PLUMOS_USB_HOST_DEVICE_ID:-ff300000.usb}"
 WPA_CONFIG="${PLUMOS_USB_HOST_WPA_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}"
 SETTINGS="${PLUMOS_USB_HOST_SETTINGS:-/mnt/plumos/config/system/settings.json}"
+SERVICES_CONF="${PLUMOS_USB_HOST_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
+ADB_MARKER="${PLUMOS_USB_HOST_ADB_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 LOG="${PLUMOS_USB_HOST_LOG:-/state/plumos/logs/usb-host-reenumerate.log}"
 RESET_DELAY="${PLUMOS_USB_HOST_RESET_DELAY:-2}"
 ENUMERATION_WAIT="${PLUMOS_USB_HOST_ENUMERATION_WAIT:-3}"
@@ -21,7 +23,19 @@ log() {
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
 }
 
+adb_requested() {
+    [ -f "$ADB_MARKER" ] && return 0
+    # Match 10-adbd: a fresh image with no service setting defaults to ADB.
+    [ -r "$SERVICES_CONF" ] || return 0
+    value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
+    case "$value" in
+        1|true|on|'') return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 wifi_requested() {
+    adb_requested && return 1
     [ -s "$WPA_CONFIG" ] || return 1
     if [ -r "$SETTINGS" ] &&
         grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \
@@ -47,6 +61,10 @@ downstream_present() {
 }
 
 worker() {
+    if adb_requested; then
+        log 'result=skipped reason=adb-priority'
+        return 0
+    fi
     wifi_requested || {
         log 'result=skipped reason=wifi-not-requested'
         return 0

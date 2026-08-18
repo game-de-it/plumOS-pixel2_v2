@@ -4,6 +4,8 @@ set -u
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 CONFIG=${PLUMOS_WIFI_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}
 SETTINGS=${PLUMOS_SYSTEM_SETTINGS_JSON:-/mnt/plumos/config/system/settings.json}
+SERVICES_CONF=${PLUMOS_NETWORK_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}
+ADB_MARKER=${PLUMOS_NETWORK_ADB_MARKER:-/mnt/plumos-user/plumos-enable-adb}
 LOG=${PLUMOS_WIFI_LOG:-/state/plumos/logs/usb-wifi.log}
 CONTROL=${PLUMOS_NETWORK_CONTROL:-/mnt/plumos/bin/plumos-network-control}
 RECOVERY=${PLUMOS_WIFI_RECOVERY:-/mnt/plumos/bin/plumos-wifi-recovery}
@@ -12,7 +14,24 @@ log() {
     printf '%s service=usb-wifi %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
 }
 
+adb_requested() {
+    [ -f "$ADB_MARKER" ] && return 0
+    [ -r "$SERVICES_CONF" ] || return 0
+    value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
+    case "$value" in
+        1|true|on|'') return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 start_wifi() {
+    if adb_requested; then
+        [ ! -x "$RECOVERY" ] || \
+            PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
+                "$RECOVERY" stop >>"$LOG" 2>&1 || true
+        log 'result=disabled reason=adb-priority'
+        return 0
+    fi
     [ -s "$CONFIG" ] || {
         log 'result=disabled reason=config-missing'
         return 0

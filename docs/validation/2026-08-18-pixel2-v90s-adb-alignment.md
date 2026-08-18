@@ -37,11 +37,11 @@ Pixel2 now follows the same contract:
 - recovery never changes the port to host role;
 - ADB recovery output is persistent under `/state/plumos/logs/adbd.log`.
 
-Pixel2 has one hardware-specific exception because ADB and its optional USB
-Wi-Fi dongle share a single OTG port. A saved-enabled Wi-Fi configuration
-assigns the port to host role during normal boot. The documented FAT32
-`plumos-enable-adb` marker overrides saved Wi-Fi and deterministically assigns
-the port back to the V90S-style ADB gadget.
+Pixel2 has one hardware-specific arbitration rule because ADB and its optional
+USB Wi-Fi dongle share a single OTG port. ADB ON always owns the port regardless
+of saved Wi-Fi state. Wi-Fi may assign host role only after ADB is explicitly
+turned OFF. The FAT32 `plumos-enable-adb` marker remains an offline recovery
+override for an explicit OFF setting.
 
 The first physical acceptance attempt reached frontend `RUNNING`, but macOS
 reported the transport `offline`. After a physical cable replug the frontend
@@ -72,10 +72,11 @@ gadget is bound.
 ## Host gates
 
 The fixture covers healthy recovery, stale UDC rebind, action serialization,
-normal cold boot reclaiming device role, saved Wi-Fi selecting host role, the
+normal cold boot reclaiming device role, ADB ON suppressing saved Wi-Fi, the
 ADB UI toggle creating/removing the ownership marker, an offline initial
 protocol state causing no replug, a matching kernel disconnect causing exactly
-one recover request, and the FAT recovery marker overriding saved Wi-Fi. The existing USB-host reset,
+one recover request, explicit ADB OFF allowing Wi-Fi host ownership, and the FAT
+recovery marker overriding explicit OFF. The existing USB-host reset,
 power/sleep, app-layer script, and System init tests remain enabled.
 
 Physical acceptance remains open until the signed System and Runtime are
@@ -85,6 +86,29 @@ installed and the following all pass:
 2. one physical cable unplug/replug returns the same maintenance path;
 3. removal of the marker plus saved Wi-Fi ON boots the tested 8821CU dongle;
 4. persistent ADB and hardware-key logs explain any failed transition.
+
+## Fifth physical attempt and single-port arbitration defect
+
+System `0.1.0-dev-f8a5608` removed the destructive ADB startup timer, but the
+next cold boot and cable replug still produced only the macOS parent device
+`18d1:4ee7`; no FunctionFS interface or `adb devices` transport appeared. The
+frontend could report `RUNNING` from UDC `configured`, so that label was not
+accepted as transport proof.
+
+Code inspection then found a second independent owner of the same controller.
+After `10-adbd` selected device role and bound FunctionFS, boot service
+`15-usb-host-reenumerate` still consulted only saved Wi-Fi state and could
+unbind/rebind `ff300000.usb`. `20-usb-wifi` and the Runtime hotplug monitor also
+treated saved Wi-Fi as sufficient. This race became reachable after the
+physical Wi-Fi validation stored credentials and explains why ADB degraded
+late in development rather than at initial bring-up.
+
+The corrected contract is exclusive and deterministic: ADB ON suppresses the
+host re-enumeration worker, the Wi-Fi boot service, and Runtime Wi-Fi recovery.
+Wi-Fi scan/connect is refused with `stage=usb_owned_by_adb`. Wi-Fi can own the
+port only after ADB is explicitly OFF. Host fixtures verify that saved Wi-Fi
+cannot write either DWC2 unbind or bind while ADB is enabled. A new signed
+System/Runtime deployment and cold-boot acceptance remain pending.
 
 ## Second offline deployment
 

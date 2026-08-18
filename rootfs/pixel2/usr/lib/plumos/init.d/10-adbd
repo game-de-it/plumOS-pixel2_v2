@@ -19,8 +19,6 @@ PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
 USB_ROLE_GLOB="${PLUMOS_ADB_USB_ROLE_GLOB:-/sys/class/usb_role/*/role}"
 SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
-WPA_CONFIG="${PLUMOS_ADB_WPA_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}"
-SETTINGS="${PLUMOS_ADB_SETTINGS:-/mnt/plumos/config/system/settings.json}"
 RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
 ACTION_LOCK_WAIT="${PLUMOS_ADB_ACTION_LOCK_WAIT:-12}"
 ACTION_LOCK_HELD=0
@@ -184,19 +182,6 @@ set_usb_role() {
     done
 }
 
-wifi_port_requested() {
-    # The FAT recovery marker is an explicit request to reclaim the one OTG
-    # port for ADB, even when Wi-Fi was saved ON before maintenance.
-    [ -f "$OPT_IN_MARKER" ] && return 1
-    [ -s "$WPA_CONFIG" ] || return 1
-    if [ -r "$SETTINGS" ] &&
-        grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \
-            "$SETTINGS" 2>/dev/null; then
-        return 1
-    fi
-    return 0
-}
-
 stop_adbd() {
     stop_uevent_monitor
     if [ -e "$GADGET/UDC" ]; then
@@ -227,16 +212,10 @@ start_adbd() {
         return 1
     }
     # Match the proven V90S contract: enabled ADB owns a bound FunctionFS
-    # gadget regardless of charger/power-supply state. Pixel2 adds only one
-    # explicit arbitration rule because its Wi-Fi dongle shares this OTG port.
+    # gadget regardless of charger/power-supply state. Pixel2 has one shared
+    # OTG port, so Wi-Fi is permitted only after ADB is explicitly disabled.
     # Never infer the USB owner from usb/online; that value can stay zero after
     # host role and permanently strand a later Mac attachment.
-    if wifi_port_requested; then
-        stop_adbd
-        set_usb_role host
-        log 'result=waiting-usb-wifi role=host'
-        return 0
-    fi
     if pid_running && gadget_bound; then
         start_uevent_monitor || return 1
         log "result=already-running pid=$(cat "$PID")"
@@ -353,12 +332,6 @@ replug_adbd() {
         log 'result=replug-skipped reason=disabled'
         return 0
     fi
-    if wifi_port_requested; then
-        stop_adbd
-        set_usb_role host
-        log 'result=replug-skipped reason=usb-owned-by-wifi role=host'
-        return 0
-    fi
     if pid_running && gadget_bound; then
         state=$(udc_state 2>/dev/null || true)
         log "action=rebind reason=usb-replug state=${state:-unknown}"
@@ -389,8 +362,6 @@ status_adbd() {
         udc_state=$(cat "$udc_path/state" 2>/dev/null || true)
     if ! adb_enabled_by_policy; then
         state=disabled
-    elif wifi_port_requested; then
-        state=waiting_usb
     elif pid_running && [ "$bound" -eq 1 ]; then
         case "$udc_state" in
             configured|suspended) state=running ;;

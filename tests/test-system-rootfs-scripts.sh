@@ -56,8 +56,12 @@ grep -q 'physical_yres' \
 grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q '^USB_ONLINE=' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'waiting-usb-wifi role=host' \
+grep -q 'Wi-Fi is permitted only after ADB is explicitly disabled' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'result=skipped reason=adb-priority' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
+grep -q 'result=disabled reason=adb-priority' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi"
 test -x "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 grep -q 'ff300000.usb' \
