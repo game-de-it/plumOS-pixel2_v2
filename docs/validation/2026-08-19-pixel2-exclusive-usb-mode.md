@@ -54,3 +54,23 @@ upgrade compatibility, but new boot and runtime code consults `usb_mode` first.
 4. select Wi-Fi mode, reboot with the validated 8821CU dongle, and verify LAN;
 5. select ADB mode again, reboot with the Mac cable, and verify transport;
 6. capture `/state/plumos/logs/adbd.log` if ADB remains `waiting`.
+
+## Signed packages
+
+Commit `21fba08` was built as System and strict Runtime
+`0.1.0-dev-21fba08`. System uses installed `1e065fb` as its required source;
+the Runtime delta uses the last confirmed app-layer base `5535fa8`. The real
+updater accepted the Ed25519 signatures, device/architecture, source versions,
+System/Runtime ABIs, manifests, and all declared payload hashes.
+
+- System archive SHA-256:
+  `9fea195b63ce375d78a9351fa9eedc5dcac1e1baa1225760f2f422d1a1d5bc5b`;
+- System SquashFS SHA-256:
+  `57b3e98d534bddb525c8cf67189a37f7f8c6cf7432abff0f273d08b76515167b`;
+- Runtime archive SHA-256:
+  `20962355c66155228bb979442dd7b5207fa5f82549c112cf2df054c46e8ecb16`;
+- strict Runtime root checksum-list SHA-256:
+  `003dbd35eb0dd9a371c57e534fd3ca02290296c91d5d9df01b26968d04080992`.
+
+The Runtime package contains 22 changed managed files and no deletion. Both
+archives are retained under `output/live/2026-08-19-exclusive-usb-mode/`.
