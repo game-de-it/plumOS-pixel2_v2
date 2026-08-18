@@ -131,7 +131,10 @@
       hotplug/scan/connectを全て抑止する。ADB OFF時だけWi-Fiを許可するhost fixtureと全
       app-layer gateは合格。`1e065fb`の署名System/strict Runtimeをpackage化し、実updater
       で署名・source version・ABI・target・manifestを検証済み。offline適用、cold boot、
-      物理抜き差しを継続する。
+      物理抜き差しを継続する。active A `f8a5608`を完全backup後、System `1e065fb`へ
+      offline置換し、署名・SHA-256 readback、inactive B保持、zero-byte ADB markerを確認。
+      Runtime deltaもFAT32 update inboxへreadback一致で追加済み。cold boot後の実transport、
+      Runtime適用結果、物理抜き差しを継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する

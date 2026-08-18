@@ -135,6 +135,29 @@ ABI, target, and manifest inspection:
 Packages are retained under `output/live/2026-08-19-adb-usb-owner/`. No live
 device write was attempted because the host still had no ADB interface.
 
+## Fifth offline deployment
+
+The attached 62.5 GB Pixel2 card was identified as `/dev/disk4` with the
+expected 536.9 MB `PLUMOS_BOOT`, 8.6 GB Linux Runtime, and 53.4 GB
+`PLUMOS_USER` partitions. Active slot A read back as `f8a5608` with the
+expected SHA-256 before any write. Its five managed files were preserved under
+`output/live/2026-08-19-adb-usb-owner/offline-backup-system-a-f8a5608/`.
+
+Only slot A's squashfs, text manifest, checksum, signed JSON manifest, and
+signature were atomically replaced. Readback matched System SHA-256
+`336a109153801b64daef1c346c0fa8956605dc838951ea3d312524b495aa0485`,
+and the on-card signature verified against the packaged Pixel2 public key.
+Inactive slot B was not modified and retained SHA-256
+`2a6170fea9dcec458636672eb44d8256bbe9676ff6994e378b0d14e5458f3259`.
+
+Runtime `1e065fb` was added to the FAT32 update inbox with readback SHA-256
+`0ae854c136fdcdc5933287e46bbefab12acec3822406936786e5c28e61c71eb1`.
+The existing zero-byte `plumos-enable-adb` marker was preserved. ROM, BIOS,
+settings, saves, installed ports, and the Linux Runtime partition were not
+modified. Because macOS could not read the ext4 Runtime version without an
+interactive sudo mount, the signed delta remains updater-gated on source
+`5535fa8`; a mismatch will be rejected without changing the installed Runtime.
+
 ## Second offline deployment
 
 Commit `0694c47` was built as System and Runtime `0.1.0-dev-0694c47` after the
