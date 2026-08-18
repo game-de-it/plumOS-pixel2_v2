@@ -102,3 +102,64 @@ ADB returned without an OS reboot. Final state was one adbd process, one
 hardware-key service, UDC `configured`, policy enabled, and a working shell.
 No duplicate-daemon, `Address already in use`, or UDC-bind error occurred in
 the new transaction.
+
+## Protocol transport recovery without a VBUS transition
+
+On 2026-08-18, a longer diagnostic session exposed the remaining blind spot.
+The DWC2 gadget briefly emitted `DISCONNECTED` and returned to `CONFIGURED`
+while `/sys/class/power_supply/usb/online` stayed at one.  FunctionFS logged
+`SUSPEND`, `DISABLE`, and destruction of `UsbFfs`, but the live adbd process and
+configured UDC made the old status check report healthy.  Because VBUS never
+changed, the physical-replug watcher did not run and macOS retained an
+`offline` transport until the cable was removed.
+
+Commit `8a98e3e` changes the recovery signal from VBUS alone to the ADB
+protocol transport:
+
+- the owned adbd build writes `online` or `offline` to the tmpfs marker
+  `/run/plumos/adbd-transport.state` from `handle_online()` and
+  `handle_offline()`;
+- the existing hardware-key daemon samples that marker every 500 ms;
+- `usb_online=1` plus a transport that stays offline for 3000 ms requests one
+  serialized `replug` action;
+- an online transition, USB removal, or natural host reconnection cancels the
+  pending recovery;
+- one attempt is allowed per offline episode, preserving the bounded recovery
+  and duplicate-daemon contract;
+- the former unconditional rebind two seconds after every physical attach is
+  removed, so a successful natural enumeration is not disconnected again.
+
+Both parts were built from the same clean commit and installed as signed
+System and Runtime updates:
+
+```text
+commit=8a98e3e
+system_version=0.1.0-dev-8a98e3e
+runtime_version=0.1.0-dev-8a98e3e
+system_package_sha256=f9055025c060d611606c6a3768a8f1ab2e10db62ec0a3661ba9a378129947e5f
+runtime_package_sha256=7ab9c8cdde0660e9bb0a27728c73943830f2b2770ff5e4ccafaa92b2de6d486f
+system_image_sha256=a5a5ca2ef946eb0e74b5930ae6bd5f9e768a72920b1d1bd73b3814b005c42ba2
+result=system_healthy
+result=runtime_healthy
+runtime_verify=result-ok
+```
+
+A host ADB server restart returned inside the grace interval without changing
+the device adbd PID.  A controlled UDC unbind then reproduced the failure
+without removing VBUS.  The device recorded the offline marker, scheduled one
+recovery, restarted FunctionFS once, and returned to a working shell in eight
+seconds without an OS reboot or cable action:
+
+```text
+hardware-keys: event=adb-transport-state online=0 usb_online=1
+hardware-keys: action=adb-transport-recovery-scheduled delay_ms=3000
+hardware-keys: action=adb-transport-replug usb_online=1 rc=0
+service=adb action=replug-restart reason=daemon-or-gadget-missing
+service=adb result=started udc=ff300000.usb access=default-on-no-explicit-setting
+hardware-keys: event=adb-transport-state online=1 usb_online=1
+```
+
+Final state was one adbd process, one hardware-key process, UDC `configured`,
+transport `online`, and the same healthy System and Runtime versions.  A final
+physical unplug/replug is retained as the operator-visible acceptance for the
+natural-enumeration cancellation path.

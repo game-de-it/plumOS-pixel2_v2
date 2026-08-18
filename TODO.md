@@ -81,6 +81,13 @@
       PID lockで直列化し、二重adbd/JDWP/FunctionFS競合を防止した。署名System/
       Runtime `0.1.0-dev-45b4505`を実機適用し、USB抜き差し後のFunctionFS
       BIND/ENABLE、adbd 1 process、UDC configured、ADB shell復帰を確認。
+    - 2026-08-18: VBUSを維持したmacOS側の論理USB再設定ではFunctionFS transport
+      だけが破棄され、UDC configuredとadbd生存をhealthyと誤判定する欠陥を確定。
+      `8a98e3e`でowned adbdがprotocol online/offline markerを出し、offlineが3秒
+      継続した場合だけhardware-key daemonが単発replugする方式へ変更した。自然復帰時の
+      無条件二重rebindは廃止。署名System/Runtime `0.1.0-dev-8a98e3e`を実機適用し、
+      host server自然復帰でPID維持、VBUSありUDC unbindから8秒・ケーブル操作なしで
+      ADB復帰、各health、再起動後保持を確認。物理抜き差しの最終確認を継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する

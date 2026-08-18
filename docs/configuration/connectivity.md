@@ -69,8 +69,11 @@ RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して
 Pixel2のUSB portは1つのdual-role OTGでADBとUSB Wi-Fiが排他的に共有する。
 `/sys/class/power_supply/usb/online=1`（Mac/PCからVBUSあり）の場合だけADBがdevice
 roleを要求する。`online=0`ではADBの保存済みON設定を変更せずgadgetを解放し、host roleで
-dongleを列挙する。後でMac/PCケーブルへ差し替えるとhardware-key serviceが既存のbounded
-ADB replugを呼び、device roleとFunctionFSを復元する。
+dongleを列挙する。adbdはADB protocol transportの状態を
+`/run/plumos/adbd-transport.state`へ`online`/`offline`として通知する。
+hardware-key serviceはVBUSがある状態で`offline`が3秒継続した場合だけ、既存の
+bounded ADB replugを1回呼ぶ。host transportが猶予内に自然復帰した場合は何もせず、
+正常なUSB再接続後にgadgetを再度切断しない。USBを抜いた状態では回復を試行しない。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
 Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、
