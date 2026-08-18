@@ -1,7 +1,7 @@
 # Pixel2 V90S-derived ADB alignment
 
 Date: 2026-08-18
-Status: third physical acceptance FAIL; log-confirmed startup watchdog removed; fourth signed package ready
+Status: third physical acceptance FAIL; fourth offline deployment PASS; physical acceptance pending
 
 ## Regression
 
@@ -190,5 +190,21 @@ and payload SHA-256 verification:
   `fd5fdea3f659ef829409f9396787234f0d905e2de572810b8c94d0482723ccc7`.
 
 The package is retained under
-`output/live/2026-08-19-adb-enumeration-wait/`. Offline replacement of active
-A and physical cold-boot acceptance remain pending.
+`output/live/2026-08-19-adb-enumeration-wait/`. The completed offline
+replacement is recorded below; physical cold-boot acceptance remains pending.
+
+## Fourth offline deployment
+
+After the read-only evidence mount was explicitly unmounted, active A
+`5535fa8` read back at its expected SHA-256 and its five managed files were
+preserved under
+`output/live/2026-08-19-adb-enumeration-wait/offline-backup-system-a-5535fa8/`.
+Only active A was replaced with System `f8a5608`.
+
+The on-card squashfs read back byte-identical at
+`fd5fdea3f659ef829409f9396787234f0d905e2de572810b8c94d0482723ccc7`,
+all four metadata files matched the signed package/build output, and the loose
+Ed25519 signature verified. Inactive B retained SHA-256
+`2a6170fea9dcec458636672eb44d8256bbe9676ff6994e378b0d14e5458f3259`.
+The zero-byte ADB ownership marker remained present. Runtime, ROM, BIOS,
+settings, saves, installed ports, and user data were not modified.

@@ -121,7 +121,9 @@
       再起動していたことを時刻付きで確定した。V90Sにはこの起動timerはないため完全
       撤去し、kernel disconnect helperも強制`replug`ではなくV90S同様`recover`だけを
       呼ぶ。`f8a5608`の署名System packageはsignature、payload SHA-256/size、slow-host
-      5秒保持を含むhost gateに合格。offline適用とcold bootを継続する。
+      5秒保持を含むhost gateに合格。active A `5535fa8`を完全backup後、`f8a5608`へ
+      offline置換し署名・readbackを検証した。inactive Bと全user dataは保持。cold bootを
+      継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
