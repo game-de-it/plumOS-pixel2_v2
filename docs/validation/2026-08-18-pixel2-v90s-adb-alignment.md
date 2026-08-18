@@ -1,7 +1,7 @@
 # Pixel2 V90S-derived ADB alignment
 
 Date: 2026-08-18
-Status: third physical acceptance FAIL; log-confirmed startup watchdog removed; fourth package pending
+Status: third physical acceptance FAIL; log-confirmed startup watchdog removed; fourth signed package ready
 
 ## Regression
 
@@ -172,3 +172,23 @@ waits for the host. Pixel2 now removes the watchdog entirely. The blocking
 disconnect helper also calls `recover`, as V90S does, instead of the stronger
 manual `replug` action. Explicit replug remains available for sleep resume and
 manual diagnostics, but it is not part of normal boot or uevent recovery.
+
+## Fourth signed package
+
+Commit `f8a5608` was built as System `0.1.0-dev-f8a5608` with source version
+`0.1.0-dev-5535fa8`. Runtime was intentionally not rebuilt because this change
+only affects the System-owned ADB service and helper. System squashfs
+verification, the slow-host five-second regression fixture, ADB recovery,
+power/sleep, System rootfs, and app-layer regression tests passed.
+
+The signed archive passed Ed25519 signature, manifest, declared payload size,
+and payload SHA-256 verification:
+
+- archive:
+  `2ac0c0de402e55dafb157609f8857026305399c57b984ad869c42b213e79128b`;
+- System squashfs:
+  `fd5fdea3f659ef829409f9396787234f0d905e2de572810b8c94d0482723ccc7`.
+
+The package is retained under
+`output/live/2026-08-19-adb-enumeration-wait/`. Offline replacement of active
+A and physical cold-boot acceptance remain pending.
