@@ -31,6 +31,29 @@ frontend functionality outside this ADB path is unchanged.
 - power-menu and sleep fixture: pass;
 - exclusive USB-mode fixture: pass;
 - System rootfs source contract: pass.
+- AArch64 adbd build: pass, SHA-256
+  `f51ed4e58ff3c0cde73a01a7fe95f0058f6ca67ab5a94848e1c8f78a4294abec`;
+- strict app-layer build: pass;
+- complete System A/B rootfs build and verification: pass;
+- System SquashFS SHA-256
+  `4ee5dcb43827ce37696de7f2cc666bab950982736f6d8c157862dbb3cc1bcd38`.
 
-ARM64 binary build, signed System/Runtime packaging, offline SD deployment,
-cold-boot shell, and physical cable replug remain pending.
+Signed packages were inspected against the versions captured from the real
+card:
+
+```text
+System:  5246728 -> 11a7f94
+SHA-256: f801b00125d6c9a04c783ef26425fe4ef3deffec4777e117aaa8e0934178c58d
+
+Runtime: 21fba08 -> 11a7f94
+SHA-256: 14c3721b4821be6bff4e2ed74060072f962c750b19e6d0c6fbdbfa614c7adc11
+files:    9 changed, 0 deleted
+```
+
+Both updater inspections passed signature, device, architecture, vendor
+runtime, exact source version, ABI, manifest, and payload validation. Packages
+are retained under
+`output/live/2026-08-19-pixel2-adb-stable-rollback/`.
+
+Offline SD deployment, cold-boot shell, and physical cable replug remain
+pending.

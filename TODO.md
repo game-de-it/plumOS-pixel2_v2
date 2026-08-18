@@ -112,7 +112,10 @@
         cold boot/shell/物理抜き差しの実機証跡が揃う`45b4505`をrollback基準とし、
         nonblocking adbd、単発4秒health check、物理online後の単発2秒replug、PID lockを
         復元。protocol-state patchとkernel uevent monitorは撤去し、後続機能と現行
-        `usb_mode`契約は保持する。ARM64 buildと実機cold bootを継続する。
+        `usb_mode`契約は保持。ARM64 adbd、strict app-layer、System A/B rootfsのbuildと
+        host gateは合格。実機の`System 5246728 / Runtime 21fba08`から`11a7f94`への
+        署名packageを生成し、実updaterのexact source・ABI・署名・payload検証に合格。
+        offline SD適用と実機cold bootを継続する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
