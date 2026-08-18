@@ -34,8 +34,6 @@ static SDL_Renderer *(*real_create_renderer)(SDL_Window *, int, Uint32);
 static const char *(*real_get_error)(void);
 static void (*real_get_window_size)(SDL_Window *, int *, int *);
 static int (*real_get_current_display_mode)(int, SDL_DisplayMode *);
-static int (*real_get_desktop_display_mode)(int, SDL_DisplayMode *);
-static int (*real_get_display_mode)(int, int, SDL_DisplayMode *);
 static void (*real_destroy_renderer)(SDL_Renderer *);
 static SDL_Texture *(*real_create_texture)(SDL_Renderer *, Uint32, int, int, int);
 static void (*real_destroy_texture)(SDL_Texture *);
@@ -117,34 +115,16 @@ void SDL_GetWindowSize(SDL_Window *window, int *width, int *height) {
 int SDL_GetCurrentDisplayMode(int display_index, SDL_DisplayMode *mode) {
     int result;
 
+    /*
+     * Applications use the current mode as their layout surface.  Do not
+     * interpose SDL_GetDisplayMode or SDL_GetDesktopDisplayMode: KMSDRM also
+     * uses those APIs while selecting a real connector mode, and the panel
+     * has no physical 640x480 mode.
+     */
     LOAD(get_current_display_mode, GetCurrentDisplayMode);
     if (!real_get_current_display_mode)
         return -1;
     result = real_get_current_display_mode(display_index, mode);
-    if (result == 0)
-        apply_logical_display_mode(mode);
-    return result;
-}
-
-int SDL_GetDesktopDisplayMode(int display_index, SDL_DisplayMode *mode) {
-    int result;
-
-    LOAD(get_desktop_display_mode, GetDesktopDisplayMode);
-    if (!real_get_desktop_display_mode)
-        return -1;
-    result = real_get_desktop_display_mode(display_index, mode);
-    if (result == 0)
-        apply_logical_display_mode(mode);
-    return result;
-}
-
-int SDL_GetDisplayMode(int display_index, int mode_index, SDL_DisplayMode *mode) {
-    int result;
-
-    LOAD(get_display_mode, GetDisplayMode);
-    if (!real_get_display_mode)
-        return -1;
-    result = real_get_display_mode(display_index, mode_index, mode);
     if (result == 0)
         apply_logical_display_mode(mode);
     return result;
