@@ -33,6 +33,9 @@ static int internal_render;
 static SDL_Renderer *(*real_create_renderer)(SDL_Window *, int, Uint32);
 static const char *(*real_get_error)(void);
 static void (*real_get_window_size)(SDL_Window *, int *, int *);
+static int (*real_get_current_display_mode)(int, SDL_DisplayMode *);
+static int (*real_get_desktop_display_mode)(int, SDL_DisplayMode *);
+static int (*real_get_display_mode)(int, int, SDL_DisplayMode *);
 static void (*real_destroy_renderer)(SDL_Renderer *);
 static SDL_Texture *(*real_create_texture)(SDL_Renderer *, Uint32, int, int, int);
 static void (*real_destroy_texture)(SDL_Texture *);
@@ -65,6 +68,13 @@ static void (*real_render_present)(SDL_Renderer *);
 static int rotation_enabled(void) {
     const char *value = getenv("PLUMOS_PORTMASTER_SDL_ROTATION");
     return value && strcmp(value, "270") == 0;
+}
+
+static void apply_logical_display_mode(SDL_DisplayMode *mode) {
+    if (!rotation_enabled() || !mode)
+        return;
+    mode->w = 640;
+    mode->h = 480;
 }
 
 static const char *sdl_error(void) {
@@ -102,6 +112,42 @@ void SDL_GetWindowSize(SDL_Window *window, int *width, int *height) {
         *width = 640;
     if (height)
         *height = 480;
+}
+
+int SDL_GetCurrentDisplayMode(int display_index, SDL_DisplayMode *mode) {
+    int result;
+
+    LOAD(get_current_display_mode, GetCurrentDisplayMode);
+    if (!real_get_current_display_mode)
+        return -1;
+    result = real_get_current_display_mode(display_index, mode);
+    if (result == 0)
+        apply_logical_display_mode(mode);
+    return result;
+}
+
+int SDL_GetDesktopDisplayMode(int display_index, SDL_DisplayMode *mode) {
+    int result;
+
+    LOAD(get_desktop_display_mode, GetDesktopDisplayMode);
+    if (!real_get_desktop_display_mode)
+        return -1;
+    result = real_get_desktop_display_mode(display_index, mode);
+    if (result == 0)
+        apply_logical_display_mode(mode);
+    return result;
+}
+
+int SDL_GetDisplayMode(int display_index, int mode_index, SDL_DisplayMode *mode) {
+    int result;
+
+    LOAD(get_display_mode, GetDisplayMode);
+    if (!real_get_display_mode)
+        return -1;
+    result = real_get_display_mode(display_index, mode_index, mode);
+    if (result == 0)
+        apply_logical_display_mode(mode);
+    return result;
 }
 
 SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags) {
