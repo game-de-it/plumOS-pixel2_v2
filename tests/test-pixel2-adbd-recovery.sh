@@ -15,12 +15,10 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$TMP/gadget" "$TMP/udc/fake-udc" "$TMP/run" "$TMP/log" \
-    "$TMP/config" "$TMP/proc" "$TMP/usb-role/controller" \
-    "$TMP/usb-devices" "$TMP/ffs"
+    "$TMP/config/system" "$TMP/proc" "$TMP/usb-role/controller" "$TMP/ffs"
 printf '%s\n' fake-udc >"$TMP/gadget/UDC"
 printf '%s\n' configured >"$TMP/udc/fake-udc/state"
 printf '%s\n' adb_enabled=1 >"$TMP/config/services.conf"
-printf '%s\n' 1 >"$TMP/usb-online"
 printf '%s\n' device >"$TMP/usb-role/controller/role"
 
 sleep 30 &
@@ -41,13 +39,12 @@ service_env=(
     PLUMOS_ADB_LOG="$TMP/log/adbd.log"
     PLUMOS_ADB_SERIAL_FILE="$TMP/config/adb-serial"
     PLUMOS_ADB_PROC_ROOT="$TMP/proc"
-    PLUMOS_ADB_USB_ONLINE="$TMP/usb-online"
     PLUMOS_ADB_USB_ROLE_GLOB="$TMP/usb-role/*/role"
-    PLUMOS_ADB_USB_DEVICES_ROOT="$TMP/usb-devices"
     PLUMOS_ADB_SERVICES_CONF="$TMP/config/services.conf"
     PLUMOS_ADB_OPT_IN_MARKER="$TMP/config/enable-adb"
+    PLUMOS_ADB_WPA_CONFIG="$TMP/config/wpa_supplicant.conf"
+    PLUMOS_ADB_SETTINGS="$TMP/config/system/settings.json"
     PLUMOS_ADB_RECOVERY_WAIT=2
-    PLUMOS_ADB_ROLE_PROBE_WAIT=1
     PLUMOS_ADBD_RECOVERY_WORKER=1
 )
 
@@ -93,20 +90,19 @@ rmdir "$TMP/run/adbd-action.lock" 2>/dev/null || {
     rmdir "$TMP/run/adbd-action.lock"
 }
 
-# A physical unplug can publish transport-offline before usb/online settles.
-# The replug action must not turn that transient into a persistent host role.
-printf '%s\n' 0 >"$TMP/usb-online"
+# Match V90S: a physical unplug/replug rebinds the same device-role gadget and
+# never uses charger state to change the role.
 env "${service_env[@]}" "$SERVICE" replug
-grep -q 'result=replug-deferred reason=no-upstream-vbus action=preserve-role' \
+grep -q 'action=rebind reason=usb-replug state=configured' "$TMP/log/adbd.log"
+grep -q 'result=replug-recovered action=rebind state=configured' \
     "$TMP/log/adbd.log"
 test "$(cat "$TMP/usb-role/controller/role")" = device
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
 status="$(env "${service_env[@]}" "$SERVICE" status)"
-grep -Fxq 'state=waiting_usb' <<<"$status"
+grep -Fxq 'state=running' <<<"$status"
 
-# A cold boot may inherit host role, in which state the RK817 online signal can
-# remain zero even with a Mac cable attached. The bounded device-role probe
-# must rediscover VBUS and continue to a functioning gadget.
+# A normal ADB cold boot always reclaims device role without consulting the
+# role-dependent usb/online signal.
 kill "$ADBD_PID" 2>/dev/null || true
 wait "$ADBD_PID" 2>/dev/null || true
 ADBD_PID=
@@ -119,33 +115,34 @@ while :; do sleep 30; done
 EOF
 chmod +x "$TMP/adbd-stub"
 touch "$TMP/ffs/ep1" "$TMP/ffs/ep2"
-(
-    while [ "$(cat "$TMP/usb-role/controller/role")" != device ]; do
-        sleep 0.05
-    done
-    printf '%s\n' 1 >"$TMP/usb-online"
-) &
 env "${service_env[@]}" "$SERVICE" start
 ADBD_PID="$(cat "$TMP/run/adbd.pid")"
 mkdir -p "$TMP/proc/$ADBD_PID"
 printf '%s\0' "$TMP/adbd-stub" >"$TMP/proc/$ADBD_PID/cmdline"
-grep -q 'result=device-role-probe-online' "$TMP/log/adbd.log"
 grep -q 'result=started udc=fake-udc' "$TMP/log/adbd.log"
 test "$(cat "$TMP/usb-role/controller/role")" = device
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
-# A real downstream device is authoritative and must not be disrupted by the
-# device-role probe.
+# Saved Wi-Fi is the only normal reason to assign Pixel2's shared port to host.
 env "${service_env[@]}" "$SERVICE" stop
 ADBD_PID=
-mkdir -p "$TMP/usb-devices/1-1"
-printf '%s\n' 0bda >"$TMP/usb-devices/1-1/idVendor"
-printf '%s\n' 0 >"$TMP/usb-online"
+printf '%s\n' 'network={ssid="test"}' >"$TMP/config/wpa_supplicant.conf"
+printf '%s\n' '{"wifi_enabled":true}' >"$TMP/config/system/settings.json"
 printf '%s\n' host >"$TMP/usb-role/controller/role"
 env "${service_env[@]}" "$SERVICE" start
-grep -q 'result=device-role-probe-skipped reason=downstream-present' \
-    "$TMP/log/adbd.log"
-grep -q 'result=waiting-usb-upstream role=host' "$TMP/log/adbd.log"
+grep -q 'result=waiting-usb-wifi role=host' "$TMP/log/adbd.log"
 test "$(cat "$TMP/usb-role/controller/role")" = host
+
+# The documented FAT recovery marker overrides saved Wi-Fi and deterministically
+# restores the V90S-style ADB gadget.
+touch "$TMP/config/enable-adb"
+printf '%s\n' host >"$TMP/usb-role/controller/role"
+env "${service_env[@]}" "$SERVICE" start
+ADBD_PID="$(cat "$TMP/run/adbd.pid")"
+mkdir -p "$TMP/proc/$ADBD_PID"
+printf '%s\0' "$TMP/adbd-stub" >"$TMP/proc/$ADBD_PID/cmdline"
+grep -q 'result=started udc=fake-udc' "$TMP/log/adbd.log"
+test "$(cat "$TMP/usb-role/controller/role")" = device
+test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
 printf '%s\n' 'pixel2_adbd_recovery=result-ok'

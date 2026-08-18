@@ -14,15 +14,14 @@ TRANSPORT_STATE="${PLUMOS_ADBD_TRANSPORT_STATE:-/run/plumos/adbd-transport.state
 LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
 SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
 PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
-USB_ONLINE="${PLUMOS_ADB_USB_ONLINE:-/sys/class/power_supply/usb/online}"
 USB_ROLE_GLOB="${PLUMOS_ADB_USB_ROLE_GLOB:-/sys/class/usb_role/*/role}"
-USB_DEVICES_ROOT="${PLUMOS_ADB_USB_DEVICES_ROOT:-/sys/bus/usb/devices}"
 SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
+WPA_CONFIG="${PLUMOS_ADB_WPA_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}"
+SETTINGS="${PLUMOS_ADB_SETTINGS:-/mnt/plumos/config/system/settings.json}"
 RECOVERY_DELAY="${PLUMOS_ADB_RECOVERY_DELAY:-4}"
 RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
 ACTION_LOCK_WAIT="${PLUMOS_ADB_ACTION_LOCK_WAIT:-12}"
-ROLE_PROBE_WAIT="${PLUMOS_ADB_ROLE_PROBE_WAIT:-1}"
 ACTION_LOCK_HELD=0
 
 log() {
@@ -154,12 +153,6 @@ adb_enabled_by_policy() {
     esac
 }
 
-usb_upstream_offline() {
-    [ -r "$USB_ONLINE" ] || return 1
-    value=$(tr -d '[:space:]' <"$USB_ONLINE" 2>/dev/null || true)
-    [ "$value" = 0 ]
-}
-
 set_usb_role() {
     requested=$1
     for role_file in $USB_ROLE_GLOB; do
@@ -169,40 +162,17 @@ set_usb_role() {
     done
 }
 
-downstream_usb_present() {
-    for device in "$USB_DEVICES_ROOT"/*; do
-        [ -r "$device/idVendor" ] || continue
-        case "${device##*/}" in usb*) continue ;; esac
-        return 0
-    done
-    return 1
-}
-
-probe_usb_upstream() {
-    usb_upstream_offline || return 0
-    if downstream_usb_present; then
-        log 'result=device-role-probe-skipped reason=downstream-present'
+wifi_port_requested() {
+    # The FAT recovery marker is an explicit request to reclaim the one OTG
+    # port for ADB, even when Wi-Fi was saved ON before maintenance.
+    [ -f "$OPT_IN_MARKER" ] && return 1
+    [ -s "$WPA_CONFIG" ] || return 1
+    if [ -r "$SETTINGS" ] &&
+        grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \
+            "$SETTINGS" 2>/dev/null; then
         return 1
     fi
-
-    # usb/online can remain zero while DWC2 is in host role even when a Mac is
-    # supplying VBUS.  Probe device role before deciding that the port belongs
-    # to a Wi-Fi dongle; otherwise one host transition becomes permanent over
-    # reboot.  The probe is bounded and falls back to host when no upstream
-    # VBUS appears.
-    set_usb_role device
-    mdev -s 2>/dev/null || true
-    elapsed=0
-    while usb_upstream_offline && [ "$elapsed" -lt "$ROLE_PROBE_WAIT" ]; do
-        sleep 1
-        elapsed=$((elapsed + 1))
-    done
-    if ! usb_upstream_offline; then
-        log "result=device-role-probe-online elapsed=$elapsed"
-        return 0
-    fi
-    log "result=device-role-probe-timeout elapsed=$elapsed"
-    return 1
+    return 0
 }
 
 stop_adbd() {
@@ -234,14 +204,15 @@ start_adbd() {
         log 'result=failed reason=binary-missing'
         return 1
     }
-    # Pixel2 has one dual-role port. A Wi-Fi dongle supplies no upstream VBUS;
-    # forcing device role in that state prevents the host controller from
-    # enumerating or powering the dongle. Keep ADB enabled as saved intent but
-    # leave the port in host role until a Mac/PC cable makes usb/online=1.
-    if usb_upstream_offline && ! probe_usb_upstream; then
+    # Match the proven V90S contract: enabled ADB owns a bound FunctionFS
+    # gadget regardless of charger/power-supply state. Pixel2 adds only one
+    # explicit arbitration rule because its Wi-Fi dongle shares this OTG port.
+    # Never infer the USB owner from usb/online; that value can stay zero after
+    # host role and permanently strand a later Mac attachment.
+    if wifi_port_requested; then
         stop_adbd
         set_usb_role host
-        log 'result=waiting-usb-upstream role=host'
+        log 'result=waiting-usb-wifi role=host'
         return 0
     fi
     if pid_running && gadget_bound; then
@@ -381,13 +352,10 @@ replug_adbd() {
         log 'result=replug-skipped reason=disabled'
         return 0
     fi
-    if usb_upstream_offline; then
-        # A transport-offline notification can beat the power-supply update
-        # during a physical unplug.  Switching to host here strands the next
-        # Mac attach because usb/online then stays zero.  Preserve the current
-        # device-role gadget; boot or an explicit Wi-Fi flow may later arbitrate
-        # the port after the signal has settled.
-        log 'result=replug-deferred reason=no-upstream-vbus action=preserve-role'
+    if wifi_port_requested; then
+        stop_adbd
+        set_usb_role host
+        log 'result=replug-skipped reason=usb-owned-by-wifi role=host'
         return 0
     fi
     if pid_running && gadget_bound; then
@@ -420,7 +388,7 @@ status_adbd() {
         udc_state=$(cat "$udc_path/state" 2>/dev/null || true)
     if ! adb_enabled_by_policy; then
         state=disabled
-    elif usb_upstream_offline; then
+    elif wifi_port_requested; then
         state=waiting_usb
     elif pid_running && [ "$bound" -eq 1 ]; then
         case "$udc_state" in

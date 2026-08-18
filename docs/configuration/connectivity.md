@@ -67,13 +67,18 @@ RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して
 再現可能にbuildしてSystemへ収録する。V90Sのkernel 4.9用module binaryは流用しない。
 
 Pixel2のUSB portは1つのdual-role OTGでADBとUSB Wi-Fiが排他的に共有する。
-`/sys/class/power_supply/usb/online=1`（Mac/PCからVBUSあり）の場合だけADBがdevice
-roleを要求する。`online=0`ではADBの保存済みON設定を変更せずgadgetを解放し、host roleで
-dongleを列挙する。adbdはADB protocol transportの状態を
+ADBはV90Sで実績のあるFunctionFS contractと同様に、保存ON時はcharger状態を
+参照せずdevice roleとbound gadgetを維持する。`usb/online`はroleをhostへ変更すると
+Mac/PC接続中でも0のままになるため、USB ownerの判定には使用しない。
+
+保存済みWi-Fi設定がONで`wpa_supplicant.conf`が存在する場合だけ、通常bootはportを
+host roleへ割り当てる。FAT32 rootの`plumos-enable-adb`は明示的なrecovery overrideで、
+保存済みWi-Fiより優先してADB device roleを復元する。adbdはADB protocol transportの状態を
 `/run/plumos/adbd-transport.state`へ`online`/`offline`として通知する。
-hardware-key serviceはVBUSがある状態で`offline`が3秒継続した場合だけ、既存の
-bounded ADB replugを1回呼ぶ。host transportが猶予内に自然復帰した場合は何もせず、
-正常なUSB再接続後にgadgetを再度切断しない。USBを抜いた状態では回復を試行しない。
+hardware-key serviceはV90Sのdisconnect recoveryと同様に、`offline`が3秒継続した場合だけ
+同じgadgetのbounded replugを1回呼ぶ。host transportが猶予内に自然復帰した場合は
+何もしない。offline episodeごとに1回だけ実行し、roleをhostへ変更しない。
+回復履歴は`/mnt/plumos/logs/hardware-keys.log`へ永続保存する。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
 Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、

@@ -955,7 +955,7 @@ int main(void) {
       if (current_transport_online == 1) {
         adb_transport_recovery_due = 0;
         adb_transport_recovery_attempted = 0;
-      } else if (current_transport_online == 0 && usb_online == 1 &&
+      } else if (current_transport_online == 0 &&
                  !adb_transport_recovery_attempted &&
                  adb_transport_recovery_due == 0) {
         adb_transport_recovery_due =
@@ -963,8 +963,6 @@ int main(void) {
         fprintf(stderr,
                 "hardware-keys: action=adb-transport-recovery-scheduled delay_ms=%d\n",
                 ADB_TRANSPORT_RECOVERY_DELAY_MS);
-      } else if (usb_online != 1) {
-        adb_transport_recovery_due = 0;
       }
       adb_transport_online = current_transport_online;
       next_adb_transport_check = now + ADB_TRANSPORT_CHECK_INTERVAL_MS;
@@ -973,13 +971,12 @@ int main(void) {
         now >= adb_transport_recovery_due) {
       int current_transport_online = read_adbd_transport_online();
 
-      if (usb_online == 1 && current_transport_online == 0) {
+      if (current_transport_online == 0) {
         int result = spawn_adbd_replug();
 
         adb_transport_recovery_attempted = 1;
         fprintf(stderr,
-                "hardware-keys: action=adb-transport-replug usb_online=1 rc=%d\n",
-                result);
+                "hardware-keys: action=adb-transport-replug rc=%d\n", result);
       }
       adb_transport_recovery_due = 0;
     }

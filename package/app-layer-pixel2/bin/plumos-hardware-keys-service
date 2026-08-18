@@ -5,7 +5,7 @@ PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
 RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
 RUN_DIR="${PLUMOS_HARDWARE_KEYS_RUN_DIR:-$RUNTIME_ROOT/hardware-keys}"
 PID_FILE="$RUN_DIR/service.pid"
-LOG_FILE="$RUN_DIR/service.log"
+LOG_FILE="${PLUMOS_HARDWARE_KEYS_LOG_FILE:-$PLUMOS_ROOT/logs/hardware-keys.log}"
 DAEMON="${PLUMOS_HARDWARE_KEYS_DAEMON:-$PLUMOS_ROOT/bin/plumos-hardware-keys}"
 
 read_pid() {
@@ -65,7 +65,7 @@ start_service() {
     printf 'plumos-hardware-keys-service: daemon missing: %s\n' "$DAEMON" >&2
     return 1
   }
-  mkdir -p "$RUN_DIR" || return 1
+  mkdir -p "$RUN_DIR" "${LOG_FILE%/*}" || return 1
   if [ -x "$volume_control" ]; then
     PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_RUNTIME_ROOT="$RUNTIME_ROOT" \
       "$volume_control" apply >/dev/null 2>&1 || {

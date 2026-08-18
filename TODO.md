@@ -72,7 +72,7 @@
       SSHへ到達しない欠陥をtraceで特定。System initとapp-layer service managerの
       双方で`lo`と`127.0.0.1/8`を保証し、実機password SSH loginとSFTP upload/
       download同一SHA-256を確認した。
-  - [x] ADBのboot既定値・UI設定・recoveryを一貫させる
+  - [ ] ADBのboot既定値・UI設定・recoveryを一貫させる
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
@@ -88,6 +88,13 @@
       無条件二重rebindは廃止。署名System/Runtime `0.1.0-dev-8a98e3e`を実機適用し、
       host server自然復帰でPID維持、VBUSありUDC unbindから8秒・ケーブル操作なしで
       ADB復帰、各health、再起動後保持を確認。物理抜き差しの最終確認を継続する。
+    - 2026-08-18: `8a98e3e`以降の物理抜き差しでADBがwaitingとなり、再起動・cold
+      bootでも復帰しない回帰を確認。`usb/online=0`を根拠にhost roleへ変更すると、
+      Mac接続後も同じ値が0のままになりdevice roleへ戻れない循環だった。`ecf4d16`の
+      短時間probeも実機不合格。V90S `d1721a9`の「ADB有効中はbound gadgetを保持し、
+      disconnect後は同じgadgetをrebind」するcontractへ戻し、Pixel2固有差分を保存済み
+      Wi-Fi時の明示host assignmentだけに縮小した。新System/Runtimeのoffline適用、
+      cold boot、物理抜き差し、Wi-Fi saved-ON bootの再acceptanceを継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
@@ -371,7 +378,7 @@
     実機ログを根拠に`45b4505`で専用`replug`とaction lockを実装。物理抜き差し後に
     ADB自動復帰、単一adbd、競合エラーなしを実機合格。
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
-- [x] ADB列挙とshellを実機検証する
+- [ ] V90S準拠ADBのcold boot列挙、shell、物理抜き差しを実機再検証する
 - [x] USB Wi-Fi上でSSH/SFTP/FTP/Sambaの認証・往復転送と再起動復元を実機検証する
   - 2026-08-17: `fd0fb34` RuntimeでADB/SSH/SFTP/FTP/Samba backendを実機確認。
     password認証、upload/download/delete、同一SHA-256、更新再起動後の5項目ON保持、
