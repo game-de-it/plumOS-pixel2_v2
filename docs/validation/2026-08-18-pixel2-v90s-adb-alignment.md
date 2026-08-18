@@ -1,7 +1,7 @@
 # Pixel2 V90S-derived ADB alignment
 
 Date: 2026-08-18
-Status: host implementation PASS; second offline deployment FAIL; third signed package ready
+Status: host implementation PASS; second offline deployment FAIL; third offline deployment PASS; physical acceptance pending
 
 ## Regression
 
@@ -120,5 +120,29 @@ declared payload SHA-256/size check, and archive readback checks:
   `bdc9fd7aa844fef8390c6c8e80d2c5cae09b15ff87afedead36bffb09116986f`.
 
 The packages are retained under
-`output/live/2026-08-18-adb-uevent-recovery/`. Offline SD deployment and the
-four physical acceptance gates remain pending.
+`output/live/2026-08-18-adb-uevent-recovery/`. The completed offline deployment
+is recorded below; the four physical acceptance gates remain pending.
+
+## Third offline deployment
+
+The attached 62.5 GB Pixel2 card was identified as `/dev/disk4` with the
+expected `PLUMOS_BOOT`, Linux Runtime, and `PLUMOS_USER` partitions. Active
+slot A read back as failed generation `0694c47` with SHA-256
+`4f5553c8f51449c7bf181aa53dd5a19c4b14516c8adf1068d897fc4ea54e4a35`
+before any write. Its squashfs and four metadata files were preserved under
+`output/live/2026-08-18-adb-uevent-recovery/offline-backup-system-a-0694c47/`.
+
+Only active A's five managed files were replaced with `5535fa8`. The on-card
+System image read back byte-identical at
+`3522285aa0ce1041ed99f8f24f83670081ead8104ef64e8d991077bf20287cbd`,
+and its loose Ed25519 manifest signature verified. Inactive B was not modified
+and retained SHA-256
+`2a6170fea9dcec458636672eb44d8256bbe9676ff6994e378b0d14e5458f3259`.
+
+Runtime `5535fa8` was added to the FAT32 update inbox without removing older
+packages. Its on-card readback SHA-256 was
+`bdc9fd7aa844fef8390c6c8e80d2c5cae09b15ff87afedead36bffb09116986f`,
+and the updater accepted its signature, target, source `8a98e3e`, and version.
+The existing zero-byte `plumos-enable-adb` recovery marker was preserved.
+ROM, BIOS, settings, saves, installed ports, and the Linux Runtime partition
+were not modified by this offline operation.

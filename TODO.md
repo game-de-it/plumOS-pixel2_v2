@@ -112,7 +112,9 @@
       cold boot、抜き差し、OFF→ON→再起動を再確認する。
       - `5535fa8`の完全System/strict Runtimeを署名package化し、signature、manifest、
         全payload SHA-256/size、System squashfs、app-layer checksumをhost検証済み。
-        SDへのoffline適用と4項目の実機acceptanceを継続する。
+        active A `0694c47`を完全backup後、`5535fa8`へoffline置換し署名・readbackを
+        検証した。inactive B、ROM、BIOS、設定、saveは保持し、Runtime packageとADB
+        markerもFAT32へ配置済み。4項目の実機acceptanceを継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
