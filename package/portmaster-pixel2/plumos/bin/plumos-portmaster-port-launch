@@ -169,18 +169,24 @@ prepare_compat_mount() {
 prepare_patcher_compat() {
   patcher_target="${PM_DIR}/utils/patcher.txt"
   patcher_override="${PLUMOS_PORTMASTER_PATCHER_OVERRIDE:-${APP_ROOT}/adapter/overrides/patcher.txt}"
+  main_target="${PM_DIR}/utils/patcher/main.lua"
+  main_override="${RUN_ROOT}/patcher-main.lua"
   talkies_target="${PM_DIR}/utils/patcher/talkies.lua"
   talkies_override="${RUN_ROOT}/patcher-talkies.lua"
+  font_size_line='local fontSize = 16'
   box_y_line='  local boxY = windowHeight-(boxH+currentDialog.padding)'
+  dialog_height_line='  height                  = nil,'
 
-  for required in "$patcher_target" "$patcher_override" "$talkies_target"; do
+  for required in \
+    "$patcher_target" "$patcher_override" "$main_target" "$talkies_target"; do
     [ -f "$required" ] || {
       printf 'PortMaster patcher compatibility file is missing: %s\n' \
         "$required" >&2
       return 1
     }
   done
-  if is_mounted "$patcher_target" || is_mounted "$talkies_target"; then
+  if is_mounted "$patcher_target" || is_mounted "$main_target" ||
+     is_mounted "$talkies_target"; then
     printf 'PortMaster has a stale patcher compatibility mount\n' >&2
     return 1
   fi
@@ -189,14 +195,34 @@ prepare_patcher_compat() {
       "$talkies_target" >&2
     return 1
   }
+  [ "$(grep -Fxc "$dialog_height_line" "$talkies_target")" -eq 1 ] || {
+    printf 'PortMaster patcher dialog height layout is unsupported: %s\n' \
+      "$talkies_target" >&2
+    return 1
+  }
+  [ "$(grep -Fxc "$font_size_line" "$main_target")" -eq 1 ] || {
+    printf 'PortMaster patcher font layout is unsupported: %s\n' \
+      "$main_target" >&2
+    return 1
+  }
 
-  # Keep the 640x480 dialog and its lowest text row clear of the LCD edge.
-  sed "s/${box_y_line}/${box_y_line}-12/" \
+  # Enlarge the upstream 16 px dialog font for Pixel2's compact LCD.  Give the
+  # wrapped text a 128 px box and keep its lowest row clear of the panel edge.
+  sed "s/${font_size_line}/local fontSize = 24/" \
+    "$main_target" > "$main_override" || return 1
+  grep -Fq 'local fontSize = 24' "$main_override" || return 1
+  sed \
+    -e "s/${box_y_line}/${box_y_line}-12/" \
+    -e "s/${dialog_height_line}/  height                  = 128,/" \
     "$talkies_target" > "$talkies_override" || return 1
   grep -Fq "${box_y_line}-12" "$talkies_override" || return 1
+  grep -Fq '  height                  = 128,' \
+    "$talkies_override" || return 1
 
   mount --bind "$patcher_override" "$patcher_target" || return 1
   printf '%s\n' "$patcher_target" >> "$MOUNTS_FILE"
+  mount --bind "$main_override" "$main_target" || return 1
+  printf '%s\n' "$main_target" >> "$MOUNTS_FILE"
   mount --bind "$talkies_override" "$talkies_target" || return 1
   printf '%s\n' "$talkies_target" >> "$MOUNTS_FILE"
 }
