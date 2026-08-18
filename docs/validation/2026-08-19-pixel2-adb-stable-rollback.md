@@ -16,7 +16,7 @@ code, as its behavioral baseline.
 - build adbd with `PLUMOS_ADBD_USB_FFS` and nonblocking FunctionFS;
 - remove the adbd protocol-state patch and kernel uevent monitor;
 - bind one configfs FunctionFS gadget in device role at boot;
-- perform one four-second startup health check;
+- keep that initial FunctionFS/adbd instance alive while a slow host attaches;
 - request one `replug` two seconds after a physical USB offline/online event;
 - serialize all mutating actions with the original PID-owned lock;
 - retain current `usb_mode=adb|wifi|off` policy and the FAT recovery marker;
@@ -95,5 +95,32 @@ CNXN, but the first bulk read and write immediately failed with macOS status
 label and a merely missing interface. The device has exposed FunctionFS
 descriptors but the bulk endpoint path is not responding.
 
-The exact boot's persistent `adbd.log`, `init.log`, and UDC state must be
-captured from the Runtime partition before another implementation change.
+## Persistent log result
+
+The Runtime partition was captured read-only after the failed boot under
+`output/live/2026-08-19-pixel2-state-capture/capture.vEKt93`. The exact
+`22:47` boot proves that the restored four-second startup check, rather than
+the nonblocking transport itself, destroyed the valid initial instance:
+
+```text
+22:47:02 FUNCTIONFS_BIND
+22:47:02 result=started
+22:47:06 action=watchdog-recover reason=udc-not attached
+22:47:07 result=rebind-failed action=clean-restart
+22:47:08 result=stopped
+22:47:10 FUNCTIONFS_BIND
+```
+
+There is no `FUNCTIONFS_ENABLE` after the restart. The host may legitimately
+leave the UDC at `not attached` longer than four seconds before selecting the
+configuration, so this state is not a boot failure and must not trigger a
+timer-based recovery. It explains the complete USB descriptors followed by
+immediate `kIOReturnNotResponding` on both bulk endpoints.
+
+System change `c41698a` keeps the physically proven nonblocking FunctionFS,
+explicit physical-replug action, PID lock, current `usb_mode` ownership, and
+ADB-priority guards. It removes only the autonomous startup timer and its
+worker PID lifecycle. The recovery fixture now holds a cold-boot UDC in
+`not attached` for five seconds and verifies that the original adbd PID stays
+alive with no watchdog action. Explicit `recover` and `replug` behavior remain
+covered separately.

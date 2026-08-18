@@ -124,6 +124,14 @@
         host ADB 36 native backendを再起動しても、最初のCNXNでread/writeとも即座に
         `e00002ed` (`kIOReturnNotResponding`)。FE表示やinterface欠落ではなく、端末側
         bulk endpointが列挙後に応答不能なので、同bootの永続adbd/init logを回収する。
+      - Runtime partitionのread-only採取で、`11a7f94`の同bootは`22:47:02`
+        `FUNCTIONFS_BIND`後、hostがconfigurationを選ぶ前の`22:47:06`に4秒startup
+        watchdogがUDC `not attached`を異常扱いし、正常な初回adbdを停止していたと確定。
+        再起動instanceは`FUNCTIONFS_BIND`後に`FUNCTIONFS_ENABLE`へ到達しておらず、hostの
+        `kIOReturnNotResponding`と一致する。`c41698a`でnonblocking FunctionFS、明示的な
+        物理`replug`、PID lock、排他`usb_mode`は保持し、自律startup timerだけを完全撤去。
+        slow-host fixtureは5秒間`not attached`でも同一adbd PIDを保持し、watchdog不在を
+        検証する。新Systemのoffline適用、cold boot shell、物理抜き差しを継続する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
