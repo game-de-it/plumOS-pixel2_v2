@@ -14,6 +14,7 @@ LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
 SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
 PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
 PROC_MOUNTS="${PLUMOS_ADB_PROC_MOUNTS:-/proc/mounts}"
+UMOUNT_BIN="${PLUMOS_ADB_UMOUNT:-umount}"
 USB_ROLE_GLOB="${PLUMOS_ADB_USB_ROLE_GLOB:-/sys/class/usb_role/*/role}"
 SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
@@ -84,6 +85,19 @@ gadget_bound() {
     [ -r "$GADGET/UDC" ] && [ -n "$(cat "$GADGET/UDC" 2>/dev/null)" ]
 }
 
+ffs_mounted() {
+    grep -q " $FFS functionfs " "$PROC_MOUNTS" 2>/dev/null
+}
+
+any_other_gadget_bound() {
+    for udc_file in "$CONFIGFS_ROOT"/*/UDC; do
+        [ -e "$udc_file" ] || continue
+        [ "$udc_file" = "$GADGET/UDC" ] && continue
+        [ -n "$(cat "$udc_file" 2>/dev/null)" ] && return 0
+    done
+    return 1
+}
+
 udc_path() {
     set -- "$UDC_CLASS"/*
     [ -e "$1" ] || return 1
@@ -138,10 +152,13 @@ adb_enabled_by_policy() {
     esac
 }
 
-stop_adbd() {
+unbind_gadget() {
     if [ -e "$GADGET/UDC" ]; then
         : >"$GADGET/UDC" 2>>"$LOG" || true
     fi
+}
+
+stop_adbd_process() {
     if pid_running; then
         pid=$(cat "$PID")
         kill "$pid" 2>/dev/null || true
@@ -153,6 +170,29 @@ stop_adbd() {
         kill -9 "$pid" 2>/dev/null || true
     fi
     rm -f "$PID"
+}
+
+teardown_gadget() {
+    # Match the proven V90S lifecycle. Reusing a bound FunctionFS mount leaves
+    # stale ep0/ep1/ep2 state after a host-side disconnect, so every explicit
+    # stop/restart destroys the complete gadget and starts with fresh endpoints.
+    unbind_gadget
+    stop_adbd_process
+    if ffs_mounted; then
+        "$UMOUNT_BIN" "$FFS" >>"$LOG" 2>&1 || true
+    fi
+    if [ -d "$GADGET" ]; then
+        rm -f "$GADGET/configs/c.1/ffs.adb" 2>/dev/null || true
+        rmdir "$GADGET/functions/ffs.adb" 2>/dev/null || true
+        rmdir "$GADGET/configs/c.1/strings/0x409" 2>/dev/null || true
+        rmdir "$GADGET/configs/c.1" 2>/dev/null || true
+        rmdir "$GADGET/strings/0x409" 2>/dev/null || true
+        rmdir "$GADGET" 2>/dev/null || true
+    fi
+}
+
+stop_adbd() {
+    teardown_gadget
     log 'result=stopped'
 }
 
@@ -165,13 +205,13 @@ start_adbd() {
         log 'result=failed reason=binary-missing'
         return 1
     }
-    if pid_running && gadget_bound; then
+    if pid_running && gadget_bound && ffs_mounted; then
         log "result=already-running pid=$(cat "$PID")"
         return 0
     fi
-    if pid_running; then
-        log 'event=running-unbound action=clean-restart'
-        stop_adbd
+    if pid_running || [ -d "$GADGET" ] || ffs_mounted; then
+        log 'event=incomplete-gadget action=full-teardown'
+        teardown_gadget
     fi
     [ -d "$CONFIGFS_ROOT" ] || \
         mount -t configfs configfs /sys/kernel/config
@@ -188,6 +228,11 @@ start_adbd() {
     }
     udc=${udc_path##*/}
     log "udc=result-found name=$udc state=$(cat "$udc_path/state" 2>/dev/null || true)"
+
+    if any_other_gadget_bound; then
+        log 'result=failed reason=other-gadget-bound'
+        return 1
+    fi
 
     mkdir -p "$GADGET/strings/0x409" \
         "$GADGET/configs/c.1/strings/0x409" \
@@ -209,7 +254,7 @@ start_adbd() {
     printf '120\n' >"$GADGET/configs/c.1/MaxPower"
     [ -e "$GADGET/configs/c.1/ffs.adb" ] || \
         ln -s "$GADGET/functions/ffs.adb" "$GADGET/configs/c.1/ffs.adb"
-    grep -q " $FFS functionfs " "$PROC_MOUNTS" 2>/dev/null || \
+    ffs_mounted || \
         mount -t functionfs adb "$FFS"
 
     "$ADBD_BIN" >>"$LOG" 2>&1 &

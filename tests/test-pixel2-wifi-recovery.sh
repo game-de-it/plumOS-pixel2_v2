@@ -128,6 +128,14 @@ status="$(env "${recovery_env[@]}" "$root/bin/plumos-wifi-recovery" status)"
 grep -Fxq 'wifi_requested=0' <<<"$status"
 grep -Fxq 'monitor_running=0' <<<"$status"
 
+# Once the exclusive selector exists, usb_mode=wifi is the source of truth.
+# A stale legacy settings.json value must not cancel a just-applied live mode.
+printf 'usb_mode=wifi\nadb_enabled=0\n' >"$root/config/network/services.conf"
+env "${recovery_env[@]}" "$root/bin/plumos-wifi-recovery" sync
+status="$(env "${recovery_env[@]}" "$root/bin/plumos-wifi-recovery" status)"
+grep -Fxq 'wifi_requested=1' <<<"$status"
+grep -Fxq 'monitor_running=1' <<<"$status"
+
 # ADB ON suppresses both Wi-Fi recovery and its uevent monitor even when Wi-Fi
 # remains saved ON.
 printf '{"wifi_enabled": true}\n' >"$root/config/system/settings.json"

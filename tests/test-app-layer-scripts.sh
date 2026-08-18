@@ -669,13 +669,14 @@ env "${network_env[@]}" \
 grep -q '^adb_enabled=1$' \
     "$feature_tmp/network/plumos/config/network/services.conf"
 test -f "$feature_tmp/network/card/plumos-enable-adb"
-! grep -q '^start$' "$feature_tmp/network/adbd-calls"
+grep -q '^start$' "$feature_tmp/network/adbd-calls"
 env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     stop adb >"$feature_tmp/network/adb-stop.status" || true
 grep -q '^adb_enabled=0$' \
     "$feature_tmp/network/plumos/config/network/services.conf"
 test ! -e "$feature_tmp/network/card/plumos-enable-adb"
+grep -q '^stop$' "$feature_tmp/network/adbd-calls"
 touch "$feature_tmp/network/card/plumos-enable-adb"
 env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \

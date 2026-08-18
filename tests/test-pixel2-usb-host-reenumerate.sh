@@ -56,14 +56,16 @@ grep -q 'result=skipped reason=downstream-already-enumerated' \
 rm -rf "$TMP/usb/1-1"
 printf '{"wifi_enabled": false}\n' >"$TMP/config/system/settings.json"
 env "${service_env[@]}" "$SERVICE" worker
-test ! -s "$TMP/dwc2/bind"
-test ! -s "$TMP/dwc2/unbind"
-grep -q 'result=skipped reason=wifi-not-requested' "$TMP/log/service.log"
+grep -Fxq 'ff300000.usb' "$TMP/dwc2/bind"
+grep -Fxq 'ff300000.usb' "$TMP/dwc2/unbind"
+grep -q 'result=reset-complete downstream=absent' "$TMP/log/service.log"
 
 # Explicit Off owns neither side and must not reset the shared controller even
 # if legacy Wi-Fi settings still say ON.
 printf 'usb_mode=off\nadb_enabled=0\n' >"$TMP/config/services.conf"
 printf '{"wifi_enabled": true}\n' >"$TMP/config/system/settings.json"
+: >"$TMP/dwc2/bind"
+: >"$TMP/dwc2/unbind"
 env "${service_env[@]}" "$SERVICE" worker
 test ! -s "$TMP/dwc2/bind"
 test ! -s "$TMP/dwc2/unbind"

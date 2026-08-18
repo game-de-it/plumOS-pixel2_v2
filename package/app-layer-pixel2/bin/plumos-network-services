@@ -30,6 +30,8 @@ SMBD="${PLUMOS_ROOT}/network/samba/sbin/smbd"
 NMBD="${PLUMOS_ROOT}/network/samba/sbin/nmbd"
 ADBD_CONTROL="${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}"
 ADB_RECOVERY_MARKER="${PLUMOS_ADB_RECOVERY_MARKER:-${PLUMOS_SDCARD_ROOT}/plumos-enable-adb}"
+WIFI_RECOVERY="${PLUMOS_WIFI_RECOVERY:-${PLUMOS_ROOT}/bin/plumos-wifi-recovery}"
+NETWORK_CONTROL="${PLUMOS_NETWORK_CONTROL:-${PLUMOS_ROOT}/bin/plumos-network-control}"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR" "$CONFIG_DIR"
 
@@ -195,7 +197,53 @@ set_usb_mode() {
     rm -f "$ADB_RECOVERY_MARKER" 2>/dev/null || true
   fi
   mv "$tmp" "$SERVICES_CONF"
-  log "usb_mode=${mode} apply=reboot-required" usb
+  log "usb_mode=${mode} saved=1" usb
+}
+
+stop_wifi_runtime() {
+  if [ -x "$WIFI_RECOVERY" ]; then
+    "$WIFI_RECOVERY" stop >> "$LOG_FILE" 2>&1 || true
+  fi
+  if [ -x "$NETWORK_CONTROL" ]; then
+    "$NETWORK_CONTROL" --wifi off >> "$LOG_FILE" 2>&1 || true
+  fi
+}
+
+apply_usb_mode() {
+  mode="$1"
+  set_usb_mode "$mode" || return $?
+
+  case "$mode" in
+    adb)
+      stop_wifi_runtime
+      if [ ! -x "$ADBD_CONTROL" ]; then
+        log "apply failed mode=adb reason=adb_control_missing" usb
+        return 1
+      fi
+      # Selecting ADB is also the deterministic recovery action for a stale
+      # FunctionFS transport. The System helper performs a full teardown and
+      # rebuild, rather than reusing endpoints left by the previous host.
+      if ! "$ADBD_CONTROL" restart >> "$LOG_FILE" 2>&1; then
+        log "apply failed mode=adb stage=adbd_restart" usb
+        return 1
+      fi
+      ;;
+    wifi)
+      if [ -x "$ADBD_CONTROL" ]; then
+        "$ADBD_CONTROL" stop >> "$LOG_FILE" 2>&1 || true
+      fi
+      if [ -x "$WIFI_RECOVERY" ]; then
+        "$WIFI_RECOVERY" sync >> "$LOG_FILE" 2>&1 || true
+      fi
+      ;;
+    off)
+      if [ -x "$ADBD_CONTROL" ]; then
+        "$ADBD_CONTROL" stop >> "$LOG_FILE" 2>&1 || true
+      fi
+      stop_wifi_runtime
+      ;;
+  esac
+  log "usb_mode=${mode} apply=complete" usb
 }
 
 print_status() {
@@ -593,26 +641,27 @@ stop_samba() {
 
 start_adb() {
   set_usb_mode adb
-  # Pixel2 has one dual-role OTG port.  An explicit ADB ON action must claim
-  # that port from a previously saved USB Wi-Fi configuration at next boot.
-  # Keep this marker on the FAT user volume so it also remains usable as an
-  # offline recovery switch when the app layer itself cannot start.
-  mkdir -p "${ADB_RECOVERY_MARKER%/*}"
-  : > "$ADB_RECOVERY_MARKER"
+  stop_wifi_runtime
   if [ ! -x "$ADBD_CONTROL" ]; then
     log "start failed reason=adb_control_missing" adb
-    status_adb
+    status_adb || true
     return 1
   fi
-  # Do not tear down or replace a live USB gadget from the frontend process.
-  # The System service consumes the persisted setting during the next boot.
-  log "enabled=1 usb_owner=adb apply=reboot-required" adb
+  # At boot, adopt a healthy System gadget without needlessly disconnecting
+  # it. The explicit USB Mode = ADB action remains the user-requested full
+  # restart and recovery path.
+  if ! "$ADBD_CONTROL" start >> "$LOG_FILE" 2>&1; then
+    log "start failed reason=adbd_start" adb
+    status_adb || true
+    return 1
+  fi
+  log "enabled=1 usb_owner=adb apply=live" adb
   status_adb
 }
 
 stop_adb() {
-  set_usb_mode off
-  log "enabled=0 apply=reboot-required" adb
+  apply_usb_mode off || true
+  log "enabled=0 apply=live" adb
   status_adb || true
   return 0
 }
@@ -671,7 +720,12 @@ command="${1:-}"
 service="${2:-}"
 if [ "$command" = "usb-mode" ]; then
   case "$service" in
-    adb|wifi|off) set_usb_mode "$service"; printf 'usb_mode=%s\n' "$service"; exit 0 ;;
+    adb|wifi|off)
+      apply_usb_mode "$service"
+      rc=$?
+      printf 'usb_mode=%s\n' "$service"
+      exit "$rc"
+      ;;
     *) usage >&2; exit 2 ;;
   esac
 fi

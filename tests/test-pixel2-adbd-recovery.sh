@@ -16,6 +16,12 @@ trap cleanup EXIT
 
 mkdir -p "$TMP/gadget" "$TMP/udc/fake-udc" "$TMP/run" "$TMP/log" \
     "$TMP/config/system" "$TMP/proc" "$TMP/usb-role/controller" "$TMP/ffs"
+cat >"$TMP/umount-stub" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$1" >>"$PLUMOS_TEST_UMOUNT_CALLS"
+exit 0
+EOF
+chmod +x "$TMP/umount-stub"
 printf 'adb %s functionfs rw 0 0\n' "$TMP/ffs" >"$TMP/proc/mounts"
 printf '%s\n' fake-udc >"$TMP/gadget/UDC"
 printf '%s\n' configured >"$TMP/udc/fake-udc/state"
@@ -40,6 +46,8 @@ service_env=(
     PLUMOS_ADB_SERIAL_FILE="$TMP/config/adb-serial"
     PLUMOS_ADB_PROC_ROOT="$TMP/proc"
     PLUMOS_ADB_PROC_MOUNTS="$TMP/proc/mounts"
+    PLUMOS_ADB_UMOUNT="$TMP/umount-stub"
+    PLUMOS_TEST_UMOUNT_CALLS="$TMP/log/umount-calls"
     PLUMOS_ADB_USB_ROLE_GLOB="$TMP/usb-role/*/role"
     PLUMOS_ADB_SERVICES_CONF="$TMP/config/services.conf"
     PLUMOS_ADB_OPT_IN_MARKER="$TMP/config/enable-adb"
@@ -134,6 +142,8 @@ kill -0 "$ADBD_PID"
 # saved Wi-Fi ON setting both exist.
 env "${service_env[@]}" "$SERVICE" stop
 ADBD_PID=
+grep -Fxq "$TMP/ffs" "$TMP/log/umount-calls"
+test ! -e "$TMP/gadget/configs/c.1/ffs.adb"
 printf '%s\n' 'network={ssid="test"}' >"$TMP/config/wpa_supplicant.conf"
 printf '%s\n' '{"wifi_enabled":true}' >"$TMP/config/system/settings.json"
 printf '%s\n' host >"$TMP/usb-role/controller/role"

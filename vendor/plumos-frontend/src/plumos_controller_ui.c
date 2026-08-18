@@ -11563,7 +11563,7 @@ static int run_network_usb_mode_control(struct ui_state *ui, const char *mode) {
   ui->device.wifi_enabled = wifi_enabled;
   ui->device.adb_service_running = strcmp(mode, "adb") == 0;
   update_settings_entries_after_save(ui);
-  set_status(ui, "USB mode saved; reboot required");
+  set_status(ui, "USB mode applied");
   return 1;
 }
 

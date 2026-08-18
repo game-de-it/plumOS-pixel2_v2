@@ -46,7 +46,7 @@ wifi_requested() {
     if [ -r "$SERVICES_CONF" ]; then
         mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
         case "$mode" in
-            wifi) ;;
+            wifi) return 0 ;;
             adb|off) return 1 ;;
         esac
     fi

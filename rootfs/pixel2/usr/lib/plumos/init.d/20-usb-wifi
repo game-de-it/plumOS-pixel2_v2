@@ -61,7 +61,10 @@ start_wifi() {
         log 'result=disabled reason=config-missing'
         return 0
     }
-    if [ -r "$SETTINGS" ] &&
+    # A persisted usb_mode is authoritative. The legacy settings.json flag is
+    # consulted only when migrating an image that has no explicit mode yet.
+    if ! grep -Eq '^usb_mode=(adb|wifi|off)$' "$SERVICES_CONF" 2>/dev/null &&
+        [ -r "$SETTINGS" ] &&
         grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \
             "$SETTINGS" 2>/dev/null; then
         log 'result=disabled reason=saved-off'
