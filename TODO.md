@@ -121,6 +121,13 @@
     補正する。署名Runtime `0.1.0-dev-c55da25`、`runtime_healthy`、root checksum、
     FE相当Ports経路のBalatro patcher正立表示まで実機合格。物理Aでのpatch完了、
     `Balatro_pm`生成、ゲーム内操作・音声はoperator確認を継続。
+  - 2026-08-18: patcherの物理Aは正常に受理され、購入元を保持したまま
+    `Balatro_pm`を生成していた。adapter 33で共通patcherの16 px文字を24 px、
+    dialogを128 pxへ拡大。ゲーム本体だけが落ちる原因を、GL回転用論理FBOの
+    depth/stencil欠落と切り分け、adapter 34で24-bit depth + 8-bit stencilを追加した。
+    署名Runtime `0.1.0-dev-a64fde3`はhealth昇格、全Runtime checksum、再起動後保持に
+    合格し、通常Ports導線のBalatroタイトル正立表示と継続稼働をDRM captureで確認。
+    ゲーム内の物理操作と実音声はoperator確認を継続する。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する

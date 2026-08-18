@@ -281,3 +281,61 @@ Capture evidence is under
 ```text
 8dd3f8806eb547058883661fe2d3cf9e9823de5446063f2146b42a939c644cda  balatro-c55da25-glass.png
 ```
+
+## 2026-08-18 Balatro patch completion and adapter 34
+
+The physical A press on the first-run patcher was accepted.  It produced the
+handheld archive and build stamp without modifying the purchased source:
+
+```text
+0d75fe164accf3312734d4b37ac98788dd15f0b8e4f9bb8b7f90c4e59de93f47  Balatro.exe
+ca7a1a5b1033e33ce736811e1951b7b5665ec7925d6265b660c3142fd5f8c203  Balatro_pm
+4d7ff21327570de64c7f14a20e6fe2bf3acde01f86d0d8cd37e6fe389cb60a9d  .balatro-build.txt
+```
+
+The apparent lack of progress combined three separate screens: patch
+confirmation, patch-complete confirmation, and Balatro's own button setup.
+Adapter 33 makes the common PortMaster patcher readable on Pixel2 by changing
+its dialog font from 16 px to 24 px and allocating a 128 px wrapped-text box.
+The override is session-scoped and does not modify the downloaded PortMaster
+tree.
+
+After patching, the game itself exited with `Segmentation fault` while the
+same archive stayed alive when the Pixel2 GL rotation interposer was disabled.
+The redirected logical framebuffer had only a colour attachment, unlike the
+depth/stencil-capable SDL window framebuffer expected by LÖVE.  The patcher did
+not exercise that contract, while Balatro did on its first game frame.
+
+Adapter 34 adds a packed 24-bit depth and 8-bit stencil renderbuffer to the
+logical 640x480 framebuffer and restores the prior renderbuffer binding after
+initialisation.  A signed Runtime delta from adapter 33 was then applied:
+
+```text
+runtime=0.1.0-dev-a64fde3
+adapter_version=34
+package_sha256=7469fdbb9c12e7b2b24eb3261079fee1375e440460b2d6e8a3d347c5213fcdcf
+payload_files=11
+deleted_files=0
+update_result=runtime_healthy
+runtime_verify=result-ok
+portmaster_pixel2_runtime=result-ok
+app_layer_verify=result-ok strict=1
+```
+
+The first reboot was intentionally rolled back because it was requested before
+frontend readiness promoted the pending Runtime.  Reapplying it, restarting
+the frontend on the new Runtime, and promoting health before reboot exercised
+the complete safety contract.  The next reboot retained adapter 34.
+
+The normal managed Ports launcher now keeps `love.aarch64 Balatro_pm` running
+and presents the correctly rotated title screen.  The purchased source,
+generated game, build stamp, display selection, and existing button-map file
+kept their pre-update SHA-256 values.  The package has no ROM, installed-port,
+configuration, or save target.
+
+Capture evidence is under
+`output/live/2026-08-18-portmaster/capture-balatro-a64fde3/`:
+
+```text
+1545792ead42b8735445da3a084721e0657098da0a59eae9c0270f9e18dec9a8  balatro-a64fde3-physical.png
+```
