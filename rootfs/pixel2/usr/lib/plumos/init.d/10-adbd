@@ -9,6 +9,7 @@ FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
 PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
 RECOVERY_PID="${PLUMOS_ADB_RECOVERY_PID:-/run/plumos/adbd-recovery.pid}"
 ACTION_LOCK="${PLUMOS_ADB_ACTION_LOCK:-/run/plumos/adbd-action.lock}"
+TRANSPORT_STATE="${PLUMOS_ADBD_TRANSPORT_STATE:-/run/plumos/adbd-transport.state}"
 LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
 SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
 PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
@@ -181,6 +182,7 @@ stop_adbd() {
         kill -9 "$pid" 2>/dev/null || true
     fi
     rm -f "$PID"
+    rm -f "$TRANSPORT_STATE"
     log 'result=stopped'
 }
 
@@ -246,7 +248,9 @@ start_adbd() {
     grep -q " $FFS functionfs " /proc/mounts 2>/dev/null || \
         mount -t functionfs adb "$FFS"
 
-    /usr/sbin/adbd >>"$LOG" 2>&1 &
+    rm -f "$TRANSPORT_STATE"
+    PLUMOS_ADBD_TRANSPORT_STATE="$TRANSPORT_STATE" \
+        /usr/sbin/adbd >>"$LOG" 2>&1 &
     printf '%s\n' "$!" >"$PID"
     elapsed=0
     while [ "$elapsed" -lt 12 ]; do
@@ -382,8 +386,12 @@ status_adbd() {
             *) state=waiting_usb ;;
         esac
     fi
-    printf 'service=adb\nrunning=%s\ngadget_bound=%s\nudc_state=%s\n' \
-        "$(pid_running && echo 1 || echo 0)" "$bound" "$udc_state"
+    transport_state=unknown
+    [ ! -r "$TRANSPORT_STATE" ] || \
+        transport_state=$(tr -d '[:space:]' <"$TRANSPORT_STATE" 2>/dev/null || true)
+    [ -n "$transport_state" ] || transport_state=unknown
+    printf 'service=adb\nrunning=%s\ngadget_bound=%s\nudc_state=%s\ntransport_state=%s\n' \
+        "$(pid_running && echo 1 || echo 0)" "$bound" "$udc_state" "$transport_state"
     printf 'state=%s\nopted_in=%s\n' "$state" \
         "$(adb_enabled_by_policy && echo 1 || echo 0)"
 }

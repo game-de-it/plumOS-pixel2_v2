@@ -34,7 +34,8 @@
 #define PERSIST_DELAY_MS 750
 #define POWER_MENU_DEBOUNCE_MS 800
 #define USB_POWER_EVENT_GUARD_MS 1500
-#define ADB_USB_RECOVERY_DELAY_MS 2000
+#define ADB_TRANSPORT_CHECK_INTERVAL_MS 500
+#define ADB_TRANSPORT_RECOVERY_DELAY_MS 3000
 #define DRM_PLANE_SNAPSHOT_LIMIT 16
 
 struct input_source {
@@ -619,6 +620,32 @@ static int read_usb_online(void) {
   return value < 0 ? -1 : value != 0;
 }
 
+static int read_adbd_transport_online(void) {
+  const char *path = getenv("PLUMOS_ADBD_TRANSPORT_STATE");
+  FILE *file;
+  char state[32] = "";
+
+  if (!path || !path[0]) {
+    path = "/run/plumos/adbd-transport.state";
+  }
+  file = fopen(path, "r");
+  if (!file) {
+    return -1;
+  }
+  if (!fgets(state, sizeof(state), file)) {
+    fclose(file);
+    return -1;
+  }
+  fclose(file);
+  if (strncmp(state, "online", 6) == 0) {
+    return 1;
+  }
+  if (strncmp(state, "offline", 7) == 0) {
+    return 0;
+  }
+  return -1;
+}
+
 static int spawn_adbd_replug(void) {
   const char *control = getenv("PLUMOS_ADBD_CONTROL");
   pid_t child;
@@ -835,8 +862,11 @@ int main(void) {
   long long persist_due = 0;
   long long power_menu_debounce_due = 0;
   long long usb_power_event_guard_due = 0;
-  long long adb_usb_recovery_due = 0;
+  long long next_adb_transport_check = 0;
+  long long adb_transport_recovery_due = 0;
   int usb_online = -1;
+  int adb_transport_online = -1;
+  int adb_transport_recovery_attempted = 0;
   int select_down = 0;
   int held_direction = 0;
   int held_is_display = 0;
@@ -869,6 +899,7 @@ int main(void) {
   setvbuf(stderr, NULL, _IOLBF, 0);
   fprintf(stderr, "hardware-keys: start owner=plumos device=pixel2\n");
   usb_online = read_usb_online();
+  adb_transport_online = read_adbd_transport_online();
   (void)run_helper("plumos-volume-control", "apply");
   (void)run_helper("plumos-display-control", "apply");
 
@@ -901,26 +932,56 @@ int main(void) {
       if (current_usb_online >= 0 && usb_online >= 0 &&
           current_usb_online != usb_online) {
         usb_power_event_guard_due = now + USB_POWER_EVENT_GUARD_MS;
-        adb_usb_recovery_due = current_usb_online
-                                   ? now + ADB_USB_RECOVERY_DELAY_MS
-                                   : 0;
+        if (!current_usb_online) {
+          adb_transport_recovery_due = 0;
+          adb_transport_recovery_attempted = 0;
+        }
         fprintf(stderr,
-                "hardware-keys: event=usb-power-transition online=%d guard_ms=%d adb_recovery_ms=%d\n",
-                current_usb_online, USB_POWER_EVENT_GUARD_MS,
-                current_usb_online ? ADB_USB_RECOVERY_DELAY_MS : 0);
+                "hardware-keys: event=usb-power-transition online=%d guard_ms=%d\n",
+                current_usb_online, USB_POWER_EVENT_GUARD_MS);
       }
       if (current_usb_online >= 0) {
         usb_online = current_usb_online;
       }
     }
-    if (adb_usb_recovery_due > 0 && now >= adb_usb_recovery_due &&
-        usb_online == 1) {
-      int result = spawn_adbd_replug();
+    if (now >= next_adb_transport_check) {
+      int current_transport_online = read_adbd_transport_online();
 
-      fprintf(stderr,
-              "hardware-keys: action=adb-usb-replug online=1 rc=%d\n",
-              result);
-      adb_usb_recovery_due = 0;
+      if (current_transport_online != adb_transport_online) {
+        fprintf(stderr,
+                "hardware-keys: event=adb-transport-state online=%d usb_online=%d\n",
+                current_transport_online, usb_online);
+      }
+      if (current_transport_online == 1) {
+        adb_transport_recovery_due = 0;
+        adb_transport_recovery_attempted = 0;
+      } else if (current_transport_online == 0 && usb_online == 1 &&
+                 !adb_transport_recovery_attempted &&
+                 adb_transport_recovery_due == 0) {
+        adb_transport_recovery_due =
+            now + ADB_TRANSPORT_RECOVERY_DELAY_MS;
+        fprintf(stderr,
+                "hardware-keys: action=adb-transport-recovery-scheduled delay_ms=%d\n",
+                ADB_TRANSPORT_RECOVERY_DELAY_MS);
+      } else if (usb_online != 1) {
+        adb_transport_recovery_due = 0;
+      }
+      adb_transport_online = current_transport_online;
+      next_adb_transport_check = now + ADB_TRANSPORT_CHECK_INTERVAL_MS;
+    }
+    if (adb_transport_recovery_due > 0 &&
+        now >= adb_transport_recovery_due) {
+      int current_transport_online = read_adbd_transport_online();
+
+      if (usb_online == 1 && current_transport_online == 0) {
+        int result = spawn_adbd_replug();
+
+        adb_transport_recovery_attempted = 1;
+        fprintf(stderr,
+                "hardware-keys: action=adb-transport-replug usb_online=1 rc=%d\n",
+                result);
+      }
+      adb_transport_recovery_due = 0;
     }
     if (power_menu_requested) {
       power_menu_requested = 0;

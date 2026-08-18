@@ -34,6 +34,7 @@ service_env=(
     PLUMOS_ADB_PID="$TMP/run/adbd.pid"
     PLUMOS_ADB_RECOVERY_PID="$TMP/run/adbd-recovery.pid"
     PLUMOS_ADB_ACTION_LOCK="$TMP/run/adbd-action.lock"
+    PLUMOS_ADBD_TRANSPORT_STATE="$TMP/run/adbd-transport.state"
     PLUMOS_ADB_LOG="$TMP/log/adbd.log"
     PLUMOS_ADB_PROC_ROOT="$TMP/proc"
     PLUMOS_ADB_USB_ONLINE="$TMP/usb-online"
@@ -68,6 +69,8 @@ test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
 grep -q 'schedule_recovery' "$SERVICE"
 grep -q 'action=watchdog-recover' "$SERVICE"
+grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$SERVICE"
+grep -q 'transport_state=' "$SERVICE"
 
 # Mutating actions must not overlap.  This is the failure mode that previously
 # launched two adbd instances and collided on the JDWP/FunctionFS sockets.

@@ -51,6 +51,8 @@ perl -0pi -e \
   's/#if defined\(__ANDROID__\)\n    if \(access\(USB_FFS_ADB_EP0, F_OK\) == 0\) \{/#if defined(__ANDROID__) || defined(PLUMOS_ADBD_USB_FFS)\n    if (access(USB_FFS_ADB_EP0, F_OK) == 0) {/g' \
   "$src/system/core/adb/daemon/main.cpp"
 grep -q PLUMOS_ADBD_USB_FFS "$src/system/core/adb/daemon/main.cpp"
+patch -d "$src" -p1 < /work/package/adbd/0001-plumos-transport-state.patch
+grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$src/system/core/adb/adb.cpp"
 build="$work/build"
 mkdir -p "$build"
 cxxflags=(
@@ -156,5 +158,6 @@ transport=nonblocking FunctionFS
 authentication=daemon has no host-key challenge; fresh Pixel2 images keep the USB maintenance path enabled until the user explicitly disables it
 policy_config=/mnt/plumos/config/network/services.conf adb_enabled=0|1
 opt_in_recovery_marker=/mnt/plumos-user/plumos-enable-adb
+transport_state=/run/plumos/adbd-transport.state online|offline
 EOF
 printf 'adbd_overlay=result-ok destination=%s\n' "$DEST"

@@ -172,11 +172,17 @@ grep -q 'wake_software_sleep' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'USB_POWER_EVENT_GUARD_MS 1500' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-grep -q 'ADB_USB_RECOVERY_DELAY_MS 2000' \
+grep -q 'ADB_TRANSPORT_RECOVERY_DELAY_MS 3000' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q '/sys/class/power_supply/usb/online' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'PLUMOS_ADBD_CONTROL' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'current_transport_online == 0 && usb_online == 1' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+grep -q 'adb_transport_recovery_attempted = 1' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q 'control, "replug"' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"

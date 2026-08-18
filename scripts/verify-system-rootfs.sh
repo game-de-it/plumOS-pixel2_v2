@@ -93,6 +93,10 @@ grep -q '"runtime_abi": "plumos-pixel2-app-layer-v1"' \
     "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -s "$tmp/rootfs/etc/plumos-system-version"
 test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
+grep -a -q '/run/plumos/adbd-transport.state' \
+    "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
+grep -q 'transport_state=/run/plumos/adbd-transport.state online|offline' \
+    "$tmp/rootfs/usr/share/licenses/adbd/source.manifest"
 test -x "$tmp/rootfs/lib/ld-linux-aarch64.so.1"
 for directory in dev dev/pts proc sys run tmp boot state roms root \
     flash storage mnt mnt/plumos mnt/plumos-user; do
