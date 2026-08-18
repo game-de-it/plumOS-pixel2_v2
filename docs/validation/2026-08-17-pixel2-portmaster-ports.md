@@ -126,3 +126,49 @@ handoff, and FE recovery.  It intentionally does not claim that every
 third-party PortMaster engine or commercial game-data package has been tested;
 those must be added as named representative acceptance cases rather than
 treated as implicitly compatible.
+
+## 2026-08-18 Balatro and SDL/OpenGL acceptance
+
+Balatro exposed a second display path which the SDL_Renderer interposer could
+not cover.  LÖVE presents directly through SDL/OpenGL, so it still rendered a
+landscape image into the panel-native 480x640 scanout.  Runtime adapter 29 adds
+`libplumos-portmaster-gl-rotate.so`: OpenGL ports receive a logical 640x480
+default framebuffer, and the common PortMaster launcher rotates that texture
+onto the native 480x640 KMS framebuffer at swap time.  The SDL_Renderer
+interposer remains active for native SDL ports.
+
+The purchased game data was copied from the operator-provided ROM set without
+modifying the PortMaster package or existing saves:
+
+```text
+source=/Volumes/public/02/motoki/emu/ROM/rom2/ports/Balatro/Balatro.exe
+target=/roms/ports/balatro/Balatro.exe
+sha256=0d75fe164accf3312734d4b37ac98788dd15f0b8e4f9bb8b7f90c4e59de93f47
+```
+
+The actual frontend `external:port` route launched both Balatro display setup
+and the PortMaster patcher through the managed adapter.  DRM scanout captures
+show both views upright at 640x480 with the intended aspect ratio.  The
+original `Balatro.exe` and selected display setup retained their SHA-256 after
+the launch/stop cycles.  The patcher's interactive physical-A confirmation and
+the resulting `Balatro_pm` game are a separate operator acceptance gate; no
+completed game build is claimed here.
+
+```text
+runtime=0.1.0-dev-7b0d69f
+adapter_version=29
+package_sha256=68093a20cc84d236529051d06baa5b3ee2e49a0aabc3dfb597f6ddcd4af38bea
+update_result=runtime_healthy
+runtime_verify=result-ok
+portmaster_pixel2_runtime=result-ok
+pixel2_update=result-ok
+app_layer_verify=result-ok
+```
+
+Capture evidence is under
+`output/live/2026-08-18-portmaster/capture-balatro-managed/`.
+
+```text
+e0cea5c55792bd607ca9d3d56ffaa83cca15012e006636662570e10cb98aff0f  balatro-managed2-physical.png
+4fd7f7f3c00403dbcc30a60f10c38b484aa73befc42f10f766aa5775dae4c351  balatro-patcher-physical.png
+```
