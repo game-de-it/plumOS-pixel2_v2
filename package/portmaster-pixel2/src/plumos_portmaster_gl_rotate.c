@@ -95,6 +95,10 @@ static void (GL_APIENTRYP real_gl_draw_arrays)(GLenum, GLint, GLsizei);
 static void (GL_APIENTRYP real_gl_gen_vertex_arrays)(GLsizei, GLuint *);
 static void (GL_APIENTRYP real_gl_delete_vertex_arrays)(GLsizei, const GLuint *);
 static void (GL_APIENTRYP real_gl_bind_vertex_array)(GLuint);
+static void (GL_APIENTRYP real_gl_invalidate_framebuffer)(GLenum, GLsizei,
+                                                          const GLenum *);
+static void (GL_APIENTRYP real_gl_discard_framebuffer_ext)(GLenum, GLsizei,
+                                                           const GLenum *);
 
 static GLuint logical_fbo;
 static GLuint logical_texture;
@@ -106,6 +110,7 @@ static int gl_ready;
 static int gl_initialise_attempted;
 static int internal_gl;
 static unsigned redirected_default_count;
+static unsigned suppressed_invalidate_count;
 static SDL_GLContext active_context;
 
 #define LOAD_NEXT(name, symbol)                                                \
@@ -136,6 +141,7 @@ static void reset_context_state(SDL_GLContext context) {
     gl_ready = 0;
     gl_initialise_attempted = 0;
     redirected_default_count = 0;
+    suppressed_invalidate_count = 0;
 }
 
 static int load_gl(void) {
@@ -444,6 +450,73 @@ GL_APICALL void GL_APIENTRY glGetIntegerv(GLenum pname, GLint *data) {
         *data = 0;
 }
 
+/*
+ * A real window back buffer may be discarded after SDL_GL_SwapWindow because
+ * the next frame receives another swapchain image.  Pixel2's rotation path
+ * instead keeps the application's default framebuffer in one persistent
+ * texture and samples it on every present.  Letting LÖVE invalidate that
+ * texture makes only subsequently redrawn regions alternate between valid and
+ * discarded contents, which appears as cursor/animation flicker while the
+ * static background remains stable.
+ */
+static int virtual_default_is_bound(GLenum target) {
+    GLint framebuffer = 0;
+    GLenum binding;
+
+    if (!gl_ready || internal_gl || !real_gl_get_integerv)
+        return 0;
+    switch (target) {
+    case GL_FRAMEBUFFER:
+        binding = GL_FRAMEBUFFER_BINDING;
+        break;
+#ifdef GL_DRAW_FRAMEBUFFER
+    case GL_DRAW_FRAMEBUFFER:
+        binding = GL_DRAW_FRAMEBUFFER_BINDING;
+        break;
+#endif
+#ifdef GL_READ_FRAMEBUFFER
+    case GL_READ_FRAMEBUFFER:
+        binding = GL_READ_FRAMEBUFFER_BINDING;
+        break;
+#endif
+    default:
+        return 0;
+    }
+    real_gl_get_integerv(binding, &framebuffer);
+    return framebuffer == (GLint)logical_fbo;
+}
+
+static void log_suppressed_invalidate(const char *name) {
+    if (suppressed_invalidate_count++ == 0)
+        fprintf(stderr,
+                "[plumOS] PortMaster GL rotation: preserved virtual default on %s\n",
+                name);
+}
+
+GL_APICALL void GL_APIENTRY glInvalidateFramebuffer(GLenum target,
+                                                     GLsizei num_attachments,
+                                                     const GLenum *attachments) {
+    LOAD_NEXT(gl_invalidate_framebuffer, "glInvalidateFramebuffer");
+    if (virtual_default_is_bound(target)) {
+        log_suppressed_invalidate("glInvalidateFramebuffer");
+        return;
+    }
+    if (real_gl_invalidate_framebuffer)
+        real_gl_invalidate_framebuffer(target, num_attachments, attachments);
+}
+
+GL_APICALL void GL_APIENTRY glDiscardFramebufferEXT(GLenum target,
+                                                     GLsizei num_attachments,
+                                                     const GLenum *attachments) {
+    LOAD_NEXT(gl_discard_framebuffer_ext, "glDiscardFramebufferEXT");
+    if (virtual_default_is_bound(target)) {
+        log_suppressed_invalidate("glDiscardFramebufferEXT");
+        return;
+    }
+    if (real_gl_discard_framebuffer_ext)
+        real_gl_discard_framebuffer_ext(target, num_attachments, attachments);
+}
+
 static int present_rotation(SDL_Window *window) {
     GLint framebuffer = 0;
     GLint program = 0;
@@ -548,6 +621,10 @@ void *SDL_GL_GetProcAddress(const char *name) {
             return (void *)&glBindFramebuffer;
         if (strcmp(name, "glGetIntegerv") == 0)
             return (void *)&glGetIntegerv;
+        if (strcmp(name, "glInvalidateFramebuffer") == 0)
+            return (void *)&glInvalidateFramebuffer;
+        if (strcmp(name, "glDiscardFramebufferEXT") == 0)
+            return (void *)&glDiscardFramebufferEXT;
     }
     return real_sdl_gl_get_proc_address ? real_sdl_gl_get_proc_address(name) : NULL;
 }
