@@ -1,7 +1,7 @@
 # Pixel2 V90S-derived ADB alignment
 
 Date: 2026-08-18
-Status: host implementation PASS; second offline deployment FAIL; third offline deployment pending
+Status: host implementation PASS; second offline deployment FAIL; third signed package ready
 
 ## Regression
 
@@ -101,3 +101,24 @@ under `output/live/2026-08-18-adb-usb-reclaim/` for recovery.
 
 Physical boot of this generation failed the acceptance gate described above;
 it must not be promoted as a release baseline.
+
+## Third signed package
+
+Commit `5535fa8` was rebuilt as complete System and strict app-layer Runtime
+`0.1.0-dev-5535fa8`. The System squashfs verifier confirmed the executable
+uevent helper, blocking listener, diagnostic-only protocol marker, and absence
+of the startup transport-offline replug. The ADB recovery, power/sleep, System
+rootfs, and full app-layer tests passed. The tool image's AArch64 BusyBox also
+advertises the required `uevent` applet.
+
+Both archives passed Ed25519 signature validation, manifest validation, every
+declared payload SHA-256/size check, and archive readback checks:
+
+- System, base `0.1.0-dev-0694c47`:
+  `42a99acf8df991d8876f07d1aa3c8f03af3a63b1b239a01298b3a1873cc6b7e0`;
+- Runtime, base `0.1.0-dev-8a98e3e`:
+  `bdc9fd7aa844fef8390c6c8e80d2c5cae09b15ff87afedead36bffb09116986f`.
+
+The packages are retained under
+`output/live/2026-08-18-adb-uevent-recovery/`. Offline SD deployment and the
+four physical acceptance gates remain pending.
