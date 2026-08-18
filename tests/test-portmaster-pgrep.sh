@@ -26,6 +26,6 @@ if PLUMOS_PORTMASTER_PROC_ROOT="$TMP/proc" "$SHIM" -x love >/dev/null 2>&1; then
   exit 1
 fi
 
-grep -q 'ADAPTER_DIR}/shims:${PLUMOS_ROOT}/bin' \
+grep -q 'ADAPTER_DIR}/shims:${RUN_ROOT}/busybox-bin:${ADAPTER_DIR}/bin/aarch64:${PLUMOS_ROOT}/bin' \
   "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-launch"
 printf 'portmaster_pgrep=result-ok\n'
