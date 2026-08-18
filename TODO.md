@@ -112,6 +112,12 @@
   - 2026-08-15: Music PlayerがLinuxの`BTN_A=304`、`BTN_B=305`を物理labelとして扱い、Pixel2の物理A=305/B=304と逆転していた。FUNCTION=704も未処理だった。`b370bfa`でA=再生、B/FUNCTION=終了へ修正し、D-pad、A/B/X/Y、START/SELECT、L/R、FUNCTIONの実機EV_KEY経路、3曲遷移、音声開始、clean exit、FE復帰に合格。
   - 2026-08-17: V90S/XU20/MFのPortMaster履歴を基に不足ABI、audio、UINPUT、KMS handoffを補完。RTL8821CU Wi-Fi上で公式catalogを更新し、Ready-to-Run OpenSyobonをinstall。共通SDL interposerで640x480 logical viewをPixel2の480x640 scanoutへ正しく回転し、GUI/game capture、ALSA RUNNING、gptokeyb UINPUT、終了後FE復帰、Wi-Fi維持、mutable install保持、実機root checksumに合格。詳細は`docs/validation/2026-08-17-pixel2-portmaster-ports.md`。
   - 2026-08-18: FEのPorts routeが`/roms`と`/mnt/plumos-user/roms`を文字列比較して全拒否する問題、SDL dialog/LOVE実行権限/停止側aliasを修正。Balatro購入データをROM setからSHA一致で保持し、adapter 29の共通SDL/OpenGL interposerでLÖVEの論理640x480を物理480x640へ回転。正式Runtime `0.1.0-dev-7b0d69f`上のFE `external:port`経路でdisplay setupとpatcherを正立4:3 capture済み。patcherの物理A確認、`Balatro_pm`生成、ゲーム内操作・音声はoperator確認を継続。
+  - 2026-08-18: SDL portが`SDL_GetCurrentDisplayMode()`からpanel-native
+    480x640を取得し、回転後も内部layoutだけportraitのままになる欠陥をApotrisで
+    特定。adapter 30はcurrent/desktop/enumerated display modeを論理640x480へ
+    統一する。署名Runtime `0.1.0-dev-92d754c`を適用し、ApotrisのHOLD/盤面/
+    NEXTが画面内へ収まること、OpenSyobonの既存46px side bar、終了後FE復帰、
+    root checksumを実機captureと検証で合格とした。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する

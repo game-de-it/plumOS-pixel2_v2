@@ -172,3 +172,62 @@ Capture evidence is under
 e0cea5c55792bd607ca9d3d56ffaa83cca15012e006636662570e10cb98aff0f  balatro-managed2-physical.png
 4fd7f7f3c00403dbcc30a60f10c38b484aa73befc42f10f766aa5775dae4c351  balatro-patcher-physical.png
 ```
+
+## 2026-08-18 SDL display-mode and layout acceptance
+
+Apotris exposed a layout problem which was separate from final scanout
+rotation.  The common SDL interposer already reported a 640x480 window and
+rotated the final renderer output, but Apotris imported
+`SDL_GetCurrentDisplayMode()` directly.  It therefore calculated its internal
+layout from the panel-native 480x640 mode before the correctly oriented final
+present.  The result was an upright game shifted left, with the HOLD area
+partially outside the visible screen.
+
+Adapter 30 reports the Pixel2 logical 640x480 mode through
+`SDL_GetCurrentDisplayMode()`, `SDL_GetDesktopDisplayMode()`, and
+`SDL_GetDisplayMode()` while rotation is enabled.  Refresh rate and pixel
+format remain the values returned by SDL.  This is part of the common Pixel2
+SDL Ports boundary and does not patch Apotris or any installed mutable port.
+
+A temporary one-function shim first proved the diagnosis on the device.  The
+same behavior was then integrated into the common interposer, rebuilt from
+commit `92d754c`, assembled into the strict app layer, and delivered through a
+signed Runtime delta from `0.1.0-dev-7b0d69f`:
+
+```text
+runtime=0.1.0-dev-92d754c
+adapter_version=30
+package_sha256=8cb63608f910d650fce626b606215584b5a54970710aba7bbeb4b4f7589feb22
+payload_files=11
+deleted_files=0
+update_result=runtime_healthy
+runtime_verify=result-ok
+portmaster_pixel2_runtime=result-ok
+app_layer_verify=result-ok
+```
+
+The actual frontend `external:port` route was used for the final Apotris and
+OpenSyobon launches.  Apotris now keeps the HOLD frame, centered playfield,
+and NEXT frame inside the 640x480 logical view.  OpenSyobon remains upright
+with its intentional 46 px side bars, proving that the existing SDL Renderer
+presentation was not regressed.  Stopping each port restored exactly one FE
+process.
+
+The update manifest contained no ROM, installed-port, PortMaster catalog,
+configuration, or save path.  The live Apotris script, binary, and save
+remained on the mutable user volume; their post-test hashes were recorded as:
+
+```text
+03b004c4ea8572b481459c5a3dc07dbce91e206d2e94880c0d65af6b11b92d49  Apotris.sh
+86ba76c37c45ba56271a51c01688a90c37bf27d067d302b994fbb0e8216d0c06  Apotris.aarch64
+2c3fea4c5f885245a1152be5f45b98e4b9ff98bf20e678ae02a6f2a20505accf  Apotris.sav
+```
+
+Capture evidence is under
+`output/live/2026-08-18-portmaster/capture-ports-position/`:
+
+```text
+a4432a134c08fbe7a4081526d374fd8abfcb4a589c8c3539412bbb3663e539fe  apotris-position-physical.png
+2e3a44b2d2dc8478f23bbdabd8c82c9f8d79c18cf4cb21e1fe6e85411fd5e4f4  apotris-92d754c-physical.png
+ae33151583c5a0a927e16161064423494e7324d054d74e0f892ba5ca90a4c3cb  opensyobon-92d754c-physical.png
+```
