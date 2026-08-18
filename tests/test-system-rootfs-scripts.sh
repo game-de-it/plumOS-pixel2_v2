@@ -68,12 +68,14 @@ grep -q 'ff300000.usb' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'usb-upstream-online' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
-grep -q 'transport=nonblocking FunctionFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
+grep -q -- '-DPLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
+grep -q -- '-DPLUMOS_ADBD_SYNC_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
+grep -q 'transport=legacy synchronous FunctionFS for Pixel2 stock kernel' \
+    "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 grep -q '0001-plumos-transport-state.patch' \
     "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' \
     "$ROOT_DIR/package/adbd/0001-plumos-transport-state.patch"
-! grep -q 'PLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'recover_adbd' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'busybox.*uevent' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"

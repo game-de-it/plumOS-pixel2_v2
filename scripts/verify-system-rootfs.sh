@@ -104,6 +104,8 @@ test -s "$tmp/rootfs/etc/plumos-system-version"
 test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
 grep -a -q '/run/plumos/adbd-transport.state' \
     "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
+grep -q 'transport=legacy synchronous FunctionFS for Pixel2 stock kernel' \
+    "$tmp/rootfs/usr/share/licenses/adbd/source.manifest"
 grep -q 'transport_state=/run/plumos/adbd-transport.state online|offline' \
     "$tmp/rootfs/usr/share/licenses/adbd/source.manifest"
 test -x "$tmp/rootfs/lib/ld-linux-aarch64.so.1"

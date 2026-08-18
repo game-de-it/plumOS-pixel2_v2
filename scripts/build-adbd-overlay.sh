@@ -46,11 +46,29 @@ mkdir -p "$work"
 trap 'rm -rf "$work"' EXIT
 src="$work/android-platform-tools-$VERSION"
 dpkg-source -x "$CACHE/$DSC" "$src" >/dev/null
+main_cpp="$src/system/core/adb/daemon/main.cpp"
+usb_cpp="$src/system/core/adb/daemon/usb.cpp"
+usb_legacy_cpp="$src/system/core/adb/daemon/usb_legacy.cpp"
 
 perl -0pi -e \
   's/#if defined\(__ANDROID__\)\n    if \(access\(USB_FFS_ADB_EP0, F_OK\) == 0\) \{/#if defined(__ANDROID__) || defined(PLUMOS_ADBD_USB_FFS)\n    if (access(USB_FFS_ADB_EP0, F_OK) == 0) {/g' \
-  "$src/system/core/adb/daemon/main.cpp"
-grep -q PLUMOS_ADBD_USB_FFS "$src/system/core/adb/daemon/main.cpp"
+  "$main_cpp"
+grep -q PLUMOS_ADBD_USB_FFS "$main_cpp"
+
+# The stock RK3326 kernel can enumerate the nonblocking FunctionFS gadget but
+# repeatedly leaves its bulk-IN endpoint halted after a host reconnect. Use
+# the stable plumOS handheld path: legacy FunctionFS plus synchronous I/O,
+# without depending on Android's absent property service.
+perl -0pi -e \
+  's/bool use_nonblocking = android::base::GetBoolProperty\(\n            "persist\.adb\.nonblocking_ffs",\n            android::base::GetBoolProperty\("ro\.adb\.nonblocking_ffs", true\)\);/#if defined(PLUMOS_ADBD_LEGACY_FFS)\n    bool use_nonblocking = false;\n#else\n    bool use_nonblocking = android::base::GetBoolProperty(\n            "persist.adb.nonblocking_ffs",\n            android::base::GetBoolProperty("ro.adb.nonblocking_ffs", true));\n#endif/g' \
+  "$usb_cpp"
+grep -q PLUMOS_ADBD_LEGACY_FFS "$usb_cpp"
+
+perl -0pi -e \
+  's/if \(android::base::GetBoolProperty\("sys\.usb\.ffs\.aio_compat", false\)\) \{/#if defined(PLUMOS_ADBD_SYNC_FFS)\n    if (true) {\n#else\n    if (android::base::GetBoolProperty("sys.usb.ffs.aio_compat", false)) {\n#endif/g' \
+  "$usb_legacy_cpp"
+grep -q PLUMOS_ADBD_SYNC_FFS "$usb_legacy_cpp"
+
 patch -d "$src" -p1 < /work/package/adbd/0001-plumos-transport-state.patch
 grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$src/system/core/adb/adb.cpp"
 build="$work/build"
@@ -59,7 +77,8 @@ cxxflags=(
   -std=gnu++2a -fPIC -fno-exceptions -fno-strict-aliasing
   -no-canonical-prefixes -fmessage-length=0 -Wno-c++11-narrowing
   -DNDEBUG -UDEBUG -D_GNU_SOURCE -DADB_HOST=0 -DALLOW_ADBD_ROOT=1
-  -DALLOW_ADBD_NO_AUTH -DPLUMOS_ADBD_USB_FFS -DPAGE_SIZE=4096
+  -DALLOW_ADBD_NO_AUTH -DPLUMOS_ADBD_USB_FFS
+  -DPLUMOS_ADBD_LEGACY_FFS -DPLUMOS_ADBD_SYNC_FFS -DPAGE_SIZE=4096
   "-DADB_VERSION=\"${VERSION}-plumos\""
   "-DPLATFORM_TOOLS_VERSION=\"${VERSION}\""
   -I/usr/include/android -Isystem/core/adb -Isystem/core/adb/daemon/include
@@ -154,7 +173,7 @@ $DSC_SHA  $DSC
 $ORIG_SHA  $ORIG
 $DEBIAN_SHA  $DEBIAN
 patch=enable FunctionFS daemon path outside Android framework
-transport=nonblocking FunctionFS
+transport=legacy synchronous FunctionFS for Pixel2 stock kernel
 authentication=daemon has no host-key challenge; fresh Pixel2 images keep the USB maintenance path enabled until the user explicitly disables it
 policy_config=/mnt/plumos/config/network/services.conf usb_mode=adb|wifi|off
 legacy_policy_config=adb_enabled=0|1
