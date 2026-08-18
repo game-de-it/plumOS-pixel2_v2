@@ -73,6 +73,12 @@
       双方で`lo`と`127.0.0.1/8`を保証し、実機password SSH loginとSFTP upload/
       download同一SHA-256を確認した。
   - [ ] ADBのboot既定値・UI設定・recoveryを一貫させる
+    - 2026-08-19: Pixel2の単一OTG portに独立したWi-Fi/ADB checkboxを持たせる設計を
+      廃止。FEを`USB Mode = ADB / Wi-Fi / Off`の単一選択へ変更し、永続`usb_mode`を
+      System adbd、USB host再列挙、Wi-Fi boot、Runtime scan/connect/recoveryの共通
+      ownership正本にした。旧設定はmigration fallback、FAT markerは緊急ADB override
+      として保持。3 modeのhost fixture、FE cross-build、6言語key整合は合格。署名
+      System/RuntimeのSD適用後、cold boot ADB、抜き差し、Wi-Fi切替を実機確認する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで

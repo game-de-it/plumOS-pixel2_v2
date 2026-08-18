@@ -6,8 +6,8 @@
 2. The stock initramfs mounts the boot volume and hands off to `/boot/SYSTEM`.
 3. plumOS `/sbin/init` mounts proc/sys/dev, `/mnt/plumos`, `/mnt/plumos-user`,
    `/state`, and `/roms`, then brings up IPv4/IPv6 loopback.
-4. init starts ADB, USB Wi-Fi, network services, and frontend services from
-   `/usr/lib/plumos/init.d/`.
+4. init reads the exclusive Pixel2 USB mode, then starts either ADB or USB
+   Wi-Fi plus network/frontend services from `/usr/lib/plumos/init.d/`.
 
 ## Service Order
 
@@ -19,7 +19,11 @@
 40-frontend  app-layer selection, hardware keys, ROM scan, FE
 ```
 
-On a fresh image, SSH and ADB default to ON. SSH uses the common plumOS
+On a fresh image, SSH defaults to ON and USB Mode defaults to ADB. Pixel2 has
+one dual-role port, so `usb_mode=adb|wifi|off` is authoritative and ADB and
+USB Wi-Fi are never started together. Changing USB Mode in the frontend takes
+effect after reboot. The FAT32 `plumos-enable-adb` marker remains an emergency
+ADB override. SSH uses the common plumOS
 `root / plumos` initial credential, generated as a device-local salted shadow
 entry. The public initial password can be changed without an OS update
 overwriting it; public-key authentication remains available.

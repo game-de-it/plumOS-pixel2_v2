@@ -156,7 +156,8 @@ $DEBIAN_SHA  $DEBIAN
 patch=enable FunctionFS daemon path outside Android framework
 transport=nonblocking FunctionFS
 authentication=daemon has no host-key challenge; fresh Pixel2 images keep the USB maintenance path enabled until the user explicitly disables it
-policy_config=/mnt/plumos/config/network/services.conf adb_enabled=0|1
+policy_config=/mnt/plumos/config/network/services.conf usb_mode=adb|wifi|off
+legacy_policy_config=adb_enabled=0|1
 opt_in_recovery_marker=/mnt/plumos-user/plumos-enable-adb
 transport_state=/run/plumos/adbd-transport.state online|offline
 EOF

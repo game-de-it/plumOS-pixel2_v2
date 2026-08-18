@@ -29,7 +29,6 @@
   "required_setting_ids": [
     "boot_resume_mode",
     "graphic_theme_id",
-    "network_adb_enabled",
     "network_adb_status",
     "network_connect_wifi",
     "network_connection",
@@ -47,7 +46,7 @@
     "network_signal",
     "network_ssh",
     "network_ssh_enabled",
-    "network_wifi_enabled",
+    "network_usb_mode",
     "performance_clear_cpu_override",
     "performance_cpu_policy",
     "performance_system",
@@ -118,7 +117,7 @@
     "ui_theme_settings"
   ],
   "required_handler_tokens": [
-    "run_network_wifi_control",
+    "run_network_usb_mode_control",
     "run_network_service_control",
     "request_latest_system_update",
     "run_factory_reset_action",

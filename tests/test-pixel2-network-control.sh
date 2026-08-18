@@ -233,4 +233,13 @@ fi
 grep -Fxq 'result=failed' "$tmp/adb-priority-scan.out"
 grep -Fxq 'stage=usb_owned_by_adb' "$tmp/adb-priority-scan.out"
 
+# Off is distinct from Wi-Fi: neither USB function may claim the port.
+printf 'usb_mode=off\nadb_enabled=0\n' >"$plumos/config/network/services.conf"
+if run_control --scan >"$tmp/usb-off-scan.out" 2>&1; then
+    printf 'error: Wi-Fi scan unexpectedly bypassed USB Mode=Off\n' >&2
+    exit 1
+fi
+grep -Fxq 'result=failed' "$tmp/usb-off-scan.out"
+grep -Fxq 'stage=usb_mode_not_wifi' "$tmp/usb-off-scan.out"
+
 printf 'pixel2_network_control=result-ok\n'

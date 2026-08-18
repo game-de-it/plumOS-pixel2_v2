@@ -98,6 +98,13 @@ log() {
 
 adb_requested() {
   [ -f "$ADB_MARKER" ] && return 0
+  if [ -r "$SERVICES_CONF" ]; then
+    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
+    case "$mode" in
+      adb) return 0 ;;
+      wifi|off) return 1 ;;
+    esac
+  fi
   [ -r "$SERVICES_CONF" ] || return 0
   value="$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
   case "$value" in
@@ -112,6 +119,15 @@ require_wifi_usb_owner() {
     echo 'result=failed'
     echo 'stage=usb_owned_by_adb'
     return 1
+  fi
+  if [ -r "$SERVICES_CONF" ]; then
+    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
+    if [ "$mode" = off ]; then
+      log 'wifi action refused reason=usb-mode-off'
+      echo 'result=failed'
+      echo 'stage=usb_mode_not_wifi'
+      return 1
+    fi
   fi
   return 0
 }

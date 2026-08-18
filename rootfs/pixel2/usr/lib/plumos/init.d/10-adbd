@@ -160,6 +160,13 @@ start_uevent_monitor() {
 
 adb_enabled_by_policy() {
     [ -f "$OPT_IN_MARKER" ] && return 0
+    if [ -r "$SERVICES_CONF" ]; then
+        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
+        case "$mode" in
+            adb) return 0 ;;
+            wifi|off) return 1 ;;
+        esac
+    fi
     # Pixel2 has no onboard Wi-Fi, so a fresh or recovered image must retain a
     # maintenance path.  A value written by the frontend always wins; only an
     # absent setting uses the default-on policy.

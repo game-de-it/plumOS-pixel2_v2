@@ -514,12 +514,16 @@ grep -q 'factory-defaults/pico/config/standalone' \
     "$ROOT_DIR/scripts/build-app-layer.sh"
 grep -q 'factory-defaults/sa/state/standalone' \
     "$ROOT_DIR/scripts/build-app-layer.sh"
-for service in ssh ftp sftp samba adb; do
+for service in ssh ftp sftp samba; do
     grep -q "network_${service}_enabled" \
         "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
     grep -Eq "(^|[[:space:]|])${service}([[:space:]|)]|$)" \
         "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
 done
+grep -q 'network_usb_mode' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -Eq '(^|[[:space:]|])adb([[:space:]|)]|$)' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
 ! grep -q 'ships SSH and ADB only' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'default-on-no-explicit-setting' \

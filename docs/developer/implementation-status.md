@@ -70,9 +70,10 @@ Pixel2では存在しないAudio Output切替とLid Suspendだけをdevice capab
 非表示にしない。
 
 Pixel2はWi-Fiを内蔵しないため、network service設定が未作成の初回起動・復旧時は
-FunctionFS ADBを既定ONにする。FEが保存した`adb_enabled=0/1`を優先し、user FAT32
-rootの`plumos-enable-adb` markerは明示OFF後の復旧経路として扱う。新SYSTEMで
-default ON、明示OFF/ON、recovery markerをcold boot検証する。
+FunctionFS ADBを既定ONにする。FEの`USB Mode`が保存する`usb_mode=adb|wifi|off`を
+唯一の通常時USB ownershipとし、ADBとUSB Wi-Fiを同時に有効化しない。user FAT32
+rootの`plumos-enable-adb` markerは設定を上書きする復旧経路として扱う。新SYSTEMで
+default ADB、明示Wi-Fi/Off/ADB、recovery markerをcold boot検証する。
 SSHはV90S/MF共通の初期password、公開鍵、UI toggle、boot状態の一致を確認する。
 
 ## P1: application and standalone parity

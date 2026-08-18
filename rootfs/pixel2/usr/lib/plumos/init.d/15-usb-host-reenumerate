@@ -25,6 +25,13 @@ log() {
 
 adb_requested() {
     [ -f "$ADB_MARKER" ] && return 0
+    if [ -r "$SERVICES_CONF" ]; then
+        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
+        case "$mode" in
+            adb) return 0 ;;
+            wifi|off) return 1 ;;
+        esac
+    fi
     # Match 10-adbd: a fresh image with no service setting defaults to ADB.
     [ -r "$SERVICES_CONF" ] || return 0
     value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
@@ -36,6 +43,13 @@ adb_requested() {
 
 wifi_requested() {
     adb_requested && return 1
+    if [ -r "$SERVICES_CONF" ]; then
+        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
+        case "$mode" in
+            wifi) ;;
+            adb|off) return 1 ;;
+        esac
+    fi
     [ -s "$WPA_CONFIG" ] || return 1
     if [ -r "$SETTINGS" ] &&
         grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \

@@ -46,6 +46,13 @@ USAGE
 
 adb_requested() {
   [ -f "$ADB_MARKER" ] && return 0
+  if [ -r "$SERVICES_CONF" ]; then
+    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
+    case "$mode" in
+      adb) return 0 ;;
+      wifi|off) return 1 ;;
+    esac
+  fi
   [ -r "$SERVICES_CONF" ] || return 0
   value="$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
   case "$value" in
@@ -56,6 +63,13 @@ adb_requested() {
 
 wifi_requested() {
   adb_requested && return 1
+  if [ -r "$SERVICES_CONF" ]; then
+    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
+    case "$mode" in
+      wifi) ;;
+      adb|off) return 1 ;;
+    esac
+  fi
   if [ -r "$SYSTEM_SETTINGS" ]; then
     value="$(sed -n \
       -e 's/.*"wifi_enabled"[[:space:]]*:[[:space:]]*true.*/true/p' \

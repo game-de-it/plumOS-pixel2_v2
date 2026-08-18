@@ -126,6 +126,13 @@ service_enabled() {
   if [ "$service" = "adb" ] && [ -f "$ADB_RECOVERY_MARKER" ]; then
     return 0
   fi
+  if [ "$service" = "adb" ]; then
+    mode="$(usb_mode 2>/dev/null || true)"
+    case "$mode" in
+      adb) return 0 ;;
+      wifi|off) return 1 ;;
+    esac
+  fi
   [ -r "$SERVICES_CONF" ] || {
     case "$service" in ssh|adb) return 0 ;; *) return 1 ;; esac
   }
@@ -149,6 +156,46 @@ set_service_enabled() {
   fi
   printf '%s=%s\n' "$key" "$enabled" >> "$tmp"
   mv "$tmp" "$SERVICES_CONF"
+}
+
+usb_mode() {
+  [ -f "$ADB_RECOVERY_MARKER" ] && { printf '%s\n' adb; return 0; }
+  if [ -r "$SERVICES_CONF" ]; then
+    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
+    case "$mode" in
+      adb|wifi|off) printf '%s\n' "$mode"; return 0 ;;
+    esac
+    value="$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
+    case "$value" in
+      0|false|off) printf '%s\n' wifi ;;
+      *) printf '%s\n' adb ;;
+    esac
+    return 0
+  fi
+  printf '%s\n' adb
+}
+
+set_usb_mode() {
+  mode="$1"
+  case "$mode" in adb|wifi|off) ;; *) return 2 ;; esac
+  tmp="${SERVICES_CONF}.tmp"
+  mkdir -p "$CONFIG_DIR"
+  if [ -r "$SERVICES_CONF" ]; then
+    grep -v -e '^usb_mode=' -e '^adb_enabled=' "$SERVICES_CONF" > "$tmp" 2>/dev/null || true
+  else
+    : > "$tmp"
+  fi
+  printf 'usb_mode=%s\n' "$mode" >> "$tmp"
+  if [ "$mode" = adb ]; then
+    printf 'adb_enabled=1\n' >> "$tmp"
+    mkdir -p "${ADB_RECOVERY_MARKER%/*}"
+    : > "$ADB_RECOVERY_MARKER"
+  else
+    printf 'adb_enabled=0\n' >> "$tmp"
+    rm -f "$ADB_RECOVERY_MARKER" 2>/dev/null || true
+  fi
+  mv "$tmp" "$SERVICES_CONF"
+  log "usb_mode=${mode} apply=reboot-required" usb
 }
 
 print_status() {
@@ -545,7 +592,7 @@ stop_samba() {
 }
 
 start_adb() {
-  set_service_enabled adb 1
+  set_usb_mode adb
   # Pixel2 has one dual-role OTG port.  An explicit ADB ON action must claim
   # that port from a previously saved USB Wi-Fi configuration at next boot.
   # Keep this marker on the FAT user volume so it also remains usable as an
@@ -564,8 +611,7 @@ start_adb() {
 }
 
 stop_adb() {
-  set_service_enabled adb 0
-  rm -f "$ADB_RECOVERY_MARKER" 2>/dev/null || true
+  set_usb_mode off
   log "enabled=0 apply=reboot-required" adb
   status_adb || true
   return 0
@@ -581,6 +627,7 @@ Commands:
   stop SERVICE
   restart SERVICE
   start-enabled
+  usb-mode adb|wifi|off
 
 Services:
   ssh      plumOS-controlled SSH shell service
@@ -622,6 +669,12 @@ run_one() {
 
 command="${1:-}"
 service="${2:-}"
+if [ "$command" = "usb-mode" ]; then
+  case "$service" in
+    adb|wifi|off) set_usb_mode "$service"; printf 'usb_mode=%s\n' "$service"; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+fi
 case "$command" in
   start|restart|start-enabled)
     if ! ensure_loopback; then

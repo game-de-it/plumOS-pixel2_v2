@@ -16,12 +16,30 @@ log() {
 
 adb_requested() {
     [ -f "$ADB_MARKER" ] && return 0
+    if [ -r "$SERVICES_CONF" ]; then
+        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
+        case "$mode" in
+            adb) return 0 ;;
+            wifi|off) return 1 ;;
+        esac
+    fi
     [ -r "$SERVICES_CONF" ] || return 0
     value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
     case "$value" in
         1|true|on|'') return 0 ;;
         *) return 1 ;;
     esac
+}
+
+wifi_requested() {
+    if [ -r "$SERVICES_CONF" ]; then
+        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
+        case "$mode" in
+            wifi) return 0 ;;
+            adb|off) return 1 ;;
+        esac
+    fi
+    ! adb_requested
 }
 
 start_wifi() {
@@ -32,6 +50,13 @@ start_wifi() {
         log 'result=disabled reason=adb-priority'
         return 0
     fi
+    wifi_requested || {
+        [ ! -x "$RECOVERY" ] || \
+            PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
+                "$RECOVERY" stop >>"$LOG" 2>&1 || true
+        log 'result=disabled reason=usb-mode-off'
+        return 0
+    }
     [ -s "$CONFIG" ] || {
         log 'result=disabled reason=config-missing'
         return 0

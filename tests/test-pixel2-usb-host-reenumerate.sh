@@ -8,7 +8,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 mkdir -p "$TMP/usb" "$TMP/dwc2" "$TMP/platform" "$TMP/config/system" \
     "$TMP/log"
-printf 'adb_enabled=0\n' >"$TMP/config/services.conf"
+printf 'usb_mode=wifi\nadb_enabled=0\n' >"$TMP/config/services.conf"
 printf 'network={}\n' >"$TMP/config/wpa_supplicant.conf"
 printf '{"wifi_enabled": true}\n' >"$TMP/config/system/settings.json"
 printf '0\n' >"$TMP/usb-online"
@@ -60,9 +60,18 @@ test ! -s "$TMP/dwc2/bind"
 test ! -s "$TMP/dwc2/unbind"
 grep -q 'result=skipped reason=wifi-not-requested' "$TMP/log/service.log"
 
+# Explicit Off owns neither side and must not reset the shared controller even
+# if legacy Wi-Fi settings still say ON.
+printf 'usb_mode=off\nadb_enabled=0\n' >"$TMP/config/services.conf"
+printf '{"wifi_enabled": true}\n' >"$TMP/config/system/settings.json"
+env "${service_env[@]}" "$SERVICE" worker
+test ! -s "$TMP/dwc2/bind"
+test ! -s "$TMP/dwc2/unbind"
+grep -q 'result=skipped reason=wifi-not-requested' "$TMP/log/service.log"
+
 # ADB ON is authoritative: saved Wi-Fi must never reset DWC2 underneath the
 # bound FunctionFS gadget.
-printf 'adb_enabled=1\n' >"$TMP/config/services.conf"
+printf 'usb_mode=adb\nadb_enabled=1\n' >"$TMP/config/services.conf"
 printf '{"wifi_enabled": true}\n' >"$TMP/config/system/settings.json"
 printf 'network={}\n' >"$TMP/config/wpa_supplicant.conf"
 : >"$TMP/dwc2/bind"

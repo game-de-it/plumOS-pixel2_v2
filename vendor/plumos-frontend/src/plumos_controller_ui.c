@@ -495,6 +495,7 @@ struct theme_state {
 struct device_settings {
   int loaded;
   int wpa_loaded;
+  char usb_mode[16];
   int wifi_enabled;
   int wifi_runtime_enabled;
   int automatic_time_enabled;
@@ -1592,6 +1593,32 @@ static int read_network_service_enabled(struct ui_state *ui, const char *service
     return default_value;
   }
   return config_bool_value(value, default_value);
+}
+
+static int read_network_usb_mode(struct ui_state *ui, char *value,
+                                 size_t value_size) {
+  char config_path[PATH_MAX];
+  char marker_path[PATH_MAX];
+
+  if (!ui || !value || value_size == 0) {
+    return 0;
+  }
+  if (join_path(marker_path, sizeof(marker_path), ui->sdcard_root,
+                "plumos-enable-adb") &&
+      file_exists(marker_path)) {
+    return copy_string(value, value_size, "adb");
+  }
+  if (!join_path(config_path, sizeof(config_path), ui->plumos_root,
+                 "config/network/services.conf") ||
+      !read_key_value_file(config_path, "usb_mode", value, value_size)) {
+    return 0;
+  }
+  if (strcmp(value, "adb") != 0 && strcmp(value, "wifi") != 0 &&
+      strcmp(value, "off") != 0) {
+    value[0] = '\0';
+    return 0;
+  }
+  return 1;
 }
 
 static int write_text_file(const char *path, const char *text) {
@@ -4661,6 +4688,7 @@ static void init_device_settings(struct device_settings *device) {
 
   memset(device, 0, sizeof(*device));
   device->volume = PLUMOS_VOLUME_DEFAULT;
+  copy_string(device->usb_mode, sizeof(device->usb_mode), "adb");
   device->wifi_enabled = 1;
   device->automatic_time_enabled = 1;
   device->lid_suspend_enabled = 1;
@@ -4778,6 +4806,13 @@ static void load_network_service_saved_state(struct ui_state *ui) {
       read_network_service_enabled(ui, "samba", 0);
   device->adb_service_running =
       read_network_service_enabled(ui, "adb", 1);
+  if (!read_network_usb_mode(ui, device->usb_mode,
+                             sizeof(device->usb_mode))) {
+    copy_string(device->usb_mode, sizeof(device->usb_mode),
+                device->adb_service_running ? "adb"
+                                            : (device->wifi_enabled ? "wifi" : "off"));
+  }
+  device->adb_service_running = strcmp(device->usb_mode, "adb") == 0;
 }
 
 static void load_device_runtime_status(struct ui_state *ui) {
@@ -4840,6 +4875,7 @@ static int load_device_settings(struct ui_state *ui) {
   ui->device.loaded = 1;
   ui->device.wifi_enabled = json_get_bool(json, json_end, "wifi_enabled",
                                           ui->device.wifi_enabled);
+  load_network_service_saved_state(ui);
   ui->device.automatic_time_enabled =
       json_get_bool(json, json_end, "automatic_time",
                     ui->device.automatic_time_enabled);
@@ -5600,6 +5636,12 @@ static const struct setting_choice SYSTEM_AUDIO_OUTPUT_CHOICES[] = {
     {"headphone", "Headphone"},
 };
 
+static const struct setting_choice USB_MODE_CHOICES[] = {
+    {"adb", "ADB"},
+    {"wifi", "Wi-Fi"},
+    {"off", "Off"},
+};
+
 static const long BRIGHTNESS_TEST_VALUES[] = {
     10, 30, 50, 70, 90, 110, 130, 150, 170, 190, 210, 230, 250, 255,
 };
@@ -5692,6 +5734,12 @@ static const struct setting_choice *setting_choices(const char *id, size_t *coun
                    sizeof(SYSTEM_AUDIO_OUTPUT_CHOICES[0]);
     }
     return SYSTEM_AUDIO_OUTPUT_CHOICES;
+  }
+  if (strcmp(id, "network_usb_mode") == 0) {
+    if (count_out) {
+      *count_out = sizeof(USB_MODE_CHOICES) / sizeof(USB_MODE_CHOICES[0]);
+    }
+    return USB_MODE_CHOICES;
   }
   return NULL;
 }
@@ -5806,12 +5854,10 @@ static enum setting_control_type setting_control_type_for_id(const char *id) {
       strcmp(id, "rom_scan_policy") == 0 ||
       strcmp(id, "system_automatic_time") == 0 ||
       strcmp(id, "system_lid_suspend") == 0 ||
-      strcmp(id, "network_wifi_enabled") == 0 ||
       strcmp(id, "network_ssh_enabled") == 0 ||
       strcmp(id, "network_ftp_enabled") == 0 ||
       strcmp(id, "network_sftp_enabled") == 0 ||
-      strcmp(id, "network_samba_enabled") == 0 ||
-      strcmp(id, "network_adb_enabled") == 0) {
+      strcmp(id, "network_samba_enabled") == 0) {
     return SETTING_CONTROL_CHECKBOX;
   }
   if (setting_choices(id, NULL)) {
@@ -5877,12 +5923,11 @@ static int setting_is_writable(const char *id) {
                 strcmp(id, "system_manual_time_day") == 0 ||
                 strcmp(id, "system_manual_time_hour") == 0 ||
                 strcmp(id, "system_manual_time_minute") == 0 ||
-                strcmp(id, "network_wifi_enabled") == 0 ||
+                strcmp(id, "network_usb_mode") == 0 ||
                 strcmp(id, "network_ssh_enabled") == 0 ||
                 strcmp(id, "network_ftp_enabled") == 0 ||
                 strcmp(id, "network_sftp_enabled") == 0 ||
                 strcmp(id, "network_samba_enabled") == 0 ||
-                strcmp(id, "network_adb_enabled") == 0 ||
                 strcmp(id, "performance_system") == 0 ||
                 strcmp(id, "performance_cpu_policy") == 0);
 }
@@ -6325,8 +6370,9 @@ static void add_system_information_entries(struct ui_state *ui) {
 static void add_network_settings_entries(struct ui_state *ui) {
   const struct device_settings *device = &ui->device;
 
-  add_bool_setting_entry(ui, "network_wifi_enabled", "Wi-Fi",
-                         device->wifi_enabled);
+  add_setting_entry(ui, "network_usb_mode", "USB Mode",
+                    setting_choice_display_value("network_usb_mode",
+                                                 device->usb_mode));
   add_setting_entry(ui, "network_connect_wifi", "Connect Wi-Fi",
                     "Scan SSID");
   add_setting_entry(ui, "network_services", "NW Service",
@@ -6345,8 +6391,6 @@ static void add_network_service_entries(struct ui_state *ui) {
                          device->sftp_service_running);
   add_bool_setting_entry(ui, "network_samba_enabled", "Samba",
                          device->samba_service_running);
-  add_bool_setting_entry(ui, "network_adb_enabled", "ADB",
-                         device->adb_service_running);
 }
 
 static void add_network_information_entries(struct ui_state *ui) {
@@ -9600,20 +9644,20 @@ static void setting_help_lines(const struct ui_state *ui,
     copy_string(line2, line2_size, "Used by scan performance checks.");
   } else if (strcmp(id, "network_connect_wifi") == 0) {
     copy_string(line1, line1_size, "Scan SSIDs and connect with password.");
-    copy_string(line2, line2_size, "Saves Wi-Fi config only after IP is acquired.");
+    copy_string(line2, line2_size, "Requires USB Mode=Wi-Fi after reboot.");
   } else if (strcmp(id, "network_rescue") == 0) {
     copy_string(line1, line1_size, "Network Recovery is disabled.");
     copy_string(line2, line2_size, "Use Connect Wi-Fi or NW Service instead.");
   } else if (strcmp(id, "network_services") == 0) {
     copy_string(line1, line1_size, "Open network services.");
-    copy_string(line2, line2_size, "SSH, FTP, SFTP, Samba, and ADB.");
+    copy_string(line2, line2_size, "SSH, FTP, SFTP, and Samba.");
   } else if (strcmp(id, "network_information") == 0) {
     copy_string(line1, line1_size, "Open read-only network information.");
     copy_string(line2, line2_size, "Connection, IP, signal, link speed, SSH, and ADB.");
   } else if (strncmp(id, "network_", 8) == 0) {
-    if (strcmp(id, "network_wifi_enabled") == 0) {
-      copy_string(line1, line1_size, "Turn the Wi-Fi runtime on or off.");
-      copy_string(line2, line2_size, "Use Connect Wi-Fi to start a new connection.");
+    if (strcmp(id, "network_usb_mode") == 0) {
+      copy_string(line1, line1_size, "Choose the single Pixel2 USB port owner.");
+      copy_string(line2, line2_size, "ADB, Wi-Fi, or Off; applies after reboot.");
     } else if (strcmp(id, "network_ssh_enabled") == 0) {
       copy_string(line1, line1_size, "SSH remote shell service.");
       copy_string(line2, line2_size, "Port 22; SFTP depends on this service.");
@@ -9626,10 +9670,6 @@ static void setting_help_lines(const struct ui_state *ui,
     } else if (strcmp(id, "network_samba_enabled") == 0) {
       copy_string(line1, line1_size, "Windows/macOS network drive service.");
       copy_string(line2, line2_size, "Share is SDCARD; ON/OFF persists after reboot.");
-    } else if (strcmp(id, "network_adb_enabled") == 0) {
-      copy_string(line1, line1_size, "ADB over USB cable.");
-      copy_string(line2, line2_size,
-                  "Changes apply after reboot on Pixel2.");
     } else if (strcmp(id, "network_ftp_status") == 0) {
       copy_string(line1, line1_size, "Current FTP service status.");
       copy_string(line2, line2_size, "FTP home is /mnt/plumos-user.");
@@ -11420,106 +11460,6 @@ static int open_parent_rom_directory(struct ui_state *ui) {
 
 static int update_settings_entries_after_save(struct ui_state *ui);
 
-static int run_network_wifi_control(struct ui_state *ui, int enable) {
-  char script[PATH_MAX];
-  char line[256];
-  char ip[64];
-  char stage[64];
-  FILE *pipe;
-  pid_t child_pid;
-  int rc;
-  int connected = 0;
-  int ready = 0;
-
-  if (!ui) {
-    return 0;
-  }
-  if (!join_path(script, sizeof(script), ui->plumos_root, "bin/plumos-network-control")) {
-    set_status(ui, "network control path too long");
-    return 0;
-  }
-  if (!file_exists(script)) {
-    set_status(ui, "network control script missing");
-    return 0;
-  }
-
-  if (enable) {
-    if (!save_system_config_bool(ui, "wifi_enabled", 1)) {
-      set_status(ui, "Wi-Fi setting write failed");
-      return 0;
-    }
-    ui->device.wifi_enabled = 1;
-    update_settings_entries_after_save(ui);
-    set_status(ui, "Starting Wi-Fi");
-    render_ui(ui);
-
-    ip[0] = '\0';
-    stage[0] = '\0';
-    pipe = open_plumos_script_pipe(ui, script, "--wifi", "on", &child_pid);
-    if (!pipe) {
-      set_status(ui, "Wi-Fi start failed");
-      return 1;
-    }
-    while (fgets(line, sizeof(line), pipe)) {
-      trim_line_end(line);
-      if (strcmp(line, "result=connected") == 0) {
-        connected = 1;
-      } else if (strcmp(line, "result=ready") == 0) {
-        ready = 1;
-      } else if (strncmp(line, "ip=", 3) == 0) {
-        copy_truncated_string(ip, sizeof(ip), line + 3);
-      } else if (strncmp(line, "stage=", 6) == 0) {
-        copy_truncated_string(stage, sizeof(stage), line + 6);
-      }
-    }
-    rc = close_plumos_script_pipe(pipe, child_pid);
-    settle_input_after_child(ui);
-    load_wifi_runtime_status(ui);
-    if (connected && rc != -1 && WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
-      ui->device.wifi_enabled = 1;
-      ui->device.wifi_runtime_enabled = 1;
-      update_settings_entries_after_save(ui);
-      snprintf(ui->status, sizeof(ui->status), "Wi-Fi connected IP=%s",
-               ip[0] ? ip : "-");
-      return 1;
-    }
-    if (ready && rc != -1 && WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
-      ui->device.wifi_enabled = 1;
-      ui->device.wifi_runtime_enabled = 1;
-      update_settings_entries_after_save(ui);
-      set_status(ui, "Wi-Fi on; use Connect Wi-Fi");
-      return 1;
-    }
-    ui->device.wifi_enabled = 1;
-    update_settings_entries_after_save(ui);
-    if (stage[0]) {
-      snprintf(ui->status, sizeof(ui->status), "Wi-Fi on; failed at %s", stage);
-    } else {
-      set_status(ui, "Wi-Fi on; no IP yet");
-    }
-    return 1;
-  }
-
-  rc = run_network_control_quiet(ui, script, "--wifi", "off");
-  if (rc == -1) {
-    set_status(ui, "network control system call failed");
-    return 0;
-  }
-  if (WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
-    if (!save_system_config_bool(ui, "wifi_enabled", 0)) {
-      set_status(ui, "Wi-Fi off; setting write failed");
-      return 0;
-    }
-    ui->device.wifi_enabled = 0;
-    ui->device.wifi_runtime_enabled = 0;
-    update_settings_entries_after_save(ui);
-    set_status(ui, "Wi-Fi off; saved");
-    return 1;
-  }
-  set_status(ui, "network control returned non-zero");
-  return 0;
-}
-
 static int run_network_service_control(struct ui_state *ui, const char *service,
                                        int enable) {
   char script[PATH_MAX];
@@ -11574,6 +11514,57 @@ static int run_network_service_control(struct ui_state *ui, const char *service,
            service, enable ? "start" : "stop");
   set_status(ui, status_message);
   return 0;
+}
+
+static int run_network_usb_mode_control(struct ui_state *ui, const char *mode) {
+  char script[PATH_MAX];
+  char cmd[UI_COMMAND_MAX];
+  size_t pos = 0;
+  int rc;
+  int wifi_enabled;
+
+  if (!ui || !mode ||
+      (strcmp(mode, "adb") != 0 && strcmp(mode, "wifi") != 0 &&
+       strcmp(mode, "off") != 0)) {
+    return 0;
+  }
+  if (!join_path(script, sizeof(script), ui->plumos_root,
+                 "bin/plumos-network-services") ||
+      !file_exists(script)) {
+    set_status(ui, "USB mode control missing");
+    return 0;
+  }
+
+  cmd[0] = '\0';
+  if (!append_string(cmd, sizeof(cmd), &pos, "PLUMOS_SDCARD_ROOT=") ||
+      !append_shell_quoted(cmd, sizeof(cmd), &pos, ui->sdcard_root) ||
+      !append_string(cmd, sizeof(cmd), &pos, " PLUMOS_ROOT=") ||
+      !append_shell_quoted(cmd, sizeof(cmd), &pos, ui->plumos_root) ||
+      !append_string(cmd, sizeof(cmd), &pos, " ") ||
+      !append_runtime_script_invocation(cmd, sizeof(cmd), &pos, script) ||
+      !append_string(cmd, sizeof(cmd), &pos, " usb-mode ") ||
+      !append_shell_quoted(cmd, sizeof(cmd), &pos, mode) ||
+      !append_string(cmd, sizeof(cmd), &pos, " >/dev/null 2>&1")) {
+    set_status(ui, "USB mode command too long");
+    return 0;
+  }
+
+  rc = run_runtime_shell_command(cmd);
+  if (rc == -1 || !WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
+    set_status(ui, "USB mode save failed");
+    return 0;
+  }
+  wifi_enabled = strcmp(mode, "wifi") == 0;
+  if (!save_system_config_bool(ui, "wifi_enabled", wifi_enabled)) {
+    set_status(ui, "USB mode saved; compatibility setting write failed");
+    return 1;
+  }
+  copy_string(ui->device.usb_mode, sizeof(ui->device.usb_mode), mode);
+  ui->device.wifi_enabled = wifi_enabled;
+  ui->device.adb_service_running = strcmp(mode, "adb") == 0;
+  update_settings_entries_after_save(ui);
+  set_status(ui, "USB mode saved; reboot required");
+  return 1;
 }
 
 static void stop_ntp_for_manual_time(struct ui_state *ui) {
@@ -11709,6 +11700,10 @@ static void wifi_clear_result(struct ui_state *ui) {
 
 static void open_wifi_connect_screen(struct ui_state *ui) {
   if (!ui) {
+    return;
+  }
+  if (strcmp(ui->device.usb_mode, "wifi") != 0) {
+    set_status(ui, "Set USB Mode=Wi-Fi and reboot first");
     return;
   }
   ui->wifi_back_screen = ui->screen;
@@ -13276,6 +13271,14 @@ static int save_setting_choice(struct ui_state *ui, const char *id,
     return 1;
   }
 
+  if (strcmp(id, "network_usb_mode") == 0) {
+    if (!run_network_usb_mode_control(ui, raw)) {
+      return 0;
+    }
+    settings_start_arrow_blink(ui, direction);
+    return 1;
+  }
+
   if (!load_settings(ui->settings_path, &settings)) {
     set_status(ui, "settings read failed");
     return 0;
@@ -13557,9 +13560,6 @@ static int handle_setting_control(struct ui_state *ui, enum ui_action action) {
     } else {
       return 0;
     }
-    if (strcmp(id, "network_wifi_enabled") == 0) {
-      return run_network_wifi_control(ui, next);
-    }
     if (strcmp(id, "network_ssh_enabled") == 0) {
       return run_network_service_control(ui, "ssh", next);
     }
@@ -13571,9 +13571,6 @@ static int handle_setting_control(struct ui_state *ui, enum ui_action action) {
     }
     if (strcmp(id, "network_samba_enabled") == 0) {
       return run_network_service_control(ui, "samba", next);
-    }
-    if (strcmp(id, "network_adb_enabled") == 0) {
-      return run_network_service_control(ui, "adb", next);
     }
     save_setting_bool(ui, id, next);
     return 1;

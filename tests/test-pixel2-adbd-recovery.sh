@@ -182,6 +182,14 @@ grep -q 'result=disabled reason=explicit-user-setting' "$TMP/log/adbd.log"
 test ! -e "$TMP/run/adbd.pid"
 test "$(cat "$TMP/usb-role/controller/role")" = host
 
+# The new single source of truth overrides contradictory legacy flags.
+printf '%s\n' usb_mode=off adb_enabled=1 >"$TMP/config/services.conf"
+printf '%s\n' host >"$TMP/usb-role/controller/role"
+env "${service_env[@]}" "$SERVICE" start
+grep -q 'result=disabled reason=explicit-user-setting' "$TMP/log/adbd.log"
+test ! -e "$TMP/run/adbd.pid"
+test "$(cat "$TMP/usb-role/controller/role")" = host
+
 # The documented FAT recovery marker also overrides explicit ADB OFF.
 touch "$TMP/config/enable-adb"
 printf '%s\n' host >"$TMP/usb-role/controller/role"
