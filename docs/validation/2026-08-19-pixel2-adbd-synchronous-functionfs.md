@@ -72,6 +72,30 @@ and the real updater accepted its signature, exact source version, device,
 architecture, ABIs, manifest, and payload. Both existing System slots and the
 zero-byte ADB recovery marker remained byte-identical.
 
-This intentionally uses the normal signed A/B updater instead of overwriting
-the active slot offline. Frontend update request, inactive-slot readback,
-promotion, a real ADB shell, and repeated physical replug remain pending.
+## Offline recovery deployment
+
+The subsequent read-only Runtime capture proved that the frontend had not
+created a System update request. The only entry in
+`frontend-system-update.log` was the earlier Runtime `8a98e3e -> 21fba08`
+request, while `system-update-boot.log` reported `no-pending-state` and active
+System A still identified itself as `21fba08`. The observed ADB `waiting`
+result therefore did not test the synchronous FunctionFS binary.
+
+To avoid another unobservable update attempt while ADB was unavailable, the
+attached card was recovered offline. The five managed System A files were
+first copied to
+`/offline-backup-system-a-21fba08-pre-sync-ffs/` on PLUMOS_USER. The signed
+package was verified before writing, copied through temporary slot filenames,
+read back, and then installed as System A. Final verification showed:
+
+- active System A version `0.1.0-dev-5246728`;
+- System A SHA-256
+  `99ce6ed925d7a510b0feff966ff470613827f8677a5ff58a8f72b02f33e64592`;
+- manifest payload SHA-256 equal to the read-back SquashFS;
+- Ed25519 signature verification successful;
+- inactive System B unchanged at
+  `2a6170fea9dcec458636672eb44d8256bbe9676ff6994e378b0d14e5458f3259`.
+
+ROM, BIOS, saves, settings, Runtime, and the update inbox were not changed.
+Cold-boot ADB shell and repeated physical replug remain pending physical
+acceptance.
