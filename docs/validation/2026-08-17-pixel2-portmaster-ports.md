@@ -183,11 +183,12 @@ layout from the panel-native 480x640 mode before the correctly oriented final
 present.  The result was an upright game shifted left, with the HOLD area
 partially outside the visible screen.
 
-Adapter 30 reports the Pixel2 logical 640x480 mode through
+Adapter 30 initially reported the Pixel2 logical 640x480 mode through
 `SDL_GetCurrentDisplayMode()`, `SDL_GetDesktopDisplayMode()`, and
-`SDL_GetDisplayMode()` while rotation is enabled.  Refresh rate and pixel
-format remain the values returned by SDL.  This is part of the common Pixel2
-SDL Ports boundary and does not patch Apotris or any installed mutable port.
+`SDL_GetDisplayMode()` while rotation was enabled.  Refresh rate and pixel
+format remained the values returned by SDL.  This fixed Apotris layout, but
+the desktop/enumerated-mode interception was later found to be too broad; see
+the adapter 31 regression record below.
 
 A temporary one-function shim first proved the diagnosis on the device.  The
 same behavior was then integrated into the common interposer, rebuilt from
@@ -230,4 +231,53 @@ Capture evidence is under
 a4432a134c08fbe7a4081526d374fd8abfcb4a589c8c3539412bbb3663e539fe  apotris-position-physical.png
 2e3a44b2d2dc8478f23bbdabd8c82c9f8d79c18cf4cb21e1fe6e85411fd5e4f4  apotris-92d754c-physical.png
 ae33151583c5a0a927e16161064423494e7324d054d74e0f892ba5ca90a4c3cb  opensyobon-92d754c-physical.png
+```
+
+## 2026-08-18 Balatro KMSDRM regression and adapter 31
+
+Balatro's first-run LÖVE patcher failed after adapter 30 with:
+
+```text
+Error: Could not initialize SDL video subsystem (kmsdrm not available)
+Patch failed; no partial build was installed and the purchased game was not modified.
+```
+
+This was not a black rendered frame.  The patcher had already terminated
+because SDL KMSDRM used the intercepted desktop/enumerated display modes while
+selecting a connector mode.  The interposer supplied synthetic 640x480 even
+though the physical Pixel2 connector only exposes 480x640.
+
+Adapter 31 keeps the real `SDL_GetDesktopDisplayMode()` and
+`SDL_GetDisplayMode()` results for KMS mode selection and changes only
+`SDL_GetCurrentDisplayMode()` to the logical 640x480 application layout.
+Apotris imports the latter directly, so its adapter 30 layout fix remains in
+place without lying to the KMSDRM backend about physical connector modes.
+
+The common PortMaster component and strict app layer were rebuilt from commit
+`c55da25`.  A signed Runtime delta from adapter 30 was applied to the device:
+
+```text
+runtime=0.1.0-dev-c55da25
+adapter_version=31
+package_sha256=87d3e42ebb5cf5f16c63a62f7578693d123734d7dbbaab4404953643983a4f10
+payload_files=11
+deleted_files=0
+update_result=runtime_healthy
+runtime_verify=result-ok
+portmaster_pixel2_runtime=result-ok
+app_layer_verify=result-ok
+```
+
+The signed update contains no ROM, installed-port content, configuration, or
+save path.  Through the normal FE-equivalent `ports` launch route, the Balatro
+patcher now initializes KMSDRM, presents its 640x480 screen upright, and waits
+for the required physical-A confirmation instead of returning to a black
+screen.  The purchased `Balatro.exe` and existing display selection remain on
+the mutable user volume.
+
+Capture evidence is under
+`output/live/2026-08-18-portmaster/capture-balatro-c55da25/`:
+
+```text
+8dd3f8806eb547058883661fe2d3cf9e9823de5446063f2146b42a939c644cda  balatro-c55da25-glass.png
 ```

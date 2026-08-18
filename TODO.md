@@ -114,10 +114,13 @@
   - 2026-08-18: FEのPorts routeが`/roms`と`/mnt/plumos-user/roms`を文字列比較して全拒否する問題、SDL dialog/LOVE実行権限/停止側aliasを修正。Balatro購入データをROM setからSHA一致で保持し、adapter 29の共通SDL/OpenGL interposerでLÖVEの論理640x480を物理480x640へ回転。正式Runtime `0.1.0-dev-7b0d69f`上のFE `external:port`経路でdisplay setupとpatcherを正立4:3 capture済み。patcherの物理A確認、`Balatro_pm`生成、ゲーム内操作・音声はoperator確認を継続。
   - 2026-08-18: SDL portが`SDL_GetCurrentDisplayMode()`からpanel-native
     480x640を取得し、回転後も内部layoutだけportraitのままになる欠陥をApotrisで
-    特定。adapter 30はcurrent/desktop/enumerated display modeを論理640x480へ
-    統一する。署名Runtime `0.1.0-dev-92d754c`を適用し、ApotrisのHOLD/盤面/
-    NEXTが画面内へ収まること、OpenSyobonの既存46px side bar、終了後FE復帰、
-    root checksumを実機captureと検証で合格とした。
+    特定。adapter 30で論理640x480へ補正し、ApotrisのHOLD/盤面/NEXTが画面内へ
+    収まること、OpenSyobonの既存46px side bar、終了後FE復帰を実機合格とした。
+    desktop/enumerated modeまで補正したことでBalatro patcherのKMSDRM mode選択を
+    壊す回帰が判明したため、adapter 31ではapplication layout用のcurrent modeだけを
+    補正する。署名Runtime `0.1.0-dev-c55da25`、`runtime_healthy`、root checksum、
+    FE相当Ports経路のBalatro patcher正立表示まで実機合格。物理Aでのpatch完了、
+    `Balatro_pm`生成、ゲーム内操作・音声はoperator確認を継続。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する
