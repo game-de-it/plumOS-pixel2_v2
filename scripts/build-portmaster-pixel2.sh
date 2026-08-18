@@ -56,7 +56,7 @@ PIXMAN_RUNTIME_VERSION="0.42.2-1"
 SQUASHFS_TOOLS_VERSION="1:4.5.1-1"
 ZIP_VERSION="3.0-13"
 BASH_RUNTIME_VERSION="5.2.15-2+b13"
-ADAPTER_VERSION="27"
+ADAPTER_VERSION="28"
 
 usage() {
     cat <<EOF
@@ -679,6 +679,9 @@ release_version="$(tr -d '\r\n' < "$upstream_portmaster/version")"
 chmod 0755 \
     "$stage_dir/plumos/apps/portmaster/upstream/PortMaster/gptokeyb" \
     "$stage_dir/plumos/apps/portmaster/upstream/PortMaster/gptokeyb2"
+find "$stage_dir/plumos/apps/portmaster/upstream/PortMaster/runtimes" \
+    -mindepth 2 -maxdepth 2 -type f -name 'love.aarch64' \
+    -exec chmod 0755 {} +
 
 rsync -a --copy-links --exclude='__pycache__/' --exclude='*.pyc' \
     "$PACKAGE_DIR/plumos/" "$stage_dir/plumos/"

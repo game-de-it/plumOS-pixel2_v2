@@ -69,6 +69,13 @@ prepare() {
       exit 1
     }
   done
+  if [ -d "${PM_DIR}/runtimes" ]; then
+    find "${PM_DIR}/runtimes" -mindepth 2 -maxdepth 2 -type f \
+      -name 'love.aarch64' -exec chmod 0755 {} + || {
+        printf 'plumos-portmaster-runtime: cannot enable AArch64 LOVE runtime\n' >&2
+        exit 1
+      }
+  fi
   mkdir -p "$RUN_ROOT" "$BUSYBOX_BIN_DIR" "$LIB_DIR" \
     "${PLUMOS_ROOT}/logs/apps"
   find "$BUSYBOX_BIN_DIR" -type l -delete 2>/dev/null || true
