@@ -160,3 +160,47 @@ sources, then renamed into the active slot. Final card readback verified:
 
 Runtime, ROM, BIOS, saves, settings, and System B were not modified. Cold-boot
 ADB shell and one physical cable replug remain the hardware acceptance gates.
+
+## Post-fix capture and live ownership correction
+
+The next read-only card capture is retained under
+`output/live/2026-08-19-pixel2-state-capture/capture.Cz0riV`. It verifies that
+System A is `1eab72a`, Runtime is `21fba08`, and the saved exclusive mode is
+`usb_mode=adb`. The `23:11` boot no longer contains a startup watchdog or an
+autonomous adbd restart:
+
+```text
+23:11:01 udc=result-found name=ff300000.usb state=not attached
+23:11:02 opening control endpoint /dev/usb-ffs/adb/ep0
+23:11:02 UsbFfsConnection constructed
+23:11:02 USB event: FUNCTIONFS_BIND
+23:11:02 result=started udc=ff300000.usb
+```
+
+There is still no `FUNCTIONFS_ENABLE`. macOS selected configuration 1 and
+opened both bulk endpoints, but the first CNXN read/write continued to fail
+with `kIOReturnNotResponding`. This confirms that removing the watchdog fixed
+one destructive race but did not repair the already-stale FunctionFS endpoint
+instance.
+
+The same capture also explains why the operator could select Wi-Fi, Off, and
+ADB without ever seeing an actual stopped state. Runtime logged all three
+choices only as `apply=reboot-required`; it persisted the selector and did not
+call the System ADB controller. Physical cable transitions were logged, but
+did not rebuild the endpoint set.
+
+Change `556704d` corrects both contracts:
+
+- explicit stop/restart unbinds the UDC, stops adbd, unmounts FunctionFS,
+  removes the config symlink/function/config/gadget, then constructs fresh
+  endpoints;
+- selecting ADB stops Wi-Fi ownership and performs that full restart;
+- selecting Wi-Fi stops ADB and starts Wi-Fi recovery immediately;
+- selecting Off stops both owners immediately;
+- normal boot adopts an already healthy System gadget instead of restarting it;
+- explicit `usb_mode` is authoritative over the migration-only legacy Wi-Fi
+  boolean, so the just-selected mode cannot be cancelled by write ordering.
+
+The ADB recovery, USB-mode, Wi-Fi recovery, USB host, network control, app-layer,
+power/sleep, and System rootfs host gates pass. A signed System plus Runtime
+deployment and physical Off -> ADB acceptance remain pending.

@@ -135,6 +135,17 @@
         `11a7f94`に対するexact source・ABI・署名・payload検証に合格。System Aを5ファイル
         退避後offline置換し、署名とSquashFS SHA-256 `64bfc14e...`のreadback、inactive B、
         ADB marker保持を確認。cold boot shellと物理抜き差しを継続する。
+      - `1eab72a`適用後のread-only captureでstartup watchdog撤去は有効と確認。
+        `23:11:02 FUNCTIONFS_BIND`後に同一adbdは維持されたが`FUNCTIONFS_ENABLE`へ
+        到達せず、macOSのconfiguration 1選択後も最初のCNXNが
+        `kIOReturnNotResponding`となった。またFEのWi-Fi/Off/ADB操作は全て
+        `apply=reboot-required`として設定保存だけを行い、実際のSystem ADB停止・
+        再生成を一度も実行していなかった。`556704d`で明示切替を即時排他動作へ
+        変更し、ADB選択時はUDC unbind、adbd停止、FunctionFS unmount、configfs
+        gadget削除から完全再生成する。通常bootのstart-enabledはhealthy gadgetを
+        維持し、Wi-Fi/OffはADBを即時停止する。ADB recovery、USB mode、Wi-Fi、
+        USB host、network control、strict app-layer、power/sleep、System rootfsの
+        host gateは合格。署名System/Runtime適用後のOff -> ADB実機確認を継続する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
