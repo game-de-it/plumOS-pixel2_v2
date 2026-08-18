@@ -47,13 +47,31 @@ if [ "$pgrp" != "$pid" ] || [ "$session" != "$pid" ] ||
   printf 'plumos-portmaster-port-stop: refusing unowned process group pid=%s\n' "$pid" >&2
   exit 1
 fi
-case "$script" in
-  "${PLUMOS_ROM_ROOT}"/[Pp][Oo][Rr][Tt][Ss]/*.sh) ;;
-  *)
-    printf 'plumos-portmaster-port-stop: invalid script ownership: %s\n' "$script" >&2
-    exit 1
-    ;;
-esac
+script_owned=0
+for root_alias in \
+  "$PLUMOS_ROM_ROOT" \
+  "${PLUMOS_SDCARD_ROOT%/}/roms" \
+  /mnt/plumos-user/roms \
+  /roms; do
+  resolved_alias="$(readlink -f "$root_alias" 2>/dev/null || true)"
+  [ -n "$resolved_alias" ] || continue
+  [ "$resolved_alias" -ef "$PLUMOS_ROM_ROOT" ] 2>/dev/null || continue
+  case "$script" in
+    "${resolved_alias}"/[Pp][Oo][Rr][Tt][Ss]/*.sh)
+      port_path="${script#"${resolved_alias}"/}"
+      port_relative="${port_path#*/}"
+      case "$port_relative" in */*) continue ;; esac
+      candidate="${PLUMOS_ROM_ROOT}/${port_path}"
+      [ "$candidate" -ef "$script" ] 2>/dev/null || continue
+      script_owned=1
+      break
+      ;;
+  esac
+done
+[ "$script_owned" -eq 1 ] || {
+  printf 'plumos-portmaster-port-stop: invalid script ownership: %s\n' "$script" >&2
+  exit 1
+}
 
 if [ "$action" = "status" ]; then
   printf 'plumos-portmaster-port-stop: pid=%s script=%s\n' "$pid" "$script"
