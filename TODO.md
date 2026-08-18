@@ -82,6 +82,13 @@
       version・ABI・manifest検証に合格。System Aを完全backup後offline置換し、署名・
       readback、inactive B、ADB marker保持を確認。Runtime deltaもFAT32 inboxへ配置済み。
       cold boot後にFEからRuntime updateを要求し、ADB、抜き差し、Wi-Fi切替を実機確認する。
+    - 2026-08-19: offline read-only captureでSystem Aは`21fba08`だが、実Runtimeは
+      `8a98e3e`のままと確定。前回deltaは誤って`5535fa8`をsourceにしていたため適用対象外で、
+      排他USBをまだ実機試験できていなかった。採取した4,261-file checksumをbaseに
+      `8a98e3e -> 21fba08`の24-file署名deltaを再生成し、実updaterの署名、exact source、
+      ABI、manifest、payload検証に合格。FAT32 inboxの当該packageとsidecarだけを置換し、
+      SHA-256 `ac393c80...`のreadback一致を確認。FE System Updateから適用後、healthy昇格、
+      `usb_mode=adb` migration、cold boot、物理抜き差し、ADB実transportを継続する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで

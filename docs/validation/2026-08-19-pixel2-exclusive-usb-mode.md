@@ -58,22 +58,25 @@ upgrade compatibility, but new boot and runtime code consults `usb_mode` first.
 ## Signed packages
 
 Commit `21fba08` was built as System and strict Runtime
-`0.1.0-dev-21fba08`. System uses installed `1e065fb` as its required source;
-the Runtime delta uses the last confirmed app-layer base `5535fa8`. The real
-updater accepted the Ed25519 signatures, device/architecture, source versions,
-System/Runtime ABIs, manifests, and all declared payload hashes.
+`0.1.0-dev-21fba08`. System uses installed `1e065fb` as its required source.
+An offline read-only capture later proved that the installed Runtime was still
+`8a98e3e`, not the previously assumed `5535fa8`; the Runtime delta was therefore
+rebuilt against the captured `8a98e3e` checksum list. The real updater accepted
+the Ed25519 signature, device/architecture, exact source version,
+System/Runtime ABIs, manifest, and every declared payload hash.
 
 - System archive SHA-256:
   `9fea195b63ce375d78a9351fa9eedc5dcac1e1baa1225760f2f422d1a1d5bc5b`;
 - System SquashFS SHA-256:
   `57b3e98d534bddb525c8cf67189a37f7f8c6cf7432abff0f273d08b76515167b`;
 - Runtime archive SHA-256:
-  `20962355c66155228bb979442dd7b5207fa5f82549c112cf2df054c46e8ecb16`;
+  `ac393c80eb5c9a802d995941ea55088f173331b8cf56b48b18928fe8ea29183d`;
 - strict Runtime root checksum-list SHA-256:
   `003dbd35eb0dd9a371c57e534fd3ca02290296c91d5d9df01b26968d04080992`.
 
-The Runtime package contains 22 changed managed files and no deletion. Both
-archives are retained under `output/live/2026-08-19-exclusive-usb-mode/`.
+The corrected Runtime package contains 24 changed managed files and no
+deletion. Both archives are retained under
+`output/live/2026-08-19-exclusive-usb-mode/`.
 
 ## Offline SD deployment
 
@@ -91,11 +94,33 @@ its loose Ed25519 signature verified, and the manifest payload hash matched.
 Inactive B remained byte-identical at
 `2a6170fea9dcec458636672eb44d8256bbe9676ff6994e378b0d14e5458f3259`.
 
-The Runtime delta and its checksum were added to the FAT32 update inbox and
-read back at
-`20962355c66155228bb979442dd7b5207fa5f82549c112cf2df054c46e8ecb16`.
+The initial Runtime delta and its checksum were added to the FAT32 update inbox,
+but its assumed source version did not match the installed Runtime. The
+corrected `8a98e3e -> 21fba08` delta replaced only that update-inbox package and
+sidecar, then read back at
+`ac393c80eb5c9a802d995941ea55088f173331b8cf56b48b18928fe8ea29183d`.
 The zero-byte ADB recovery marker was preserved. ROM, BIOS, settings, saves,
 installed ports, the Linux Runtime partition, and all unrelated update files
 were not modified. The Runtime delta still requires the normal frontend
 System Update request because merely placing a package in the inbox does not
 create an update transaction.
+
+## Offline Runtime capture
+
+`scripts/capture-pixel2-runtime-macos.sh` captured the Linux partition
+read-only after System `21fba08` had booted. The evidence under
+`output/live/2026-08-19-pixel2-state-capture/capture.aLzThL/` shows:
+
+- installed Runtime `0.1.0-dev-8a98e3e`, with its last transaction marked
+  `runtime_healthy`;
+- legacy `adb_enabled=1` and `wifi_enabled=true` saved simultaneously, with no
+  authoritative `usb_mode` because the new Runtime had not been installed;
+- repeated old-Runtime `watchdog-recover`, UDC rebind failures, and clean adbd
+  restarts before later boots switched to the kernel-uevent monitor;
+- the current boot reaching `FUNCTIONFS_BIND` but not `FUNCTIONFS_ENABLE`,
+  matching the frontend's `waiting_usb` state.
+
+This proves that the observed `waiting` result did not test the exclusive USB
+implementation: System was current, but Runtime ownership and frontend code
+were stale. Physical acceptance resumes only after the corrected Runtime is
+applied and promoted healthy.
