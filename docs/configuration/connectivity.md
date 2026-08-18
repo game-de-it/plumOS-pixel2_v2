@@ -15,9 +15,10 @@ adb shell
 ```
 
 Pixel2には内蔵Wi-Fiがないため、設定がまだ存在しないfresh imageではADBを既定ON
-にする。START > Network > NW Service > ADBで保存した明示的なON/OFFは次回bootで
-最優先される。FE操作時に接続中のUSB gadgetを破壊しないため、変更は再起動後に
-反映する。
+にする。START > Network > NW Service > ADBをONにすると保存設定を1にし、FAT32
+user partitionへ`plumos-enable-adb`も作成する。これが「最後にADBを明示ONにした」
+USB所有権の記録となり、保存済みWi-Fi設定より優先して次回bootでdevice roleを
+取り戻す。FE操作時に接続中のUSB gadgetを破壊しないため、変更は再起動後に反映する。
 設定画面へ到達できない場合は、SDカードのFAT32 user partition直下へ次の空fileを
 置くとrecovery opt-inになる。
 
@@ -25,8 +26,9 @@ Pixel2には内蔵Wi-Fiがないため、設定がまだ存在しないfresh ima
 plumos-enable-adb
 ```
 
-ADBをOFFにすると保存設定を0にし、このrecovery markerも削除する。markerは明示
-OFFより強いrecovery overrideであり、削除後は保存設定へ戻る。ADB有効中も
+ADBをOFFにすると保存設定を0にし、このrecovery markerも削除する。これにより
+保存済みWi-Fi設定があれば次回bootでhost roleへ戻せる。markerは明示OFFより強い
+recovery overrideでもある。ADB有効中も
 信頼できないhostへUSB接続しないこと。
 
 ## USB Wi-Fi
@@ -79,6 +81,9 @@ hardware-key serviceはV90Sのdisconnect recoveryと同様に、`offline`が3秒
 同じgadgetのbounded replugを1回呼ぶ。host transportが猶予内に自然復帰した場合は
 何もしない。offline episodeごとに1回だけ実行し、roleをhostへ変更しない。
 回復履歴は`/mnt/plumos/logs/hardware-keys.log`へ永続保存する。
+さらにSystem起動直後のwatchdogも、UDCが`configured`でもtransportが`offline`なら
+一度だけ同じreplugを行う。これによりRuntime更新前やhardware-key service起動前の
+host transport lossでも保守経路を復旧できる。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
 Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、

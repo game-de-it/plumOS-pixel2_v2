@@ -72,6 +72,7 @@ test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
 grep -q 'schedule_recovery' "$SERVICE"
 grep -q 'action=watchdog-recover' "$SERVICE"
+grep -q 'action=watchdog-replug reason=transport-offline' "$SERVICE"
 grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$SERVICE"
 grep -q 'transport_state=' "$SERVICE"
 
@@ -110,18 +111,31 @@ rm -f "$TMP/run/adbd.pid" "$TMP/gadget/UDC"
 printf '%s\n' host >"$TMP/usb-role/controller/role"
 cat >"$TMP/adbd-stub" <<'EOF'
 #!/bin/sh
+[ -z "${PLUMOS_TEST_ADBD_TRANSPORT:-}" ] ||
+    printf '%s\n' "$PLUMOS_TEST_ADBD_TRANSPORT" >"$PLUMOS_ADBD_TRANSPORT_STATE"
 trap 'exit 0' TERM INT
 while :; do sleep 30; done
 EOF
 chmod +x "$TMP/adbd-stub"
 touch "$TMP/ffs/ep1" "$TMP/ffs/ep2"
-env "${service_env[@]}" "$SERVICE" start
+PLUMOS_TEST_ADBD_TRANSPORT=offline env "${service_env[@]}" \
+    PLUMOS_ADBD_RECOVERY_WORKER=0 PLUMOS_ADB_RECOVERY_DELAY=1 \
+    "$SERVICE" start
 ADBD_PID="$(cat "$TMP/run/adbd.pid")"
 mkdir -p "$TMP/proc/$ADBD_PID"
 printf '%s\0' "$TMP/adbd-stub" >"$TMP/proc/$ADBD_PID/cmdline"
 grep -q 'result=started udc=fake-udc' "$TMP/log/adbd.log"
 test "$(cat "$TMP/usb-role/controller/role")" = device
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
+watchdog_wait=0
+while ! grep -q 'action=watchdog-replug reason=transport-offline' \
+    "$TMP/log/adbd.log" && [[ "$watchdog_wait" -lt 5 ]]; do
+    sleep 1
+    watchdog_wait=$((watchdog_wait + 1))
+done
+grep -q 'action=watchdog-replug reason=transport-offline' "$TMP/log/adbd.log"
+grep -q 'result=replug-recovered action=rebind state=configured' \
+    "$TMP/log/adbd.log"
 
 # Saved Wi-Fi is the only normal reason to assign Pixel2's shared port to host.
 env "${service_env[@]}" "$SERVICE" stop

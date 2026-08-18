@@ -302,15 +302,25 @@ schedule_recovery() {
         sleep "$RECOVERY_DELAY"
         if adb_enabled_by_policy && pid_running && gadget_bound; then
             state=$(udc_state 2>/dev/null || true)
-            case "$state" in
-                configured|suspended)
-                    log "result=watchdog-healthy state=$state"
-                    ;;
-                *)
-                    log "action=watchdog-recover reason=udc-${state:-unknown}"
-                    PLUMOS_ADBD_RECOVERY_WORKER=1 "$0" recover || true
-                    ;;
-            esac
+            transport=$(tr -d '[:space:]' <"$TRANSPORT_STATE" 2>/dev/null || true)
+            if [ "$transport" = offline ]; then
+                # UDC configured only proves the USB controller is bound.  A
+                # host-side reset can leave the ADB protocol transport offline
+                # while that controller state remains healthy.  Match V90S's
+                # disconnect recovery by replugging the existing gadget once.
+                log "action=watchdog-replug reason=transport-offline state=${state:-unknown}"
+                PLUMOS_ADBD_RECOVERY_WORKER=1 "$0" replug || true
+            else
+                case "$state" in
+                    configured|suspended)
+                        log "result=watchdog-healthy state=$state transport=${transport:-unknown}"
+                        ;;
+                    *)
+                        log "action=watchdog-recover reason=udc-${state:-unknown}"
+                        PLUMOS_ADBD_RECOVERY_WORKER=1 "$0" recover || true
+                        ;;
+                esac
+            fi
         fi
         rm -f "$RECOVERY_PID"
     ) </dev/null >>"$LOG" 2>&1 &

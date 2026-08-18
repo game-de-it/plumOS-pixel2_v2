@@ -88,6 +88,12 @@
       無条件二重rebindは廃止。署名System/Runtime `0.1.0-dev-8a98e3e`を実機適用し、
       host server自然復帰でPID維持、VBUSありUDC unbindから8秒・ケーブル操作なしで
       ADB復帰、各health、再起動後保持を確認。物理抜き差しの最終確認を継続する。
+    - 2026-08-18: V90S準拠Systemの初回実機試験はFE `RUNNING`まで到達したが、host
+      transportは`offline`、物理抜き差し後は`waiting`となった。さらにNW Serviceの
+      ADB OFFがFAT ownership markerを削除する一方、ONが再作成しないため、保存Wi-Fi
+      設定が唯一のOTG portをhost roleへ戻す欠陥を特定。ADB ONでmarkerを作成し、
+      System起動watchdogもUDC `configured`かつtransport `offline`を単発replugする。
+      新System/Runtimeのoffline適用後、cold boot、抜き差し、OFF→ON→再起動を再確認する。
     - 2026-08-18: `8a98e3e`以降の物理抜き差しでADBがwaitingとなり、再起動・cold
       bootでも復帰しない回帰を確認。`usb/online=0`を根拠にhost roleへ変更すると、
       Mac接続後も同じ値が0のままになりdevice roleへ戻れない循環だった。`ecf4d16`の

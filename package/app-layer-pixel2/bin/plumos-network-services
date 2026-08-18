@@ -546,6 +546,12 @@ stop_samba() {
 
 start_adb() {
   set_service_enabled adb 1
+  # Pixel2 has one dual-role OTG port.  An explicit ADB ON action must claim
+  # that port from a previously saved USB Wi-Fi configuration at next boot.
+  # Keep this marker on the FAT user volume so it also remains usable as an
+  # offline recovery switch when the app layer itself cannot start.
+  mkdir -p "${ADB_RECOVERY_MARKER%/*}"
+  : > "$ADB_RECOVERY_MARKER"
   if [ ! -x "$ADBD_CONTROL" ]; then
     log "start failed reason=adb_control_missing" adb
     status_adb
@@ -553,7 +559,7 @@ start_adb() {
   fi
   # Do not tear down or replace a live USB gadget from the frontend process.
   # The System service consumes the persisted setting during the next boot.
-  log "enabled=1 apply=reboot-required" adb
+  log "enabled=1 usb_owner=adb apply=reboot-required" adb
   status_adb
 }
 

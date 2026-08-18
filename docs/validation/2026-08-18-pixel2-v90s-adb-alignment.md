@@ -1,7 +1,7 @@
 # Pixel2 V90S-derived ADB alignment
 
 Date: 2026-08-18
-Status: host implementation PASS; offline device deployment pending
+Status: host implementation PASS; second offline device deployment pending
 
 ## Regression
 
@@ -39,11 +39,21 @@ assigns the port to host role during normal boot. The documented FAT32
 `plumos-enable-adb` marker overrides saved Wi-Fi and deterministically assigns
 the port back to the V90S-style ADB gadget.
 
+The first physical acceptance attempt reached frontend `RUNNING`, but macOS
+reported the transport `offline`. After a physical cable replug the frontend
+returned to `waiting`. Toggling ADB OFF then ON exposed a separate ownership
+bug: OFF removed `plumos-enable-adb`, while ON only persisted `adb_enabled=1`
+and did not recreate the marker. A saved Wi-Fi configuration therefore kept
+winning the shared-port arbitration. ADB ON now recreates the FAT
+marker, and the System startup watchdog replugs a transport that reports
+`offline` even while the UDC still reports `configured`.
+
 ## Host gates
 
 The fixture covers healthy recovery, stale UDC rebind, action serialization,
-normal cold boot reclaiming device role, saved Wi-Fi selecting host role, and
-the FAT recovery marker overriding saved Wi-Fi. The existing USB-host reset,
+normal cold boot reclaiming device role, saved Wi-Fi selecting host role, the
+ADB UI toggle creating/removing the ownership marker, transport-offline startup
+replug, and the FAT recovery marker overriding saved Wi-Fi. The existing USB-host reset,
 power/sleep, app-layer script, and System init tests remain enabled.
 
 Physical acceptance remains open until the signed System and Runtime are
