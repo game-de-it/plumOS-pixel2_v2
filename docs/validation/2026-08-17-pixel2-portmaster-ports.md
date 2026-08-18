@@ -339,3 +339,71 @@ Capture evidence is under
 ```text
 1545792ead42b8735445da3a084721e0657098da0a59eae9c0270f9e18dec9a8  balatro-a64fde3-physical.png
 ```
+
+## 2026-08-18 Balatro audio and intermittent-present fix
+
+The running adapter 34 process owned the RK817 playback PCM, but it never
+submitted its first buffer:
+
+```text
+state: PREPARED
+owner_pid: 2527
+hw_ptr: 0
+appl_ptr: 0
+```
+
+Balatro uses the packaged OpenAL Soft runtime, which opens ALSA `default`
+instead of honoring `AUDIODEV=plumos_output`.  Pixel2 still placed an outer
+`plug` PCM around `plumos_hotplug` and enabled its stable-descriptor poll proxy.
+That combination did not satisfy OpenAL's first-write wait.  V90S commit
+`db183c0` had already established the required contract: make `pcm.!default`
+the direct hotplug ioplug and expose the selected physical PCM descriptors.
+Pixel2 now uses that same direct default route and disables the poll proxy only
+for the managed PortMaster process tree.  Other Pixel2 SDL clients retain their
+existing hotplug policy.
+
+The intermittent display symptom had no Panfrost fault and no black frame in
+the initial scanout sample.  The GL rotation presenter nevertheless inherited
+LÖVE's current colour-write mask.  LÖVE can leave all colour channels disabled
+after a stencil pass, so a physical present at that boundary can expose the
+previous KMS buffer.  Adapter 35 follows the established plumOS A30 presenter
+contract: save `GL_COLOR_WRITEMASK`, force all four channels writable for the
+physical full-screen draw, and restore the application mask afterward.
+
+The two fixes were committed separately:
+
+```text
+526c0ad fix: route Pixel2 PortMaster OpenAL audio
+651e557 fix: preserve Pixel2 PortMaster color writes
+```
+
+The audio-router and PortMaster components were built in parallel.  The strict
+app layer passed, and a signed Runtime delta from adapter 34 was installed:
+
+```text
+runtime=0.1.0-dev-651e557
+adapter_version=35
+package_sha256=9489809a8c78d6ba476aedd414e6227277f91e927c738c108ad1a365d6b7b262
+payload_files=15
+deleted_files=0
+update_result=runtime_healthy
+runtime_verify=result-ok
+audio_router_component=result-ok
+portmaster_component=result-ok
+```
+
+The safe reboot retained the new Runtime and adapter.  The normal managed
+Balatro launcher exported `PLUMOS_AUDIO_POLL_PROXY=0`, generated a direct
+`pcm.!default`, and kept the physical PCM running.  Fifty samples found zero
+non-running states while the hardware pointer advanced from 3,186,888 to
+3,445,136.  Forty consecutive DRM scanouts had identical non-black frame
+statistics, and no GPU/DRM fault was logged.  The retained capture is:
+
+```text
+61c0f6d5863d829878064fc9f1de1eb61189c80ac7be2e07e557679e60574e08  balatro-651e557-physical.png
+```
+
+The Runtime did not change the commercial source, generated game, or build
+stamp; their SHA-256 values remain the three values recorded above.  Audible
+speaker output and absence of LCD flicker remain physical operator acceptance
+items because neither can be proven solely from ADB/DRM state.

@@ -128,6 +128,15 @@
     署名Runtime `0.1.0-dev-a64fde3`はhealth昇格、全Runtime checksum、再起動後保持に
     合格し、通常Ports導線のBalatroタイトル正立表示と継続稼働をDRM captureで確認。
     ゲーム内の物理操作と実音声はoperator確認を継続する。
+  - 2026-08-18: Balatroの無音をOpenALが`default` PCMを開いたまま
+    `PREPARED`（`hw_ptr=0`, `appl_ptr=0`）で停止する問題と確定。V90Sの実績どおり
+    `default`を直接`plumos_hotplug`へ接続し、PortMasterではPixel2独自poll proxyを
+    無効にして実PCM descriptorを使う。adapter 35はLÖVEのstencil passが残す
+    color-write maskもpresent前後で退避・復元する。署名Runtime
+    `0.1.0-dev-651e557`は再起動後もhealthyで、Balatro PCM 50/50回RUNNING、
+    hardware pointer連続進行、DRM 40/40 frameの黒画面なし、managed checksum、
+    購入元・生成物・build stamp保持まで合格。実際の可聴音とLCD点滅はoperator確認を
+    継続する。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する
