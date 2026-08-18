@@ -35,7 +35,6 @@ service_env=(
     PLUMOS_ADB_FFS="$TMP/ffs"
     PLUMOS_ADB_UDC_CLASS="$TMP/udc"
     PLUMOS_ADB_PID="$TMP/run/adbd.pid"
-    PLUMOS_ADB_RECOVERY_PID="$TMP/run/adbd-recovery.pid"
     PLUMOS_ADB_ACTION_LOCK="$TMP/run/adbd-action.lock"
     PLUMOS_ADB_LOG="$TMP/log/adbd.log"
     PLUMOS_ADB_SERIAL_FILE="$TMP/config/adb-serial"
@@ -71,8 +70,8 @@ grep -q 'action=rebind reason=udc-not attached' "$TMP/log/adbd.log"
 grep -q 'result=recovered action=rebind state=configured' "$TMP/log/adbd.log"
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
-grep -q 'schedule_recovery' "$SERVICE"
-grep -q 'action=watchdog-recover' "$SERVICE"
+! grep -q 'schedule_recovery' "$SERVICE"
+! grep -q 'action=watchdog-' "$SERVICE"
 ! grep -q 'busybox.*uevent' "$SERVICE"
 ! grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$SERVICE"
 
@@ -102,15 +101,15 @@ test "$(cat "$TMP/gadget/UDC")" = fake-udc
 status="$(env "${service_env[@]}" "$SERVICE" status)"
 grep -Fxq 'state=running' <<<"$status"
 
-# The first physically accepted Pixel2 implementation binds device role at
-# cold boot and performs one bounded four-second health check. A configured
-# host must keep the original daemon and take the healthy no-op branch.
+# The accepted nonblocking FunctionFS implementation binds device role at cold
+# boot. A slow host may leave the UDC at `not attached` for longer than four
+# seconds; boot must keep the original daemon and wait for FunctionFS ENABLE.
 kill "$ADBD_PID" 2>/dev/null || true
 wait "$ADBD_PID" 2>/dev/null || true
 ADBD_PID=
 rm -f "$TMP/run/adbd.pid" "$TMP/gadget/UDC"
 printf '%s\n' host >"$TMP/usb-role/controller/role"
-printf '%s\n' configured >"$TMP/udc/fake-udc/state"
+printf '%s\n' 'not attached' >"$TMP/udc/fake-udc/state"
 cat >"$TMP/adbd-stub" <<'EOF'
 #!/bin/sh
 trap 'exit 0' TERM INT
@@ -128,7 +127,7 @@ test "$(cat "$TMP/gadget/UDC")" = fake-udc
 sleep 5
 test "$(cat "$TMP/run/adbd.pid")" = "$ADBD_PID"
 kill -0 "$ADBD_PID"
-grep -q 'result=watchdog-healthy state=configured' "$TMP/log/adbd.log"
+! grep -q 'watchdog-' "$TMP/log/adbd.log"
 ! grep -q 'adbd-transport.state' "$SERVICE"
 
 # ADB ON owns Pixel2's single OTG port even when Wi-Fi credentials and the

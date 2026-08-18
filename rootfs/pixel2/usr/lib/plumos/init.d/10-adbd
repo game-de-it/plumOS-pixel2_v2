@@ -9,7 +9,6 @@ UDC_CLASS="${PLUMOS_ADB_UDC_CLASS:-/sys/class/udc}"
 FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
 ADBD_BIN="${PLUMOS_ADB_BINARY:-/usr/sbin/adbd}"
 PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
-RECOVERY_PID="${PLUMOS_ADB_RECOVERY_PID:-/run/plumos/adbd-recovery.pid}"
 ACTION_LOCK="${PLUMOS_ADB_ACTION_LOCK:-/run/plumos/adbd-action.lock}"
 LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
 SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
@@ -18,7 +17,6 @@ PROC_MOUNTS="${PLUMOS_ADB_PROC_MOUNTS:-/proc/mounts}"
 USB_ROLE_GLOB="${PLUMOS_ADB_USB_ROLE_GLOB:-/sys/class/usb_role/*/role}"
 SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
-RECOVERY_DELAY="${PLUMOS_ADB_RECOVERY_DELAY:-4}"
 RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
 ACTION_LOCK_WAIT="${PLUMOS_ADB_ACTION_LOCK_WAIT:-12}"
 ACTION_LOCK_HELD=0
@@ -118,25 +116,6 @@ wait_udc_online() {
     udc_online
 }
 
-recovery_running() {
-    [ -s "$RECOVERY_PID" ] || return 1
-    recovery_pid=$(tr -d '[:space:]' <"$RECOVERY_PID" 2>/dev/null || true)
-    case "$recovery_pid" in ''|*[!0-9]*) return 1 ;; esac
-    kill -0 "$recovery_pid" 2>/dev/null
-}
-
-stop_recovery() {
-    if [ "${PLUMOS_ADBD_RECOVERY_WORKER:-0}" = 1 ]; then
-        rm -f "$RECOVERY_PID"
-        return 0
-    fi
-    if recovery_running; then
-        recovery_pid=$(cat "$RECOVERY_PID")
-        [ "$recovery_pid" = "$$" ] || kill "$recovery_pid" 2>/dev/null || true
-    fi
-    rm -f "$RECOVERY_PID"
-}
-
 adb_enabled_by_policy() {
     [ -f "$OPT_IN_MARKER" ] && return 0
     if [ -r "$SERVICES_CONF" ]; then
@@ -160,7 +139,6 @@ adb_enabled_by_policy() {
 }
 
 stop_adbd() {
-    stop_recovery
     if [ -e "$GADGET/UDC" ]; then
         : >"$GADGET/UDC" 2>>"$LOG" || true
     fi
@@ -257,7 +235,6 @@ start_adbd() {
         return 1
     }
     log "result=started udc=$udc access=default-on-no-explicit-setting"
-    [ "${PLUMOS_ADBD_RECOVERY_WORKER:-0}" = 1 ] || schedule_recovery
 }
 
 rebind_adbd() {
@@ -267,28 +244,6 @@ rebind_adbd() {
     sleep 1
     printf '%s\n' "$udc" >"$GADGET/UDC" 2>>"$LOG" || return 1
     wait_udc_online "$RECOVERY_WAIT"
-}
-
-schedule_recovery() {
-    recovery_running && return 0
-    mkdir -p "${RECOVERY_PID%/*}"
-    (
-        sleep "$RECOVERY_DELAY"
-        if adb_enabled_by_policy && pid_running && gadget_bound; then
-            state=$(udc_state 2>/dev/null || true)
-            case "$state" in
-                configured|suspended)
-                    log "result=watchdog-healthy state=$state"
-                    ;;
-                *)
-                    log "action=watchdog-recover reason=udc-${state:-unknown}"
-                    PLUMOS_ADBD_RECOVERY_WORKER=1 "$0" recover || true
-                    ;;
-            esac
-        fi
-        rm -f "$RECOVERY_PID"
-    ) </dev/null >>"$LOG" 2>&1 &
-    printf '%s\n' "$!" >"$RECOVERY_PID"
 }
 
 recover_adbd() {

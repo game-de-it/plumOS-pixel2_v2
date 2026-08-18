@@ -78,7 +78,9 @@ grep -q 'recover_adbd' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'busybox.*uevent' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'schedule_recovery' \
+! grep -q 'schedule_recovery' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+! grep -q 'action=watchdog-' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'adb_enabled_by_policy()' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'default-on-no-explicit-setting' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
