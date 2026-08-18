@@ -137,6 +137,12 @@
     hardware pointer連続進行、DRM 40/40 frameの黒画面なし、managed checksum、
     購入元・生成物・build stamp保持まで合格。実際の可聴音とLCD点滅はoperator確認を
     継続する。
+  - 2026-08-18: adapter 37で回転full-screen drawとKMS/SDL swapの間に
+    `glFinish()`を追加。3枚のKMS scanoutが完全frameで、swap intervalも1である
+    ことを切り分けた上で、Mali/Panfrostの完了境界不足と確定した。operatorが
+    Balatroの移動・アニメーション時の点滅解消を確認。署名Runtime
+    `0.1.0-dev-3480628`を明示health昇格し、安全再起動後の保持、全checksum、
+    adapter 37、音声`RUNNING`、終了後FE復帰、購入データ保持まで合格した。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する

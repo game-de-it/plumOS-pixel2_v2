@@ -407,3 +407,46 @@ The Runtime did not change the commercial source, generated game, or build
 stamp; their SHA-256 values remain the three values recorded above.  Audible
 speaker output and absence of LCD flicker remain physical operator acceptance
 items because neither can be proven solely from ADB/DRM state.
+
+## 2026-08-18 Balatro synchronized GL present and adapter 37
+
+The operator confirmed audible output, but moving cards and animated regions
+still flickered while static background regions remained stable.  The KMS
+primary plane used three complete scanout buffers and the GL swap interval was
+reported as one, so the failure was not a damaged page or a missing vsync
+request.  The common rotated presenter submitted its full-screen GLES draw and
+immediately called the SDL/KMS swap without a completion boundary.  On the
+stock Pixel2 Mali/Panfrost stack, the physical page flip could therefore expose
+the target buffer before that rotated draw completed.
+
+Adapter 37 calls `glFinish()` after the rotated full-screen draw and before the
+physical swap.  This follows the completion boundary used by the existing
+plumOS A30 Mali presenters and applies to every PortMaster SDL/OpenGL title
+using the Pixel2 rotation adapter, rather than special-casing Balatro.  The
+operator confirmed that Balatro animation and cursor movement no longer
+flicker.
+
+The signed Runtime was installed through the normal transaction and explicitly
+promoted after frontend readiness.  A deliberate first reboot before that
+manual health promotion exercised the rollback guard and returned to adapter
+36; the Runtime was then reapplied, marked healthy, and retained across the
+next safe reboot:
+
+```text
+commit=3480628
+runtime=0.1.0-dev-3480628
+adapter_version=37
+package_sha256=3cea90260e502eb96b9f1ebf2722334c4ab60472d964fc6c0e37a9681f5bb18a
+gl_library_sha256=d395f31e7ed755b7bc9287a50fcdce69560914cbd3df977cca85dfc7839a63fb
+update_result=runtime_healthy
+runtime_verify=result-ok
+portmaster_pixel2_runtime=result-ok
+app_layer_verify=result-ok strict=1
+```
+
+The formal adapter 37 launch kept `love.aarch64 Balatro_pm` alive, used the
+640x480-to-480x640 GL rotation path, and held the RK817 PCM in `RUNNING` state.
+Stopping it removed all PortMaster session mounts and restored the frontend.
+The subsequent reboot retained the Runtime, full checksum manifest, ADB, and
+frontend.  The commercial source, generated game, and build stamp retained the
+three SHA-256 values recorded above.
