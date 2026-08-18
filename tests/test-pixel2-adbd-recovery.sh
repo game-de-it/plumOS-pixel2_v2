@@ -46,6 +46,7 @@ service_env=(
     PLUMOS_ADB_SETTINGS="$TMP/config/system/settings.json"
     PLUMOS_ADB_RECOVERY_WAIT=2
     PLUMOS_ADBD_RECOVERY_WORKER=1
+    PLUMOS_ADB_UEVENT_WORKER=1
 )
 
 env "${service_env[@]}" "$SERVICE" recover
@@ -72,7 +73,9 @@ test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
 grep -q 'schedule_recovery' "$SERVICE"
 grep -q 'action=watchdog-recover' "$SERVICE"
-grep -q 'action=watchdog-replug reason=transport-offline' "$SERVICE"
+! grep -q 'action=watchdog-replug reason=transport-offline' "$SERVICE"
+grep -q 'busybox.*uevent' "$SERVICE"
+grep -q 'recovery_monitor=' "$SERVICE"
 grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$SERVICE"
 grep -q 'transport_state=' "$SERVICE"
 
@@ -128,14 +131,37 @@ grep -q 'result=started udc=fake-udc' "$TMP/log/adbd.log"
 test "$(cat "$TMP/usb-role/controller/role")" = device
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
 watchdog_wait=0
-while ! grep -q 'action=watchdog-replug reason=transport-offline' \
+while ! grep -q 'result=watchdog-healthy state=configured transport=offline' \
     "$TMP/log/adbd.log" && [[ "$watchdog_wait" -lt 5 ]]; do
     sleep 1
     watchdog_wait=$((watchdog_wait + 1))
 done
-grep -q 'action=watchdog-replug reason=transport-offline' "$TMP/log/adbd.log"
-grep -q 'result=replug-recovered action=rebind state=configured' \
+grep -q 'result=watchdog-healthy state=configured transport=offline' \
     "$TMP/log/adbd.log"
+! grep -q 'action=watchdog-replug reason=transport-offline' "$TMP/log/adbd.log"
+grep -q '/run/plumos/adbd-protocol.state' "$SERVICE"
+! grep -q 'adbd-transport.state' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+
+# Match V90S: recovery is driven by the kernel disconnect uevent, not by the
+# normal offline protocol state observed before host ADB discovery completes.
+cat >"$TMP/adbd-control" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$1" >>"$PLUMOS_TEST_ADBD_CALLS"
+EOF
+chmod +x "$TMP/adbd-control"
+env SUBSYSTEM=android_usb USB_STATE=DISCONNECTED \
+    PLUMOS_ADBD_CONTROL="$TMP/adbd-control" \
+    PLUMOS_TEST_ADBD_CALLS="$TMP/adbd-calls" \
+    PLUMOS_ADB_RECOVERY_SETTLE_SECONDS=0 \
+    PLUMOS_ADB_UEVENT_LOCK="$TMP/run/adbd-uevent-test.lock" \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
+grep -Fxq replug "$TMP/adbd-calls"
+env SUBSYSTEM=usb USB_STATE=DISCONNECTED \
+    PLUMOS_ADBD_CONTROL="$TMP/adbd-control" \
+    PLUMOS_TEST_ADBD_CALLS="$TMP/adbd-calls" \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
+test "$(wc -l <"$TMP/adbd-calls" | tr -d ' ')" -eq 1
 
 # Saved Wi-Fi is the only normal reason to assign Pixel2's shared port to host.
 env "${service_env[@]}" "$SERVICE" stop

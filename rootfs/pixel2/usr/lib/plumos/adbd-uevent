@@ -1,0 +1,17 @@
+#!/bin/sh
+set -u
+
+ADBD_CONTROL="${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}"
+SETTLE_SECONDS="${PLUMOS_ADB_RECOVERY_SETTLE_SECONDS:-1}"
+LOCK_DIR="${PLUMOS_ADB_UEVENT_LOCK:-/run/plumos/adbd-uevent.lock}"
+
+[ "${SUBSYSTEM:-}" = android_usb ] || exit 0
+[ "${USB_STATE:-}" = DISCONNECTED ] || exit 0
+[ -x "$ADBD_CONTROL" ] || exit 0
+
+mkdir -p "${LOCK_DIR%/*}"
+mkdir "$LOCK_DIR" 2>/dev/null || exit 0
+trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT HUP INT TERM
+
+sleep "$SETTLE_SECONDS"
+"$ADBD_CONTROL" replug >/dev/null 2>&1

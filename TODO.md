@@ -103,6 +103,13 @@
       disconnect後は同じgadgetをrebind」するcontractへ戻し、Pixel2固有差分を保存済み
       Wi-Fi時の明示host assignmentだけに縮小した。新System/Runtimeのoffline適用、
       cold boot、物理抜き差し、Wi-Fi saved-ON bootの再acceptanceを継続する。
+    - 2026-08-18: `0694c47`のcold bootもFE `waiting`で不合格。macOSには
+      `18d1:4ee7 plumOS Pixel2 ADB`親deviceだけが列挙され、FunctionFS interfaceと
+      `adb devices` entryが無かった。旧Runtimeのprotocol-offline 3秒replugと新Systemの
+      4秒startup replugが連続した競合と確定した。protocol stateを診断専用へ戻し、
+      hardware-key pollingを削除、V90S `d1721a9`と同じblocking kernel uevent monitorで
+      `android_usb/DISCONNECTED`時だけ単発replugする。新System/Runtimeのoffline適用、
+      cold boot、抜き差し、OFF→ON→再起動を再確認する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する

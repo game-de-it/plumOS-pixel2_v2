@@ -32,6 +32,7 @@ for script in \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"; do
     bash -n "$script"
 done
+bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
 
 python3 -m py_compile \
     "$ROOT_DIR/scripts/plumos-system-update.py" \
@@ -53,9 +54,9 @@ grep -q 'pixel2_joypad' \
 grep -q 'physical_yres' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q '/sys/class/power_supply/usb/online' \
+! grep -q '^USB_ONLINE=' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'waiting-usb-upstream role=host' \
+grep -q 'waiting-usb-wifi role=host' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 test -x "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
@@ -71,6 +72,10 @@ grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' \
 ! grep -q 'PLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'recover_adbd' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'busybox.*uevent' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'USB_STATE.*DISCONNECTED' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
+! grep -q 'watchdog-replug reason=transport-offline' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'adb_enabled_by_policy()' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'default-on-no-explicit-setting' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q '/mnt/plumos-user/plumos-enable-adb' \

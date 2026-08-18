@@ -33,6 +33,13 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/20-usb-wifi"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/30-ssh"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+test -x "$tmp/rootfs/usr/lib/plumos/adbd-uevent"
+grep -q 'busybox.*uevent' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q 'USB_STATE.*DISCONNECTED' "$tmp/rootfs/usr/lib/plumos/adbd-uevent"
+grep -q '/run/plumos/adbd-protocol.state' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+! grep -q 'watchdog-replug reason=transport-offline' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/sbin/adbd"
 test -x "$tmp/rootfs/usr/bin/plumos-frontend-pixel2"
 test -x "$tmp/rootfs/usr/bin/plumos-library-scan"

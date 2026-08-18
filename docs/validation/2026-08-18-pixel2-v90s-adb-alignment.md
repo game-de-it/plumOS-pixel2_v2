@@ -1,7 +1,7 @@
 # Pixel2 V90S-derived ADB alignment
 
 Date: 2026-08-18
-Status: host implementation PASS; second offline deployment PASS; physical acceptance pending
+Status: host implementation PASS; second offline deployment FAIL; third offline deployment pending
 
 ## Regression
 
@@ -28,10 +28,12 @@ Pixel2 now follows the same contract:
 
 - enabled ADB always requests device role and binds FunctionFS;
 - `usb/online` is not an ADB start, status, or replug input;
-- an offline ADB transport schedules one bounded replug per offline episode;
+- an `android_usb/USB_STATE=DISCONNECTED` kernel event schedules one bounded
+  replug;
+- an initial protocol `offline` state is diagnostic only and never schedules a
+  timed replug;
 - recovery never changes the port to host role;
-- hardware-key/recovery output is persistent under
-  `/mnt/plumos/logs/hardware-keys.log`.
+- ADB recovery output is persistent under `/state/plumos/logs/adbd.log`.
 
 Pixel2 has one hardware-specific exception because ADB and its optional USB
 Wi-Fi dongle share a single OTG port. A saved-enabled Wi-Fi configuration
@@ -45,15 +47,32 @@ returned to `waiting`. Toggling ADB OFF then ON exposed a separate ownership
 bug: OFF removed `plumos-enable-adb`, while ON only persisted `adb_enabled=1`
 and did not recreate the marker. A saved Wi-Fi configuration therefore kept
 winning the shared-port arbitration. ADB ON now recreates the FAT
-marker, and the System startup watchdog replugs a transport that reports
-`offline` even while the UDC still reports `configured`.
+marker.
+
+The second physical acceptance attempt used System `0.1.0-dev-0694c47` and
+again stopped at frontend ADB `waiting`. macOS enumerated the parent
+`plumOS Pixel2 ADB` device as `18d1:4ee7`, but it published no
+`IOUSBHostInterface`; both ADB 35.0.2 and 36.0.2 therefore returned an empty
+device list rather than `offline` or `unauthorized`. The installed Runtime was
+still `8a98e3e`, whose hardware-key daemon scheduled a replug after three
+seconds of protocol `offline`. System `0694c47` independently scheduled a
+second startup replug after four seconds. Those two closely spaced UDC rebinds
+explain the surviving parent descriptor with the FunctionFS interface absent.
+
+The replacement removes both protocol-state timers. System writes the
+diagnostic state to `/run/plumos/adbd-protocol.state`, so an older installed
+Runtime cannot consume it, and the rebuilt Runtime removes its polling code.
+System starts the V90S-style blocking kernel uevent monitor only after the
+gadget is bound. A genuine disconnect is coalesced, settled for one second,
+and handled by one serialized `replug` action.
 
 ## Host gates
 
 The fixture covers healthy recovery, stale UDC rebind, action serialization,
 normal cold boot reclaiming device role, saved Wi-Fi selecting host role, the
-ADB UI toggle creating/removing the ownership marker, transport-offline startup
-replug, and the FAT recovery marker overriding saved Wi-Fi. The existing USB-host reset,
+ADB UI toggle creating/removing the ownership marker, an offline initial
+protocol state causing no replug, a matching kernel disconnect causing exactly
+one replug, and the FAT recovery marker overriding saved Wi-Fi. The existing USB-host reset,
 power/sleep, app-layer script, and System init tests remain enabled.
 
 Physical acceptance remains open until the signed System and Runtime are
@@ -79,3 +98,6 @@ update inbox with readback SHA-256
 The FAT32 `plumos-enable-adb` marker was recreated as a zero-byte file. The
 previous active-A generation `0be5e17` and its complete metadata were retained
 under `output/live/2026-08-18-adb-usb-reclaim/` for recovery.
+
+Physical boot of this generation failed the acceptance gate described above;
+it must not be promoted as a release baseline.
