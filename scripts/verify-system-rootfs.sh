@@ -40,6 +40,8 @@ grep -q '/run/plumos/adbd-protocol.state' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+! grep -q 'schedule_recovery' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q '"\$ADBD_CONTROL" recover' "$tmp/rootfs/usr/lib/plumos/adbd-uevent"
 test -x "$tmp/rootfs/usr/sbin/adbd"
 test -x "$tmp/rootfs/usr/bin/plumos-frontend-pixel2"
 test -x "$tmp/rootfs/usr/bin/plumos-library-scan"

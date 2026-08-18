@@ -14,4 +14,4 @@ mkdir "$LOCK_DIR" 2>/dev/null || exit 0
 trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT HUP INT TERM
 
 sleep "$SETTLE_SECONDS"
-"$ADBD_CONTROL" replug >/dev/null 2>&1
+"$ADBD_CONTROL" recover >/dev/null 2>&1

@@ -1,7 +1,7 @@
 # Pixel2 V90S-derived ADB alignment
 
 Date: 2026-08-18
-Status: host implementation PASS; second offline deployment FAIL; third offline deployment PASS; physical acceptance pending
+Status: third physical acceptance FAIL; log-confirmed startup watchdog removed; fourth package pending
 
 ## Regression
 
@@ -29,9 +29,11 @@ Pixel2 now follows the same contract:
 - enabled ADB always requests device role and binds FunctionFS;
 - `usb/online` is not an ADB start, status, or replug input;
 - an `android_usb/USB_STATE=DISCONNECTED` kernel event schedules one bounded
-  replug;
+  recover operation;
 - an initial protocol `offline` state is diagnostic only and never schedules a
   timed replug;
+- no startup timer interprets an unattached UDC while the host is still
+  enumerating;
 - recovery never changes the port to host role;
 - ADB recovery output is persistent under `/state/plumos/logs/adbd.log`.
 
@@ -57,14 +59,15 @@ device list rather than `offline` or `unauthorized`. The installed Runtime was
 still `8a98e3e`, whose hardware-key daemon scheduled a replug after three
 seconds of protocol `offline`. System `0694c47` independently scheduled a
 second startup replug after four seconds. Those two closely spaced UDC rebinds
-explain the surviving parent descriptor with the FunctionFS interface absent.
+were the initial cause hypothesis. The later `5535fa8` failure proved that this
+was not sufficient: the remaining UDC-state startup watchdog could reproduce
+the same destructive restart without either protocol timer.
 
 The replacement removes both protocol-state timers. System writes the
 diagnostic state to `/run/plumos/adbd-protocol.state`, so an older installed
 Runtime cannot consume it, and the rebuilt Runtime removes its polling code.
 System starts the V90S-style blocking kernel uevent monitor only after the
-gadget is bound. A genuine disconnect is coalesced, settled for one second,
-and handled by one serialized `replug` action.
+gadget is bound.
 
 ## Host gates
 
@@ -72,7 +75,7 @@ The fixture covers healthy recovery, stale UDC rebind, action serialization,
 normal cold boot reclaiming device role, saved Wi-Fi selecting host role, the
 ADB UI toggle creating/removing the ownership marker, an offline initial
 protocol state causing no replug, a matching kernel disconnect causing exactly
-one replug, and the FAT recovery marker overriding saved Wi-Fi. The existing USB-host reset,
+one recover request, and the FAT recovery marker overriding saved Wi-Fi. The existing USB-host reset,
 power/sleep, app-layer script, and System init tests remain enabled.
 
 Physical acceptance remains open until the signed System and Runtime are
@@ -146,3 +149,26 @@ and the updater accepted its signature, target, source `8a98e3e`, and version.
 The existing zero-byte `plumos-enable-adb` recovery marker was preserved.
 ROM, BIOS, settings, saves, installed ports, and the Linux Runtime partition
 were not modified by this offline operation.
+
+## Third physical acceptance and captured cause
+
+Cold boot of `5535fa8` again showed frontend ADB `waiting`. macOS still saw the
+`18d1:4ee7` parent device but no ADB interface. The card was then mounted
+read-only with ext4fuse and the complete persistent evidence was captured under
+`output/live/2026-08-18-adb-uevent-recovery/capture-5535fa8-waiting/`.
+
+The current boot is unambiguous. At `2026-08-18T14:51:08Z`, adbd opened ep0,
+constructed `UsbFfsConnection`, and received `FUNCTIONFS_BIND`. It did not yet
+receive `FUNCTIONFS_ENABLE`. At `14:51:13Z`, the four-second startup watchdog
+observed the normal pre-enumeration UDC state `not attached` and invoked
+`recover`. Its rebind failed, so it stopped adbd and started a second instance.
+The second instance reached `FUNCTIONFS_BIND` at `14:51:18Z` but never reached
+`FUNCTIONFS_ENABLE`. This exactly explains the host-visible parent descriptor
+without an interface.
+
+The kernel uevent helper did not initiate that sequence. The remaining startup
+watchdog did. V90S `d1721a9` has no equivalent startup timer: it binds once and
+waits for the host. Pixel2 now removes the watchdog entirely. The blocking
+disconnect helper also calls `recover`, as V90S does, instead of the stronger
+manual `replug` action. Explicit replug remains available for sleep resume and
+manual diagnostics, but it is not part of normal boot or uevent recovery.

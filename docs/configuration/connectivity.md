@@ -78,14 +78,15 @@ host roleへ割り当てる。FAT32 rootの`plumos-enable-adb`は明示的なrec
 保存済みWi-Fiより優先してADB device roleを復元する。V90S `d1721a9`と同様に、
 ADB有効中はBusyBoxのkernel uevent monitorを1つ起動する。monitorは
 `android_usb/USB_STATE=DISCONNECTED`だけを受理し、1秒のsettle後に同じFunctionFS
-gadgetを1回rebindする。重複eventはlockでまとめ、ADB OFF時にはgadgetをunbindする
+gadgetへbounded `recover`を1回実行する。UDCがすでに`configured`/`suspended`なら
+何もしない。重複eventはlockでまとめ、ADB OFF時にはgadgetをunbindする
 前にmonitorを停止する。roleをhostへ変更せず、idle時のpollingも行わない。
 
 adbdが`/run/plumos/adbd-protocol.state`へ記録する`online`/`offline`は診断表示専用で
 ある。起動直後はhost discovery完了前に`offline`となるのが正常なため、この値を
-timerによるrebind条件にはしない。Systemの起動watchdogはUDCが
-`configured`/`suspended`ならそのまま保持し、それ以外の異常stateだけをbounded
-recoveryする。回復履歴は`/state/plumos/logs/adbd.log`へ永続保存する。
+timerによるrebind条件にはしない。Systemは起動後のUDC状態をtimerで判定せず、
+hostがconfigurationを選ぶまでbound gadgetをそのまま維持する。回復履歴は
+`/state/plumos/logs/adbd.log`へ永続保存する。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
 Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、

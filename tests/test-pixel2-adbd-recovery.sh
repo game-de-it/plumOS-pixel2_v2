@@ -33,7 +33,6 @@ service_env=(
     PLUMOS_ADB_FFS="$TMP/ffs"
     PLUMOS_ADB_UDC_CLASS="$TMP/udc"
     PLUMOS_ADB_PID="$TMP/run/adbd.pid"
-    PLUMOS_ADB_RECOVERY_PID="$TMP/run/adbd-recovery.pid"
     PLUMOS_ADB_ACTION_LOCK="$TMP/run/adbd-action.lock"
     PLUMOS_ADBD_TRANSPORT_STATE="$TMP/run/adbd-transport.state"
     PLUMOS_ADB_LOG="$TMP/log/adbd.log"
@@ -45,7 +44,6 @@ service_env=(
     PLUMOS_ADB_WPA_CONFIG="$TMP/config/wpa_supplicant.conf"
     PLUMOS_ADB_SETTINGS="$TMP/config/system/settings.json"
     PLUMOS_ADB_RECOVERY_WAIT=2
-    PLUMOS_ADBD_RECOVERY_WORKER=1
     PLUMOS_ADB_UEVENT_WORKER=1
 )
 
@@ -71,9 +69,8 @@ grep -q 'action=rebind reason=udc-not attached' "$TMP/log/adbd.log"
 grep -q 'result=recovered action=rebind state=configured' "$TMP/log/adbd.log"
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
 
-grep -q 'schedule_recovery' "$SERVICE"
-grep -q 'action=watchdog-recover' "$SERVICE"
-! grep -q 'action=watchdog-replug reason=transport-offline' "$SERVICE"
+! grep -q 'schedule_recovery' "$SERVICE"
+! grep -q 'action=watchdog-' "$SERVICE"
 grep -q 'busybox.*uevent' "$SERVICE"
 grep -q 'recovery_monitor=' "$SERVICE"
 grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' "$SERVICE"
@@ -106,12 +103,15 @@ status="$(env "${service_env[@]}" "$SERVICE" status)"
 grep -Fxq 'state=running' <<<"$status"
 
 # A normal ADB cold boot always reclaims device role without consulting the
-# role-dependent usb/online signal.
+# role-dependent usb/online signal. A slow host may leave the UDC at
+# `not attached` for longer than the former four-second watchdog; boot must
+# keep the original bound FunctionFS/adbd instance and wait without recovery.
 kill "$ADBD_PID" 2>/dev/null || true
 wait "$ADBD_PID" 2>/dev/null || true
 ADBD_PID=
 rm -f "$TMP/run/adbd.pid" "$TMP/gadget/UDC"
 printf '%s\n' host >"$TMP/usb-role/controller/role"
+printf '%s\n' 'not attached' >"$TMP/udc/fake-udc/state"
 cat >"$TMP/adbd-stub" <<'EOF'
 #!/bin/sh
 [ -z "${PLUMOS_TEST_ADBD_TRANSPORT:-}" ] ||
@@ -121,24 +121,17 @@ while :; do sleep 30; done
 EOF
 chmod +x "$TMP/adbd-stub"
 touch "$TMP/ffs/ep1" "$TMP/ffs/ep2"
-PLUMOS_TEST_ADBD_TRANSPORT=offline env "${service_env[@]}" \
-    PLUMOS_ADBD_RECOVERY_WORKER=0 PLUMOS_ADB_RECOVERY_DELAY=1 \
-    "$SERVICE" start
+PLUMOS_TEST_ADBD_TRANSPORT=offline env "${service_env[@]}" "$SERVICE" start
 ADBD_PID="$(cat "$TMP/run/adbd.pid")"
 mkdir -p "$TMP/proc/$ADBD_PID"
 printf '%s\0' "$TMP/adbd-stub" >"$TMP/proc/$ADBD_PID/cmdline"
 grep -q 'result=started udc=fake-udc' "$TMP/log/adbd.log"
 test "$(cat "$TMP/usb-role/controller/role")" = device
 test "$(cat "$TMP/gadget/UDC")" = fake-udc
-watchdog_wait=0
-while ! grep -q 'result=watchdog-healthy state=configured transport=offline' \
-    "$TMP/log/adbd.log" && [[ "$watchdog_wait" -lt 5 ]]; do
-    sleep 1
-    watchdog_wait=$((watchdog_wait + 1))
-done
-grep -q 'result=watchdog-healthy state=configured transport=offline' \
-    "$TMP/log/adbd.log"
-! grep -q 'action=watchdog-replug reason=transport-offline' "$TMP/log/adbd.log"
+sleep 5
+test "$(cat "$TMP/run/adbd.pid")" = "$ADBD_PID"
+kill -0 "$ADBD_PID"
+! grep -q 'watchdog-' "$TMP/log/adbd.log"
 grep -q '/run/plumos/adbd-protocol.state' "$SERVICE"
 ! grep -q 'adbd-transport.state' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
@@ -156,7 +149,7 @@ env SUBSYSTEM=android_usb USB_STATE=DISCONNECTED \
     PLUMOS_ADB_RECOVERY_SETTLE_SECONDS=0 \
     PLUMOS_ADB_UEVENT_LOCK="$TMP/run/adbd-uevent-test.lock" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
-grep -Fxq replug "$TMP/adbd-calls"
+grep -Fxq recover "$TMP/adbd-calls"
 env SUBSYSTEM=usb USB_STATE=DISCONNECTED \
     PLUMOS_ADBD_CONTROL="$TMP/adbd-control" \
     PLUMOS_TEST_ADBD_CALLS="$TMP/adbd-calls" \

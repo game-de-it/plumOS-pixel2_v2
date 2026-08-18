@@ -8,7 +8,6 @@ UDC_CLASS="${PLUMOS_ADB_UDC_CLASS:-/sys/class/udc}"
 FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
 ADBD_BIN="${PLUMOS_ADB_BINARY:-/usr/sbin/adbd}"
 PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
-RECOVERY_PID="${PLUMOS_ADB_RECOVERY_PID:-/run/plumos/adbd-recovery.pid}"
 ACTION_LOCK="${PLUMOS_ADB_ACTION_LOCK:-/run/plumos/adbd-action.lock}"
 TRANSPORT_STATE="${PLUMOS_ADBD_TRANSPORT_STATE:-/run/plumos/adbd-protocol.state}"
 UEVENT_PID="${PLUMOS_ADB_UEVENT_PID:-/run/plumos/adbd-uevent.pid}"
@@ -22,7 +21,6 @@ SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.c
 OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 WPA_CONFIG="${PLUMOS_ADB_WPA_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}"
 SETTINGS="${PLUMOS_ADB_SETTINGS:-/mnt/plumos/config/system/settings.json}"
-RECOVERY_DELAY="${PLUMOS_ADB_RECOVERY_DELAY:-4}"
 RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
 ACTION_LOCK_WAIT="${PLUMOS_ADB_ACTION_LOCK_WAIT:-12}"
 ACTION_LOCK_HELD=0
@@ -122,13 +120,6 @@ wait_udc_online() {
     udc_online
 }
 
-recovery_running() {
-    [ -s "$RECOVERY_PID" ] || return 1
-    recovery_pid=$(tr -d '[:space:]' <"$RECOVERY_PID" 2>/dev/null || true)
-    case "$recovery_pid" in ''|*[!0-9]*) return 1 ;; esac
-    kill -0 "$recovery_pid" 2>/dev/null
-}
-
 uevent_monitor_running() {
     [ -s "$UEVENT_PID" ] || return 1
     uevent_pid=$(tr -d '[:space:]' <"$UEVENT_PID" 2>/dev/null || true)
@@ -167,18 +158,6 @@ start_uevent_monitor() {
         return 1
     fi
     log "recovery_monitor=started pid=$(cat "$UEVENT_PID") mode=kernel-uevent"
-}
-
-stop_recovery() {
-    if [ "${PLUMOS_ADBD_RECOVERY_WORKER:-0}" = 1 ]; then
-        rm -f "$RECOVERY_PID"
-        return 0
-    fi
-    if recovery_running; then
-        recovery_pid=$(cat "$RECOVERY_PID")
-        [ "$recovery_pid" = "$$" ] || kill "$recovery_pid" 2>/dev/null || true
-    fi
-    rm -f "$RECOVERY_PID"
 }
 
 adb_enabled_by_policy() {
@@ -220,7 +199,6 @@ wifi_port_requested() {
 
 stop_adbd() {
     stop_uevent_monitor
-    stop_recovery
     if [ -e "$GADGET/UDC" ]; then
         : >"$GADGET/UDC" 2>>"$LOG" || true
     fi
@@ -329,7 +307,6 @@ start_adbd() {
     }
     log "result=started udc=$udc access=default-on-no-explicit-setting"
     start_uevent_monitor || return 1
-    [ "${PLUMOS_ADBD_RECOVERY_WORKER:-0}" = 1 ] || schedule_recovery
 }
 
 rebind_adbd() {
@@ -339,32 +316,6 @@ rebind_adbd() {
     sleep 1
     printf '%s\n' "$udc" >"$GADGET/UDC" 2>>"$LOG" || return 1
     wait_udc_online "$RECOVERY_WAIT"
-}
-
-schedule_recovery() {
-    recovery_running && return 0
-    mkdir -p "${RECOVERY_PID%/*}"
-    (
-        sleep "$RECOVERY_DELAY"
-        if adb_enabled_by_policy && pid_running && gadget_bound; then
-            state=$(udc_state 2>/dev/null || true)
-            transport=$(tr -d '[:space:]' <"$TRANSPORT_STATE" 2>/dev/null || true)
-            case "$state" in
-                configured|suspended)
-                    # An initial offline protocol state is normal until the
-                    # host completes ADB discovery.  V90S does not replug on a
-                    # timer here; only a later kernel disconnect may recover.
-                    log "result=watchdog-healthy state=$state transport=${transport:-unknown}"
-                    ;;
-                *)
-                    log "action=watchdog-recover reason=udc-${state:-unknown}"
-                    PLUMOS_ADBD_RECOVERY_WORKER=1 "$0" recover || true
-                    ;;
-            esac
-        fi
-        rm -f "$RECOVERY_PID"
-    ) </dev/null >>"$LOG" 2>&1 &
-    printf '%s\n' "$!" >"$RECOVERY_PID"
 }
 
 recover_adbd() {

@@ -76,6 +76,10 @@ grep -q 'busybox.*uevent' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd
 grep -q 'USB_STATE.*DISCONNECTED' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+! grep -q 'schedule_recovery' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q '"\$ADBD_CONTROL" recover' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adbd-uevent"
 grep -q 'adb_enabled_by_policy()' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'default-on-no-explicit-setting' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q '/mnt/plumos-user/plumos-enable-adb' \

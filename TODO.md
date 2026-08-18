@@ -115,6 +115,12 @@
         active A `0694c47`を完全backup後、`5535fa8`へoffline置換し署名・readbackを
         検証した。inactive B、ROM、BIOS、設定、saveは保持し、Runtime packageとADB
         markerもFAT32へ配置済み。4項目の実機acceptanceを継続する。
+    - 2026-08-19: `5535fa8`もcold bootで`waiting`となったため、ext4 partitionを
+      read-only mountして永続logを採取。`FUNCTIONFS_BIND`後、hostの`ENABLE`前に残存
+      4秒startup watchdogがUDC `not attached`を異常扱いし、rebind失敗からadbdを
+      再起動していたことを時刻付きで確定した。V90Sにはこの起動timerはないため完全
+      撤去し、kernel disconnect helperも強制`replug`ではなくV90S同様`recover`だけを
+      呼ぶ。新Systemのoffline適用とcold bootを継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
