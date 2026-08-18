@@ -118,8 +118,7 @@ pcm.plumos_output {
 # OpenAL and other third-party runtimes commonly ignore AUDIODEV and open the
 # ALSA default PCM. Keep them inside the same RK817/USB hotplug policy.
 pcm.!default {
-    type plug
-    slave.pcm "plumos_hotplug"
+    type plumos_hotplug
 }
 
 # Pyxel 2.9 requests 22.05 kHz mono and does not permit SDL to alter the

@@ -353,6 +353,14 @@ grep -q 'audio_device = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'pcm.plumos_output' \
     "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
+grep -A2 'pcm.!default' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output" |
+    grep -q 'type plumos_hotplug'
+! grep -A3 'pcm.!default' \
+    "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output" |
+    grep -q 'slave.pcm'
+grep -q 'export PLUMOS_AUDIO_POLL_PROXY=0' \
+    "$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-port-launch"
 grep -q 'factory-defaults/alsa/alsa.conf' \
     "$ROOT_DIR/package/audio-router-pixel2/plumos/bin/plumos-audio-output"
 grep -q 'pcm.plumos_hw_card' \

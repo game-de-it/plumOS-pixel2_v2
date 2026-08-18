@@ -344,6 +344,10 @@ export SDL_VIDEODRIVER="kmsdrm"
 export SDL_RENDER_DRIVER="opengles2"
 export SDL_AUDIODRIVER="alsa"
 export ALSOFT_DRIVERS="alsa"
+# Balatro's OpenAL runtime opens ALSA default and waits on its poll descriptor
+# before the first write.  Use the selected physical PCM descriptors here;
+# the stable Pixel2 SDL hotplug proxy would otherwise leave OpenAL PREPARED.
+export PLUMOS_AUDIO_POLL_PROXY=0
 export ALSA_CONFIG_PATH="/run/plumos/audio/asound.conf"
 export ALSA_PLUGIN_DIR="${PLUMOS_ROOT}/lib/alsa-lib"
 export SDL_GAMECONTROLLERCONFIG_FILE="${RUN_ROOT}/gamecontrollerdb.txt"
