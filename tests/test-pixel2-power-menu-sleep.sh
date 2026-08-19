@@ -176,7 +176,11 @@ grep -q 'USB_POWER_EVENT_GUARD_MS 1500' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 grep -q '/sys/class/power_supply/usb/online' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-grep -q 'PLUMOS_ADBD_CONTROL' \
+! grep -q 'PLUMOS_ADBD_CONTROL' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+! grep -q 'ADB_USB_RECOVERY_DELAY_MS' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
+! grep -q 'adb_usb_recovery_due' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 ! grep -q 'PLUMOS_ADBD_TRANSPORT_STATE' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
@@ -184,13 +188,8 @@ grep -q 'PLUMOS_ADBD_CONTROL' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
 ! grep -q 'adb_transport_recovery_attempted = 1' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-! grep -q 'control, "replug"' \
+! grep -q 'action=adb-usb-replug' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"
-if grep -q 'control, "restart"' \
-    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_pixel2_hardware_keys.c"; then
-    echo 'hardware-key USB hotplug must not restart a healthy ADB gadget' >&2
-    exit 1
-fi
 grep -q 'consume_power_wake_suppression' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'write_power_overlay_selection(ui, "handled")' \
