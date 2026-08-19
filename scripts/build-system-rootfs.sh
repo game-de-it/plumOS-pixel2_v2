@@ -49,7 +49,6 @@ fi
 "$ROOT_DIR/scripts/install-frontend-rootfs.sh" "$ROOTFS_DIR"
 chmod 0755 "$ROOTFS_DIR/sbin/init" "$ROOTFS_DIR/usr/lib/systemd/systemd" \
     "$ROOTFS_DIR/usr/lib/plumos/init.d/"*
-chmod 0755 "$ROOTFS_DIR/usr/lib/plumos/plumos-pixel2-usb-role"
 chmod 0755 "$ROOTFS_DIR/usr/bin/plumos-diagnostics"
 chmod 0600 "$ROOTFS_DIR/etc/shadow"
 
