@@ -258,6 +258,16 @@
       source、manifest、全payload検証に合格し、Runtimeはroot/component metadataを含む
       12管理entry・削除なし。適用後のcold boot shell、抜き差し、Mac再起動、Wi-Fi往復を
       実機acceptanceとして継続する。
+    - 2026-08-19: 実機で一時的に`device`へ到達した直後、kernel disconnect監視が
+      UDC/FunctionFSを再設定してtransportを自ら切断し、`waiting`または`STOP`へ戻す
+      feedback loopを確認。最初のADB実装`10fc87a`には自動監視がなく、初期安定化
+      `6f022d4`にもdaemon消滅だけを見るwatchdogしか無かったため、後から追加した
+      USB state monitorを回帰要因と判断した。`dacbc83`でkernel uevent listener、
+      recurring watchdog、cable/host event起点のrebindを全撤去し、ADB構成変更を
+      USB Modeの明示的なADB選択とsleep resumeだけに限定した。System/Runtime
+      `0.1.0-dev-dacbc83`をexact source (`626a1e8` / `f5ca09e`)から署名更新し、実機で
+      両version、System script SHA-256、監視file/process不在、Runtime全checksumを確認。
+      Off -> ADB、物理ケーブル接続、抜き差し後の実transportを最終acceptanceとして継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
