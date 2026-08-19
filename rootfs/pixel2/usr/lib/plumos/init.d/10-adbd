@@ -32,6 +32,61 @@ stop_adbd() {
     log 'result=stopped'
 }
 
+status_adbd() {
+    if [ ! -s "$PID" ]; then
+        printf '%s\n' 'state=stopped'
+        printf '%s\n' 'summary=ADB daemon is not running'
+        return 2
+    fi
+    pid=$(cat "$PID" 2>/dev/null || true)
+    case "$pid" in
+        ''|*[!0-9]*)
+            printf '%s\n' 'state=stopped'
+            printf '%s\n' 'summary=ADB daemon pid is invalid'
+            return 2
+            ;;
+    esac
+    if ! kill -0 "$pid" 2>/dev/null; then
+        printf '%s\n' 'state=stopped'
+        printf '%s\n' 'summary=ADB daemon is not running'
+        return 2
+    fi
+
+    ep0_open=0
+    ep1_open=0
+    ep2_open=0
+    for fd in /proc/"$pid"/fd/*; do
+        target=$(readlink "$fd" 2>/dev/null || true)
+        case "$target" in
+            "$FFS/ep0") ep0_open=1 ;;
+            "$FFS/ep1") ep1_open=1 ;;
+            "$FFS/ep2") ep2_open=1 ;;
+        esac
+    done
+    if [ "$ep0_open" -ne 1 ] || [ "$ep1_open" -ne 1 ] || [ "$ep2_open" -ne 1 ]; then
+        printf '%s\n' 'state=stopped'
+        printf '%s\n' 'summary=ADB daemon lost its FunctionFS endpoints'
+        return 2
+    fi
+
+    udc_state=not-attached
+    for state_file in /sys/class/udc/*/state; do
+        [ -r "$state_file" ] || continue
+        udc_state=$(cat "$state_file" 2>/dev/null || printf '%s\n' unknown)
+        break
+    done
+    case "$udc_state" in
+        configured)
+            printf '%s\n' 'state=running'
+            printf '%s\n' 'summary=ADB connected over USB'
+            ;;
+        *)
+            printf '%s\n' 'state=waiting_usb'
+            printf '%s\n' 'summary=ADB enabled; waiting for USB host'
+            ;;
+    esac
+}
+
 start_adbd() {
     [ -x /usr/sbin/adbd ] || {
         log 'result=failed reason=binary-missing'
@@ -110,5 +165,6 @@ case "${1:-}" in
     start) start_adbd ;;
     stop) stop_adbd ;;
     restart) stop_adbd; start_adbd ;;
-    *) printf 'usage: %s {start|stop|restart}\n' "$0" >&2; exit 2 ;;
+    status) status_adbd ;;
+    *) printf 'usage: %s {start|stop|restart|status}\n' "$0" >&2; exit 2 ;;
 esac

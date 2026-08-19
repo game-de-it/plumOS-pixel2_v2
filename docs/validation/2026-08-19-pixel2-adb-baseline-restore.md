@@ -114,3 +114,17 @@ The first acceptance is intentionally narrow: cold boot must provide a working
 `adb shell`. Frontend status text and cable-replug recovery are not substitutes
 for that transport proof. Wi-Fi and USB-mode switching remain disabled until
 this baseline passes.
+
+## Result and superseding work
+
+The baseline was promoted through the real A/B updater and booted as active
+System A, but physical ADB acceptance failed. macOS selected configuration 1
+without receiving a host-visible ADB interface, and `adb devices` remained
+empty. The immutable ADB-only marker also conflicted with Runtime's saved Wi-Fi
+mode: a live Off to Wi-Fi change required a reboot before the dongle
+enumerated.
+
+The follow-up ownership diagnosis and reconciled design are recorded in
+`2026-08-19-pixel2-usb-owner-reconciliation.md`. The byte-identical baseline
+is no longer the intended release state; its simple lifecycle is retained with
+only a read-only Runtime-compatible status command.

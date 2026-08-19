@@ -166,6 +166,17 @@
         `7d71d2f6...`は一致し、inactive B、Runtime、zero-byte ADB marker、全user dataは
         不変。cold boot shellを最優先で確認する。Wi-Fi/USB mode再導入はADB合格後の
         別作業とする。
+      - `fde06bb`を通常A/B updaterでactive/booted Aへ昇格して初めてbaselineを実機試験。
+        macOSは`18d1:4ee7`親device/configuration 1まで列挙したがADB interfaceはなく、
+        `adb devices`も空で不合格。さらにimmutable `/etc/plumos-adb-only`がSystemを常時
+        ADB起動に固定する一方、Runtime `21fba08`は保存済み`usb_mode=wifi`からWi-Fiを
+        起動し、同一DWC2上でadbdのep0/1/2 FDとRTL8821CU `0bda:c820`が同時に存在する
+        ownership競合をSSHで確定した。Systemはboot前にFAT recovery markerと
+        `usb_mode`からownerを一度だけ決定し、wifi/offではadbdとwatchdogを起動しない。
+        temporary adb-only markerを撤去し、Runtimeは現行の即時排他切替へ更新する。
+        旧`6f022d4` ADB lifecycleは維持し、FE API互換のread-only `status`だけを追加。
+        host fixture一式は合格、署名System/Runtimeの実機適用とOff/Wi-Fi/ADB/cable replug
+        acceptanceを継続する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで

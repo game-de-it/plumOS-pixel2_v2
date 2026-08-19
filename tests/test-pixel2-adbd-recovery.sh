@@ -10,11 +10,11 @@ test -x "$WATCHDOG"
 bash -n "$SERVICE"
 bash -n "$WATCHDOG"
 
-# Lock the two files to the simple FunctionFS implementation that was accepted
-# on physical Pixel2 hardware at commit 6f022d4.  Do not silently reintroduce
-# frontend policy, USB-mode switching, endpoint recovery or UDC polling here.
+# Keep the accepted 6f022d4 FunctionFS start/stop implementation and the
+# daemon-only watchdog.  The only extension is a read-only status command for
+# the Runtime API; do not reintroduce policy, endpoint recovery or UDC polling.
 test "$(sha256sum "$SERVICE" | awk '{print $1}')" = \
-    6d18796073275d667889a9d2c5b9e2df2eae298003c2bbb94f2d937579c81d22
+    2cfdfd45a4b4b30f9de11205ef7dd7f491af047269addf4b53e6f0fc3400f4e0
 test "$(sha256sum "$WATCHDOG" | awk '{print $1}')" = \
     b67891ffd006701d96e82442491ec89eacd9866f65e077946e12d0fde908b876
 
@@ -22,9 +22,11 @@ grep -q 'mount -t functionfs adb' "$SERVICE"
 grep -q '/usr/sbin/adbd.*&' "$SERVICE"
 grep -q 'ep1.*ep2' "$SERVICE"
 grep -q 'printf.*udc.*GADGET/UDC' "$SERVICE"
+grep -q 'status_adbd' "$SERVICE"
+grep -q 'ADB daemon lost its FunctionFS endpoints' "$SERVICE"
 grep -q 'event=daemon-missing action=restart' "$WATCHDOG"
 
-! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug|status' "$SERVICE"
+! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug' "$SERVICE"
 ! grep -Eq 'UDC|usb_role|functionfs|transport|configured|not attached' "$WATCHDOG"
 
-printf '%s\n' 'pixel2_adbd_baseline=result-ok source=6f022d4'
+printf '%s\n' 'pixel2_adbd_baseline=result-ok source=6f022d4 status=compatible'

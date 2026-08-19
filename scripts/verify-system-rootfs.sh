@@ -32,15 +32,19 @@ grep -q '"device": "pixel2"' "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/20-usb-wifi"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/30-ssh"
-test -f "$tmp/rootfs/etc/plumos-adb-only"
+test ! -e "$tmp/rootfs/etc/plumos-adb-only"
 for script in 15-usb-host-reenumerate 20-usb-wifi 35-network-services; do
     grep -q 'reason=adb-only-baseline' \
         "$tmp/rootfs/usr/lib/plumos/init.d/$script"
 done
+grep -q 'plumos-init=usb-owner mode=' "$tmp/rootfs/sbin/init"
+grep -q '10-adbd:wifi' "$tmp/rootfs/sbin/init"
+grep -q '15-adbd-watchdog:wifi' "$tmp/rootfs/sbin/init"
+grep -q 'plumos-enable-adb' "$tmp/rootfs/sbin/init"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    6d18796073275d667889a9d2c5b9e2df2eae298003c2bbb94f2d937579c81d22
+    2cfdfd45a4b4b30f9de11205ef7dd7f491af047269addf4b53e6f0fc3400f4e0
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{print $1}')" = \
     b67891ffd006701d96e82442491ec89eacd9866f65e077946e12d0fde908b876
 ! grep -q 'busybox.*uevent' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
@@ -48,7 +52,10 @@ test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{p
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'schedule_recovery' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'action=watchdog-' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug|status' \
+! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q 'status_adbd' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q 'ADB daemon lost its FunctionFS endpoints' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 grep -q 'event=daemon-missing action=restart' \
     "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"

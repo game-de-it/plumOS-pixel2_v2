@@ -57,18 +57,22 @@ grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q '^USB_ONLINE=' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 test "$(sha256sum "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    6d18796073275d667889a9d2c5b9e2df2eae298003c2bbb94f2d937579c81d22
+    2cfdfd45a4b4b30f9de11205ef7dd7f491af047269addf4b53e6f0fc3400f4e0
 test "$(sha256sum "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{print $1}')" = \
     b67891ffd006701d96e82442491ec89eacd9866f65e077946e12d0fde908b876
 grep -q 'result=skipped reason=adb-priority' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'result=disabled reason=adb-priority' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi"
-test -f "$ROOT_DIR/rootfs/pixel2/etc/plumos-adb-only"
+test ! -e "$ROOT_DIR/rootfs/pixel2/etc/plumos-adb-only"
 for script in 15-usb-host-reenumerate 20-usb-wifi 35-network-services; do
     grep -q 'reason=adb-only-baseline' \
         "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/$script"
 done
+grep -q 'plumos-init=usb-owner mode=' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q '10-adbd:wifi' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q '15-adbd-watchdog:wifi' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'plumos-enable-adb' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 test -x "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 grep -q 'ff300000.usb' \
@@ -89,7 +93,11 @@ grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'action=watchdog-' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug|status' \
+! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'status_adbd' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'ADB daemon lost its FunctionFS endpoints' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'event=daemon-missing action=restart' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog"
