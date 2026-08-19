@@ -9,9 +9,11 @@ USB_DEVICES_ROOT="${PLUMOS_USB_HOST_DEVICES_ROOT:-/sys/bus/usb/devices}"
 DWC2_DRIVER="${PLUMOS_USB_HOST_DWC2_DRIVER:-/sys/bus/platform/drivers/dwc2}"
 PLATFORM_DEVICE="${PLUMOS_USB_HOST_PLATFORM_DEVICE:-/sys/bus/platform/devices/ff300000.usb}"
 DEVICE_ID="${PLUMOS_USB_HOST_DEVICE_ID:-ff300000.usb}"
+OTG_MODE="${PLUMOS_USB_HOST_OTG_MODE:-/sys/devices/platform/ff2c0000.syscon/ff2c0000.syscon:usb2-phy@100/otg_mode}"
 WPA_CONFIG="${PLUMOS_USB_HOST_WPA_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}"
 LOG="${PLUMOS_USB_HOST_LOG:-/state/plumos/logs/usb-host-reenumerate.log}"
 RESET_DELAY="${PLUMOS_USB_HOST_RESET_DELAY:-2}"
+MODE_SETTLE="${PLUMOS_USB_HOST_MODE_SETTLE:-1}"
 ENUMERATION_WAIT="${PLUMOS_USB_HOST_ENUMERATION_WAIT:-3}"
 
 log() {
@@ -40,6 +42,33 @@ downstream_present() {
     return 1
 }
 
+force_wifi_host_mode() {
+    [ -r "$OTG_MODE" ] || {
+        log "result=warning reason=otg-mode-missing path=$OTG_MODE"
+        return 0
+    }
+    mode=$(tr -d '[:space:]' <"$OTG_MODE" 2>/dev/null || true)
+    if [ "$mode" = host ]; then
+        log 'stage=host-mode-ready source=sysfs'
+        return 0
+    fi
+    [ -w "$OTG_MODE" ] || {
+        log "result=warning reason=otg-mode-read-only mode=${mode:-unknown} path=$OTG_MODE"
+        return 0
+    }
+    if ! printf 'host\n' >"$OTG_MODE"; then
+        log "result=warning reason=otg-mode-write-failed mode=${mode:-unknown} path=$OTG_MODE"
+        return 0
+    fi
+    mode=$(tr -d '[:space:]' <"$OTG_MODE" 2>/dev/null || true)
+    if [ "$mode" != host ]; then
+        log "result=warning reason=otg-mode-verify-failed mode=${mode:-unknown}"
+        return 0
+    fi
+    log 'stage=host-mode-forced source=sysfs'
+    sleep "$MODE_SETTLE"
+}
+
 worker() {
     wifi_requested || {
         log 'result=skipped reason=wifi-not-requested'
@@ -53,6 +82,12 @@ worker() {
         log 'result=skipped reason=usb-upstream-online'
         return 0
     fi
+    # Pixel2 keeps the stock DTB's dr_mode=otg, but this project dedicates the
+    # single connector to USB-host Wi-Fi.  A controller rebind while the PHY is
+    # still in OTG mode can miss a dongle that remained inserted across boot.
+    # Use Rockchip's stock sysfs ABI to force host before probing/rebinding;
+    # this changes neither the DTB nor the kernel and is safe to repeat.
+    force_wifi_host_mode
     if downstream_present; then
         log 'result=skipped reason=downstream-already-enumerated'
         return 0

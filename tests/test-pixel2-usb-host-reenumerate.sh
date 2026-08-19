@@ -11,6 +11,7 @@ mkdir -p "$TMP/usb" "$TMP/dwc2" "$TMP/platform" "$TMP/config/system" \
 printf 'network={}\n' >"$TMP/config/wpa_supplicant.conf"
 printf '{"wifi_enabled": true}\n' >"$TMP/config/system/settings.json"
 printf '0\n' >"$TMP/usb-online"
+printf 'otg\n' >"$TMP/otg-mode"
 : >"$TMP/dwc2/bind"
 : >"$TMP/dwc2/unbind"
 ln -s "$TMP/dwc2" "$TMP/platform/driver"
@@ -21,14 +22,17 @@ service_env=(
     PLUMOS_USB_HOST_DWC2_DRIVER="$TMP/dwc2"
     PLUMOS_USB_HOST_PLATFORM_DEVICE="$TMP/platform"
     PLUMOS_USB_HOST_DEVICE_ID=ff300000.usb
+    PLUMOS_USB_HOST_OTG_MODE="$TMP/otg-mode"
     PLUMOS_USB_HOST_WPA_CONFIG="$TMP/config/wpa_supplicant.conf"
     PLUMOS_USB_HOST_SETTINGS="$TMP/config/system/settings.json"
     PLUMOS_USB_HOST_LOG="$TMP/log/service.log"
     PLUMOS_USB_HOST_RESET_DELAY=0
+    PLUMOS_USB_HOST_MODE_SETTLE=0
     PLUMOS_USB_HOST_ENUMERATION_WAIT=0
 )
 
 env "${service_env[@]}" "$SERVICE" worker
+grep -Fxq host "$TMP/otg-mode"
 grep -Fxq 'ff300000.usb' "$TMP/dwc2/unbind"
 grep -Fxq 'ff300000.usb' "$TMP/dwc2/bind"
 grep -q 'result=reset-complete downstream=absent' "$TMP/log/service.log"
@@ -36,15 +40,19 @@ grep -q 'result=reset-complete downstream=absent' "$TMP/log/service.log"
 : >"$TMP/dwc2/bind"
 : >"$TMP/dwc2/unbind"
 printf '1\n' >"$TMP/usb-online"
+printf 'otg\n' >"$TMP/otg-mode"
 env "${service_env[@]}" "$SERVICE" worker
+grep -Fxq otg "$TMP/otg-mode"
 test ! -s "$TMP/dwc2/bind"
 test ! -s "$TMP/dwc2/unbind"
 grep -q 'result=skipped reason=usb-upstream-online' "$TMP/log/service.log"
 
 printf '0\n' >"$TMP/usb-online"
+printf 'otg\n' >"$TMP/otg-mode"
 mkdir -p "$TMP/usb/1-1"
 printf '0bda\n' >"$TMP/usb/1-1/idVendor"
 env "${service_env[@]}" "$SERVICE" worker
+grep -Fxq host "$TMP/otg-mode"
 test ! -s "$TMP/dwc2/bind"
 test ! -s "$TMP/dwc2/unbind"
 grep -q 'result=skipped reason=downstream-already-enumerated' \

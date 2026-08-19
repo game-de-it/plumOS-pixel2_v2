@@ -18,6 +18,12 @@
     480x640 XRGB8888のopaque-black frameを生成・検証し、`40-frontend`の共通起動経路で
     FE process生成直前に`/dev/fb0`へ書き込む。ゲーム起動前の既存FE側クリアも維持する。
 
+- [x] Wi-Fi dongleを挿したままのcold bootと物理再挿入を自動復旧する
+  - 2026-08-20: stock DTBの`dr_mode=otg`は保持し、Wi-Fi設定済みかつUSB upstream
+    非接続時だけRockchip stock sysfs ABIの`otg_mode=host`をDWC2 bind前に適用する。
+    boot時の挿しっぱなしdongle列挙漏れを防ぎ、起動後の再挿入はV90S準拠のblocking
+    uevent monitorからwpa/DHCP/network serviceを自動再開する。常時pollingは追加しない。
+
 - [x] build target、FE導線、runtime helper、Apps、standalone、storage/update、release準備を横断監査する
   - 2026-08-13: [実装リスト](docs/developer/implementation-status.md)を更新。SaturnをRK3326性能要件で非対応化し、97 system中87 enabled、109 libretro core、standalone 4 built / 4 pendingを現行baselineとする。
 - [x] FE catalogと生成app-layerの不整合を検出する自動監査を追加する

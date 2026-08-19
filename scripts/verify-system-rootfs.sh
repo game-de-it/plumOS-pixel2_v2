@@ -31,6 +31,10 @@ grep -q '^ID=plumos$' "$tmp/rootfs/etc/os-release"
 grep -q '"device": "pixel2"' "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/20-usb-wifi"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"
+grep -q 'force_wifi_host_mode' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"
+grep -q 'usb2-phy@100/otg_mode' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/30-ssh"
 grep -q 'plumos-init=usb-owner mode=wifi-host' "$tmp/rootfs/sbin/init"
 grep -q 'plumos-enable-adb' "$tmp/rootfs/sbin/init"
