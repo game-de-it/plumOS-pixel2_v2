@@ -245,6 +245,16 @@
       offline置換し、署名・SHA-256 readback、inactive B保持、zero-byte ADB markerを確認。
       Runtime deltaもFAT32 update inboxへreadback一致で追加済み。cold boot後の実transport、
       Runtime適用結果、物理抜き差しを継続する。
+    - 2026-08-19: ADB 35/36、両macOS backend、新USB serialの全てで最初の`CNXN`が
+      `kIOReturnNotResponding`となり、Mac再起動後は給電中Pixel2が親deviceだけを再列挙して
+      ADB interfaceを失うことを確認。host cacheではなく、host disconnect後のPixel2側
+      FunctionFS復旧欠落と確定した。さらにADB監視PID fileが親shellを指し、Wi-Fi切替後も
+      実monitorが残る欠陥を`662cace`で修正。`d7142ac`ではV90S `d1721a9`/`e2fe3c3`と同じ
+      blocking kernel uevent方式へ変更し、`android_usb/DISCONNECTED`時だけ同じadbdと
+      endpointを保った単発UDC rebindを行う。自己生成eventは4秒だけ抑止し、timer、polling、
+      recurring restartは持たない。PID lifecycle、ADB/Wi-Fi排他、event filterのhost gateは
+      合格。署名System/Runtime適用後のcold boot shell、抜き差し、Mac再起動、Wi-Fi往復を
+      実機acceptanceとして継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
