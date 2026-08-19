@@ -253,7 +253,10 @@
       blocking kernel uevent方式へ変更し、`android_usb/DISCONNECTED`時だけ同じadbdと
       endpointを保った単発UDC rebindを行う。自己生成eventは4秒だけ抑止し、timer、polling、
       recurring restartは持たない。PID lifecycle、ADB/Wi-Fi排他、event filterのhost gateは
-      合格。署名System/Runtime適用後のcold boot shell、抜き差し、Mac再起動、Wi-Fi往復を
+      合格。全コミットを含む`636b64c`の完全Systemとstrict Runtimeを現行実機
+      `7c72d9a`からのexact-source署名packageとして生成。実updaterの署名、target、ABI、
+      source、manifest、全payload検証に合格し、Runtimeはroot/component metadataを含む
+      12管理entry・削除なし。適用後のcold boot shell、抜き差し、Mac再起動、Wi-Fi往復を
       実機acceptanceとして継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。

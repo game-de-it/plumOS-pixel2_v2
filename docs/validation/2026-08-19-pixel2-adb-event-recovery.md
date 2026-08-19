@@ -73,6 +73,37 @@ system_rootfs_scripts=result-ok
 The recovery fixture also verifies that the PID file belongs to the live
 BusyBox uevent listener and that an explicit stop terminates that exact PID.
 
+## Signed update staging
+
+The complete System and strict Runtime were built from repository ref
+`636b64c` as version `0.1.0-dev-636b64c`. Both packages require the currently
+installed `0.1.0-dev-7c72d9a` as their exact source version. The production
+updater accepted the Ed25519 signature, device, architecture, vendor Runtime,
+System/Runtime ABI, source version, manifest, and every payload hash.
+
+```text
+System package sha256:
+2af62f097a46d1f305d2f927eeab827a60a1ea6bd4c7b30ea6ff1b3654b7a122
+
+System SquashFS sha256 (A and B build outputs):
+e0fe510be64ab203abeeb0518d880a9fd773ef7da8abc656dc934d49f07a4613
+
+Runtime package sha256:
+3fcdcfe9ffcea25abf975565aa187a68248febb393ea194c8aa62f0b58546df8
+
+Strict Runtime checksum-list sha256:
+cbc87e0527824ddd63acba6ba3ab2aeed2987fefb605ae058a42e3676d75095d
+```
+
+The Runtime delta contains 12 managed entries and no deletion. It includes
+`bin/plumos-network-services`, the root checksum list and manifest, and both
+frontend and network-services component checksum/manifest pairs. No ROM,
+BIOS, save, setting, PortMaster installation, or other persistent path is part
+of the package.
+
+Artifacts are retained under
+`output/live/2026-08-19-pixel2-adb-event-recovery/`.
+
 ## Physical acceptance still required
 
 The signed System and Runtime must be applied as one compatible update set.
@@ -84,4 +115,3 @@ status alone:
 3. a macOS host restart restores the shell without rebooting Pixel2;
 4. switching to Wi-Fi leaves no adbd or ADB uevent listener;
 5. switching back to ADB stops Wi-Fi ownership and restores a shell.
-
