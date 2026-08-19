@@ -3,21 +3,31 @@ set -u
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH HOME=/root
-SERVICE=/usr/lib/plumos/init.d/10-adbd
-PID=/run/plumos/adbd.pid
-WATCHDOG_PID=/run/plumos/adbd-watchdog.pid
-LOG=/state/plumos/logs/adbd.log
+SERVICE="${PLUMOS_ADB_SERVICE:-/usr/lib/plumos/init.d/10-adbd}"
+PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
+WATCHDOG_PID="${PLUMOS_ADB_WATCHDOG_PID:-/run/plumos/adbd-watchdog.pid}"
+LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
+INTERVAL="${PLUMOS_ADB_WATCHDOG_INTERVAL:-5}"
 
 log() {
     mkdir -p "${LOG%/*}"
     printf '%s service=adb-watchdog %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
 }
 
+watchdog_running() {
+    [ -s "$WATCHDOG_PID" ] || return 1
+    watchdog_pid=$(cat "$WATCHDOG_PID" 2>/dev/null || true)
+    case "$watchdog_pid" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$watchdog_pid" 2>/dev/null || return 1
+    cmdline=$(tr '\000' ' ' <"/proc/$watchdog_pid/cmdline" 2>/dev/null || true)
+    case "$cmdline" in *15-adbd-watchdog*' watch'*) return 0 ;; esac
+    return 1
+}
+
 watch() {
-    printf '%s\n' "$$" >"$WATCHDOG_PID"
-    log 'result=started'
+    trap 'rm -f "$WATCHDOG_PID"; exit 0' TERM INT EXIT
     while :; do
-        sleep 5
+        sleep "$INTERVAL"
         if [ ! -s "$PID" ] || ! kill -0 "$(cat "$PID" 2>/dev/null)" 2>/dev/null; then
             log 'event=daemon-missing action=restart'
             "$SERVICE" restart >>"$LOG" 2>&1 || \
@@ -26,12 +36,36 @@ watch() {
     done
 }
 
+start_watchdog() {
+    if watchdog_running; then
+        return 0
+    fi
+    rm -f "$WATCHDOG_PID"
+    "$0" watch </dev/null >>"$LOG" 2>&1 &
+    watchdog_pid=$!
+    printf '%s\n' "$watchdog_pid" >"$WATCHDOG_PID"
+    log "result=started pid=$watchdog_pid"
+}
+
+stop_watchdog() {
+    if watchdog_running; then
+        watchdog_pid=$(cat "$WATCHDOG_PID")
+        kill "$watchdog_pid" 2>/dev/null || true
+        elapsed=0
+        while kill -0 "$watchdog_pid" 2>/dev/null && [ "$elapsed" -lt 5 ]; do
+            sleep 1
+            elapsed=$((elapsed + 1))
+        done
+        kill -9 "$watchdog_pid" 2>/dev/null || true
+    fi
+    rm -f "$WATCHDOG_PID"
+    log 'result=stopped'
+}
+
 case "${1:-}" in
-    start)
-        if [ -s "$WATCHDOG_PID" ] && kill -0 "$(cat "$WATCHDOG_PID")" 2>/dev/null; then
-            exit 0
-        fi
-        watch &
-        ;;
-    *) printf 'usage: %s start\n' "$0" >&2; exit 2 ;;
+    start) start_watchdog ;;
+    stop) stop_watchdog ;;
+    restart) stop_watchdog; start_watchdog ;;
+    watch) watch ;;
+    *) printf 'usage: %s {start|stop|restart}\n' "$0" >&2; exit 2 ;;
 esac

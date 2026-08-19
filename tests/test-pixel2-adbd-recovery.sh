@@ -16,7 +16,7 @@ bash -n "$WATCHDOG"
 test "$(sha256sum "$SERVICE" | awk '{print $1}')" = \
     2cfdfd45a4b4b30f9de11205ef7dd7f491af047269addf4b53e6f0fc3400f4e0
 test "$(sha256sum "$WATCHDOG" | awk '{print $1}')" = \
-    b67891ffd006701d96e82442491ec89eacd9866f65e077946e12d0fde908b876
+    16e96435eef83b2a64939393252e5b5892dea8ff6aa6b8b680a0f64e9318661b
 
 grep -q 'mount -t functionfs adb' "$SERVICE"
 grep -q '/usr/sbin/adbd.*&' "$SERVICE"
@@ -25,6 +25,10 @@ grep -q 'printf.*udc.*GADGET/UDC' "$SERVICE"
 grep -q 'status_adbd' "$SERVICE"
 grep -q 'ADB daemon lost its FunctionFS endpoints' "$SERVICE"
 grep -q 'event=daemon-missing action=restart' "$WATCHDOG"
+grep -q 'start_watchdog' "$WATCHDOG"
+grep -q 'stop_watchdog' "$WATCHDOG"
+grep -q '\$0" watch' "$WATCHDOG"
+grep -q '15-adbd-watchdog.*watch' "$WATCHDOG"
 
 ! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug' "$SERVICE"
 ! grep -Eq 'UDC|usb_role|functionfs|transport|configured|not attached' "$WATCHDOG"

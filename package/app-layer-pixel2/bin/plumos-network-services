@@ -29,6 +29,7 @@ SSH_STOP="${PLUMOS_ROOT}/ssh/stop-ssh.sh"
 SMBD="${PLUMOS_ROOT}/network/samba/sbin/smbd"
 NMBD="${PLUMOS_ROOT}/network/samba/sbin/nmbd"
 ADBD_CONTROL="${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}"
+ADBD_WATCHDOG="${PLUMOS_ADBD_WATCHDOG:-/usr/lib/plumos/init.d/15-adbd-watchdog}"
 ADB_RECOVERY_MARKER="${PLUMOS_ADB_RECOVERY_MARKER:-${PLUMOS_SDCARD_ROOT}/plumos-enable-adb}"
 WIFI_RECOVERY="${PLUMOS_WIFI_RECOVERY:-${PLUMOS_ROOT}/bin/plumos-wifi-recovery}"
 NETWORK_CONTROL="${PLUMOS_NETWORK_CONTROL:-${PLUMOS_ROOT}/bin/plumos-network-control}"
@@ -227,8 +228,17 @@ apply_usb_mode() {
         log "apply failed mode=adb stage=adbd_restart" usb
         return 1
       fi
+      if [ -x "$ADBD_WATCHDOG" ]; then
+        "$ADBD_WATCHDOG" start >> "$LOG_FILE" 2>&1 || {
+          log "apply failed mode=adb stage=adbd_watchdog_start" usb
+          return 1
+        }
+      fi
       ;;
     wifi)
+      if [ -x "$ADBD_WATCHDOG" ]; then
+        "$ADBD_WATCHDOG" stop >> "$LOG_FILE" 2>&1 || true
+      fi
       if [ -x "$ADBD_CONTROL" ]; then
         "$ADBD_CONTROL" stop >> "$LOG_FILE" 2>&1 || true
       fi
@@ -237,6 +247,9 @@ apply_usb_mode() {
       fi
       ;;
     off)
+      if [ -x "$ADBD_WATCHDOG" ]; then
+        "$ADBD_WATCHDOG" stop >> "$LOG_FILE" 2>&1 || true
+      fi
       if [ -x "$ADBD_CONTROL" ]; then
         "$ADBD_CONTROL" stop >> "$LOG_FILE" 2>&1 || true
       fi
