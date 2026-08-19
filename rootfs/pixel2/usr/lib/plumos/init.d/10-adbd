@@ -3,13 +3,20 @@ set -u
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH HOME=/root
-GADGET=/sys/kernel/config/usb_gadget/plumos_pixel2
-FFS=/dev/usb-ffs/adb
-PID=/run/plumos/adbd.pid
-REPLUG_LOCK=/run/plumos/adbd-replug.lock
-REPLUG_SUPPRESS_UNTIL=/run/plumos/adbd-replug-suppress-until
-LOG=/state/plumos/logs/adbd.log
-SERIAL_FILE=/state/plumos/config/adb-serial
+GADGET="${PLUMOS_ADB_GADGET:-/sys/kernel/config/usb_gadget/plumos_pixel2}"
+FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
+PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
+REPLUG_LOCK="${PLUMOS_ADB_REPLUG_LOCK:-/run/plumos/adbd-replug.lock}"
+REPLUG_SUPPRESS_UNTIL="${PLUMOS_ADB_SUPPRESS_UNTIL:-/run/plumos/adbd-replug-suppress-until}"
+LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
+SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
+DWC2_DRIVER="${PLUMOS_ADB_DWC2_DRIVER:-/sys/bus/platform/drivers/dwc2}"
+PLATFORM_DEVICE="${PLUMOS_ADB_PLATFORM_DEVICE:-/sys/bus/platform/devices/ff300000.usb}"
+DEVICE_ID="${PLUMOS_ADB_PLATFORM_DEVICE_ID:-ff300000.usb}"
+USB_DEVICES_ROOT="${PLUMOS_ADB_USB_DEVICES_ROOT:-/sys/bus/usb/devices}"
+UDC_ROOT="${PLUMOS_ADB_UDC_ROOT:-/sys/class/udc}"
+DWC2_RESET_DELAY="${PLUMOS_ADB_DWC2_RESET_DELAY:-1}"
+DWC2_UDC_WAIT="${PLUMOS_ADB_DWC2_UDC_WAIT:-4}"
 
 log() {
     mkdir -p "${LOG%/*}"
@@ -43,9 +50,68 @@ endpoints_open() {
 }
 
 udc_name() {
-    set -- /sys/class/udc/*
+    set -- "$UDC_ROOT"/*
     [ -e "$1" ] || return 1
     printf '%s\n' "${1##*/}"
+}
+
+downstream_present() {
+    for device in "$USB_DEVICES_ROOT"/*; do
+        [ -r "$device/idVendor" ] || continue
+        case "${device##*/}" in usb*) continue ;; esac
+        return 0
+    done
+    return 1
+}
+
+set_replug_suppression() {
+    now=$(date +%s 2>/dev/null || printf '0\n')
+    case "$now" in ''|*[!0-9]*) now=0 ;; esac
+    printf '%s\n' "$((now + 6))" >"$REPLUG_SUPPRESS_UNTIL"
+}
+
+reset_dwc2_for_device() {
+    [ -d "$PLATFORM_DEVICE" ] || {
+        log "result=controller-reset-failed reason=device-missing device=$DEVICE_ID"
+        return 1
+    }
+    [ -w "$DWC2_DRIVER/bind" ] || {
+        log "result=controller-reset-failed reason=bind-unavailable driver=$DWC2_DRIVER"
+        return 1
+    }
+
+    set_replug_suppression
+    if [ -L "$PLATFORM_DEVICE/driver" ]; then
+        [ -w "$DWC2_DRIVER/unbind" ] || {
+            log "result=controller-reset-failed reason=unbind-unavailable driver=$DWC2_DRIVER"
+            return 1
+        }
+        printf '%s\n' "$DEVICE_ID" >"$DWC2_DRIVER/unbind" || {
+            log 'result=controller-reset-failed stage=unbind'
+            return 1
+        }
+        log "controller-reset stage=unbound device=$DEVICE_ID"
+        sleep "$DWC2_RESET_DELAY"
+    fi
+
+    printf '%s\n' "$DEVICE_ID" >"$DWC2_DRIVER/bind" || {
+        log 'result=controller-reset-failed stage=bind'
+        return 1
+    }
+    log "controller-reset stage=bound device=$DEVICE_ID"
+
+    elapsed=0
+    while [ "$elapsed" -lt "$DWC2_UDC_WAIT" ]; do
+        set -- "$UDC_ROOT"/*
+        [ -e "$1" ] && {
+            log "result=controller-reset-complete udc=${1##*/} elapsed=$elapsed"
+            return 0
+        }
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    log 'result=controller-reset-failed reason=udc-missing-after-bind'
+    return 1
 }
 
 stop_adbd() {
@@ -80,7 +146,7 @@ status_adbd() {
     fi
 
     udc_state=not-attached
-    for state_file in /sys/class/udc/*/state; do
+    for state_file in "$UDC_ROOT"/*/state; do
         [ -r "$state_file" ] || continue
         udc_state=$(cat "$state_file" 2>/dev/null || printf '%s\n' unknown)
         break
@@ -115,7 +181,7 @@ start_adbd() {
     done
     mdev -s 2>/dev/null || true
     sleep 1
-    set -- /sys/class/udc/*
+    set -- "$UDC_ROOT"/*
     [ -e "$1" ] || {
         log 'result=failed reason=udc-missing'
         return 1
@@ -191,9 +257,7 @@ replug_adbd() {
 
     # Unbinding emits another android_usb DISCONNECTED uevent. Ignore only
     # that self-generated event for a bounded interval.
-    now=$(date +%s 2>/dev/null || printf '0\n')
-    case "$now" in ''|*[!0-9]*) now=0 ;; esac
-    printf '%s\n' "$((now + 4))" >"$REPLUG_SUPPRESS_UNTIL"
+    set_replug_suppression
     printf '\n' >"$GADGET/UDC" 2>>"$LOG" || {
         log 'result=replug-failed stage=unbind'
         return 1
@@ -205,15 +269,42 @@ replug_adbd() {
         start_adbd
         return $?
     }
-    state=$(cat "/sys/class/udc/$udc/state" 2>/dev/null || printf 'unknown\n')
+    state=$(cat "$UDC_ROOT/$udc/state" 2>/dev/null || printf 'unknown\n')
     log "result=replug-rebound udc=$udc state=$state pid=$pid"
+}
+
+restart_adbd() {
+    stop_adbd
+    if downstream_present; then
+        # USB Mode is normally selected while the Wi-Fi adapter still owns the
+        # only port. Keep the uevent monitor alive and finish the controller
+        # handoff when that downstream device is physically removed.
+        log 'result=controller-reset-deferred reason=downstream-present'
+    else
+        reset_dwc2_for_device || return $?
+    fi
+    start_adbd
+}
+
+takeover_adbd() {
+    if ! mkdir "$REPLUG_LOCK" 2>/dev/null; then
+        log 'result=controller-takeover-coalesced'
+        return 0
+    fi
+    trap 'rmdir "$REPLUG_LOCK" 2>/dev/null || true' EXIT HUP INT TERM
+
+    stop_adbd
+    reset_dwc2_for_device || return $?
+    start_adbd
 }
 
 case "${1:-}" in
     start) start_adbd ;;
     stop) stop_adbd ;;
-    restart) stop_adbd; start_adbd ;;
+    restart) restart_adbd ;;
     replug) replug_adbd ;;
+    takeover) takeover_adbd ;;
+    reset-controller) reset_dwc2_for_device ;;
     status) status_adbd ;;
-    *) printf 'usage: %s {start|stop|restart|replug|status}\n' "$0" >&2; exit 2 ;;
+    *) printf 'usage: %s {start|stop|restart|replug|takeover|reset-controller|status}\n' "$0" >&2; exit 2 ;;
 esac

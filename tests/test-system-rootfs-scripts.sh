@@ -60,11 +60,11 @@ grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q '^USB_ONLINE=' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 test "$(sha256sum "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    733814efe1d940aaec439f963949e447023272fe94de9653e8cc1d2a15cb4c59
+    e08ca8065094c640ca0ed2eee771c7c4cea68db6f01e35874397d20c4c43a26c
 test "$(sha256sum "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{print $1}')" = \
     4dbcdabd55ba0aa2cf942a00ebc2c17aecde9da1d364a2b382cb195030f7fbde
 test "$(sha256sum "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adb-uevent" | awk '{print $1}')" = \
-    7f951beb29ba67febf1497b5467b5fb6f14d2a03577a546512624f7f8de86410
+    6f9aad063b7f58b6f55bd7308476d102d28dad29ea79a12f3fd35d8de233a179
 grep -q 'result=skipped reason=adb-priority' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'result=disabled reason=adb-priority' \
@@ -116,6 +116,10 @@ grep -q 'USB_STATE.*DISCONNECTED' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adb-uevent"
 grep -q 'ADBD_CONTROL.*replug' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adb-uevent"
+grep -q 'ADBD_CONTROL.*takeover' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adb-uevent"
+grep -q 'reset_dwc2_for_device' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'plumos-network-services' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
 grep -q 'plumos-wifi-recovery' \

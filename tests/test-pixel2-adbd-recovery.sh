@@ -28,6 +28,9 @@ grep -q 'busybox.*uevent' "$WATCHDOG"
 grep -q 'android_usb' "$UEVENT_HELPER"
 grep -q 'USB_STATE.*DISCONNECTED' "$UEVENT_HELPER"
 grep -q 'ADBD_CONTROL.*replug' "$UEVENT_HELPER"
+grep -q 'ADBD_CONTROL.*takeover' "$UEVENT_HELPER"
+grep -q 'reset_dwc2_for_device' "$SERVICE"
+grep -q 'controller-reset-deferred reason=downstream-present' "$SERVICE"
 
 ! grep -q 'schedule_recovery' "$SERVICE"
 ! grep -q 'while :' "$WATCHDOG"
@@ -96,6 +99,16 @@ SUBSYSTEM=android_usb USB_STATE=DISCONNECTED \
     env "${helper_env[@]}" "$UEVENT_HELPER"
 grep -Fxq replug "$TMP/adbd-calls"
 
+SUBSYSTEM=usb ACTION=remove DEVTYPE=usb_device \
+    DEVPATH=/devices/platform/ff300000.usb/usb1/1-1 PRODUCT=bda/c820/200 \
+    env "${helper_env[@]}" "$UEVENT_HELPER"
+grep -Fxq takeover "$TMP/adbd-calls"
+
+SUBSYSTEM=usb ACTION=remove DEVTYPE=usb_device \
+    DEVPATH=/devices/platform/ff340000.usb/usb2/2-1 PRODUCT=ffff/ffff/0 \
+    env "${helper_env[@]}" "$UEVENT_HELPER"
+test "$(grep -c '^takeover$' "$TMP/adbd-calls")" -eq 1
+
 printf '%s\n' "$(( $(date +%s) + 30 ))" >"$TMP/run/suppress-until"
 SUBSYSTEM=android_usb USB_STATE=DISCONNECTED \
     env "${helper_env[@]}" "$UEVENT_HELPER"
@@ -108,5 +121,24 @@ rm -f "$TMP/run/suppress-until"
 SUBSYSTEM=android_usb USB_STATE=DISCONNECTED \
     env "${helper_env[@]}" "$UEVENT_HELPER"
 test "$(grep -c '^replug$' "$TMP/adbd-calls")" -eq 1
+test "$(grep -c '^takeover$' "$TMP/adbd-calls")" -eq 1
+
+mkdir -p "$TMP/dwc2" "$TMP/platform" "$TMP/udc/ff300000.usb"
+: >"$TMP/dwc2/bind"
+: >"$TMP/dwc2/unbind"
+ln -s "$TMP/dwc2" "$TMP/platform/driver"
+PLUMOS_ADB_DWC2_DRIVER="$TMP/dwc2" \
+PLUMOS_ADB_PLATFORM_DEVICE="$TMP/platform" \
+PLUMOS_ADB_PLATFORM_DEVICE_ID=ff300000.usb \
+PLUMOS_ADB_UDC_ROOT="$TMP/udc" \
+PLUMOS_ADB_DWC2_RESET_DELAY=0 \
+PLUMOS_ADB_DWC2_UDC_WAIT=1 \
+PLUMOS_ADB_LOG="$TMP/logs/controller.log" \
+PLUMOS_ADB_SUPPRESS_UNTIL="$TMP/run/controller-suppress-until" \
+    "$SERVICE" reset-controller
+grep -Fxq ff300000.usb "$TMP/dwc2/unbind"
+grep -Fxq ff300000.usb "$TMP/dwc2/bind"
+grep -q 'result=controller-reset-complete udc=ff300000.usb' \
+    "$TMP/logs/controller.log"
 
 printf '%s\n' 'pixel2_adbd_recovery=result-ok source=v90s-event-driven mode=single-replug'

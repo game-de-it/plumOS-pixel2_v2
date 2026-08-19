@@ -25,10 +25,23 @@ adb_requested() {
     case "$value" in 0|false|off) return 1 ;; *) return 0 ;; esac
 }
 
-[ "${SUBSYSTEM:-}" = android_usb ] || exit 0
-[ "${USB_STATE:-}" = DISCONNECTED ] || exit 0
 adb_requested || exit 0
 [ -x "$ADBD_CONTROL" ] || exit 0
+
+if [ "${SUBSYSTEM:-}" = usb ] && [ "${ACTION:-}" = remove ] &&
+    [ "${DEVTYPE:-}" = usb_device ]; then
+    case "${DEVPATH:-}" in
+        /devices/platform/ff300000.usb/usb1/1-*) ;;
+        *) exit 0 ;;
+    esac
+    sleep "$SETTLE_SECONDS"
+    adb_requested || exit 0
+    log "action=controller-takeover reason=downstream-removed product=${PRODUCT:-unknown}"
+    exec "$ADBD_CONTROL" takeover >>"$LOG" 2>&1
+fi
+
+[ "${SUBSYSTEM:-}" = android_usb ] || exit 0
+[ "${USB_STATE:-}" = DISCONNECTED ] || exit 0
 
 now=$(date +%s 2>/dev/null || printf '0\n')
 deadline=$(cat "$SUPPRESS_UNTIL" 2>/dev/null || printf '0\n')
