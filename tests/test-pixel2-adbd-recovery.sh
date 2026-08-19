@@ -35,10 +35,11 @@ grep -q 'controller-reset-deferred reason=downstream-present' "$SERVICE"
 
 replug_body="$(sed -n '/^replug_adbd() {/,/^}/p' "$SERVICE")"
 grep -q 'stop_adbd' <<<"$replug_body"
-grep -q 'reset_dwc2_for_device' <<<"$replug_body"
+grep -q 'set_replug_suppression' <<<"$replug_body"
 grep -q 'start_adbd' <<<"$replug_body"
 ! grep -q 'GADGET/UDC' <<<"$replug_body"
 ! grep -q 'endpoints_open' <<<"$replug_body"
+! grep -q 'reset_dwc2_for_device' <<<"$replug_body"
 
 ! grep -q 'schedule_recovery' "$SERVICE"
 ! grep -q 'while :' "$WATCHDOG"

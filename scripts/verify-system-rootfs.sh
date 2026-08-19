@@ -45,7 +45,7 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
 test -x "$tmp/rootfs/usr/lib/plumos/adb-uevent"
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    b832c97a05e724e6f5604e64c74b8f65856d27cb429048f9026545301b2f7af1
+    68540891fe2a2e9fa2936bb8ab9a7749818a7b27f6180c1c10e081825cb3cb19
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{print $1}')" = \
     4dbcdabd55ba0aa2cf942a00ebc2c17aecde9da1d364a2b382cb195030f7fbde
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/adb-uevent" | awk '{print $1}')" = \

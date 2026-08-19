@@ -245,14 +245,17 @@ replug_adbd() {
     trap 'rmdir "$REPLUG_LOCK" 2>/dev/null || true' EXIT HUP INT TERM
 
     # Pixel2's stock 5.10 FunctionFS disables and destroys adbd's USB
-    # connection object when the host disappears. The ep0/ep1/ep2 file
-    # descriptors can remain open in the daemon after that transition, so an
-    # endpoint-presence check followed by a UDC-only rebind leaves the gadget
-    # enumerated but permanently offline. Recreate the daemon connection and
-    # DWC2 device role together for every unsuppressed host disconnect.
+    # connection object when the host disappears. Recreate that daemon
+    # connection, but keep the already-correct DWC2 device role. Resetting the
+    # whole controller here turns normal macOS enumeration resets into another
+    # disconnect storm. Controller reset is reserved for host-to-device role
+    # takeover and explicit USB mode changes.
     log 'action=replug-restart reason=functionfs-disconnected'
     stop_adbd
-    reset_dwc2_for_device || return $?
+    # stop_adbd removes the old suppression marker. Set a fresh bounded marker
+    # before rebinding the new FunctionFS instance so its own DISCONNECTED
+    # uevent cannot recursively restart it.
+    set_replug_suppression
     start_adbd || return $?
     log "result=replug-restarted pid=$(cat "$PID" 2>/dev/null || true)"
 }
