@@ -48,3 +48,32 @@ sha256=a7a438f705f994a9f333b2f334a803d47bc00cae6ed4556d51c730604452757a
    considering any DTB change.
 
 No physical result is claimed until those gates are observed on the device.
+
+## Offline deployment to the existing card
+
+The 62.5 GB Pixel2 card was identified as `/dev/disk4`; its mounted labels were
+`PLUMOS_BOOT` and `PLUMOS_USER`. Before deployment, the live runtime DTB was the
+former VBUS-linked artifact:
+
+```text
+before_sha256=89a32c94ebfae5983b1cf98209aaf8f11a6d8d2f7d29d66008d35125a2e328dc
+```
+
+The card already retained `rk3326s-gkd-pixel2.dtb.stock-a7a438f7`, and that
+backup matched the registered host stock DTB. The active patched DTB was also
+copied to the host evidence directory before replacement. The registered host
+artifact was copied to a temporary file on `PLUMOS_BOOT`, verified, and renamed
+over the runtime DTB. Final readback was byte-identical:
+
+```text
+after_sha256=a7a438f705f994a9f333b2f334a803d47bc00cae6ed4556d51c730604452757a
+cmp=exact-stock
+```
+
+Before/after inventories differed only at
+`rk3326s-gkd-pixel2.dtb`. `Image`, `SYSTEM`, System A/B slots, Runtime,
+`PLUMOS_USER`, ROMs, BIOS, settings, and saved network state were not changed.
+`diskutil verifyVolume /dev/disk4s1` completed with `fsck_msdos` exit code zero,
+then all card volumes were unmounted successfully.
+
+Physical ADB and Wi-Fi acceptance remains pending.
