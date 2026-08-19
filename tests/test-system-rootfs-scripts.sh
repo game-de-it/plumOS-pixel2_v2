@@ -26,6 +26,7 @@ for script in \
     "$ROOT_DIR/rootfs/pixel2/sbin/init" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/systemd/systemd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh" \
@@ -55,8 +56,10 @@ grep -q 'physical_yres' \
 grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q '^USB_ONLINE=' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'Wi-Fi is permitted only after ADB is explicitly disabled' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+test "$(sha256sum "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
+    6d18796073275d667889a9d2c5b9e2df2eae298003c2bbb94f2d937579c81d22
+test "$(sha256sum "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{print $1}')" = \
+    b67891ffd006701d96e82442491ec89eacd9866f65e077946e12d0fde908b876
 grep -q 'result=skipped reason=adb-priority' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'result=disabled reason=adb-priority' \
@@ -74,7 +77,6 @@ grep -q 'transport=nonblocking FunctionFS' \
 ! grep -q '0001-plumos-transport-state.patch' \
     "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'recover_adbd' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'busybox.*uevent' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
@@ -82,12 +84,12 @@ grep -q 'recover_adbd' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'action=watchdog-' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'adb_enabled_by_policy()' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'default-on-no-explicit-setting' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q '/mnt/plumos-user/plumos-enable-adb' \
+! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug|status' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q '/mnt/plumos/config/network/services.conf' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+grep -q 'event=daemon-missing action=restart' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog"
+! grep -Eq 'UDC|usb_role|functionfs|transport|configured|not attached' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog"
 grep -q 'plumos-network-services' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
 grep -q 'plumos-wifi-recovery' \

@@ -3,163 +3,22 @@ set -u
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH HOME=/root
-GADGET="${PLUMOS_ADB_GADGET:-/sys/kernel/config/usb_gadget/plumos_pixel2}"
-CONFIGFS_ROOT="${PLUMOS_ADB_CONFIGFS_ROOT:-/sys/kernel/config/usb_gadget}"
-UDC_CLASS="${PLUMOS_ADB_UDC_CLASS:-/sys/class/udc}"
-FFS="${PLUMOS_ADB_FFS:-/dev/usb-ffs/adb}"
-ADBD_BIN="${PLUMOS_ADB_BINARY:-/usr/sbin/adbd}"
-PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
-ACTION_LOCK="${PLUMOS_ADB_ACTION_LOCK:-/run/plumos/adbd-action.lock}"
-LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
-SERIAL_FILE="${PLUMOS_ADB_SERIAL_FILE:-/state/plumos/config/adb-serial}"
-PROC_ROOT="${PLUMOS_ADB_PROC_ROOT:-/proc}"
-PROC_MOUNTS="${PLUMOS_ADB_PROC_MOUNTS:-/proc/mounts}"
-UMOUNT_BIN="${PLUMOS_ADB_UMOUNT:-umount}"
-USB_ROLE_GLOB="${PLUMOS_ADB_USB_ROLE_GLOB:-/sys/class/usb_role/*/role}"
-SERVICES_CONF="${PLUMOS_ADB_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
-OPT_IN_MARKER="${PLUMOS_ADB_OPT_IN_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
-RECOVERY_WAIT="${PLUMOS_ADB_RECOVERY_WAIT:-6}"
-ACTION_LOCK_WAIT="${PLUMOS_ADB_ACTION_LOCK_WAIT:-12}"
-ACTION_LOCK_HELD=0
+GADGET=/sys/kernel/config/usb_gadget/plumos_pixel2
+FFS=/dev/usb-ffs/adb
+PID=/run/plumos/adbd.pid
+LOG=/state/plumos/logs/adbd.log
+SERIAL_FILE=/state/plumos/config/adb-serial
 
 log() {
     mkdir -p "${LOG%/*}"
     printf '%s service=adb %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
 }
 
-release_action_lock() {
-    [ "$ACTION_LOCK_HELD" -eq 1 ] || return 0
-    rm -f "$ACTION_LOCK/pid"
-    rmdir "$ACTION_LOCK" 2>/dev/null || true
-    ACTION_LOCK_HELD=0
-}
-
-acquire_action_lock() {
-    action=$1
-    mkdir -p "${ACTION_LOCK%/*}"
-    waited=0
-    while ! mkdir "$ACTION_LOCK" 2>/dev/null; do
-        lock_pid=$(cat "$ACTION_LOCK/pid" 2>/dev/null || true)
-        case "$lock_pid" in
-            ''|*[!0-9]*) lock_pid= ;;
-        esac
-        if [ -z "$lock_pid" ] || ! kill -0 "$lock_pid" 2>/dev/null; then
-            rm -f "$ACTION_LOCK/pid"
-            rmdir "$ACTION_LOCK" 2>/dev/null || true
-            continue
-        fi
-        if [ "$waited" -ge "$ACTION_LOCK_WAIT" ]; then
-            log "result=action-busy action=$action owner=$lock_pid waited=$waited"
-            return 1
-        fi
-        sleep 1
-        waited=$((waited + 1))
-    done
-    printf '%s\n' "$$" >"$ACTION_LOCK/pid"
-    ACTION_LOCK_HELD=1
-}
-
-run_mutating_action() {
-    action=$1
-    shift
-    acquire_action_lock "$action" || return 1
-    trap 'release_action_lock' EXIT
-    "$@"
-    rc=$?
-    release_action_lock
-    trap - EXIT
-    return "$rc"
-}
-
-pid_running() {
-    [ -s "$PID" ] || return 1
-    pid=$(tr -d '[:space:]' <"$PID" 2>/dev/null || true)
-    case "$pid" in ''|*[!0-9]*) return 1 ;; esac
-    kill -0 "$pid" 2>/dev/null || return 1
-    cmdline=$(tr '\000' ' ' <"$PROC_ROOT/$pid/cmdline" 2>/dev/null || true)
-    case "$cmdline" in *adbd*) return 0 ;; esac
-    return 1
-}
-
-gadget_bound() {
-    [ -r "$GADGET/UDC" ] && [ -n "$(cat "$GADGET/UDC" 2>/dev/null)" ]
-}
-
-ffs_mounted() {
-    grep -q " $FFS functionfs " "$PROC_MOUNTS" 2>/dev/null
-}
-
-any_other_gadget_bound() {
-    for udc_file in "$CONFIGFS_ROOT"/*/UDC; do
-        [ -e "$udc_file" ] || continue
-        [ "$udc_file" = "$GADGET/UDC" ] && continue
-        [ -n "$(cat "$udc_file" 2>/dev/null)" ] && return 0
-    done
-    return 1
-}
-
-udc_path() {
-    set -- "$UDC_CLASS"/*
-    [ -e "$1" ] || return 1
-    printf '%s\n' "$1"
-}
-
-udc_state() {
-    path=$(udc_path 2>/dev/null) || {
-        printf 'missing\n'
-        return 1
-    }
-    cat "$path/state" 2>/dev/null || printf 'unknown\n'
-}
-
-udc_online() {
-    case "$(udc_state 2>/dev/null || true)" in
-        configured|suspended) return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
-wait_udc_online() {
-    timeout=$1
-    elapsed=0
-    while [ "$elapsed" -lt "$timeout" ]; do
-        udc_online && return 0
-        sleep 1
-        elapsed=$((elapsed + 1))
-    done
-    udc_online
-}
-
-adb_enabled_by_policy() {
-    [ -f "$OPT_IN_MARKER" ] && return 0
-    if [ -r "$SERVICES_CONF" ]; then
-        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-        case "$mode" in
-            adb) return 0 ;;
-            wifi|off) return 1 ;;
-        esac
-    fi
-    # Pixel2 has no onboard Wi-Fi, so a fresh or recovered image must retain a
-    # maintenance path.  A value written by the frontend always wins; only an
-    # absent setting uses the default-on policy.
-    [ -r "$SERVICES_CONF" ] || return 0
-    value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-    case "$value" in
-        1|true|on) return 0 ;;
-        0|false|off) return 1 ;;
-        '') return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
-unbind_gadget() {
+stop_adbd() {
     if [ -e "$GADGET/UDC" ]; then
         : >"$GADGET/UDC" 2>>"$LOG" || true
     fi
-}
-
-stop_adbd_process() {
-    if pid_running; then
+    if [ -s "$PID" ]; then
         pid=$(cat "$PID")
         kill "$pid" 2>/dev/null || true
         elapsed=0
@@ -170,69 +29,34 @@ stop_adbd_process() {
         kill -9 "$pid" 2>/dev/null || true
     fi
     rm -f "$PID"
-}
-
-teardown_gadget() {
-    # Match the proven V90S lifecycle. Reusing a bound FunctionFS mount leaves
-    # stale ep0/ep1/ep2 state after a host-side disconnect, so every explicit
-    # stop/restart destroys the complete gadget and starts with fresh endpoints.
-    unbind_gadget
-    stop_adbd_process
-    if ffs_mounted; then
-        "$UMOUNT_BIN" "$FFS" >>"$LOG" 2>&1 || true
-    fi
-    if [ -d "$GADGET" ]; then
-        rm -f "$GADGET/configs/c.1/ffs.adb" 2>/dev/null || true
-        rmdir "$GADGET/functions/ffs.adb" 2>/dev/null || true
-        rmdir "$GADGET/configs/c.1/strings/0x409" 2>/dev/null || true
-        rmdir "$GADGET/configs/c.1" 2>/dev/null || true
-        rmdir "$GADGET/strings/0x409" 2>/dev/null || true
-        rmdir "$GADGET" 2>/dev/null || true
-    fi
-}
-
-stop_adbd() {
-    teardown_gadget
     log 'result=stopped'
 }
 
 start_adbd() {
-    if ! adb_enabled_by_policy; then
-        log "result=disabled reason=explicit-user-setting marker=$OPT_IN_MARKER"
-        return 0
-    fi
-    [ -x "$ADBD_BIN" ] || {
+    [ -x /usr/sbin/adbd ] || {
         log 'result=failed reason=binary-missing'
         return 1
     }
-    if pid_running && gadget_bound && ffs_mounted; then
+    if [ -s "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
         log "result=already-running pid=$(cat "$PID")"
         return 0
     fi
-    if pid_running || [ -d "$GADGET" ] || ffs_mounted; then
-        log 'event=incomplete-gadget action=full-teardown'
-        teardown_gadget
-    fi
-    [ -d "$CONFIGFS_ROOT" ] || \
+    [ -d /sys/kernel/config/usb_gadget ] || \
         mount -t configfs configfs /sys/kernel/config
-    for role_file in $USB_ROLE_GLOB; do
+    for role_file in /sys/class/usb_role/*/role; do
         [ -w "$role_file" ] || continue
         printf 'device\n' >"$role_file" 2>>"$LOG" || true
         log "usb_role path=$role_file value=$(cat "$role_file" 2>/dev/null || true)"
     done
     mdev -s 2>/dev/null || true
     sleep 1
-    udc_path=$(udc_path 2>/dev/null) || {
+    set -- /sys/class/udc/*
+    [ -e "$1" ] || {
         log 'result=failed reason=udc-missing'
         return 1
     }
-    udc=${udc_path##*/}
-    log "udc=result-found name=$udc state=$(cat "$udc_path/state" 2>/dev/null || true)"
-
-    if any_other_gadget_bound; then
-        log 'result=failed reason=other-gadget-bound'
-        return 1
-    fi
+    udc=${1##*/}
+    log "udc=result-found name=$udc state=$(cat "$1/state" 2>/dev/null || true)"
 
     mkdir -p "$GADGET/strings/0x409" \
         "$GADGET/configs/c.1/strings/0x409" \
@@ -254,10 +78,10 @@ start_adbd() {
     printf '120\n' >"$GADGET/configs/c.1/MaxPower"
     [ -e "$GADGET/configs/c.1/ffs.adb" ] || \
         ln -s "$GADGET/functions/ffs.adb" "$GADGET/configs/c.1/ffs.adb"
-    ffs_mounted || \
+    grep -q " $FFS functionfs " /proc/mounts 2>/dev/null || \
         mount -t functionfs adb "$FFS"
 
-    "$ADBD_BIN" >>"$LOG" 2>&1 &
+    /usr/sbin/adbd >>"$LOG" 2>&1 &
     printf '%s\n' "$!" >"$PID"
     elapsed=0
     while [ "$elapsed" -lt 12 ]; do
@@ -279,101 +103,12 @@ start_adbd() {
         stop_adbd
         return 1
     }
-    log "result=started udc=$udc access=default-on-no-explicit-setting"
-}
-
-rebind_adbd() {
-    udc_path=$(udc_path 2>/dev/null) || return 1
-    udc=${udc_path##*/}
-    : >"$GADGET/UDC" 2>>"$LOG" || return 1
-    sleep 1
-    printf '%s\n' "$udc" >"$GADGET/UDC" 2>>"$LOG" || return 1
-    wait_udc_online "$RECOVERY_WAIT"
-}
-
-recover_adbd() {
-    if pid_running && gadget_bound; then
-        state=$(udc_state 2>/dev/null || true)
-        case "$state" in
-            configured|suspended)
-                log "result=recover-not-needed state=$state"
-                return 0
-                ;;
-            *)
-                log "action=rebind reason=udc-${state:-unknown}"
-                if rebind_adbd; then
-                    log "result=recovered action=rebind state=$(udc_state 2>/dev/null || true)"
-                    return 0
-                fi
-                log "result=rebind-failed state=$(udc_state 2>/dev/null || true) action=clean-restart"
-                ;;
-        esac
-    fi
-    if pid_running && [ -e "$GADGET/UDC" ]; then
-        udc_path=$(udc_path 2>/dev/null) || return 1
-        printf '%s\n' "${udc_path##*/}" >"$GADGET/UDC" && {
-            log "result=recovered action=bind udc=${udc_path##*/}"
-            return 0
-        }
-    fi
-    log 'action=recover-restart'
-    stop_adbd
-    start_adbd
-}
-
-replug_adbd() {
-    if ! adb_enabled_by_policy; then
-        log 'result=replug-skipped reason=disabled'
-        return 0
-    fi
-    if pid_running && gadget_bound; then
-        state=$(udc_state 2>/dev/null || true)
-        log "action=rebind reason=usb-replug state=${state:-unknown}"
-        if rebind_adbd; then
-            log "result=replug-recovered action=rebind state=$(udc_state 2>/dev/null || true)"
-            return 0
-        fi
-        log "result=replug-rebind-failed state=$(udc_state 2>/dev/null || true) action=clean-restart"
-    else
-        log 'action=replug-restart reason=daemon-or-gadget-missing'
-    fi
-    stop_adbd
-    start_adbd
-}
-
-restart_adbd() {
-    stop_adbd
-    start_adbd
-}
-
-status_adbd() {
-    state=stopped
-    bound=0
-    gadget_bound && bound=1
-    udc_state=unknown
-    udc_path=$(udc_path 2>/dev/null || true)
-    [ -n "$udc_path" ] && [ -e "$udc_path/state" ] && \
-        udc_state=$(cat "$udc_path/state" 2>/dev/null || true)
-    if ! adb_enabled_by_policy; then
-        state=disabled
-    elif pid_running && [ "$bound" -eq 1 ]; then
-        case "$udc_state" in
-            configured|suspended) state=running ;;
-            *) state=waiting_usb ;;
-        esac
-    fi
-    printf 'service=adb\nrunning=%s\ngadget_bound=%s\nudc_state=%s\n' \
-        "$(pid_running && echo 1 || echo 0)" "$bound" "$udc_state"
-    printf 'state=%s\nopted_in=%s\n' "$state" \
-        "$(adb_enabled_by_policy && echo 1 || echo 0)"
+    log "result=started udc=$udc auth=disabled-development"
 }
 
 case "${1:-}" in
-    start) run_mutating_action start start_adbd ;;
-    stop) run_mutating_action stop stop_adbd ;;
-    restart) run_mutating_action restart restart_adbd ;;
-    recover) run_mutating_action recover recover_adbd ;;
-    replug) run_mutating_action replug replug_adbd ;;
-    status) status_adbd ;;
-    *) printf 'usage: %s {start|stop|restart|recover|replug|status}\n' "$0" >&2; exit 2 ;;
+    start) start_adbd ;;
+    stop) stop_adbd ;;
+    restart) stop_adbd; start_adbd ;;
+    *) printf 'usage: %s {start|stop|restart}\n' "$0" >&2; exit 2 ;;
 esac
