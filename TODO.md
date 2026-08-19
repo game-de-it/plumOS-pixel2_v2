@@ -150,6 +150,17 @@
         sourceとする署名packageは署名・ABI・manifest・全payload検証に合格し、FAT32
         update inboxへreadback一致で配置済み。Systemを最新mtimeとして通常A/B更新を
         先行させ、その後Runtimeを適用してOff -> ADB実機確認を継続する。
+      - `644c77d`適用後もFE `waiting`で不合格。複雑化した排他制御、自動recovery、
+        UDC状態判定を追加する方針を中止し、ADBが通常接続できていた初期安定化
+        `6f022d4`の`10-adbd`とdaemon-only watchdogをbyte-for-byteで復元した。
+        `10-adbd`はFE設定、Wi-Fi、`usb_mode`、marker、replug/recover/statusを一切参照せず、
+        FunctionFS作成、nonblocking adbd起動、ep1/ep2待機、UDC bindだけを行う。
+        現Runtimeや保存設定によるUSB host化を排除するため、復旧Systemではimmutable
+        `/etc/plumos-adb-only`によりUSB host再列挙、USB Wi-Fi、Runtime network service
+        bootstrapを休止する。`f30be85`と`fde06bb`に分割コミットし、exact SHA gate、
+        System script、dispatcher、ARM64 rootfs検証は合格。System
+        `0.1.0-dev-fde06bb`を生成済み。SDのactive slotをread-only確認後にoffline適用し、
+        cold boot shellを最優先で確認する。Wi-Fi/USB mode再導入はADB合格後の別作業とする。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
