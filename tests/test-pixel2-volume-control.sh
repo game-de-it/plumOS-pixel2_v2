@@ -24,12 +24,20 @@ $CONTROL speaker-boost runtime 5.5
 [ "$(cat "$PLUMOS_SPEAKER_BOOST_RUNTIME_STATE")" = "11" ]
 [ "$(cat "$PLUMOS_SPEAKER_BOOST_SAVED_STATE")" = "9" ]
 
+$CONTROL speaker-boost runtime 20
+[ "$(cat "$PLUMOS_SPEAKER_BOOST_RUNTIME_STATE")" = "40" ]
+[ "$($CONTROL speaker-boost get)" = "20.0" ]
+
 rm -f "$PLUMOS_SPEAKER_BOOST_RUNTIME_STATE"
 $CONTROL apply 20
 [ "$(cat "$PLUMOS_SPEAKER_BOOST_RUNTIME_STATE")" = "9" ]
 
 if $CONTROL speaker-boost apply 4.2 >/dev/null 2>&1; then
   printf 'invalid boost value was accepted\n' >&2
+  exit 1
+fi
+if $CONTROL speaker-boost apply 20.5 >/dev/null 2>&1; then
+  printf 'out-of-range boost value was accepted\n' >&2
   exit 1
 fi
 

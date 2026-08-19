@@ -64,8 +64,11 @@ use the Pixel2 `plumos_output` ALSA router, which opens the physical RK817 PCM
 through the generated app-layer ALSA config, mirrors V90S-style immediate
 runtime volume reads, and applies software gain when `/run/plumos/volume/current`
 is below the maximum logical level. The internal RK817 speaker route applies a
-configurable `0` through `+6 dB` software boost in `0.5 dB` steps after logical
-volume scaling; the default is `+3 dB`. The router reads
+configurable `0` through `+20 dB` software boost in `0.5 dB` steps after logical
+volume scaling; the default is `+3 dB`. Values above `+6 dB` are an explicit
+hardware-validation range, not a release default: saturation prevents numeric
+wraparound but high average full-scale output can cause severe distortion,
+amplifier heating, or speaker damage. The router reads
 `/run/plumos/volume/speaker-boost-step` on every transfer, so
 `plumos-volume-control speaker-boost apply 4.5` changes and persists gain
 without rebuilding or restarting an already running emulator. Samples outside

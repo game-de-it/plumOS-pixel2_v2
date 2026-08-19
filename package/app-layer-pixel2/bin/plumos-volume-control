@@ -18,7 +18,7 @@ usage() {
   printf '%s\n' \
     'Usage: plumos-volume-control init|apply [0..20]|up|down|step +/-N|get|status' \
     '       plumos-volume-control runtime-up|runtime-down|runtime-step +/-N|persist-runtime' \
-    '       plumos-volume-control speaker-boost get|apply|runtime 0..6 (0.5 dB steps)'
+    '       plumos-volume-control speaker-boost get|apply|runtime 0..20 (0.5 dB steps)'
 }
 
 normalize() {
@@ -41,21 +41,24 @@ normalize_boost_step() {
   case "$value" in ""|*[!0-9]*) return 1 ;; esac
   value="$(printf '%s' "$value" | sed 's/^0*//')"
   [ -n "$value" ] || value=0
-  [ "$value" -le 12 ] || return 1
+  [ "$value" -le 40 ] || return 1
   printf '%s\n' "$value"
 }
 
 boost_db_to_step() {
-  case "${1:-}" in
-    0|0.0) printf '0\n' ;; 0.5) printf '1\n' ;;
-    1|1.0) printf '2\n' ;; 1.5) printf '3\n' ;;
-    2|2.0) printf '4\n' ;; 2.5) printf '5\n' ;;
-    3|3.0) printf '6\n' ;; 3.5) printf '7\n' ;;
-    4|4.0) printf '8\n' ;; 4.5) printf '9\n' ;;
-    5|5.0) printf '10\n' ;; 5.5) printf '11\n' ;;
-    6|6.0) printf '12\n' ;;
-    *) return 1 ;;
+  value="${1:-}"
+  half=0
+  case "$value" in
+    *.5) half=1; value="${value%.5}" ;;
+    *.0) value="${value%.0}" ;;
+    *.*) return 1 ;;
   esac
+  case "$value" in ""|*[!0-9]*) return 1 ;; esac
+  value="$(printf '%s' "$value" | sed 's/^0*//')"
+  [ -n "$value" ] || value=0
+  [ "$value" -le 20 ] || return 1
+  [ "$half" -eq 0 ] || [ "$value" -lt 20 ] || return 1
+  printf '%s\n' $((value * 2 + half))
 }
 
 boost_step_to_db() {
