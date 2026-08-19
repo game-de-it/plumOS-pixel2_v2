@@ -19,6 +19,8 @@
 #define VOLUME_MAX 20
 #define VOLUME_DEFAULT 8
 #define VOLUME_PROBE_INTERVAL 0
+#define INTERNAL_SPEAKER_BOOST_NUMERATOR 1413
+#define INTERNAL_SPEAKER_BOOST_DENOMINATOR 1000
 #define INTERNAL_CARD_ID "rockchiprk817"
 
 typedef struct {
@@ -119,15 +121,26 @@ static int read_system_volume(void)
     return volume >= 0 ? volume : VOLUME_DEFAULT;
 }
 
-static int16_t apply_software_volume(int16_t sample, int volume)
+static int16_t apply_software_volume(int16_t sample, int volume,
+                                     int internal_speaker)
 {
     int32_t scaled;
+    int32_t divisor = VOLUME_MAX;
 
     volume = clamp_volume(volume);
-    if (volume == VOLUME_MAX)
+    if (!internal_speaker && volume == VOLUME_MAX)
         return sample;
     scaled = (int32_t)sample * volume;
-    return (int16_t)(scaled / VOLUME_MAX);
+    if (internal_speaker) {
+        scaled *= INTERNAL_SPEAKER_BOOST_NUMERATOR;
+        divisor *= INTERNAL_SPEAKER_BOOST_DENOMINATOR;
+    }
+    scaled /= divisor;
+    if (scaled > INT16_MAX)
+        return INT16_MAX;
+    if (scaled < INT16_MIN)
+        return INT16_MIN;
+    return (int16_t)scaled;
 }
 
 static int fast_forward_is_active(const plumos_pcm_t *pcm)
@@ -681,7 +694,7 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
 
     output = input;
     if (io->channels == 1 || io->format != SND_PCM_FORMAT_S16_LE ||
-        pcm->volume_level < VOLUME_MAX) {
+        pcm->volume_level < VOLUME_MAX || !pcm->physical_is_usb) {
         err = ensure_output_buffer(pcm, size);
         if (err < 0)
             return err;
@@ -689,8 +702,10 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
             int16_t left;
             int16_t right;
             read_input_frame(io, input, frame, &left, &right);
-            left = apply_software_volume(left, pcm->volume_level);
-            right = apply_software_volume(right, pcm->volume_level);
+            left = apply_software_volume(left, pcm->volume_level,
+                                         !pcm->physical_is_usb);
+            right = apply_software_volume(right, pcm->volume_level,
+                                          !pcm->physical_is_usb);
             pcm->output_buffer[frame * 2] = left;
             pcm->output_buffer[frame * 2 + 1] = right;
         }
@@ -702,7 +717,7 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
         if (switch_route(pcm, 1) == 0) {
             if (io->channels == 1 ||
                 io->format != SND_PCM_FORMAT_S16_LE ||
-                pcm->volume_level < VOLUME_MAX) {
+                pcm->volume_level < VOLUME_MAX || !pcm->physical_is_usb) {
                 err = ensure_output_buffer(pcm, size);
                 if (err < 0)
                     return err;
@@ -710,8 +725,10 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
                     int16_t left;
                     int16_t right;
                     read_input_frame(io, input, frame, &left, &right);
-                    left = apply_software_volume(left, pcm->volume_level);
-                    right = apply_software_volume(right, pcm->volume_level);
+                    left = apply_software_volume(left, pcm->volume_level,
+                                                 !pcm->physical_is_usb);
+                    right = apply_software_volume(right, pcm->volume_level,
+                                                  !pcm->physical_is_usb);
                     pcm->output_buffer[frame * 2] = left;
                     pcm->output_buffer[frame * 2 + 1] = right;
                 }

@@ -63,7 +63,10 @@ The RK817 ALSA card is visible as `rockchiprk817`. RetroArch/libretro launches
 use the Pixel2 `plumos_output` ALSA router, which opens the physical RK817 PCM
 through the generated app-layer ALSA config, mirrors V90S-style immediate
 runtime volume reads, and applies software gain when `/run/plumos/volume/current`
-is below the maximum logical level.
+is below the maximum logical level. The internal RK817 speaker route applies a
+fixed `+3 dB` software boost (1413/1000 linear gain) after logical volume
+scaling. Samples outside the signed 16-bit range are saturated instead of
+wrapping. The boost does not apply when the router selects a USB audio card.
 
 Hardware mixer control remains a future enhancement for non-router clients, but
 the plumOS-managed emulator path should use the router so volume keys work
