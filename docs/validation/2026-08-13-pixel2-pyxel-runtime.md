@@ -80,9 +80,31 @@ Pillow 12.3.0
 `plumos-text-ui launch pyxel pyxel/test.pyxapp --no-scan` produces
 `launch_profile: pyxel:pixel2` with `can_execute: yes`.
 
+## Real-device validation
+
+On 2026-08-20 all FE Pyxel routes failed before creating a window. The device
+log showed Mesa falling through `zink`, `kms_swrast`, and `swrast`, followed by
+`Failed to create window: EGL not initialized`. The launcher was pointing SDL
+at an absent `/mnt/plumos/lib/libEGL.so.1` and forced the internal GPU name
+`panfrost`, while the stock KMS device and packaged Mesa DRI payload use the
+`rockchip` DRM driver name.
+
+The launcher now follows the physically validated Pixel2 PortMaster GLES
+contract:
+
+- SDL loads EGL/GLES from `apps/pyxel/lib`.
+- the packaged Mesa mega-driver is exposed as `rockchip_dri.so` in volatile
+  state;
+- `MESA_LOADER_DRIVER_OVERRIDE` is cleared so Mesa selects from the KMS device.
+
+With those settings, `LastEmulator.pyxapp` remained alive for the bounded
+10-second SSH launch test and the prior `EGL not initialized` failure did not
+recur. FE launch and operator-visible display/input/audio acceptance remain to
+be completed after the checksummed runtime deployment.
+
 ## Still requires real-device validation
 
-- Pyxel launch from FE
+- Pyxel launch from FE after the 2026-08-20 GLES correction
 - display orientation/aspect on the Pixel2 LCD
 - controls and exit hotkey
 - audio stability through `plumos_output`

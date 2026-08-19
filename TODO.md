@@ -12,6 +12,13 @@
 
 ## Implementation audit and release blockers
 
+- [ ] PyxelのPixel2実機acceptanceを完了する
+  - 2026-08-20: 全Pyxelタイトルが`EGL not initialized`で終了する原因を、存在しない
+    root EGL pathと誤った`panfrost` loader強制に特定。PortMaster実機合格経路と同じ
+    `apps/pyxel` EGL/GLES、`rockchip_dri.so`、Mesa自動選択へ修正し、SSHの10秒bounded
+    launchではwindow初期化失敗が消えた。checksummed Runtime反映後にFE起動、向き、
+    アスペクト、入力、終了hotkey、音声をoperator確認する。
+
 - [x] SDL/KMSのマウスカーソルがFE/PortMasterへ残留しないようにする
   - 2026-08-20: 実機DRM captureで64x64 ARGBのhardware cursor plane 69を確認。
     PortMaster adapter 39はcontroller-only UIでSDL cursorを常時非表示にし、FEは

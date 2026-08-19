@@ -24,12 +24,12 @@ if [ -f "$PLUMOS_ROOT/config/standalone/soname-links.tsv" ]; then
     ln -sf "$PLUMOS_ROOT/lib/$real_name" "$SONAME_DIR/$soname"
   done <"$PLUMOS_ROOT/config/standalone/soname-links.tsv"
 fi
-# Debian's Mesa mega-driver is packaged under the DRM display-controller name
-# rockchip_dri.so, but Panfrost is the RK3326 3D driver selected by EGL.  Give
-# the same binary its Mesa driver name in volatile state so hardware GLES can
-# be used without duplicating the 23 MiB DRI payload.
+# The stock Pixel2 KMS device is exposed by rockchip-drm. Keep the Mesa
+# mega-driver under that DRM driver name, matching the physically validated
+# PortMaster GLES path. Forcing the internal GPU name (panfrost) makes Mesa
+# probe zink/kms_swrast instead and Pyxel fails with "EGL not initialized".
 if [ -f "$PLUMOS_ROOT/emulator/dri/rockchip_dri.so" ]; then
-  ln -sf "$PLUMOS_ROOT/emulator/dri/rockchip_dri.so" "$DRI_DIR/panfrost_dri.so"
+  ln -sf "$PLUMOS_ROOT/emulator/dri/rockchip_dri.so" "$DRI_DIR/rockchip_dri.so"
 fi
 
 audio_output="$PLUMOS_ROOT/bin/plumos-audio-output"
@@ -63,11 +63,11 @@ export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$RUNTIME_ROOT/audio/asound.conf}"
 export ALSA_PLUGIN_DIR="${ALSA_PLUGIN_DIR:-$PLUMOS_ROOT/lib/alsa-lib}"
 export AUDIODEV="${AUDIODEV:-plumos_output}"
 export SDL_VIDEO_KMSDRM_DEVICE_INDEX="${SDL_VIDEO_KMSDRM_DEVICE_INDEX:-0}"
-export SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-$PLUMOS_ROOT/lib/libEGL.so.1}"
-export SDL_VIDEO_GL_DRIVER="${SDL_VIDEO_GL_DRIVER:-$PLUMOS_ROOT/lib/libGLESv2.so.2}"
+export SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-$PYXEL_ROOT/lib/libEGL.so.1}"
+export SDL_VIDEO_GL_DRIVER="${SDL_VIDEO_GL_DRIVER:-$PYXEL_ROOT/lib/libGLESv2.so.2}"
 export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-$DRI_DIR}"
-export MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-panfrost}"
 export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-$PLUMOS_ROOT/emulator/egl_vendor.d/50_mesa.json}"
+unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE
 # Prefer the Debian SDL2 KMSDRM build shared by the emulator runtime. The Pyxel
 # wheel's bundled SDL2 has no KMSDRM backend on Linux/aarch64.
 export LD_LIBRARY_PATH="$SONAME_DIR:$PLUMOS_ROOT/emulator/lib:$PYXEL_ROOT/lib:$PYTHON_ROOT/lib:$PLUMOS_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"

@@ -198,6 +198,17 @@ grep -q '"component": "pyxel"' "$ROOT/components/pyxel/manifest.json"
 grep -q '"device": "pixel2"' "$ROOT/components/picoarch/manifest.json"
 grep -q '"device": "pixel2"' "$ROOT/components/standalone/manifest.json"
 grep -q '"device": "pixel2"' "$ROOT/components/pyxel/manifest.json"
+grep -Fq 'SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-$PYXEL_ROOT/lib/libEGL.so.1}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq '"$DRI_DIR/rockchip_dri.so"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+if grep -Fq 'MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-panfrost}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"; then
+    echo "Pixel2 Pyxel must not force the Panfrost Mesa loader name" >&2
+    exit 1
+fi
 grep -q '"id": "pyxel"' "$ROOT/config/frontend/systems.json"
 if jq -e '.emulators[] | select(.id == "pcsx_rearmed" and .status == "built")' \
     "$ROOT/components/standalone/manifest.json" >/dev/null; then
