@@ -12,6 +12,12 @@
 
 ## Implementation audit and release blockers
 
+- [x] FE起動前にPixel2の基底framebufferを毎回クリアする
+  - 2026-08-20: 初回setup/update/recoveryの最終画面がDRM clientの背後に残り、
+    game/app切替時に一瞬再表示される問題へ対処。Systemがnative
+    480x640 XRGB8888のopaque-black frameを生成・検証し、`40-frontend`の共通起動経路で
+    FE process生成直前に`/dev/fb0`へ書き込む。ゲーム起動前の既存FE側クリアも維持する。
+
 - [x] build target、FE導線、runtime helper、Apps、standalone、storage/update、release準備を横断監査する
   - 2026-08-13: [実装リスト](docs/developer/implementation-status.md)を更新。SaturnをRK3326性能要件で非対応化し、97 system中87 enabled、109 libretro core、standalone 4 built / 4 pendingを現行baselineとする。
 - [x] FE catalogと生成app-layerの不整合を検出する自動監査を追加する

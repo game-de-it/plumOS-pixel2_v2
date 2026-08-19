@@ -66,7 +66,7 @@ test -x "$tmp/rootfs/usr/bin/python3"
 test -x "$tmp/rootfs/usr/bin/openssl"
 test -L "$tmp/rootfs/usr/bin/env"
 test -f "$tmp/rootfs/etc/plumos-update-public.pem"
-for frame in prepare resize userdata verify start error update_verify \
+for frame in blank prepare resize userdata verify start error update_verify \
     update_runtime update_system update_finalize update_rollback update_error; do
     path="$tmp/rootfs/usr/share/plumos/update-progress/$frame.raw"
     test -f "$path" || {
@@ -78,6 +78,18 @@ for frame in prepare resize userdata verify start error update_verify \
         exit 1
     }
 done
+python3 - "$tmp/rootfs/usr/share/plumos/update-progress/blank.raw" <<'PY'
+from pathlib import Path
+import sys
+
+payload = Path(sys.argv[1]).read_bytes()
+assert payload == b"\x00\x00\x00\xff" * (480 * 640), \
+    "Pixel2 frontend handoff frame is not opaque black"
+PY
+grep -q 'clear_frontend_handoff_framebuffer' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/40-frontend"
+grep -q 'phase=pre-start' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/40-frontend"
 grep -q 'show_progress prepare' \
     "$tmp/rootfs/usr/sbin/plumos-first-boot-provision"
 grep -q 'show_progress resize' \

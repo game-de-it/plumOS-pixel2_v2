@@ -46,6 +46,10 @@ grep -q 'PLUMOS_FBDEV_ROTATION=ccw' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'east-confirm' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'clear_frontend_handoff_framebuffer' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
+grep -q 'phase=pre-start' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'input-map.env' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'pixel2_joypad' \
@@ -112,12 +116,19 @@ progress_dir=$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-progress.XXXXXX")
 trap 'rm -rf "$progress_dir"' EXIT
 python3 "$ROOT_DIR/scripts/generate-pixel2-update-progress.py" \
     --output-dir "$progress_dir"
-for frame in prepare resize userdata verify start error update_verify \
+for frame in blank prepare resize userdata verify start error update_verify \
     update_runtime update_system update_finalize update_rollback update_error; do
     test -f "$progress_dir/$frame.raw"
     [ "$(stat -f '%z' "$progress_dir/$frame.raw" 2>/dev/null || \
         stat -c '%s' "$progress_dir/$frame.raw")" -eq $((480 * 640 * 4)) ]
 done
+python3 - "$progress_dir/blank.raw" <<'PY'
+from pathlib import Path
+import sys
+
+payload = Path(sys.argv[1]).read_bytes()
+assert payload == b"\x00\x00\x00\xff" * (480 * 640)
+PY
 grep -q 'build-pixel2-update-package.py' "$ROOT_DIR/scripts/docker-build.sh"
 
 ! grep -q '\$bb mountpoint' "$ROOT_DIR/rootfs/pixel2/sbin/init"

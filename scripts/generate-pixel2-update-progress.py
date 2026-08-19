@@ -132,6 +132,14 @@ def main() -> None:
         "error": ("STARTUP FAILED", 100, True),
     }
     expected_size = PHYSICAL_WIDTH * PHYSICAL_HEIGHT * 4
+    # fb0 remains visible underneath DRM clients on Pixel2.  Keep a native
+    # opaque-black frame in System so every frontend start can erase a stale
+    # setup, updater, or recovery screen before handing display ownership to
+    # the frontend.
+    blank = color(0xFF000000) * (PHYSICAL_WIDTH * PHYSICAL_HEIGHT)
+    if len(blank) != expected_size:
+        raise RuntimeError(f"unexpected blank frame size: {len(blank)}")
+    (output_dir / "blank.raw").write_bytes(blank)
     for name, (message, percent, error) in stages.items():
         payload = render(message, percent, error)
         if len(payload) != expected_size:
