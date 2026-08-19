@@ -200,7 +200,7 @@ for service in /usr/lib/plumos/init.d/*; do
     [ -x "$service" ] || continue
     service_name=${service##*/}
     case "$service_name:$usb_boot_mode" in
-        10-adbd:wifi|10-adbd:off|15-adbd-watchdog:wifi|15-adbd-watchdog:off)
+        10-adbd:wifi|10-adbd:off)
             printf 'plumos-init=service-skipped name=%s reason=usb-owner-%s\n' \
                 "$service_name" "$usb_boot_mode" \
                 >>/mnt/plumos/logs/init.log 2>/dev/null || true

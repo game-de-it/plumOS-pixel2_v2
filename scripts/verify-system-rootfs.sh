@@ -39,17 +39,13 @@ for script in 15-usb-host-reenumerate 20-usb-wifi 35-network-services; do
 done
 grep -q 'plumos-init=usb-owner mode=' "$tmp/rootfs/sbin/init"
 grep -q '10-adbd:wifi' "$tmp/rootfs/sbin/init"
-grep -q '15-adbd-watchdog:wifi' "$tmp/rootfs/sbin/init"
+! grep -q '15-adbd-watchdog' "$tmp/rootfs/sbin/init"
 grep -q 'plumos-enable-adb' "$tmp/rootfs/sbin/init"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
-test -x "$tmp/rootfs/usr/lib/plumos/adb-uevent"
+test ! -e "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
+test ! -e "$tmp/rootfs/usr/lib/plumos/adb-uevent"
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    68540891fe2a2e9fa2936bb8ab9a7749818a7b27f6180c1c10e081825cb3cb19
-test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{print $1}')" = \
-    4dbcdabd55ba0aa2cf942a00ebc2c17aecde9da1d364a2b382cb195030f7fbde
-test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/adb-uevent" | awk '{print $1}')" = \
-    6f9aad063b7f58b6f55bd7308476d102d28dad29ea79a12f3fd35d8de233a179
+    e51bda7b7c7e7021c16575157ceade6a0678ea018359599952a2ccbf96abf28d
 ! grep -q 'busybox.*uevent' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
@@ -58,17 +54,8 @@ test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/adb-uevent" | awk '{print $1}')" =
 grep -q 'status_adbd' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 grep -q 'ADB daemon lost its FunctionFS endpoints' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'replug_adbd' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'action=replug-restart reason=functionfs-disconnected' \
+! grep -q 'replug_adbd\|takeover_adbd\|USB_STATE.*DISCONNECTED' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'result=replug-restarted' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'busybox.*uevent' \
-    "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
-! grep -q 'while :' "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
-grep -q 'SUBSYSTEM.*android_usb' "$tmp/rootfs/usr/lib/plumos/adb-uevent"
-grep -q 'USB_STATE.*DISCONNECTED' "$tmp/rootfs/usr/lib/plumos/adb-uevent"
-grep -q 'ADBD_CONTROL.*replug' "$tmp/rootfs/usr/lib/plumos/adb-uevent"
-grep -q 'ADBD_CONTROL.*takeover' "$tmp/rootfs/usr/lib/plumos/adb-uevent"
 grep -q 'reset_dwc2_for_device' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/sbin/adbd"
 test -x "$tmp/rootfs/usr/bin/plumos-frontend-pixel2"
