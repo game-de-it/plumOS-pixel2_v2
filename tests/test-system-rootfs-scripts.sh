@@ -25,6 +25,7 @@ for script in \
     "$ROOT_DIR/rootfs/pixel2-dispatcher/init" \
     "$ROOT_DIR/rootfs/pixel2/sbin/init" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/systemd/systemd" \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/plumos-pixel2-usb-role" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi" \
@@ -57,8 +58,10 @@ grep -q 'physical_yres' \
 grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 ! grep -q '^USB_ONLINE=' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-test "$(sha256sum "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    e51bda7b7c7e7021c16575157ceade6a0678ea018359599952a2ccbf96abf28d
+grep -q 'plumos-pixel2-usb-role' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+test -x "$ROOT_DIR/tests/test-pixel2-usb-role.sh"
+"$ROOT_DIR/tests/test-pixel2-usb-role.sh"
 test ! -e "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog"
 test ! -e "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adb-uevent"
 grep -q 'result=skipped reason=adb-priority' \

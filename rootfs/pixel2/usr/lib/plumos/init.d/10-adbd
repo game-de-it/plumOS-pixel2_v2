@@ -14,6 +14,7 @@ DEVICE_ID="${PLUMOS_ADB_PLATFORM_DEVICE_ID:-ff300000.usb}"
 UDC_ROOT="${PLUMOS_ADB_UDC_ROOT:-/sys/class/udc}"
 DWC2_RESET_DELAY="${PLUMOS_ADB_DWC2_RESET_DELAY:-1}"
 DWC2_UDC_WAIT="${PLUMOS_ADB_DWC2_UDC_WAIT:-4}"
+ROLE_CONTROL="${PLUMOS_ADB_ROLE_CONTROL:-/usr/lib/plumos/plumos-pixel2-usb-role}"
 
 log() {
     mkdir -p "${LOG%/*}"
@@ -110,6 +111,14 @@ stop_adbd() {
         kill -9 "$pid" 2>/dev/null || true
     fi
     rm -f "$PID"
+    if [ -x "$ROLE_CONTROL" ]; then
+        role_result=$("$ROLE_CONTROL" auto 2>&1) || {
+            log "usb-role result=failed requested=auto detail=$role_result"
+            log 'result=stopped'
+            return 0
+        }
+        log "usb-role result=ok $role_result"
+    fi
     log 'result=stopped'
 }
 
@@ -154,6 +163,15 @@ start_adbd() {
     fi
     [ -d /sys/kernel/config/usb_gadget ] || \
         mount -t configfs configfs /sys/kernel/config
+    [ -x "$ROLE_CONTROL" ] || {
+        log "result=failed reason=role-control-missing path=$ROLE_CONTROL"
+        return 1
+    }
+    role_result=$("$ROLE_CONTROL" device 2>&1) || {
+        log "result=failed reason=device-role detail=$role_result"
+        return 1
+    }
+    log "usb-role result=ok $role_result"
     for role_file in /sys/class/usb_role/*/role; do
         [ -w "$role_file" ] || continue
         printf 'device\n' >"$role_file" 2>>"$LOG" || true

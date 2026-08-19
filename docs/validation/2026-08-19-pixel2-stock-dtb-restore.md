@@ -94,3 +94,52 @@ persistent device log from the SD card. It must not add another Off/Wi-Fi/ADB
 toggle or automatic recovery action before that evidence is collected.
 
 Wi-Fi acceptance with the stock DTB remains pending.
+
+## Persistent log diagnosis
+
+The post-failure card was captured read-only under
+`output/live/2026-08-19-pixel2-state-capture/capture.fnZbsu`; its complete
+`CAPTURE.sha256` passed. The active System and Runtime were both
+`0.1.0-dev-dacbc83`, saved USB mode was `adb`, and the exact-stock DTB remained
+installed.
+
+The latest boot reached FunctionFS bind but never FunctionFS enable:
+
+```text
+udc=result-found name=ff300000.usb state=not attached
+FUNCTIONFS_BIND
+result=started udc=ff300000.usb
+```
+
+Earlier bounded handoff captures retained on the same card prove that this was
+not an absent cable or charger-only cable. On physical insertion, the Rockchip
+PHY signals changed to ID=1, BVALID=1 and USB online=1. After DWC2 rebind they
+remained valid, but the controller still reported `is_a_peripheral=0`, speed
+`UNKNOWN`, and UDC `not attached`. Kernel output also registered a DWC2 host
+root hub and reported an endpoint disable while in host mode.
+
+The stock DTB declares `dr_mode = "otg"` but has no `usb-role-switch` property.
+The stock 5.10.198 DWC2 driver only registers `/sys/class/usb_role/*/role` when
+that property exists. The historical plumOS role loop therefore matched no
+files and did not request device mode. The remaining fault is a DWC2 OTG
+transition stuck in host mode, below adbd and FunctionFS. This also explains
+why changing monitors, endpoint I/O and the Mac ADB server did not repair the
+parent USB enumeration.
+
+## Explicit stock-compatible role correction
+
+`plumos-pixel2-usb-role` now performs the same bounded DWC2 force-mode register
+operation used by the stock kernel driver's role-switch implementation:
+
+- ADB start preserves all `GUSBCFG` fields, clears `FORCEHOSTMODE`, sets
+  `FORCEDEVMODE`, and waits at most 220 ms for device mode before creating the
+  gadget.
+- ADB stop clears both force bits so the exact-stock DTB, PHY and OTG logic
+  resume automatic ownership for Wi-Fi host operation.
+- No DTB property, stock `Image`, kernel module, cable monitor, transport
+  watchdog or timed recovery loop is added.
+
+Host tests use a fake MMIO backend and verify device force, status reporting,
+and release to automatic OTG selection. Physical acceptance remains required:
+cold boot with a Mac cable, a real `adb shell`, one cable replug, then explicit
+ADB to Wi-Fi switching with the tested RTL8821CU.

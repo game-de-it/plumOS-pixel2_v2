@@ -392,6 +392,13 @@
         cold boot、実`adb shell`、物理抜き差しを合格させ、その後同じstock DTBのまま
         RTL8821CU列挙、保存SSID、DHCP、SSH、cold bootを確認する。stock DTBでWi-Fiの追加
         VBUS操作が必要なら、DTBを再変更せずstockOS userlandの制御手順を採取して移植する。
+      - 2026-08-19: exact-stock DTB bootでもADBは`waiting`。SDから採取した永続logでは
+        cable接続時にPHYのID/BVALID/USB onlineはdevice条件へ遷移する一方、DWC2は
+        `is_a_peripheral=0`、UDC `not attached`のhost modeへ残留していた。stock DTBには
+        `usb-role-switch`がなくsysfs role書込みは実行されていなかったため、DTB/kernelを
+        変更せず、ADB start時だけstock DWC2 driverと同じ`GUSBCFG.FORCEDEVMODE`を一度設定し、
+        stop時は両force bitを解除してstock OTG自動判定へ戻すhelperを追加。常駐監視なしで
+        cold boot、実`adb shell`、抜き差し、ADB -> Wi-Fiを実機再検証する。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

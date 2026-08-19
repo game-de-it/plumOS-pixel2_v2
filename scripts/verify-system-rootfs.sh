@@ -42,10 +42,13 @@ grep -q '10-adbd:wifi' "$tmp/rootfs/sbin/init"
 ! grep -q '15-adbd-watchdog' "$tmp/rootfs/sbin/init"
 grep -q 'plumos-enable-adb' "$tmp/rootfs/sbin/init"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+test -x "$tmp/rootfs/usr/lib/plumos/plumos-pixel2-usb-role"
 test ! -e "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
 test ! -e "$tmp/rootfs/usr/lib/plumos/adb-uevent"
-test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    e51bda7b7c7e7021c16575157ceade6a0678ea018359599952a2ccbf96abf28d
+grep -q 'plumos-pixel2-usb-role' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q '0xff30000c' "$tmp/rootfs/usr/lib/plumos/plumos-pixel2-usb-role"
+grep -q '0x40000000' "$tmp/rootfs/usr/lib/plumos/plumos-pixel2-usb-role"
 ! grep -q 'busybox.*uevent' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
