@@ -42,3 +42,27 @@ was therefore not baked into either the framebuffer or the FE rendering.
 - Host component and PortMaster adapter tests must pass.
 - On hardware, cursor plane 69 must be inactive in FE.
 - PortMaster must show no pointer, and returning to FE must not restore one.
+
+The signed Runtime delta was deployed to the device as
+`0.1.0-dev-cc6dbfb`. Component checksum verification passed for both the
+frontend (198 entries) and PortMaster (172 entries), followed by the full
+Runtime verification and healthy-state transition.
+
+The live universal-plane captures then established the complete handoff:
+
+```text
+frontend after update:
+plane=58 crtc=80 fb=... width=480 height=640 format=XR24 type=1 zpos=0
+
+PortMaster active:
+plane=58 crtc=80 fb=96 width=480 height=640 format=XR24 type=1 zpos=0
+
+frontend after PortMaster:
+plane=58 crtc=80 fb=99 width=480 height=640 format=XR24 type=1 zpos=0
+```
+
+No active `type=2` cursor plane was present in any of the three captures.
+PortMaster ran through its managed launcher, and the frontend returned as PID
+9868 after the test. This closes the device-side DRM-plane acceptance gate;
+the remaining user-visible check is that the physical LCD no longer shows the
+pointer.
