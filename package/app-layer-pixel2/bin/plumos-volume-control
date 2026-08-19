@@ -4,16 +4,21 @@ set -u
 PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
 SYSTEM_SETTINGS="${PLUMOS_SYSTEM_SETTINGS_JSON:-$PLUMOS_ROOT/config/system/settings.json}"
 RUNTIME_STATE="${PLUMOS_VOLUME_RUNTIME_STATE:-/run/plumos/volume/current}"
+BOOST_RUNTIME_STATE="${PLUMOS_SPEAKER_BOOST_RUNTIME_STATE:-/run/plumos/volume/speaker-boost-step}"
+BOOST_SAVED_STATE="${PLUMOS_SPEAKER_BOOST_SAVED_STATE:-$PLUMOS_ROOT/config/system/speaker-boost-step}"
 LOG="${PLUMOS_VOLUME_LOG:-/run/plumos/volume/last-apply.log}"
 VOLUME_MAX=20
 VOLUME_DEFAULT=8
+BOOST_STEP_DEFAULT=6
 
-mkdir -p "${RUNTIME_STATE%/*}" "${LOG%/*}" 2>/dev/null || true
+mkdir -p "${RUNTIME_STATE%/*}" "${BOOST_RUNTIME_STATE%/*}" "${LOG%/*}" \
+  2>/dev/null || true
 
 usage() {
   printf '%s\n' \
     'Usage: plumos-volume-control init|apply [0..20]|up|down|step +/-N|get|status' \
-    '       plumos-volume-control runtime-up|runtime-down|runtime-step +/-N|persist-runtime'
+    '       plumos-volume-control runtime-up|runtime-down|runtime-step +/-N|persist-runtime' \
+    '       plumos-volume-control speaker-boost get|apply|runtime 0..6 (0.5 dB steps)'
 }
 
 normalize() {
@@ -29,6 +34,89 @@ valid_signed_int() {
   value="${1:-}"
   case "$value" in -*) value="${value#-}" ;; esac
   case "$value" in ""|*[!0-9]*) return 1 ;; esac
+}
+
+normalize_boost_step() {
+  value="${1:-}"
+  case "$value" in ""|*[!0-9]*) return 1 ;; esac
+  value="$(printf '%s' "$value" | sed 's/^0*//')"
+  [ -n "$value" ] || value=0
+  [ "$value" -le 12 ] || return 1
+  printf '%s\n' "$value"
+}
+
+boost_db_to_step() {
+  case "${1:-}" in
+    0|0.0) printf '0\n' ;; 0.5) printf '1\n' ;;
+    1|1.0) printf '2\n' ;; 1.5) printf '3\n' ;;
+    2|2.0) printf '4\n' ;; 2.5) printf '5\n' ;;
+    3|3.0) printf '6\n' ;; 3.5) printf '7\n' ;;
+    4|4.0) printf '8\n' ;; 4.5) printf '9\n' ;;
+    5|5.0) printf '10\n' ;; 5.5) printf '11\n' ;;
+    6|6.0) printf '12\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+boost_step_to_db() {
+  step="$(normalize_boost_step "$1")" || step="$BOOST_STEP_DEFAULT"
+  whole=$((step / 2))
+  if [ $((step % 2)) -eq 0 ]; then
+    printf '%s.0\n' "$whole"
+  else
+    printf '%s.5\n' "$whole"
+  fi
+}
+
+read_boost_saved() {
+  step=""
+  if [ -r "$BOOST_SAVED_STATE" ]; then
+    step="$(sed -n '1s/^\([0-9][0-9]*\).*$/\1/p' "$BOOST_SAVED_STATE" 2>/dev/null)"
+  fi
+  normalize_boost_step "${step:-$BOOST_STEP_DEFAULT}" || \
+    printf '%s\n' "$BOOST_STEP_DEFAULT"
+}
+
+read_boost_runtime() {
+  step=""
+  if [ -r "$BOOST_RUNTIME_STATE" ]; then
+    step="$(sed -n '1s/^\([0-9][0-9]*\).*$/\1/p' "$BOOST_RUNTIME_STATE" 2>/dev/null)"
+  fi
+  case "$step" in
+    ""|*[!0-9]*) read_boost_saved ;;
+    *) normalize_boost_step "$step" || read_boost_saved ;;
+  esac
+}
+
+write_boost_runtime() {
+  step="$(normalize_boost_step "$1")" || return 2
+  tmp="$BOOST_RUNTIME_STATE.tmp.$$"
+  printf '%s\n' "$step" >"$tmp" && mv -f "$tmp" "$BOOST_RUNTIME_STATE" || {
+    rm -f "$tmp"
+    return 1
+  }
+}
+
+write_boost_saved() {
+  step="$(normalize_boost_step "$1")" || return 2
+  mkdir -p "${BOOST_SAVED_STATE%/*}" || return 1
+  tmp="$BOOST_SAVED_STATE.tmp.$$"
+  printf '%s\n' "$step" >"$tmp" && mv -f "$tmp" "$BOOST_SAVED_STATE" || {
+    rm -f "$tmp"
+    return 1
+  }
+}
+
+ensure_boost_runtime() {
+  [ -r "$BOOST_RUNTIME_STATE" ] || write_boost_runtime "$(read_boost_saved)"
+}
+
+apply_speaker_boost() {
+  persist="$1"
+  step="$(boost_db_to_step "$2")" || return 2
+  [ "$persist" -eq 0 ] || write_boost_saved "$step" || return 1
+  write_boost_runtime "$step" || return 1
+  [ "$persist" -eq 0 ] || sync
 }
 
 read_saved() {
@@ -107,9 +195,11 @@ write_saved() {
 apply_volume() {
   volume="$(normalize "${1:-$(read_runtime)}")" || return 2
   write_runtime "$volume" || return 1
+  ensure_boost_runtime || return 1
   {
     printf 'backend=pixel2-state-only\n'
     printf 'volume=%s\n' "$volume"
+    printf 'speaker_boost_db=%s\n' "$(boost_step_to_db "$(read_boost_runtime)")"
     printf 'note=RK817 mixer command backend is not packaged yet\n'
   } >"$LOG"
 }
@@ -156,8 +246,27 @@ case "${1:-}" in
   status)
     printf 'backend=pixel2-state-only\n'
     printf 'volume=%s\n' "$(read_runtime)"
+    printf 'speaker_boost_db=%s\n' "$(boost_step_to_db "$(read_boost_runtime)")"
     printf 'alsa_card='
     sed -n '1p' /proc/asound/card0/id 2>/dev/null || printf 'unknown\n'
+    ;;
+  speaker-boost)
+    case "${2:-}" in
+      get) boost_step_to_db "$(read_boost_runtime)" ;;
+      apply)
+        [ "$#" -eq 3 ] && apply_speaker_boost 1 "$3" || {
+          usage >&2
+          exit 2
+        }
+        ;;
+      runtime)
+        [ "$#" -eq 3 ] && apply_speaker_boost 0 "$3" || {
+          usage >&2
+          exit 2
+        }
+        ;;
+      *) usage >&2; exit 2 ;;
+    esac
     ;;
   -h|--help|help) usage ;;
   *) usage >&2; exit 2 ;;

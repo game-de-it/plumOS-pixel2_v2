@@ -19,9 +19,17 @@
 #define VOLUME_MAX 20
 #define VOLUME_DEFAULT 8
 #define VOLUME_PROBE_INTERVAL 0
-#define INTERNAL_SPEAKER_BOOST_NUMERATOR 1413
-#define INTERNAL_SPEAKER_BOOST_DENOMINATOR 1000
+#define SPEAKER_BOOST_STEP_MIN 0
+#define SPEAKER_BOOST_STEP_MAX 12
+#define SPEAKER_BOOST_STEP_DEFAULT 6
+#define SPEAKER_BOOST_GAIN_DENOMINATOR 1000
 #define INTERNAL_CARD_ID "rockchiprk817"
+
+/* 0 through +6 dB in 0.5 dB steps, represented as linear gain x1000. */
+static const int speaker_boost_gain[] = {
+    1000, 1059, 1122, 1189, 1259, 1334, 1413,
+    1496, 1585, 1679, 1778, 1884, 1995,
+};
 
 typedef struct {
     snd_pcm_ioplug_t io;
@@ -36,6 +44,7 @@ typedef struct {
     unsigned int probe_countdown;
     unsigned int volume_probe_countdown;
     int volume_level;
+    int speaker_boost_step;
     int allow_fast_drop;
     char fast_forward_state[PATH_MAX];
     int fast_forward_active;
@@ -121,8 +130,49 @@ static int read_system_volume(void)
     return volume >= 0 ? volume : VOLUME_DEFAULT;
 }
 
+static int read_speaker_boost_step_file(const char *path)
+{
+    char buffer[32];
+    char *end;
+    FILE *fp = fopen(path, "r");
+    long value;
+    size_t length;
+
+    if (!fp)
+        return -1;
+    length = fread(buffer, 1, sizeof(buffer) - 1, fp);
+    fclose(fp);
+    buffer[length] = '\0';
+    errno = 0;
+    value = strtol(buffer, &end, 10);
+    if (errno || end == buffer || value < SPEAKER_BOOST_STEP_MIN ||
+        value > SPEAKER_BOOST_STEP_MAX)
+        return -1;
+    return (int)value;
+}
+
+static int read_speaker_boost_step(void)
+{
+    const char *root;
+    char saved_state[PATH_MAX];
+    int step = read_speaker_boost_step_file(
+        "/run/plumos/volume/speaker-boost-step");
+
+    if (step >= 0)
+        return step;
+    root = getenv("PLUMOS_ROOT");
+    if (!root || !root[0])
+        root = "/mnt/plumos";
+    if (snprintf(saved_state, sizeof(saved_state),
+                 "%s/config/system/speaker-boost-step", root) >=
+        (int)sizeof(saved_state))
+        return SPEAKER_BOOST_STEP_DEFAULT;
+    step = read_speaker_boost_step_file(saved_state);
+    return step >= 0 ? step : SPEAKER_BOOST_STEP_DEFAULT;
+}
+
 static int16_t apply_software_volume(int16_t sample, int volume,
-                                     int internal_speaker)
+                                     int internal_speaker, int boost_step)
 {
     int32_t scaled;
     int32_t divisor = VOLUME_MAX;
@@ -132,8 +182,11 @@ static int16_t apply_software_volume(int16_t sample, int volume,
         return sample;
     scaled = (int32_t)sample * volume;
     if (internal_speaker) {
-        scaled *= INTERNAL_SPEAKER_BOOST_NUMERATOR;
-        divisor *= INTERNAL_SPEAKER_BOOST_DENOMINATOR;
+        if (boost_step < SPEAKER_BOOST_STEP_MIN ||
+            boost_step > SPEAKER_BOOST_STEP_MAX)
+            boost_step = SPEAKER_BOOST_STEP_DEFAULT;
+        scaled *= speaker_boost_gain[boost_step];
+        divisor *= SPEAKER_BOOST_GAIN_DENOMINATOR;
     }
     scaled /= divisor;
     if (scaled > INT16_MAX)
@@ -672,6 +725,7 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
 
     if (pcm->volume_probe_countdown == 0) {
         pcm->volume_level = read_system_volume();
+        pcm->speaker_boost_step = read_speaker_boost_step();
         pcm->volume_probe_countdown = VOLUME_PROBE_INTERVAL;
     } else {
         pcm->volume_probe_countdown--;
@@ -703,9 +757,11 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
             int16_t right;
             read_input_frame(io, input, frame, &left, &right);
             left = apply_software_volume(left, pcm->volume_level,
-                                         !pcm->physical_is_usb);
+                                         !pcm->physical_is_usb,
+                                         pcm->speaker_boost_step);
             right = apply_software_volume(right, pcm->volume_level,
-                                          !pcm->physical_is_usb);
+                                          !pcm->physical_is_usb,
+                                          pcm->speaker_boost_step);
             pcm->output_buffer[frame * 2] = left;
             pcm->output_buffer[frame * 2 + 1] = right;
         }
@@ -726,9 +782,11 @@ static snd_pcm_sframes_t plumos_transfer(snd_pcm_ioplug_t *io,
                     int16_t right;
                     read_input_frame(io, input, frame, &left, &right);
                     left = apply_software_volume(left, pcm->volume_level,
-                                                 !pcm->physical_is_usb);
+                                                 !pcm->physical_is_usb,
+                                                 pcm->speaker_boost_step);
                     right = apply_software_volume(right, pcm->volume_level,
-                                                  !pcm->physical_is_usb);
+                                                  !pcm->physical_is_usb,
+                                                  pcm->speaker_boost_step);
                     pcm->output_buffer[frame * 2] = left;
                     pcm->output_buffer[frame * 2 + 1] = right;
                 }

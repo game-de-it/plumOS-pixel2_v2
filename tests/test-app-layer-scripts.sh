@@ -33,6 +33,8 @@ for script in \
 done
 test -x "$ROOT_DIR/tests/test-retroarch-config-merge.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-power-menu-sleep.sh"
+test -x "$ROOT_DIR/tests/test-pixel2-volume-control.sh"
+"$ROOT_DIR/tests/test-pixel2-volume-control.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-network-control.sh"
 "$ROOT_DIR/tests/test-pixel2-network-control.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-wifi-recovery.sh"
