@@ -19,6 +19,7 @@ ADAPTER_DIR="${APP_ROOT}/adapter"
 STATE_ROOT="${PLUMOS_ROOT}/state/portmaster"
 DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${STATE_ROOT}/data}"
 PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+RESTART_FILE="${PM_DIR}/.pugwash-reboot"
 LOG_FILE="${PLUMOS_ROOT}/logs/apps/portmaster.log"
 PID_FILE="${RUN_ROOT}/portmaster.pid"
 MOUNTS_FILE="${RUN_ROOT}/state.mounts"
@@ -196,10 +197,44 @@ printf '\n[%s] launch version=%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
   "$(cat "${PM_DIR}/version" 2>/dev/null || printf unknown)" \
   "$(printf '%s' "$audio_status" | tr '\n' ' ')" >> "$LOG_FILE"
 
-"$BB" sh "${PLUMOS_ROOT}/bin/plumos-python-pixel2" \
-  "${ADAPTER_DIR}/plumos_portmaster_bootstrap.py" "$@" >> "$LOG_FILE" 2>&1 &
-child_pid=$!
-printf '%s\n' "$child_pid" > "$PID_FILE"
-wait "$child_pid"
-rc=$?
-exit "$rc"
+# PortMaster's official launcher consumes a stale marker before the first GUI
+# and restarts pugwash when changing a theme or release channel creates a new
+# marker. Pixel2 invokes the Python bootstrap directly, so it must preserve
+# that contract here; otherwise pugwash sees the stale marker, skips pm.run(),
+# and immediately returns to the frontend on every later launch.
+if [ -e "$RESTART_FILE" ]; then
+  printf '[%s] restart-marker=stale action=consume\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$LOG_FILE"
+  rm -f "$RESTART_FILE" || exit 1
+fi
+
+restart_limit="${PLUMOS_PORTMASTER_RESTART_LIMIT:-8}"
+case "$restart_limit" in
+  ''|*[!0-9]*|0)
+    printf 'plumos-portmaster-launch: invalid restart limit: %s\n' \
+      "$restart_limit" >&2
+    exit 64
+    ;;
+esac
+restart_count=0
+
+while :; do
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-python-pixel2" \
+    "${ADAPTER_DIR}/plumos_portmaster_bootstrap.py" "$@" >> "$LOG_FILE" 2>&1 &
+  child_pid=$!
+  printf '%s\n' "$child_pid" > "$PID_FILE"
+  wait "$child_pid"
+  rc=$?
+
+  [ -e "$RESTART_FILE" ] || exit "$rc"
+  rm -f "$RESTART_FILE" || exit 1
+  restart_count=$((restart_count + 1))
+  printf '[%s] restart-marker=requested count=%s rc=%s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$restart_count" "$rc" \
+    >> "$LOG_FILE"
+  if [ "$restart_count" -ge "$restart_limit" ]; then
+    printf 'plumos-portmaster-launch: restart limit reached: %s\n' \
+      "$restart_limit" >&2
+    exit 75
+  fi
+done

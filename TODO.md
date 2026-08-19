@@ -361,6 +361,13 @@
     Balatroの移動・アニメーション時の点滅解消を確認。署名Runtime
     `0.1.0-dev-3480628`を明示health昇格し、安全再起動後の保持、全checksum、
     adapter 37、音声`RUNNING`、終了後FE復帰、購入データ保持まで合格した。
+  - 2026-08-20: PortMasterのcolor scheme変更後にGUIが再起動せず、以後のFE起動も
+    即終了する問題を公式`PortMaster.sh`との差分から特定。Pixel2はPython bootstrapを
+    直接1回だけ起動していたため、`.pugwash-reboot`が残るとupstream `pugwash`が
+    `pm.run()`をskipしていた。adapter 38で起動前のstale marker消費と、変更直後の
+    同一session内再起動を公式契約へ揃え、異常な再生成だけ8回で打ち切る。host testは
+    合格し、実機の`default_theme / Dark Mode`設定を保持したmarker recoveryも完了。
+    signed Runtime適用後のGUI起動、scheme再変更、FE復帰を物理確認する。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [ ] top-level project licenseを決定・追加する

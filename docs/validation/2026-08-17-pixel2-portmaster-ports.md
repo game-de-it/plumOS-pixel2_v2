@@ -450,3 +450,40 @@ Stopping it removed all PortMaster session mounts and restored the frontend.
 The subsequent reboot retained the Runtime, full checksum manifest, ADB, and
 frontend.  The commercial source, generated game, and build stamp retained the
 three SHA-256 values recorded above.
+
+## 2026-08-20 color-scheme restart contract and adapter 38
+
+Changing PortMaster from its default color scheme to `Dark Mode` wrote the
+expected upstream control marker but made later frontend launches return
+immediately. The selected values were both valid and persisted correctly:
+
+```text
+theme=default_theme
+theme-scheme=Dark Mode
+marker=/mnt/plumos/state/portmaster/data/upstream/PortMaster/.pugwash-reboot
+```
+
+The failure was in the Pixel2 launcher, not the theme. Official
+`PortMaster.sh` removes a stale `.pugwash-reboot` before the first `pugwash`
+invocation and loops after a new marker is created. Pixel2 runs its hardware
+bootstrap directly and had omitted both parts of that outer-shell contract.
+Upstream `pugwash` therefore saw the marker, skipped `pm.run()`, and exited
+without drawing a GUI.
+
+Adapter 38 consumes a stale marker before opening the GUI and restarts the
+same managed PortMaster session when a theme or release-channel action creates
+a new marker. The restart is bounded to eight requests so a damaged upstream
+state cannot create an infinite foreground loop. Each stale/requested action
+is written to `logs/apps/portmaster.log` for diagnosis.
+
+The live recovery preserved the user's scheme and copied the original config
+and marker to:
+
+```text
+/mnt/plumos/state/portmaster/backups/theme-recovery-20260819T204153Z/
+```
+
+Shell syntax, Python compilation, PortMaster runtime gates, `pgrep` shim, and
+`df` shim tests passed. Physical acceptance after the signed Runtime update
+must confirm the current `Dark Mode` launch, another scheme change with an
+in-place GUI restart, normal exit, and frontend recovery.
