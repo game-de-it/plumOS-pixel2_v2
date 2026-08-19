@@ -6,8 +6,8 @@ GKD Pixel2（RK3326S）向けplumOSを、再現可能なbuildと検証可能な
 component metadataから構築するプロジェクトです。
 
 現在採用しているboot境界は、Pixel2 stockのRockchip boot prefix、kernel
-5.10.198、内蔵initramfsをboot substrateとして保持します。runtime DTBはchecksum登録済み
-stock treeへDWC2 VBUS supplyを1 propertyだけ追加し、stock initramfsが
+5.10.198、内蔵initramfs、checksum登録済みruntime DTBをbyte-for-byteで
+boot substrateとして保持し、stock initramfsが
 `/boot/SYSTEM`へhandoffした後の`/sbin/init`以降をplumOSが所有する構成です。
 stockの通常userland、frontend、service、設定、テーマは実行時に使用しません。
 

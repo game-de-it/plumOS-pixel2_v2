@@ -6,8 +6,8 @@ plumOS Pixel2 is a reproducible Linux build for the RK3326S-based GKD Pixel2,
 assembled from auditable components and checksum metadata.
 
 The accepted boot boundary keeps the stock Pixel2 Rockchip prefix, kernel
-5.10.198, and embedded initramfs as the boot substrate. The runtime DTB is the
-checksum-registered stock tree plus one gated DWC2 VBUS-supply link. After the stock
+5.10.198, embedded initramfs, and checksum-registered runtime DTB byte-for-byte
+as the boot substrate. After the stock
 initramfs hands off to `/boot/SYSTEM`, plumOS owns `/sbin/init`, the runtime,
 frontend, services, settings, and emulator launch paths. The normal stock
 userspace and frontend are not used.

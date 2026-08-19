@@ -386,6 +386,12 @@
         `0bda:c820`、8.97秒で`8821cu`、10.07秒で`wlan0`を確認。保存済み5 GHz
         `k-home-1`へ`192.168.10.110`で自動接続し、gateway 5/5、RX/TX error 0。
         tested direct-`c820` adapterのsaved-Wi-Fi cold-boot gateは合格。
+      - 2026-08-19: ADB回帰の境界を切り分けるため、DWC2 `vbus-supply`追加を撤回し、
+        runtime DTBをchecksum登録済みstock DTBとのbyte-for-byte一致へ戻した。image builder、
+        manifest、readback verifier、現行architecture docsをexact-stock契約へ更新。まずADB
+        cold boot、実`adb shell`、物理抜き差しを合格させ、その後同じstock DTBのまま
+        RTL8821CU列挙、保存SSID、DHCP、SSH、cold bootを確認する。stock DTBでWi-Fiの追加
+        VBUS操作が必要なら、DTBを再変更せずstockOS userlandの制御手順を採取して移植する。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する

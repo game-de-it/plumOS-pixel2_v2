@@ -24,7 +24,6 @@ PREFIX="${PLUMOS_PIXEL2_BOOT_PREFIX:-/work/artifacts/vendor/pixel2-stock-source/
 PREFIX_MANIFEST="$ROOT_DIR/artifacts/manifests/pixel2-stock-prefix.manifest"
 STOCK_BOOT_DIR="$ROOT_DIR/artifacts/vendor/pixel2-stock/boot"
 STOCK_BOOT_MANIFEST="$ROOT_DIR/artifacts/vendor/pixel2-stock/manifest.tsv"
-PATCHED_BOOT_DIR="$ROOT_DIR/output/boot/pixel2"
 BOOT_SPLASH="$ROOT_DIR/package/boot-assets-pixel2/oemsplash-1080.png"
 SYSTEM_DIR="$ROOT_DIR/output/system-rootfs/pixel2/payload"
 APP_DIR="$ROOT_DIR/output/app-layer/pixel2/plumos"
@@ -78,11 +77,6 @@ python3 "$ROOT_DIR/scripts/verify-pixel2-boot-splash.py" "$BOOT_SPLASH"
     exit 2
 }
 "$ROOT_DIR/scripts/verify-app-layer.sh" "$APP_DIR"
-"$ROOT_DIR/scripts/build-pixel2-boot-dtb.sh" --inside
-[ -f "$PATCHED_BOOT_DIR/rk3326s-gkd-pixel2.dtb" ] || {
-    printf 'error: generated Pixel2 runtime DTB is missing\n' >&2
-    exit 2
-}
 
 normalize_ext4_timestamps() {
     local source_root=$1 image=$2 epoch=$3 commands path relative field fake_time
@@ -143,7 +137,7 @@ E2FSPROGS_FAKE_TIME="$SOURCE_EPOCH" mkfs.ext4 -q -F -L PLUMOS_SYS \
 normalize_ext4_timestamps "$WORK/plumos-sys" "$WORK/plumos-sys.ext4" "$SOURCE_EPOCH"
 
 install -m 0644 "$STOCK_BOOT_DIR/Image" "$WORK/boot/Image"
-install -m 0644 "$PATCHED_BOOT_DIR/rk3326s-gkd-pixel2.dtb" \
+install -m 0644 "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" \
     "$WORK/boot/rk3326s-gkd-pixel2.dtb"
 install -m 0644 "$BOOT_SPLASH" "$WORK/boot/oemsplash-1080.png"
 cp -a "$SYSTEM_DIR/." "$WORK/boot/"
@@ -157,7 +151,6 @@ done
 prefix_sha=$actual_prefix_sha
 stock_image_sha=$(sha256sum "$STOCK_BOOT_DIR/Image" | awk '{print $1}')
 stock_dtb_sha=$(sha256sum "$STOCK_BOOT_DIR/rk3326s-gkd-pixel2.dtb" | awk '{print $1}')
-runtime_dtb_sha=$(sha256sum "$PATCHED_BOOT_DIR/rk3326s-gkd-pixel2.dtb" | awk '{print $1}')
 boot_splash_sha=$(sha256sum "$BOOT_SPLASH" | awk '{print $1}')
 cat >"$WORK/boot/plumos-image.manifest" <<EOF
 format=plumos-pixel2-image-v1
@@ -170,8 +163,8 @@ boot_prefix_sha256=$prefix_sha
 boot_substrate=stock-pixel2
 stock_image_sha256=$stock_image_sha
 stock_dtb_sha256=$stock_dtb_sha
-runtime_dtb_policy=stock-plus-otg-vbus-supply
-runtime_dtb_sha256=$runtime_dtb_sha
+runtime_dtb_policy=exact-stock
+runtime_dtb_sha256=$stock_dtb_sha
 boot_splash=oemsplash-1080.png
 boot_splash_geometry=480x640
 boot_splash_sha256=$boot_splash_sha

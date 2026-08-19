@@ -1,14 +1,15 @@
 # 0004: Pixel2 stock boot substrate and plumOS init ownership
 
 Date: 2026-08-12
-Status: Accepted
+Amended: 2026-08-19
+Status: Accepted, exact-stock DTB amendment
 
 ## Decision
 
 Pixel2 uses the stockOS Rockchip boot prefix, stock `Image`, and the initramfs
-embedded in that stock `Image` as the boot substrate. The runtime DTB is
-generated from the exact stock Pixel2 DTB with one bounded hardware fix:
-`/usb@ff300000/vbus-supply` references the stock RK817 `OTG_SWITCH` regulator.
+embedded in that stock `Image` as the boot substrate. The runtime DTB is the
+checksum-registered stock Pixel2 DTB byte-for-byte; plumOS does not add,
+remove, or rewrite DTB properties.
 plumOS ownership begins at the SquashFS `SYSTEM` handoff: the mounted
 `SYSTEM` image provides `/sbin/init`, runtime services, frontend launch,
 emulator launch, audio routing, connectivity, update tooling and diagnostics.
@@ -23,7 +24,7 @@ Allowed stock-derived boot artifacts:
 
 1. 16 MiB Rockchip boot prefix;
 2. stock Linux `Image` including its embedded initramfs;
-3. stock U-Boot DTB and the stock runtime DTB as the registered patch input;
+3. stock U-Boot DTB and the exact stock runtime DTB;
 4. stock kernel modules and firmware required by the retained `5.10.198`
    kernel ABI.
 
@@ -53,12 +54,14 @@ experience: FE, emulators, ALSA/audio routing, connectivity and updates.
 ## Implementation notes
 
 - The image builder must install stock `Image` and stock
-  `rk3326s-gkd-pixel2.dtb` plus the single-property VBUS linkage into
-  `PLUMOS_BOOT`. A decompiled-tree gate rejects any additional DTB change.
-- The stock DTB leaves the DWC2 `vbus-supply` absent, so unbinding the
-  controller cannot power-cycle an already-inserted USB device. Linking the
-  existing `otg_switch` lets the unmodified stock DWC2 driver own VBUS while
-  retaining stock `dr_mode = "otg"`; no forced host default is added.
+  `rk3326s-gkd-pixel2.dtb` directly into `PLUMOS_BOOT`. The image verifier
+  rejects a runtime DTB that is not byte-identical to the registered stock
+  artifact.
+- The former `/usb@ff300000/vbus-supply = <&OTG_SWITCH>` addition is withdrawn.
+  It crossed the stock boot-substrate boundary and coincided with the period in
+  which the shared DWC2 controller stopped returning reliably from Wi-Fi host
+  operation to ADB gadget operation. Wi-Fi must first be proven with the stock
+  DTB and stock-compatible userspace sequencing.
 - The System builder must target the stock `5.10.198` module ABI instead of
   `6.12.79-plumos-pixel2`.
 - Host verifiers must compare boot files against `artifacts/vendor/pixel2-stock`

@@ -3,6 +3,10 @@
 Date: 2026-08-12
 Scope: host-side image generation after adopting the stock boot substrate
 
+> Superseded on 2026-08-19 for runtime-DTB policy only. The historical build
+> below used the one-property VBUS addition; current images require the exact
+> checksum-registered stock DTB.
+
 ## Result
 
 The Pixel2 build now generates a plumOS `SYSTEM` and SD image that retain the
