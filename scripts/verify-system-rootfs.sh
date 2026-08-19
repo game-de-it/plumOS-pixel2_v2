@@ -32,6 +32,11 @@ grep -q '"device": "pixel2"' "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/20-usb-wifi"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/30-ssh"
+test -f "$tmp/rootfs/etc/plumos-adb-only"
+for script in 15-usb-host-reenumerate 20-usb-wifi 35-network-services; do
+    grep -q 'reason=adb-only-baseline' \
+        "$tmp/rootfs/usr/lib/plumos/init.d/$script"
+done
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \

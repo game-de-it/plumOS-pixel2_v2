@@ -64,6 +64,11 @@ grep -q 'result=skipped reason=adb-priority' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'result=disabled reason=adb-priority' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi"
+test -f "$ROOT_DIR/rootfs/pixel2/etc/plumos-adb-only"
+for script in 15-usb-host-reenumerate 20-usb-wifi 35-network-services; do
+    grep -q 'reason=adb-only-baseline' \
+        "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/$script"
+done
 test -x "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 grep -q 'ff300000.usb' \

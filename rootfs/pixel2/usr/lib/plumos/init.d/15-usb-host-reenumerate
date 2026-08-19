@@ -16,6 +16,7 @@ ADB_MARKER="${PLUMOS_USB_HOST_ADB_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 LOG="${PLUMOS_USB_HOST_LOG:-/state/plumos/logs/usb-host-reenumerate.log}"
 RESET_DELAY="${PLUMOS_USB_HOST_RESET_DELAY:-2}"
 ENUMERATION_WAIT="${PLUMOS_USB_HOST_ENUMERATION_WAIT:-3}"
+ADB_ONLY_MARKER="${PLUMOS_ADB_ONLY_MARKER:-/etc/plumos-adb-only}"
 
 log() {
     mkdir -p "${LOG%/*}"
@@ -145,7 +146,16 @@ start_worker() {
 }
 
 case "${1:-}" in
-    start) start_worker ;;
-    worker) worker ;;
+    start|worker)
+        if [ -e "$ADB_ONLY_MARKER" ]; then
+            log "result=skipped reason=adb-only-baseline action=${1:-}"
+            exit 0
+        fi
+        if [ "$1" = start ]; then
+            start_worker
+        else
+            worker
+        fi
+        ;;
     *) printf 'usage: %s {start|worker}\n' "$0" >&2; exit 2 ;;
 esac

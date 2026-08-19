@@ -9,6 +9,7 @@ ADB_MARKER=${PLUMOS_NETWORK_ADB_MARKER:-/mnt/plumos-user/plumos-enable-adb}
 LOG=${PLUMOS_WIFI_LOG:-/state/plumos/logs/usb-wifi.log}
 CONTROL=${PLUMOS_NETWORK_CONTROL:-/mnt/plumos/bin/plumos-network-control}
 RECOVERY=${PLUMOS_WIFI_RECOVERY:-/mnt/plumos/bin/plumos-wifi-recovery}
+ADB_ONLY_MARKER=${PLUMOS_ADB_ONLY_MARKER:-/etc/plumos-adb-only}
 
 log() {
     printf '%s service=usb-wifi %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
@@ -98,6 +99,12 @@ start_wifi() {
 }
 
 case "${1:-}" in
-    start) start_wifi ;;
+    start)
+        if [ -e "$ADB_ONLY_MARKER" ]; then
+            log 'result=disabled reason=adb-only-baseline'
+            exit 0
+        fi
+        start_wifi
+        ;;
     *) printf 'usage: %s start\n' "$0" >&2; exit 2 ;;
 esac
