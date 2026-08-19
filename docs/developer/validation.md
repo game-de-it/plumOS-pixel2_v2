@@ -8,7 +8,7 @@ observations, and remaining risk.
 
 A host build or file existing in `output/` is not proof that it works on
 Pixel2. Useful evidence includes live process identity, mount ownership,
-checksums, framebuffer/input ownership, ADB/SSH status, power behavior, and
+checksums, framebuffer/input ownership, Wi-Fi/SSH status, power behavior, and
 physical controls.
 
 ## Current Baseline Evidence
@@ -37,7 +37,7 @@ Before a Pixel2 release, require:
 7. LCD orientation, full input map, volume, brightness, audio, reboot, and
    shutdown validation;
 8. representative emulator launch/exit and save persistence;
-9. network maintenance path validation through ADB and at least one USB Wi-Fi
+9. network maintenance path validation through at least one USB Wi-Fi
    dongle route.
 
 The complete implementation and device-validation inventory is maintained in

@@ -4,73 +4,22 @@ set -u
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 CONFIG=${PLUMOS_WIFI_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}
 SETTINGS=${PLUMOS_SYSTEM_SETTINGS_JSON:-/mnt/plumos/config/system/settings.json}
-SERVICES_CONF=${PLUMOS_NETWORK_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}
-ADB_MARKER=${PLUMOS_NETWORK_ADB_MARKER:-/mnt/plumos-user/plumos-enable-adb}
 LOG=${PLUMOS_WIFI_LOG:-/state/plumos/logs/usb-wifi.log}
 CONTROL=${PLUMOS_NETWORK_CONTROL:-/mnt/plumos/bin/plumos-network-control}
 RECOVERY=${PLUMOS_WIFI_RECOVERY:-/mnt/plumos/bin/plumos-wifi-recovery}
-ADB_ONLY_MARKER=${PLUMOS_ADB_ONLY_MARKER:-/etc/plumos-adb-only}
 
 log() {
     printf '%s service=usb-wifi %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
 }
 
-adb_requested() {
-    [ -f "$ADB_MARKER" ] && return 0
-    if [ -r "$SERVICES_CONF" ]; then
-        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-        case "$mode" in
-            adb) return 0 ;;
-            wifi|off) return 1 ;;
-        esac
-    fi
-    [ -r "$SERVICES_CONF" ] || return 0
-    value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-    case "$value" in
-        1|true|on|'') return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
-wifi_requested() {
-    if [ -r "$SERVICES_CONF" ]; then
-        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-        case "$mode" in
-            wifi) return 0 ;;
-            adb|off) return 1 ;;
-        esac
-    fi
-    ! adb_requested
-}
-
 start_wifi() {
-    if adb_requested; then
-        [ ! -x "$RECOVERY" ] || \
-            PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
-                "$RECOVERY" stop >>"$LOG" 2>&1 || true
-        log 'result=disabled reason=adb-priority'
-        return 0
-    fi
-    wifi_requested || {
-        [ ! -x "$RECOVERY" ] || \
-            PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
-                "$RECOVERY" stop >>"$LOG" 2>&1 || true
-        log 'result=disabled reason=usb-mode-off'
-        return 0
-    }
     [ -s "$CONFIG" ] || {
+        [ ! -x "$RECOVERY" ] || \
+            PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
+                "$RECOVERY" stop >>"$LOG" 2>&1 || true
         log 'result=disabled reason=config-missing'
         return 0
     }
-    # A persisted usb_mode is authoritative. The legacy settings.json flag is
-    # consulted only when migrating an image that has no explicit mode yet.
-    if ! grep -Eq '^usb_mode=(adb|wifi|off)$' "$SERVICES_CONF" 2>/dev/null &&
-        [ -r "$SETTINGS" ] &&
-        grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \
-            "$SETTINGS" 2>/dev/null; then
-        log 'result=disabled reason=saved-off'
-        return 0
-    fi
     # Match the V90S lifecycle: one sync starts the blocking uevent monitor and
     # schedules the initial bounded recovery. This keeps association and DHCP
     # outside the boot critical path while retaining hotplug after a failed
@@ -100,10 +49,6 @@ start_wifi() {
 
 case "${1:-}" in
     start)
-        if [ -e "$ADB_ONLY_MARKER" ]; then
-            log 'result=disabled reason=adb-only-baseline'
-            exit 0
-        fi
         start_wifi
         ;;
     *) printf 'usage: %s start\n' "$0" >&2; exit 2 ;;

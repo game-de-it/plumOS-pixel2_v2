@@ -10,13 +10,9 @@ DWC2_DRIVER="${PLUMOS_USB_HOST_DWC2_DRIVER:-/sys/bus/platform/drivers/dwc2}"
 PLATFORM_DEVICE="${PLUMOS_USB_HOST_PLATFORM_DEVICE:-/sys/bus/platform/devices/ff300000.usb}"
 DEVICE_ID="${PLUMOS_USB_HOST_DEVICE_ID:-ff300000.usb}"
 WPA_CONFIG="${PLUMOS_USB_HOST_WPA_CONFIG:-/mnt/plumos/config/wpa_supplicant.conf}"
-SETTINGS="${PLUMOS_USB_HOST_SETTINGS:-/mnt/plumos/config/system/settings.json}"
-SERVICES_CONF="${PLUMOS_USB_HOST_SERVICES_CONF:-/mnt/plumos/config/network/services.conf}"
-ADB_MARKER="${PLUMOS_USB_HOST_ADB_MARKER:-/mnt/plumos-user/plumos-enable-adb}"
 LOG="${PLUMOS_USB_HOST_LOG:-/state/plumos/logs/usb-host-reenumerate.log}"
 RESET_DELAY="${PLUMOS_USB_HOST_RESET_DELAY:-2}"
 ENUMERATION_WAIT="${PLUMOS_USB_HOST_ENUMERATION_WAIT:-3}"
-ADB_ONLY_MARKER="${PLUMOS_ADB_ONLY_MARKER:-/etc/plumos-adb-only}"
 
 log() {
     mkdir -p "${LOG%/*}"
@@ -24,39 +20,8 @@ log() {
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
 }
 
-adb_requested() {
-    [ -f "$ADB_MARKER" ] && return 0
-    if [ -r "$SERVICES_CONF" ]; then
-        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-        case "$mode" in
-            adb) return 0 ;;
-            wifi|off) return 1 ;;
-        esac
-    fi
-    # Match 10-adbd: a fresh image with no service setting defaults to ADB.
-    [ -r "$SERVICES_CONF" ] || return 0
-    value=$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-    case "$value" in
-        1|true|on|'') return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
 wifi_requested() {
-    adb_requested && return 1
-    if [ -r "$SERVICES_CONF" ]; then
-        mode=$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)
-        case "$mode" in
-            wifi) return 0 ;;
-            adb|off) return 1 ;;
-        esac
-    fi
     [ -s "$WPA_CONFIG" ] || return 1
-    if [ -r "$SETTINGS" ] &&
-        grep -Eq '"wifi_enabled"[[:space:]]*:[[:space:]]*(false|0)' \
-            "$SETTINGS" 2>/dev/null; then
-        return 1
-    fi
     return 0
 }
 
@@ -76,10 +41,6 @@ downstream_present() {
 }
 
 worker() {
-    if adb_requested; then
-        log 'result=skipped reason=adb-priority'
-        return 0
-    fi
     wifi_requested || {
         log 'result=skipped reason=wifi-not-requested'
         return 0
@@ -147,10 +108,6 @@ start_worker() {
 
 case "${1:-}" in
     start|worker)
-        if [ -e "$ADB_ONLY_MARKER" ]; then
-            log "result=skipped reason=adb-only-baseline action=${1:-}"
-            exit 0
-        fi
         if [ "$1" = start ]; then
             start_worker
         else

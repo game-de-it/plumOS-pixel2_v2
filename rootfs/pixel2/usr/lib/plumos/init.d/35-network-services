@@ -3,20 +3,12 @@ set -u
 
 LOG=/mnt/plumos/logs/network-services-boot.log
 SERVICE=/mnt/plumos/bin/plumos-network-services
-ADB_ONLY_MARKER=${PLUMOS_ADB_ONLY_MARKER:-/etc/plumos-adb-only}
 
 [ "${1:-}" = start ] || exit 2
-[ ! -e "$ADB_ONLY_MARKER" ] || {
-    mkdir -p "${LOG%/*}"
-    printf '%s service=network-services result=skipped reason=adb-only-baseline\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >>"$LOG"
-    exit 0
-}
 [ -x "$SERVICE" ] || exit 0
 mkdir -p "${LOG%/*}"
-# ADB is brought up earlier by 10-adbd. Network services start asynchronously,
-# so a missing WLAN cannot block the FE or turn a deferred Samba start into a
-# fatal boot failure.
+# Network services start asynchronously, so a missing WLAN cannot block the FE
+# or turn a deferred Samba start into a fatal boot failure.
 (
     PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user \
         "$SERVICE" start-enabled >>"$LOG" 2>&1

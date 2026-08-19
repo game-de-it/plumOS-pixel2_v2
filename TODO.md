@@ -5,6 +5,10 @@
 - [x] 既存plumOS機のupdate/storage/frontend/emulator設計を調査する
 - [x] Pixel2のRockchip prefix + System A/B + ext4 Runtime + FAT32 User構成を決定する
 - [x] ownership、update、rollback、first-boot provisioning contractを文書化する
+- [x] Pixel2の単一USB portをWi-Fi host専用とし、ADBをSystem/Runtime/FE/buildから廃止する
+  - 2026-08-20: adbd/FunctionFS/device-role helper、ADB監視・復旧、FE項目、USB Mode、
+    host helper、build依存を撤去。旧`usb_mode`/`adb_enabled`/FAT markerは起動時に除去し、
+    Wi-Fi資格情報、network service設定、ROM、BIOS、saveは保持する。
 
 ## Implementation audit and release blockers
 
@@ -72,7 +76,7 @@
       SSHへ到達しない欠陥をtraceで特定。System initとapp-layer service managerの
       双方で`lo`と`127.0.0.1/8`を保証し、実機password SSH loginとSFTP upload/
       download同一SHA-256を確認した。
-  - [ ] ADBのboot既定値・UI設定・recoveryを一貫させる
+  - [x] ADBのboot既定値・UI設定・recoveryを一貫させる（2026-08-20 方針変更により廃止）
     - 2026-08-19: Pixel2の単一OTG portに独立したWi-Fi/ADB checkboxを持たせる設計を
       廃止。FEを`USB Mode = ADB / Wi-Fi / Off`の単一選択へ変更し、永続`usb_mode`を
       System adbd、USB host再列挙、Wi-Fi boot、Runtime scan/connect/recoveryの共通

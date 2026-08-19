@@ -40,25 +40,6 @@ test -x "$ROOT_DIR/tests/test-pixel2-wifi-recovery.sh"
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"
-sh -n "$ROOT_DIR/scripts/pixel2-device-launch-smoke.sh"
-grep -q 'PROFILE_SAMPLE_NAMES' \
-    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q '"retroarch:mba_mini": "varthj.zip"' \
-    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q '"retroarch:frodo": "inbread.d64"' \
-    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q '"retroarch:neocd": "Fatal Fury WAV.cue"' \
-    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q 'SYSTEM_PROFILE_SAMPLE_NAMES' \
-    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q 'PARENT_TREE_SYSTEMS.*"easyrpg".*"scummvm".*"cannonball".*"cavestory".*"dinothawr"' \
-    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q '"cannonball": "cannonball.game"' \
-    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q '"scummvm": "sky.scummvm"' \
-    "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
-grep -q 'retroarch-launch.log' \
-    "$ROOT_DIR/scripts/pixel2-device-launch-smoke.sh"
 grep -q 'root/lib/libretro:\$root/emulator/lib:\$root/frontend/lib:\$root/lib' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'f"_etc/{name}"' \
@@ -90,8 +71,7 @@ PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
     python3 -m py_compile \
         "$ROOT_DIR/scripts/generate-pixel2-system-logos.py" \
         "$ROOT_DIR/scripts/prepare-pixel2-bios.py" \
-        "$ROOT_DIR/scripts/validate-romset-routes.py" \
-        "$ROOT_DIR/scripts/smoke-test-pixel2-romset.py"
+        "$ROOT_DIR/scripts/validate-romset-routes.py"
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:gambatte' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:pcsx_rearmed' "$ROOT_DIR/package/frontend-pixel2/systems.json"
@@ -448,7 +428,7 @@ grep -q 'i2cset -f -y 0 0x20 0xf4' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'printf.*sleep_backend.*power_state' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
-grep -q 'sleep=adb-restart-ok' \
+! grep -qi 'adbd\|functionfs' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'run_rk817_resume rearm' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
@@ -520,14 +500,10 @@ for service in ssh ftp sftp samba; do
     grep -Eq "(^|[[:space:]|])${service}([[:space:]|)]|$)" \
         "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
 done
-grep -q 'network_usb_mode' \
+! grep -qi 'adb\|functionfs\|network_usb_mode' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
-grep -Eq '(^|[[:space:]|])adb([[:space:]|)]|$)' \
+! grep -qi 'adb\|functionfs\|usb_mode' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
-! grep -q 'ships SSH and ADB only' \
-    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
-grep -q 'default-on-no-explicit-setting' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'generate-pixel2-system-logos.py' \
     "$ROOT_DIR/scripts/build-frontend-component.sh"
 grep -Fq 'apps/*/bin/*.bin|ssh/libexec/*.bin' \
@@ -567,36 +543,15 @@ assert (temp / "PortMaster/funcs.txt").is_file()
 PY
 
 mkdir -p "$feature_tmp/network/plumos/bin" "$feature_tmp/network/card"
-cat >"$feature_tmp/network/adbd-control" <<'EOF'
-#!/bin/sh
-printf '%s\n' "$1" >>"$PLUMOS_TEST_ADBD_CALLS"
-case "${PLUMOS_TEST_ADBD_STATE:-stopped}" in
-    running) printf '%s\n' 'state=running' ;;
-    *) printf '%s\n' 'state=stopped' 'summary=ADB applies at reboot' ;;
-esac
-EOF
-chmod 0755 "$feature_tmp/network/adbd-control"
 network_env=(
     PLUMOS_ROOT="$feature_tmp/network/plumos"
     PLUMOS_SDCARD_ROOT="$feature_tmp/network/card"
     PLUMOS_RUNTIME_ROOT="$feature_tmp/network/run"
-    PLUMOS_ADBD_CONTROL="$feature_tmp/network/adbd-control"
-    PLUMOS_TEST_ADBD_CALLS="$feature_tmp/network/adbd-calls"
 )
-env "${network_env[@]}" \
-    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
-    status adb >"$feature_tmp/network/adb-default.status" || true
-grep -q '^enabled=1$' "$feature_tmp/network/adb-default.status"
 env "${network_env[@]}" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
     status ssh >"$feature_tmp/network/ssh-default.status" || true
 grep -q '^enabled=1$' "$feature_tmp/network/ssh-default.status"
-PLUMOS_TEST_ADBD_STATE=running env "${network_env[@]}" \
-    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
-    status adb >"$feature_tmp/network/adb-running.status"
-grep -q '^state=running$' "$feature_tmp/network/adb-running.status"
-grep -q '^summary=ADB connected over USB$' \
-    "$feature_tmp/network/adb-running.status"
 ! grep -q 'waiting for authorized_keys' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services"
 grep -q 'INITIAL_PASSWORD="${PLUMOS_SSH_INITIAL_PASSWORD:-plumos}"' \
@@ -663,26 +618,6 @@ grep -q 'logical_width = (r->rotation == 1 || r->rotation == 3)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q '? (int)r->physical_yres' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
-env "${network_env[@]}" \
-    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
-    start adb >"$feature_tmp/network/adb-start.status" || true
-grep -q '^adb_enabled=1$' \
-    "$feature_tmp/network/plumos/config/network/services.conf"
-test -f "$feature_tmp/network/card/plumos-enable-adb"
-grep -q '^start$' "$feature_tmp/network/adbd-calls"
-env "${network_env[@]}" \
-    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
-    stop adb >"$feature_tmp/network/adb-stop.status" || true
-grep -q '^adb_enabled=0$' \
-    "$feature_tmp/network/plumos/config/network/services.conf"
-test ! -e "$feature_tmp/network/card/plumos-enable-adb"
-grep -q '^stop$' "$feature_tmp/network/adbd-calls"
-touch "$feature_tmp/network/card/plumos-enable-adb"
-env "${network_env[@]}" \
-    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-network-services" \
-    status adb >"$feature_tmp/network/adb-recovery.status" || true
-grep -q '^enabled=1$' "$feature_tmp/network/adb-recovery.status"
-
 touch "$feature_tmp/card/roms/nes/.DS_Store"
 PLUMOS_ROOT="$feature_tmp/plumos" \
 PLUMOS_SDCARD_ROOT="$feature_tmp/card" \

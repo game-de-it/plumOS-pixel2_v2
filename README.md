@@ -14,7 +14,7 @@ userspace and frontend are not used.
 
 ## Current implementation
 
-- plumOS `SYSTEM` SquashFS, init, ADB, USB Wi-Fi, SSH, and persistent logs;
+- plumOS `SYSTEM` SquashFS, init, USB Wi-Fi, SSH, and persistent logs;
 - Pixel2 frontend, START menu, ROM scanner, and physical input contract;
 - RetroArch with 112 Pixel2-supported libretro cores and PicoArch;
 - OpenBOR, DraStic, and PPSSPP standalone runtimes;
@@ -54,6 +54,9 @@ of at least 16 GB, plumOS grows `PLUMOS_SYS` to 8192 MiB and creates FAT32
 `PLUMOS_USER` through the remaining card. Setup automatically resumes through
 one early reboot when the mounted partition geometry cannot be refreshed
 online. Boot the card once before copying ROMs or BIOS files from a host.
+
+Pixel2's single USB port is reserved for a USB Wi-Fi dongle. ADB is not part
+of plumOS Pixel2; remote maintenance uses SSH/SFTP after Wi-Fi association.
 
 `release-image` fails until the implementation audit reports zero release
 blockers. Use `sd-image` for development hardware testing, and always flash a

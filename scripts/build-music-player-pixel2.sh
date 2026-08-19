@@ -144,7 +144,7 @@ export PLUMOS_MUSIC_ALSA_DEVICE="${PLUMOS_MUSIC_ALSA_DEVICE:-plumos_output}"
 export PLUMOS_MUSIC_IGNORE_ANALOG="${PLUMOS_MUSIC_IGNORE_ANALOG:-1}"
 export PLUMOS_DRM_DEVICE="${PLUMOS_DRM_DEVICE:-/dev/dri/card0}"
 export PLUMOS_MUSIC_ROTATION="${PLUMOS_MUSIC_ROTATION:-ccw}"
-# Do not inherit service-specific glibc paths (notably from adbd).  This app
+# Do not inherit service-specific glibc paths. This app
 # owns its non-system dependencies and must otherwise use the Pixel2 system libc.
 export LD_LIBRARY_PATH="$APP_ROOT/lib"
 cd "$APP_ROOT" || exit 1

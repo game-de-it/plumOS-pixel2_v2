@@ -32,35 +32,11 @@ grep -q '"device": "pixel2"' "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/20-usb-wifi"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/30-ssh"
-test ! -e "$tmp/rootfs/etc/plumos-adb-only"
-for script in 15-usb-host-reenumerate 20-usb-wifi 35-network-services; do
-    grep -q 'reason=adb-only-baseline' \
-        "$tmp/rootfs/usr/lib/plumos/init.d/$script"
-done
-grep -q 'plumos-init=usb-owner mode=' "$tmp/rootfs/sbin/init"
-grep -q '10-adbd:wifi' "$tmp/rootfs/sbin/init"
-! grep -q '15-adbd-watchdog' "$tmp/rootfs/sbin/init"
+grep -q 'plumos-init=usb-owner mode=wifi-host' "$tmp/rootfs/sbin/init"
 grep -q 'plumos-enable-adb' "$tmp/rootfs/sbin/init"
-test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-test -x "$tmp/rootfs/usr/lib/plumos/plumos-pixel2-usb-role"
-test ! -e "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
-test ! -e "$tmp/rootfs/usr/lib/plumos/adb-uevent"
-grep -q 'plumos-pixel2-usb-role' \
-    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q '0xff30000c' "$tmp/rootfs/usr/lib/plumos/plumos-pixel2-usb-role"
-grep -q '0x40000000' "$tmp/rootfs/usr/lib/plumos/plumos-pixel2-usb-role"
-! grep -q 'busybox.*uevent' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'watchdog-replug reason=transport-offline' \
-    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'schedule_recovery' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'action=watchdog-' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'status_adbd' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'ADB daemon lost its FunctionFS endpoints' \
-    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'replug_adbd\|takeover_adbd\|USB_STATE.*DISCONNECTED' \
-    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'reset_dwc2_for_device' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-test -x "$tmp/rootfs/usr/sbin/adbd"
+test ! -e "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+test ! -e "$tmp/rootfs/usr/sbin/adbd"
+test ! -e "$tmp/rootfs/usr/lib/plumos/adbd"
 test -x "$tmp/rootfs/usr/bin/plumos-frontend-pixel2"
 test -x "$tmp/rootfs/usr/bin/plumos-library-scan"
 test -x "$tmp/rootfs/usr/bin/plumos-text-ui"
@@ -119,13 +95,6 @@ grep -q '^DEVICE_ID = "pixel2"$' "$tmp/rootfs/usr/sbin/plumos-system-update"
 grep -q '"runtime_abi": "plumos-pixel2-app-layer-v1"' \
     "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -s "$tmp/rootfs/etc/plumos-system-version"
-test -x "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
-! grep -a -q '/run/plumos/adbd-transport.state' \
-    "$tmp/rootfs/usr/lib/plumos/adbd/adbd.bin"
-grep -q 'transport=nonblocking FunctionFS' \
-    "$tmp/rootfs/usr/share/licenses/adbd/source.manifest"
-! grep -q '^transport_state=' \
-    "$tmp/rootfs/usr/share/licenses/adbd/source.manifest"
 test -x "$tmp/rootfs/lib/ld-linux-aarch64.so.1"
 for directory in dev dev/pts proc sys run tmp boot state roms root \
     flash storage mnt mnt/plumos mnt/plumos-user; do
@@ -211,9 +180,6 @@ if [ "$(uname -m)" = aarch64 ]; then
             *) printf 'error: kernel module vermagic mismatch\n' >&2; exit 1 ;;
         esac
     fi
-    chroot "$tmp/rootfs" /lib/ld-linux-aarch64.so.1 \
-        --library-path /usr/lib/plumos/adbd/lib:/lib/aarch64-linux-gnu \
-        --list /usr/lib/plumos/adbd/adbd.bin >/dev/null
 fi
 
 if find "$tmp/rootfs" -type f \

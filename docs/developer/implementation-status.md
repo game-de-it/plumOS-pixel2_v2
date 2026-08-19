@@ -1,7 +1,7 @@
 # Pixel2 Implementation Inventory
 
-最終更新: 2026-08-13
-監査ベース: 2026-08-13 P0 backend実装後の生成app-layer
+最終更新: 2026-08-20
+監査ベース: 2026-08-20 Wi-Fi専用保守経路への移行後
 
 この文書は「buildできる」「FEに表示される」「hostでrouteが解決する」
 「Pixel2実機で合格した」を区別する、実装作業のsource of truthである。
@@ -42,7 +42,7 @@
 Device verifiedを意味しない。
 
 - stock Rockchip prefix、stock kernel/DTB/initramfs substrate、plumOS `SYSTEM` handoff;
-- plumOS init、ADB bring-up、USB Wi-Fi、Dropbear SSH、persistent logs;
+- plumOS init、USB Wi-Fi、Dropbear SSH、persistent logs;
 - frontend、text UI、ROM scanner、START menu、Pixel2 input contract;
 - RetroArch 1.22.2と109 libretro core catalog;
 - PicoArchと共有libretro core route;
@@ -59,7 +59,7 @@ Device verifiedを意味しない。
 
 | 項目 | 現状 | 必要な実装 |
 | --- | --- | --- |
-| System Update | signed Ed25519 Runtime/SystemをADB requestから実機適用し、journal/1世代backup、inactive readback、自動再起動、renderer-ready昇格まで合格 | FEメニューからのrequest、失敗rollback、進捗/失敗表示を実機検証 |
+| System Update | signed Ed25519 Runtime/Systemを実機適用し、journal/1世代backup、inactive readback、自動再起動、renderer-ready昇格まで合格 | FEメニューからのrequest、失敗rollback、進捗/失敗表示を実機検証 |
 | Storage Check | `/mnt/plumos-user`に対する同梱`fsck.fat -n`、45秒上限、status/logを実装。RW mount中は誤警告せず判定保留 | RO状態での実機clean/dirty検証 |
 | Factory Reset | `factory-defaults/{ra,pico,sa}`とbackup/atomic restore/dry-runを実装 | 実機対象別restoreと再起動後確認 |
 | Time Settings | bounded RFC868同期とRK817 RTC UTC保存を実装 | 実機RTC read/write、timezone/manual-time、再起動後保持 |
@@ -69,12 +69,11 @@ Pixel2では存在しないAudio Output切替とLid Suspendだけをdevice capab
 表示しない。FTP/SFTP/Sambaは共通plumOS機能として実装し、daemon欠落を理由に
 非表示にしない。
 
-Pixel2はWi-Fiを内蔵しないため、network service設定が未作成の初回起動・復旧時は
-FunctionFS ADBを既定ONにする。FEの`USB Mode`が保存する`usb_mode=adb|wifi|off`を
-唯一の通常時USB ownershipとし、ADBとUSB Wi-Fiを同時に有効化しない。user FAT32
-rootの`plumos-enable-adb` markerは設定を上書きする復旧経路として扱う。新SYSTEMで
-default ADB、明示Wi-Fi/Off/ADB、recovery markerをcold boot検証する。
-SSHはV90S/MF共通の初期password、公開鍵、UI toggle、boot状態の一致を確認する。
+Pixel2はWi-Fiを内蔵せずUSB portも1つだけなので、2026-08-20以降はportをUSB Wi-Fi
+host専用とし、ADB、FunctionFS、USB Mode、recovery markerを配布物から撤去する。
+旧`usb_mode`/`adb_enabled`/markerだけを起動時に除去し、SSID/PSKやサービス設定は
+保持する。SSHはV90S/MF共通の初期password、公開鍵、UI toggle、boot状態の一致を
+確認する。
 
 ## P1: application and standalone parity
 
@@ -157,7 +156,7 @@ acceptanceする。
 - supplied ROMでearly-start合格済みの73 systemについて、表示・操作・音声・終了を物理確認;
 - compatible contentが無い13 systemと、必須BIOS不足のChannel Fを補完して起動確認;
 - FE menuからのactual shutdownと、充電中reboot;
-- ADB再接続、USB Wi-Fi dongle、SSH password/public-key login、SFTP/FTP/Samba transfer;
+- USB Wi-Fi cold boot/hotplug、SSH password/public-key login、SFTP/FTP/Samba transfer;
 - save/stateとactive settingsがupdate/deploy後も保持されること;
 - app-layer root/component checksumを含むatomic live deployment。
 

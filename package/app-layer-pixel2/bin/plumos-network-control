@@ -37,8 +37,6 @@ NETWORK_SERVICES="${PLUMOS_ROOT}/bin/plumos-network-services"
 TIME_SYNC="${PLUMOS_ROOT}/bin/plumos-time-sync"
 DNS_RUNTIME="${PLUMOS_ROOT}/bin/plumos-dns-runtime"
 WIFI_RECOVERY="${PLUMOS_ROOT}/bin/plumos-wifi-recovery"
-SERVICES_CONF="${PLUMOS_NETWORK_SERVICES_CONF:-${PLUMOS_ROOT}/config/network/services.conf}"
-ADB_MARKER="${PLUMOS_NETWORK_ADB_MARKER:-${PLUMOS_SDCARD_ROOT}/plumos-enable-adb}"
 
 ACTION=status
 CONNECT_FILE=
@@ -94,42 +92,6 @@ log() {
   printf '%s uptime=%s %s\n' \
     "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || printf unknown-time)" \
     "$(uptime_now)" "$*" >> "$LOG_FILE" 2>/dev/null || true
-}
-
-adb_requested() {
-  [ -f "$ADB_MARKER" ] && return 0
-  if [ -r "$SERVICES_CONF" ]; then
-    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-    case "$mode" in
-      adb) return 0 ;;
-      wifi|off) return 1 ;;
-    esac
-  fi
-  [ -r "$SERVICES_CONF" ] || return 0
-  value="$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-  case "$value" in
-    1|true|on|'') return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-require_wifi_usb_owner() {
-  if adb_requested; then
-    log 'wifi action refused reason=adb-priority'
-    echo 'result=failed'
-    echo 'stage=usb_owned_by_adb'
-    return 1
-  fi
-  if [ -r "$SERVICES_CONF" ]; then
-    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-    if [ "$mode" = off ]; then
-      log 'wifi action refused reason=usb-mode-off'
-      echo 'result=failed'
-      echo 'stage=usb_mode_not_wifi'
-      return 1
-    fi
-  fi
-  return 0
 }
 
 run_limited() {
@@ -754,7 +716,6 @@ start_time_sync() {
 }
 
 wifi_on() {
-  require_wifi_usb_owner || return 1
   if [ -x "$WIFI_RECOVERY" ]; then
     "$WIFI_RECOVERY" start >> "$LOG_FILE" 2>&1 ||
       log "wifi recovery monitor failed to start"
@@ -897,7 +858,6 @@ print_status() {
 }
 
 scan_networks() {
-  require_wifi_usb_owner || return 1
   started_for_scan=0
   if ! iface="$(ensure_wifi_iface "$WIFI_IFACE_WAIT_SECONDS")"; then
     stage="$(last_ensure_wifi_stage)"
@@ -1113,7 +1073,6 @@ restart_previous_config_best_effort() {
 }
 
 connect_wifi_from_file() {
-  require_wifi_usb_owner || return 1
   candidate="${RUN_DIR}/wpa_supplicant-connect.$$"
   ip_addr=
 

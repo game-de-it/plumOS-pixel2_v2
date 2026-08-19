@@ -28,10 +28,6 @@ SSH_START="${PLUMOS_ROOT}/ssh/start-ssh.sh"
 SSH_STOP="${PLUMOS_ROOT}/ssh/stop-ssh.sh"
 SMBD="${PLUMOS_ROOT}/network/samba/sbin/smbd"
 NMBD="${PLUMOS_ROOT}/network/samba/sbin/nmbd"
-ADBD_CONTROL="${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}"
-ADB_RECOVERY_MARKER="${PLUMOS_ADB_RECOVERY_MARKER:-${PLUMOS_SDCARD_ROOT}/plumos-enable-adb}"
-WIFI_RECOVERY="${PLUMOS_WIFI_RECOVERY:-${PLUMOS_ROOT}/bin/plumos-wifi-recovery}"
-NETWORK_CONTROL="${PLUMOS_NETWORK_CONTROL:-${PLUMOS_ROOT}/bin/plumos-network-control}"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR" "$CONFIG_DIR"
 
@@ -117,7 +113,6 @@ config_key() {
     ftp) printf '%s\n' "ftp_enabled" ;;
     sftp) printf '%s\n' "sftp_enabled" ;;
     samba) printf '%s\n' "samba_enabled" ;;
-    adb) printf '%s\n' "adb_enabled" ;;
     *) return 1 ;;
   esac
 }
@@ -125,22 +120,12 @@ config_key() {
 service_enabled() {
   service="$1"
   key="$(config_key "$service")" || return 1
-  if [ "$service" = "adb" ] && [ -f "$ADB_RECOVERY_MARKER" ]; then
-    return 0
-  fi
-  if [ "$service" = "adb" ]; then
-    mode="$(usb_mode 2>/dev/null || true)"
-    case "$mode" in
-      adb) return 0 ;;
-      wifi|off) return 1 ;;
-    esac
-  fi
   [ -r "$SERVICES_CONF" ] || {
-    case "$service" in ssh|adb) return 0 ;; *) return 1 ;; esac
+    case "$service" in ssh) return 0 ;; *) return 1 ;; esac
   }
   value="$(sed -n "s/^${key}=//p" "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
   [ -n "$value" ] || {
-    case "$service" in ssh|adb) return 0 ;; *) return 1 ;; esac
+    case "$service" in ssh) return 0 ;; *) return 1 ;; esac
   }
   [ "$value" = "1" ] || [ "$value" = "true" ] || [ "$value" = "on" ]
 }
@@ -158,92 +143,6 @@ set_service_enabled() {
   fi
   printf '%s=%s\n' "$key" "$enabled" >> "$tmp"
   mv "$tmp" "$SERVICES_CONF"
-}
-
-usb_mode() {
-  [ -f "$ADB_RECOVERY_MARKER" ] && { printf '%s\n' adb; return 0; }
-  if [ -r "$SERVICES_CONF" ]; then
-    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-    case "$mode" in
-      adb|wifi|off) printf '%s\n' "$mode"; return 0 ;;
-    esac
-    value="$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-    case "$value" in
-      0|false|off) printf '%s\n' wifi ;;
-      *) printf '%s\n' adb ;;
-    esac
-    return 0
-  fi
-  printf '%s\n' adb
-}
-
-set_usb_mode() {
-  mode="$1"
-  case "$mode" in adb|wifi|off) ;; *) return 2 ;; esac
-  tmp="${SERVICES_CONF}.tmp"
-  mkdir -p "$CONFIG_DIR"
-  if [ -r "$SERVICES_CONF" ]; then
-    grep -v -e '^usb_mode=' -e '^adb_enabled=' "$SERVICES_CONF" > "$tmp" 2>/dev/null || true
-  else
-    : > "$tmp"
-  fi
-  printf 'usb_mode=%s\n' "$mode" >> "$tmp"
-  if [ "$mode" = adb ]; then
-    printf 'adb_enabled=1\n' >> "$tmp"
-    mkdir -p "${ADB_RECOVERY_MARKER%/*}"
-    : > "$ADB_RECOVERY_MARKER"
-  else
-    printf 'adb_enabled=0\n' >> "$tmp"
-    rm -f "$ADB_RECOVERY_MARKER" 2>/dev/null || true
-  fi
-  mv "$tmp" "$SERVICES_CONF"
-  log "usb_mode=${mode} saved=1" usb
-}
-
-stop_wifi_runtime() {
-  if [ -x "$WIFI_RECOVERY" ]; then
-    "$WIFI_RECOVERY" stop >> "$LOG_FILE" 2>&1 || true
-  fi
-  if [ -x "$NETWORK_CONTROL" ]; then
-    "$NETWORK_CONTROL" --wifi off >> "$LOG_FILE" 2>&1 || true
-  fi
-}
-
-apply_usb_mode() {
-  mode="$1"
-  set_usb_mode "$mode" || return $?
-
-  case "$mode" in
-    adb)
-      stop_wifi_runtime
-      if [ ! -x "$ADBD_CONTROL" ]; then
-        log "apply failed mode=adb reason=adb_control_missing" usb
-        return 1
-      fi
-      # Selecting ADB is also the deterministic recovery action for a stale
-      # FunctionFS transport. The System helper performs a full teardown and
-      # rebuild, rather than reusing endpoints left by the previous host.
-      if ! "$ADBD_CONTROL" restart >> "$LOG_FILE" 2>&1; then
-        log "apply failed mode=adb stage=adbd_restart" usb
-        return 1
-      fi
-      ;;
-    wifi)
-      if [ -x "$ADBD_CONTROL" ]; then
-        "$ADBD_CONTROL" stop >> "$LOG_FILE" 2>&1 || true
-      fi
-      if [ -x "$WIFI_RECOVERY" ]; then
-        "$WIFI_RECOVERY" sync >> "$LOG_FILE" 2>&1 || true
-      fi
-      ;;
-    off)
-      if [ -x "$ADBD_CONTROL" ]; then
-        "$ADBD_CONTROL" stop >> "$LOG_FILE" 2>&1 || true
-      fi
-      stop_wifi_runtime
-      ;;
-  esac
-  log "usb_mode=${mode} apply=complete" usb
 }
 
 print_status() {
@@ -429,34 +328,6 @@ has_usable_ipv4() {
   return 1
 }
 
-status_adb() {
-  if [ ! -x "$ADBD_CONTROL" ]; then
-    print_status adb not_installed "ADB control script not installed"
-    return 1
-  fi
-
-  output="$(PLUMOS_ROOT="$PLUMOS_ROOT" PLUMOS_SDCARD_ROOT="$PLUMOS_SDCARD_ROOT" \
-    "$ADBD_CONTROL" status 2>/dev/null || true)"
-  state="$(printf '%s\n' "$output" | sed -n 's/^state=//p' | tail -n 1)"
-  summary="$(printf '%s\n' "$output" | sed -n 's/^summary=//p' | tail -n 1)"
-  [ -n "$state" ] || state=stopped
-  if [ -z "$summary" ]; then
-    case "$state" in
-      running) summary="ADB connected over USB" ;;
-      waiting_usb) summary="ADB enabled; waiting for USB host" ;;
-      not_installed) summary="ADB control script not installed" ;;
-      *) summary="ADB stopped" ;;
-    esac
-  fi
-
-  print_status adb "$state" "$summary"
-  case "$state" in
-    running|waiting_usb) return 0 ;;
-    not_installed) return 1 ;;
-    *) return 2 ;;
-  esac
-}
-
 start_ftp() {
   set_service_enabled ftp 1
   if [ ! -x "$TCPSVD" ] || [ ! -x "$FTPD" ]; then
@@ -639,33 +510,6 @@ stop_samba() {
   return 0
 }
 
-start_adb() {
-  set_usb_mode adb
-  stop_wifi_runtime
-  if [ ! -x "$ADBD_CONTROL" ]; then
-    log "start failed reason=adb_control_missing" adb
-    status_adb || true
-    return 1
-  fi
-  # At boot, adopt a healthy System gadget without needlessly disconnecting
-  # it. The explicit USB Mode = ADB action remains the user-requested full
-  # restart and recovery path.
-  if ! "$ADBD_CONTROL" start >> "$LOG_FILE" 2>&1; then
-    log "start failed reason=adbd_start" adb
-    status_adb || true
-    return 1
-  fi
-  log "enabled=1 usb_owner=adb apply=live" adb
-  status_adb
-}
-
-stop_adb() {
-  apply_usb_mode off || true
-  log "enabled=0 apply=live" adb
-  status_adb || true
-  return 0
-}
-
 usage() {
   cat <<EOF
 Usage: $0 COMMAND SERVICE
@@ -676,14 +520,12 @@ Commands:
   stop SERVICE
   restart SERVICE
   start-enabled
-  usb-mode adb|wifi|off
 
 Services:
   ssh      plumOS-controlled SSH shell service
   ftp      BusyBox FTP on port ${FTP_PORT}, max ${TRANSFER_MAX_CONNECTIONS}, share ${SHARE_DIR}
   sftp     SFTP server payload; depends on SSH
   samba    SMB share //Pixel2_IP/SDCARD, max ${TRANSFER_MAX_CONNECTIONS}, backed by ${SHARE_DIR}
-  adb      ADB over USB FunctionFS/configfs
   all
 EOF
 }
@@ -696,39 +538,24 @@ run_one() {
     status:ftp) status_ftp ;;
     status:sftp) status_sftp ;;
     status:samba) status_samba ;;
-    status:adb) status_adb ;;
     start:ssh) start_ssh ;;
     start:ftp) start_ftp ;;
     start:sftp) start_sftp ;;
     start:samba) start_samba ;;
-    start:adb) start_adb ;;
     stop:ssh) stop_ssh ;;
     stop:ftp) stop_ftp ;;
     stop:sftp) stop_sftp ;;
     stop:samba) stop_samba ;;
-    stop:adb) stop_adb ;;
     restart:ssh) stop_ssh >/dev/null 2>&1 || true; start_ssh ;;
     restart:ftp) stop_ftp >/dev/null 2>&1 || true; start_ftp ;;
     restart:sftp) stop_sftp >/dev/null 2>&1 || true; start_sftp ;;
     restart:samba) stop_samba >/dev/null 2>&1 || true; start_samba ;;
-    restart:adb) stop_adb >/dev/null 2>&1 || true; start_adb ;;
     *) usage >&2; return 2 ;;
   esac
 }
 
 command="${1:-}"
 service="${2:-}"
-if [ "$command" = "usb-mode" ]; then
-  case "$service" in
-    adb|wifi|off)
-      apply_usb_mode "$service"
-      rc=$?
-      printf 'usb_mode=%s\n' "$service"
-      exit "$rc"
-      ;;
-    *) usage >&2; exit 2 ;;
-  esac
-fi
 case "$command" in
   start|restart|start-enabled)
     if ! ensure_loopback; then
@@ -738,7 +565,7 @@ case "$command" in
 esac
 if [ "$command" = "start-enabled" ]; then
   rc=0
-  for svc in ssh ftp sftp samba adb; do
+  for svc in ssh ftp sftp samba; do
     if service_enabled "$svc"; then
       run_one start "$svc" || rc=$?
     else
@@ -757,12 +584,12 @@ fi
 case "$service" in
   all)
     rc=0
-    for svc in ssh ftp sftp samba adb; do
+    for svc in ssh ftp sftp samba; do
       run_one "$command" "$svc" || rc=$?
     done
     exit "$rc"
     ;;
-  ssh|ftp|sftp|samba|adb)
+  ssh|ftp|sftp|samba)
     run_one "$command" "$service"
     ;;
   *)

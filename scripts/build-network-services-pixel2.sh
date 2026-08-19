@@ -164,7 +164,7 @@ cat >"$PLUMOS_DIR/components/network-services/manifest.json" <<EOF
   "device": "pixel2",
   "architecture": "aarch64",
   "source_ref": "$source_ref",
-  "services": ["ssh", "ftp", "sftp", "samba", "adb"],
+  "services": ["ssh", "ftp", "sftp", "samba"],
   "share_root": "/mnt/plumos-user",
   "ftp_runtime": "BusyBox $BUSYBOX_VERSION",
   "ssh_runtime": "System Dropbear with plumOS password and SFTP integration",

@@ -6,24 +6,24 @@
 2. The stock initramfs mounts the boot volume and hands off to `/boot/SYSTEM`.
 3. plumOS `/sbin/init` mounts proc/sys/dev, `/mnt/plumos`, `/mnt/plumos-user`,
    `/state`, and `/roms`, then brings up IPv4/IPv6 loopback.
-4. init reads the exclusive Pixel2 USB mode, then starts either ADB or USB
-   Wi-Fi plus network/frontend services from `/usr/lib/plumos/init.d/`.
+4. init reserves the single Pixel2 USB port for USB host/Wi-Fi, migrates
+   retired ADB settings, then starts network/frontend services.
 
 ## Service Order
 
 ```text
-10-adbd      USB FunctionFS/configfs ADB maintenance path
+15-usb-host-reenumerate  bounded host-controller recovery for a saved dongle
 20-usb-wifi  saved USB Wi-Fi configuration, if a dongle exists
 30-ssh       compatibility slot; delegates policy to network services
-35-network-services  saved SSH/FTP/SFTP/Samba/ADB state
+35-network-services  saved SSH/FTP/SFTP/Samba state
 40-frontend  app-layer selection, hardware keys, ROM scan, FE
 ```
 
-On a fresh image, SSH defaults to ON and USB Mode defaults to ADB. Pixel2 has
-one dual-role port, so `usb_mode=adb|wifi|off` is authoritative and ADB and
-USB Wi-Fi are never started together. Changing USB Mode in the frontend takes
-effect after reboot. The FAT32 `plumos-enable-adb` marker remains an emergency
-ADB override. SSH uses the common plumOS
+On a fresh image, SSH defaults to ON. Pixel2 has one USB port and plumOS
+reserves it for a USB Wi-Fi dongle. ADB, FunctionFS, the USB Mode selector,
+and the recovery marker are not shipped. Existing `usb_mode`, `adb_enabled`,
+and marker state is removed during migration without changing Wi-Fi
+credentials. SSH uses the common plumOS
 `root / plumos` initial credential, generated as a device-local salted shadow
 entry. The public initial password can be changed without an OS update
 overwriting it; public-key authentication remains available.
@@ -69,7 +69,6 @@ adjustments are persisted after a short idle delay.
 | --- | --- |
 | init | `/mnt/plumos/logs/init.log` |
 | frontend | `/mnt/plumos/logs/frontend.log` |
-| ADB | `/state/plumos/logs/adbd.log` |
 | USB Wi-Fi | `/state/plumos/logs/usb-wifi.log` |
 | hardware keys | `/run/plumos/hardware-keys/service.log` |
 | power | `/state/plumos/logs/power.log` or FE-provided app-layer log |
@@ -93,5 +92,4 @@ Sleep first requests the stock kernel's `mem` state. If the vendor kernel
 rejects entry, Pixel2 falls back to software standby: the foreground owner
 remains paused, the backlight is set to zero, and the next physical Power press
 wakes the device without opening a second power menu. Resume reapplies display,
-volume state, and the RK817 `Speaker`/`Headphone` route switches. ADB is rebound
-only after a real kernel suspend returns.
+volume state, and the RK817 `Speaker`/`Headphone` route switches.

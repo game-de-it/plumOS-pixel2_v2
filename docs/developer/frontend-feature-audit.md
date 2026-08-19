@@ -30,11 +30,11 @@ backendへ置き換える。一方、共有Appsやfile transfer daemonが未実�
   Update PortMaster
 - Ports system: `roms/ports/*.sh`からPixel2 PortMaster launcherへ接続
 - NW Service: SSH、FTP、SFTP、Samba
-- Network Settings: Pixel2固有の`USB Mode`でADB、Wi-Fi、Offを排他的に選択する。
-- Settings: 共有surfaceとPixel2固有hardware capabilityを合わせた88 ID。
+- Network Settings: USB Wi-Fi接続、SSH/FTP/SFTP/Samba、接続情報を提供する。
+- Settings: 共有surfaceとPixel2固有hardware capabilityを合わせた86 ID。
 
-`scripts/audit-pixel2-implementation.py --release-gate`はcatalog、88 settings、action
-handler、5 network services、11 mandatory componentsを検査する。さらに
+`scripts/audit-pixel2-implementation.py --release-gate`はcatalog、settings、action
+handler、4 network services、11 mandatory componentsを検査する。さらに
 `scripts/verify-app-layer.sh`はvisible Appの`$PLUMOS_ROOT` launcherが実在し実行可能で
 あることと、各component checksumを検査する。未実装項目を非表示にしてreleaseする
 運用へは戻さない。
@@ -42,14 +42,10 @@ handler、5 network services、11 mandatory componentsを検査する。さら�
 ## Persistence and boot contract
 
 network service設定は`/mnt/plumos/config/network/services.conf`へ統一する。
-`35-network-services`が起動時に`start-enabled`を実行する。設定未作成時はV90S/MF
-共通方針のSSHと、Pixel2の有線保守経路であるADBだけをONにする。
-
-Pixel2はADBケーブルとUSB Wi-Fi dongleが同じ1ポートを使うため、`usb_mode`をUSB
-ownershipの正本とする。値は`adb`、`wifi`、`off`だけで、FEでは独立checkboxを表示
-しない。切替は次回再起動で反映し、System、Runtime Wi-Fi recovery、FEが同じ値を
-読む。旧`adb_enabled`と`wifi_enabled`はmigration互換としてのみ保持する。FAT32 rootの
-`plumos-enable-adb`は、設定にかかわらずADBを取り戻すoffline recovery overrideである。
+`35-network-services`が起動時に`start-enabled`を実行する。設定未作成時はSSHを
+ONにする。Pixel2の単一USB portは常にUSB Wi-Fi host用であり、FEにUSB ModeやADB
+項目は表示しない。旧`usb_mode`、`adb_enabled`、FAT recovery markerは起動時に
+削除するが、SSID/PSK、service設定、ROM、BIOS、saveは変更しない。
 
 ## Hardware acceptance still required
 

@@ -8,7 +8,7 @@ Pixel2 stock boot substrate
   exact checksum-registered stock runtime DTB
                        |
 plumOS SYSTEM on PLUMOS_BOOT
-  /sbin/init / init.d services / ADB / USB Wi-Fi / rootfs diagnostics
+  /sbin/init / init.d services / USB Wi-Fi / rootfs diagnostics
                        |
 plumOS app layer on PLUMOS_SYS
   /mnt/plumos/bin / cores / config / factory-defaults / manifests
@@ -54,8 +54,7 @@ Implemented:
 - app-layer frontend, text UI, scanner, RetroArch, full libretro catalog,
   PicoArch, OpenBOR, DraStic, PPSSPP, Pyxel runtime, manifests, and strict
   checksum gate;
-- ADB maintenance path;
-- minimal USB Wi-Fi runtime path;
+- USB Wi-Fi maintenance path with SSH/SFTP;
 - Pixel2 input map contract and global hardware-key daemon;
 - FE reboot path, RK817 shutdown helper, and RK817-aware audio routing.
 
@@ -63,5 +62,4 @@ Not yet complete:
 
 - final System A/B and transactional updater;
 - PortMaster, File Manager, and Music Player;
-- production ADB authentication or explicit opt-in;
 - final transactional update/rollback path.

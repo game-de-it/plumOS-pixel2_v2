@@ -18,7 +18,6 @@ log_file=$log_dir/power.log
 lock_dir=${PLUMOS_POWER_LOCK_DIR:-$runtime_root/power-action.lock}
 power_state=${PLUMOS_POWER_STATE:-/sys/power/state}
 rtc_wakealarm=${PLUMOS_RTC_WAKEALARM:-/sys/class/rtc/rtc0/wakealarm}
-adbd_control=${PLUMOS_ADBD_CONTROL:-/usr/lib/plumos/init.d/10-adbd}
 display_control=${PLUMOS_DISPLAY_CONTROL:-$root/bin/plumos-display-control}
 volume_control=${PLUMOS_VOLUME_CONTROL:-$root/bin/plumos-volume-control}
 rk817_resume=${PLUMOS_RK817_RESUME_HELPER:-$root/bin/plumos-rk817-resume}
@@ -167,22 +166,6 @@ run_rk817_resume() {
     fi
 }
 
-adb_was_running() {
-    [ -x "$adbd_control" ] || return 1
-    "$adbd_control" status 2>/dev/null | grep -q '^running=1$'
-}
-
-restore_adb() {
-    [ "$1" -eq 1 ] || return 0
-    log 'sleep=adb-restart-begin'
-    "$adbd_control" stop >>"$log_file" 2>&1 || true
-    if "$adbd_control" start >>"$log_file" 2>&1; then
-        log 'sleep=adb-restart-ok'
-    else
-        log 'sleep=adb-restart-failed'
-    fi
-}
-
 set_wakealarm() {
     [ "$wakeup_sec" -gt 0 ] || return 0
     [ -e "$rtc_wakealarm" ] || {
@@ -273,9 +256,7 @@ sleep_action() {
             }
             ;;
     esac
-    adb_resume=0
-    adb_was_running && adb_resume=1
-    log "sleep=prepare backend=$sleep_backend adb_resume=$adb_resume"
+    log "sleep=prepare backend=$sleep_backend"
     run_rk817_resume arm
     $bb sync
     [ "$wait_sec" -eq 0 ] || $bb sleep "$wait_sec"
@@ -303,7 +284,6 @@ sleep_action() {
     fi
     unblank_display_after_sleep
     restore_after_sleep
-    [ "$kernel_sleep" -eq 0 ] || restore_adb "$adb_resume"
     log "sleep=result-returned backend=$sleep_backend kernel_sleep=$kernel_sleep"
 }
 

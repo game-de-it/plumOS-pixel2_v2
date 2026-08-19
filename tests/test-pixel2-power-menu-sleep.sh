@@ -22,12 +22,6 @@ cat >"$TEST_ROOT/busybox" <<'EOF'
 exec "$@"
 EOF
 
-cat >"$TEST_ROOT/adbd" <<'EOF'
-#!/bin/sh
-printf '%s\n' "$1" >>"$PLUMOS_TEST_CALLS"
-case "$1" in status) printf 'running=1\n' ;; esac
-EOF
-
 for helper in display volume rk817; do
     cat >"$TEST_ROOT/$helper" <<'EOF'
 #!/bin/sh
@@ -41,7 +35,7 @@ printf '%s %s\n' "${0##*/}" "$*" >>"$PLUMOS_TEST_CALLS"
 printf 'rk817_alsa %s\n' "${ALSA_CONFIG_PATH:-missing}" >>"$PLUMOS_TEST_CALLS"
 EOF
 
-chmod 0755 "$TEST_ROOT/busybox" "$TEST_ROOT/adbd" \
+chmod 0755 "$TEST_ROOT/busybox" \
     "$TEST_ROOT/display" "$TEST_ROOT/volume" "$TEST_ROOT/rk817"
 printf 'freeze mem\n' >"$TEST_ROOT/power-state"
 : >"$TEST_ROOT/wakealarm"
@@ -54,7 +48,6 @@ PLUMOS_POWER_LOG_DIR="$TEST_ROOT/logs" \
 PLUMOS_POWER_LOCK_DIR="$TEST_ROOT/run/power.lock" \
 PLUMOS_POWER_STATE="$TEST_ROOT/power-state" \
 PLUMOS_RTC_WAKEALARM="$TEST_ROOT/wakealarm" \
-PLUMOS_ADBD_CONTROL="$TEST_ROOT/adbd" \
 PLUMOS_DISPLAY_CONTROL="$TEST_ROOT/display" \
 PLUMOS_VOLUME_CONTROL="$TEST_ROOT/volume" \
 PLUMOS_RK817_RESUME_HELPER="$TEST_ROOT/rk817" \
@@ -71,8 +64,6 @@ grep -q "^rk817_alsa $TEST_ROOT/plumos/config/alsa/alsa.conf$" \
     "$TEST_ROOT/calls"
 grep -q '^volume apply$' "$TEST_ROOT/calls"
 grep -q '^display apply$' "$TEST_ROOT/calls"
-grep -q '^stop$' "$TEST_ROOT/calls"
-grep -q '^start$' "$TEST_ROOT/calls"
 grep -q 'sleep=result-returned backend=mem' "$TEST_ROOT/logs/power.log"
 
 printf '42\n' >"$TEST_ROOT/backlight"
@@ -86,7 +77,6 @@ PLUMOS_POWER_LOG_DIR="$TEST_ROOT/logs" \
 PLUMOS_POWER_LOCK_DIR="$TEST_ROOT/run/power.lock" \
 PLUMOS_POWER_STATE="$TEST_ROOT/power-state" \
 PLUMOS_RTC_WAKEALARM="$TEST_ROOT/wakealarm" \
-PLUMOS_ADBD_CONTROL="$TEST_ROOT/adbd" \
 PLUMOS_DISPLAY_CONTROL="$TEST_ROOT/display" \
 PLUMOS_VOLUME_CONTROL="$TEST_ROOT/volume" \
 PLUMOS_RK817_RESUME_HELPER="$TEST_ROOT/rk817" \

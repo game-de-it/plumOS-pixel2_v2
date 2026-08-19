@@ -333,30 +333,23 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                     True,
                 )
             )
-    adbd_service = repo / "rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-    adbd_text = (
-        adbd_service.read_text(encoding="utf-8", errors="replace")
-        if adbd_service.is_file()
-        else ""
+    retired_adb_paths = (
+        repo / "rootfs/pixel2/usr/lib/plumos/init.d/10-adbd",
+        repo / "rootfs/pixel2/usr/sbin/adbd",
+        repo / "scripts/build-adbd-overlay.sh",
     )
-    adb_has_maintenance_default = (
-        "adb_enabled_by_policy()" in adbd_text
-        and "default-on-no-explicit-setting" in adbd_text
-        and "/mnt/plumos-user/plumos-enable-adb" in adbd_text
-    )
-    if adbd_service.is_file() and not adb_has_maintenance_default:
+    if any(path.exists() for path in retired_adb_paths):
         findings.append(
             Finding(
                 "P0",
                 "connectivity-recovery",
-                "ADB boot policy",
-                "Pixel2 must boot ADB by default when no explicit user setting exists and retain an explicit OFF override",
+                "retired ADB payload",
+                "Pixel2 Wi-Fi-only policy forbids ADB services, binaries, and build inputs",
                 True,
             )
         )
     if (
-        "/mnt/plumos/config/network/services.conf" not in adbd_text
-        or 'CONFIG_DIR="${PLUMOS_ROOT}/config/network"' not in network_text
+        'CONFIG_DIR="${PLUMOS_ROOT}/config/network"' not in network_text
         or 'SERVICES_CONF="${CONFIG_DIR}/services.conf"' not in network_text
     ):
         findings.append(
@@ -364,7 +357,7 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                 "P0",
                 "connectivity-persistence",
                 "network service settings",
-                "frontend services and boot ADB must consume the same app-layer config",
+                "frontend and boot network services must consume the same app-layer config",
                 True,
             )
         )

@@ -13,10 +13,7 @@ LOG_DIR="${PLUMOS_ROOT}/logs"
 LOG_FILE="${LOG_DIR}/wifi-recovery.log"
 PID_FILE="${RUN_DIR}/uevent.pid"
 RECOVERY_LOCK_DIR="${RUN_DIR}/recover.lock"
-SYSTEM_SETTINGS="${PLUMOS_SYSTEM_SETTINGS_JSON:-${PLUMOS_ROOT}/config/system/settings.json}"
 WPA_CONFIG="${PLUMOS_WPA_CONFIG:-${PLUMOS_ROOT}/config/wpa_supplicant.conf}"
-SERVICES_CONF="${PLUMOS_NETWORK_SERVICES_CONF:-${PLUMOS_ROOT}/config/network/services.conf}"
-ADB_MARKER="${PLUMOS_NETWORK_ADB_MARKER:-${PLUMOS_SDCARD_ROOT}/plumos-enable-adb}"
 BUSYBOX="${PLUMOS_BUSYBOX:-${PLUMOS_ROOT}/network/bin/busybox}"
 [ -x "$BUSYBOX" ] || BUSYBOX=/bin/busybox
 UEVENT_HELPER="${PLUMOS_ROOT}/bin/plumos-wifi-uevent"
@@ -44,40 +41,7 @@ Commands:
 USAGE
 }
 
-adb_requested() {
-  [ -f "$ADB_MARKER" ] && return 0
-  if [ -r "$SERVICES_CONF" ]; then
-    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-    case "$mode" in
-      adb) return 0 ;;
-      wifi|off) return 1 ;;
-    esac
-  fi
-  [ -r "$SERVICES_CONF" ] || return 0
-  value="$(sed -n 's/^adb_enabled=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-  case "$value" in
-    1|true|on|'') return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 wifi_requested() {
-  adb_requested && return 1
-  if [ -r "$SERVICES_CONF" ]; then
-    mode="$(sed -n 's/^usb_mode=//p' "$SERVICES_CONF" 2>/dev/null | tail -n 1)"
-    case "$mode" in
-      wifi) return 0 ;;
-      adb|off) return 1 ;;
-    esac
-  fi
-  if [ -r "$SYSTEM_SETTINGS" ]; then
-    value="$(sed -n \
-      -e 's/.*"wifi_enabled"[[:space:]]*:[[:space:]]*true.*/true/p' \
-      -e 's/.*"wifi_enabled"[[:space:]]*:[[:space:]]*false.*/false/p' \
-      "$SYSTEM_SETTINGS" 2>/dev/null | tail -n 1)"
-    [ "$value" = false ] && return 1
-    [ "$value" = true ] && return 0
-  fi
   [ -s "$WPA_CONFIG" ]
 }
 

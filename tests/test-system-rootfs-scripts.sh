@@ -10,7 +10,6 @@ grep -q 'ip link set lo up' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'ip addr add 127.0.0.1/8 dev lo' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 for script in \
     "$ROOT_DIR/scripts/build-system-rootfs.sh" \
-    "$ROOT_DIR/scripts/build-adbd-overlay.sh" \
     "$ROOT_DIR/scripts/install-kernel-runtime.sh" \
     "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh" \
     "$ROOT_DIR/scripts/install-frontend-rootfs.sh" \
@@ -25,8 +24,6 @@ for script in \
     "$ROOT_DIR/rootfs/pixel2-dispatcher/init" \
     "$ROOT_DIR/rootfs/pixel2/sbin/init" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/systemd/systemd" \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/plumos-pixel2-usb-role" \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/30-ssh" \
@@ -55,27 +52,12 @@ grep -q 'pixel2_joypad' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 grep -q 'physical_yres' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
-grep -q 'usb_role' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-! grep -q '^USB_ONLINE=' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'plumos-pixel2-usb-role' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-test -x "$ROOT_DIR/tests/test-pixel2-usb-role.sh"
-"$ROOT_DIR/tests/test-pixel2-usb-role.sh"
+test ! -e "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
+test ! -e "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/plumos-pixel2-usb-role"
+test ! -e "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 test ! -e "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog"
 test ! -e "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adb-uevent"
-grep -q 'result=skipped reason=adb-priority' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
-grep -q 'result=disabled reason=adb-priority' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/20-usb-wifi"
-test ! -e "$ROOT_DIR/rootfs/pixel2/etc/plumos-adb-only"
-for script in 15-usb-host-reenumerate 20-usb-wifi 35-network-services; do
-    grep -q 'reason=adb-only-baseline' \
-        "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/$script"
-done
-grep -q 'plumos-init=usb-owner mode=' "$ROOT_DIR/rootfs/pixel2/sbin/init"
-grep -q '10-adbd:wifi' "$ROOT_DIR/rootfs/pixel2/sbin/init"
-! grep -q '15-adbd-watchdog' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'plumos-init=usb-owner mode=wifi-host' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'plumos-enable-adb' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 test -x "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
@@ -83,28 +65,6 @@ grep -q 'ff300000.usb' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'usb-upstream-online' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
-! grep -q -- '-DPLUMOS_ADBD_LEGACY_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
-! grep -q -- '-DPLUMOS_ADBD_SYNC_FFS' "$ROOT_DIR/scripts/build-adbd-overlay.sh"
-grep -q 'transport=nonblocking FunctionFS' \
-    "$ROOT_DIR/scripts/build-adbd-overlay.sh"
-! grep -q '0001-plumos-transport-state.patch' \
-    "$ROOT_DIR/scripts/build-adbd-overlay.sh"
-grep -q 'adb-serial' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'busybox.*uevent' "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'watchdog-replug reason=transport-offline' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'schedule_recovery' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'action=watchdog-' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'status_adbd' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'ADB daemon lost its FunctionFS endpoints' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-! grep -q 'replug_adbd\|takeover_adbd\|USB_STATE.*DISCONNECTED' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
-grep -q 'reset_dwc2_for_device' \
-    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/10-adbd"
 grep -q 'plumos-network-services' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
 grep -q 'plumos-wifi-recovery' \
@@ -127,7 +87,6 @@ grep -q ') &' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
 grep -q '/mnt/plumos/ssh/libexec/sftp-server' \
     "$ROOT_DIR/scripts/build-system-rootfs.sh"
-grep -q 'pixel2_usb_present' "$ROOT_DIR/scripts/pixel2-adb.sh"
 grep -q 'PLUMOS_SYS' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'app-layer-selected' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"

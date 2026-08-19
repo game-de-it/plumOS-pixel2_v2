@@ -25,11 +25,10 @@
     "settings",
     "network"
   ],
-  "network_service_ids": ["ssh", "ftp", "sftp", "samba", "adb"],
+  "network_service_ids": ["ssh", "ftp", "sftp", "samba"],
   "required_setting_ids": [
     "boot_resume_mode",
     "graphic_theme_id",
-    "network_adb_status",
     "network_connect_wifi",
     "network_connection",
     "network_frequency",
@@ -46,7 +45,6 @@
     "network_signal",
     "network_ssh",
     "network_ssh_enabled",
-    "network_usb_mode",
     "performance_clear_cpu_override",
     "performance_cpu_policy",
     "performance_system",
@@ -117,7 +115,6 @@
     "ui_theme_settings"
   ],
   "required_handler_tokens": [
-    "run_network_usb_mode_control",
     "run_network_service_control",
     "request_latest_system_update",
     "run_factory_reset_action",

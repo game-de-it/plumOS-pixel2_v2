@@ -367,7 +367,7 @@ if [ "$id" = drastic ]; then
     fi
     if [ -n "$runner_pid" ]; then
       # The Pixel2 power overlay may have stopped the DRM runner before the
-      # launcher receives HUP/TERM (for example while adbd re-enumerates).
+      # launcher receives HUP/TERM (for example during a power transition).
       # A stopped process cannot act on a pending TERM, so resume it first and
       # keep cleanup bounded instead of waiting forever.
       kill -CONT "$runner_pid" >/dev/null 2>&1 || true

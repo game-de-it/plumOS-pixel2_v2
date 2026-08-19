@@ -42,7 +42,6 @@ mkdir -p "$ROOTFS_DIR" "$PAYLOAD_DIR/system-slots" "$DISPATCHER_DIR/bin" \
     "$ROOTFS_DIR/state" "$ROOTFS_DIR/roms" "$ROOTFS_DIR/root" \
     "$ROOTFS_DIR/mnt/plumos" "$ROOTFS_DIR/mnt/plumos-user"
 cp -a "$ROOT_DIR/rootfs/pixel2/." "$ROOTFS_DIR/"
-"$ROOT_DIR/scripts/build-adbd-overlay.sh" --inside "$ROOTFS_DIR"
 if ! "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh" --inside --verify-output; then
     "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh" --inside
 fi
