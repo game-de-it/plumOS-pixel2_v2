@@ -76,4 +76,21 @@ Before/after inventories differed only at
 `diskutil verifyVolume /dev/disk4s1` completed with `fsck_msdos` exit code zero,
 then all card volumes were unmounted successfully.
 
-Physical ADB and Wi-Fi acceptance remains pending.
+## First exact-stock physical boot
+
+The card was returned to the Pixel2 and booted with the Mac USB cable and no
+Wi-Fi dongle. The frontend reported ADB `waiting`. On the Mac, `adb devices -l`
+was empty and neither `system_profiler SPUSBDataType` nor the IOUSB registry
+contained a Pixel2/plumOS device or `18d1:4ee7` parent device.
+
+Result: **ADB FAIL**. Restoring the exact stock DTB did not by itself restore
+USB enumeration. This failure is below the ADB protocol transport: the Mac did
+not receive even the gadget parent device. The one-property DTB change is no
+longer required to reproduce the defect and is therefore not accepted as its
+sole cause.
+
+The next diagnostic must preserve this single-owner boot and recover the
+persistent device log from the SD card. It must not add another Off/Wi-Fi/ADB
+toggle or automatic recovery action before that evidence is collected.
+
+Wi-Fi acceptance with the stock DTB remains pending.
