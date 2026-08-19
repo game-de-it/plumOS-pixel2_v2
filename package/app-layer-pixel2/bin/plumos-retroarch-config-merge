@@ -15,6 +15,7 @@ legacy_pixel2_sha256=b97c897bb7141a77d6fb17e77a66895540b9bd9cc177d7ee983afcb75e5
 legacy_incomplete_full_sha256=9f4aaebdab3cc3a9be24b203161e63f63f1887e4eb0b79c82618086d3cbc4b24
 regressed_pixel2_sha256=8d9a8e71cc38e63d1c6084d6bcf99701507cb632ff2dd1f4ebf9963b82beae77
 osd_disabled_factory_sha256=2db551beda3cd62e4f87d15d77a56ae2df1905fa3bc3925dbf5aaee803a4dcc6
+black_osd_factory_sha256=231ee2585779c098d9512a64cc8b17322c3b86e07d3e84889aaac815893d7280
 
 [ -s "$factory" ] || {
     printf 'retroarch_config=result-error reason=factory-missing path=%s\n' "$factory" >&2
@@ -192,6 +193,14 @@ elif set -- $($bb sha256sum "$config") &&
           [ "$1" = "$regressed_pixel2_sha256" ]; }; then
     atomic_copy "$factory" "$config"
     main_result=replaced-legacy
+elif set -- $($bb sha256sum "$config") &&
+        [ "$1" = "$black_osd_factory_sha256" ]; then
+    # This exact factory generation accidentally made all plain-DRM OSD text
+    # black. Replace it only when the complete active config is byte-identical
+    # to that factory. A user-edited config with the same old marker is merged
+    # normally below, so an explicit custom message colour is not overwritten.
+    atomic_copy "$factory" "$config"
+    main_result=replaced-black-osd
 elif [ -r "$marker" ] &&
         [ "$($bb sed -n '1p' "$marker")" = "$legacy_incomplete_full_sha256" ]; then
     migrate_legacy_incomplete_values

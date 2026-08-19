@@ -106,4 +106,38 @@ grep -q "^video_font_enable = \"true\"$" "$active/retroarch.cfg"
 grep -q "^video_font_path = \"/mnt/plumos/fonts/default.otf\"$" \
     "$active/retroarch.cfg"
 grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
+
+# The validated live-default generation accidentally saved black as its OSD
+# message colour. Replace an active cfg only when it is byte-identical to that
+# exact factory generation.
+cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
+sed -i "s/video_message_color = \"ffff00\"/video_message_color = \"0\"/" \
+    "$active/retroarch.cfg"
+test "$(sha256sum "$active/retroarch.cfg" | cut -d " " -f 1)" = \
+    "231ee2585779c098d9512a64cc8b17322c3b86e07d3e84889aaac815893d7280"
+printf "%s\n" "231ee2585779c098d9512a64cc8b17322c3b86e07d3e84889aaac815893d7280" \
+    > "$root/state/retroarch/factory-config.sha256"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/black-osd.log
+grep -q "retroarch_config=result-replaced-black-osd added=0" \
+    /tmp/black-osd.log
+cmp "$factory/retroarch.cfg" "$active/retroarch.cfg"
+grep -q "^video_message_color = \"ffff00\"$" "$active/retroarch.cfg"
+
+# A cfg changed by the user is not byte-identical to the defective factory.
+# Preserve both its explicit black colour and its unrelated hotkey.
+cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
+sed -i \
+    -e "s/video_message_color = \"ffff00\"/video_message_color = \"0\"/" \
+    -e "s/input_save_state_btn = \"5\"/input_save_state_btn = \"42\"/" \
+    "$active/retroarch.cfg"
+printf "%s\n" "231ee2585779c098d9512a64cc8b17322c3b86e07d3e84889aaac815893d7280" \
+    > "$root/state/retroarch/factory-config.sha256"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/custom-black-osd.log
+grep -q "retroarch_config=result-unchanged added=0" /tmp/custom-black-osd.log
+grep -q "^video_message_color = \"0\"$" "$active/retroarch.cfg"
+grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 '
