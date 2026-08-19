@@ -206,6 +206,10 @@ grep -q '^  handled)' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-power-menu-overlay"
 grep -q 'plumos_fbdev_present_black(&ui->fbdev_renderer)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'plumos_fbdev_drm_disable_stale_cursor_planes(r)' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
+grep -q 'type == DRM_PLANE_TYPE_CURSOR' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q 'static int plumos_fbdev_present_black' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q 'static int plumos_fbdev_set_display_power' \

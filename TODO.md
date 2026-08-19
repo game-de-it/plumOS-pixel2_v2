@@ -12,6 +12,12 @@
 
 ## Implementation audit and release blockers
 
+- [x] SDL/KMSのマウスカーソルがFE/PortMasterへ残留しないようにする
+  - 2026-08-20: 実機DRM captureで64x64 ARGBのhardware cursor plane 69を確認。
+    PortMaster adapter 39はcontroller-only UIでSDL cursorを常時非表示にし、FEは
+    primary CRTC取得後に前clientが残したtype=cursor planeだけを無効化する。
+    overlay/primary planeには触れず、他アプリからFEへ戻る経路も共通で復旧する。
+
 - [x] FE起動前にPixel2の基底framebufferを毎回クリアする
   - 2026-08-20: 初回setup/update/recoveryの最終画面がDRM clientの背後に残り、
     game/app切替時に一瞬再表示される問題へ対処。Systemがnative

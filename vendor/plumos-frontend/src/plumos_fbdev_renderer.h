@@ -222,6 +222,75 @@ static int plumos_fbdev_drm_create_buffer(
   return 1;
 }
 
+static int plumos_fbdev_drm_plane_type(int drm_fd, uint32_t plane_id,
+                                       uint64_t *type) {
+  drmModeObjectProperties *properties;
+  uint32_t index;
+  int found = 0;
+
+  if (drm_fd < 0 || !plane_id || !type) {
+    return 0;
+  }
+  properties = drmModeObjectGetProperties(drm_fd, plane_id,
+                                          DRM_MODE_OBJECT_PLANE);
+  if (!properties) {
+    return 0;
+  }
+  for (index = 0; index < properties->count_props; index++) {
+    drmModePropertyRes *property =
+        drmModeGetProperty(drm_fd, properties->props[index]);
+    if (!property) {
+      continue;
+    }
+    if (strcmp(property->name, "type") == 0) {
+      *type = properties->prop_values[index];
+      found = 1;
+      drmModeFreeProperty(property);
+      break;
+    }
+    drmModeFreeProperty(property);
+  }
+  drmModeFreeObjectProperties(properties);
+  return found;
+}
+
+/*
+ * Rockchip's 5.10 DRM driver can keep an SDL KMS cursor plane scanned out
+ * after the SDL client exits. A later legacy modeset replaces the primary
+ * framebuffer but does not clear that independent plane.
+ */
+static void plumos_fbdev_drm_disable_stale_cursor_planes(
+    struct plumos_fbdev_renderer *r) {
+  drmModePlaneRes *resources;
+  uint32_t index;
+
+  if (!r || r->drm_fd < 0) {
+    return;
+  }
+  (void)drmSetClientCap(r->drm_fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
+  resources = drmModeGetPlaneResources(r->drm_fd);
+  if (!resources) {
+    return;
+  }
+  for (index = 0; index < resources->count_planes; index++) {
+    drmModePlane *plane =
+        drmModeGetPlane(r->drm_fd, resources->planes[index]);
+    uint64_t type = 0;
+
+    if (!plane) {
+      continue;
+    }
+    if (plane->crtc_id && plane->fb_id &&
+        plumos_fbdev_drm_plane_type(r->drm_fd, plane->plane_id, &type) &&
+        type == DRM_PLANE_TYPE_CURSOR) {
+      (void)drmModeSetPlane(r->drm_fd, plane->plane_id, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0);
+    }
+    drmModeFreePlane(plane);
+  }
+  drmModeFreePlaneResources(resources);
+}
+
 static int plumos_fbdev_drm_init(struct plumos_fbdev_renderer *r,
                                  const char *path, char *error,
                                  size_t error_size) {
@@ -318,6 +387,7 @@ static int plumos_fbdev_drm_init(struct plumos_fbdev_renderer *r,
     snprintf(error, error_size, "DRM set CRTC: %s", strerror(errno));
     goto out;
   }
+  plumos_fbdev_drm_disable_stale_cursor_planes(r);
   r->drm_front = 0;
   r->drm_draw = 1;
   r->drm_active = 1;

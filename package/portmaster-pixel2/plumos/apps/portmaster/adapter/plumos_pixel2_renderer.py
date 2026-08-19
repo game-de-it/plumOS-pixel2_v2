@@ -15,6 +15,10 @@ class Pixel2Renderer(sdl2.ext.Renderer):
     def __init__(self, target, *args, **kwargs):
         super().__init__(target, *args, **kwargs)
 
+        # Pixel2 is controller-only. The stock Rockchip DRM driver can leave
+        # SDL's hardware cursor plane scanned out after this process exits.
+        sdl2.SDL_ShowCursor(sdl2.SDL_DISABLE)
+
         info = sdl2.SDL_RendererInfo()
         if sdl2.SDL_GetRendererInfo(self.sdlrenderer, byref(info)) != 0:
             raise sdl2.ext.SDLError(sdl2.SDL_GetError())
@@ -33,6 +37,7 @@ class Pixel2Renderer(sdl2.ext.Renderer):
 
     def present(self):
         renderer = self.sdlrenderer
+        sdl2.SDL_ShowCursor(sdl2.SDL_DISABLE)
         if sdl2.SDL_SetRenderTarget(renderer, None) != 0:
             raise sdl2.ext.SDLError(sdl2.SDL_GetError())
 
@@ -68,4 +73,3 @@ class Pixel2Renderer(sdl2.ext.Renderer):
             sdl2.SDL_DestroyTexture(frame)
             self._plumos_frame = None
         super().destroy()
-
