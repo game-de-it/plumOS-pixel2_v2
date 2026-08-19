@@ -272,9 +272,12 @@ def build_system(args: argparse.Namespace) -> tuple[dict[str, Any], list[tuple[P
     source = args.input.resolve()
     if not source.is_file():
         raise SystemExit(f"error: system SquashFS is missing: {source}")
-    if shutil.which("unsquashfs") and os.environ.get(
-        "PLUMOS_UPDATE_SKIP_EMBEDDED_CHECK"
-    ) != "1":
+    if os.environ.get("PLUMOS_UPDATE_SKIP_EMBEDDED_CHECK") != "1":
+        if not shutil.which("unsquashfs"):
+            raise SystemExit(
+                "error: unsquashfs is required to verify the embedded System "
+                "version and ABI; use scripts/docker-build.sh update-package"
+            )
         for embedded_path, expected, label in (
             ("etc/plumos-system-version", args.version, "System version"),
             ("etc/plumos-system-abi", args.system_abi, "System ABI"),

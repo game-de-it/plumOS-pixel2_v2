@@ -72,3 +72,17 @@ system_rootfs_scripts=result-ok
 
 Physical acceptance remains pending for live Off to Wi-Fi, live Off to ADB,
 ADB shell, cable replug and status transitions.
+
+## Build version gate
+
+The first signed package carried target version `0.1.0-dev-4ddb809`, but the
+System build had used its default and embedded `0.1.0-dev`.  The A/B update and
+USB ownership checks still completed, but this mismatch would make the next
+exact-source update ambiguous.  Runtime application was stopped before any
+app-layer change.
+
+System package construction now fails if `unsquashfs` is unavailable instead
+of silently skipping the embedded version and ABI check.  Normal package
+generation must use the tools container.  A corrected System is built with
+`PLUMOS_PIXEL2_VERSION=0.1.0-dev-4ddb809`; its package uses the live embedded
+`0.1.0-dev` as the exact corrective source.

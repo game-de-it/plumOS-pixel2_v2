@@ -177,6 +177,12 @@
         旧`6f022d4` ADB lifecycleは維持し、FE API互換のread-only `status`だけを追加。
         host fixture一式は合格、署名System/Runtimeの実機適用とOff/Wi-Fi/ADB/cable replug
         acceptanceを継続する。
+      - 上記System初回packageは署名targetを`4ddb809`とした一方、hostに`unsquashfs`が
+        無いためbuilderがembedded checkを黙ってskipし、実System versionが
+        `0.1.0-dev`のままになっていた。ownershipとB healthyは合格したがRuntime適用を
+        中止。System package生成は`unsquashfs`不在をerrorにし、tools container内で
+        embedded version/ABI一致を必須化した。version明示Systemをlive embedded
+        `0.1.0-dev`からのcorrective updateとして再適用する。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで

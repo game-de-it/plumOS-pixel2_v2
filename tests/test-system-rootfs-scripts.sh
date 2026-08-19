@@ -37,6 +37,8 @@ done
 python3 -m py_compile \
     "$ROOT_DIR/scripts/plumos-system-update.py" \
     "$ROOT_DIR/scripts/build-pixel2-update-package.py"
+grep -q 'unsquashfs is required to verify the embedded System' \
+    "$ROOT_DIR/scripts/build-pixel2-update-package.py"
 
 bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"
 bash -n "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/50-update-health"
