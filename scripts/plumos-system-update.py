@@ -744,6 +744,27 @@ def apply_system(package: Path, manifest: dict[str, Any], manifest_bytes: bytes,
             raise UpdateError("PLUMOS_BOOT readback hash mismatch")
         os.replace(temp_image, final_image)
         atomic_text(system_dir / f"system-{inactive}.sha256", f"{expected}  system-{inactive}.squashfs\n")
+        source_ref = str(manifest.get("source_ref", manifest["version"]))
+        source_date_epoch = int(manifest.get("source_date_epoch", 0))
+        for value, label in (
+            (str(manifest["version"]), "version"),
+            (str(manifest["runtime_abi"]), "runtime_abi"),
+            (source_ref, "source_ref"),
+        ):
+            if not value or "\n" in value or "\r" in value:
+                raise UpdateError(f"invalid System slot metadata field: {label}")
+        slot_manifest = (
+            "format=plumos-pixel2-system-v1\n"
+            f"device={DEVICE_ID}\n"
+            f"architecture={ARCHITECTURE}\n"
+            f"version={manifest['version']}\n"
+            f"runtime_abi={manifest['runtime_abi']}\n"
+            f"source_ref={source_ref}\n"
+            f"source_date_epoch={source_date_epoch}\n"
+            f"image_size={source.stat().st_size}\n"
+            f"image_sha256={expected}\n"
+        )
+        atomic_text(system_dir / f"system-{inactive}.manifest", slot_manifest)
         atomic_bytes(system_dir / f"system-{inactive}.manifest.json", manifest_bytes)
         atomic_bytes(system_dir / f"system-{inactive}.manifest.sig", signature)
         os.sync()

@@ -245,6 +245,23 @@ assert_file_value "$runtime_root/update-state/system-active" a
 assert_file_value "$runtime_root/update-state/system-pending" b
 cmp -s "$system_payload" "$boot_root/system-slots/system-b.squashfs" || \
     fail 'Inactive System slot readback does not match package payload'
+grep -Fxq 'version=1.1.0' \
+    "$boot_root/system-slots/system-b.manifest" || \
+    fail 'Inactive System slot text manifest has stale version'
+grep -Fxq 'source_ref=1.1.0' \
+    "$boot_root/system-slots/system-b.manifest" || \
+    fail 'Inactive System slot text manifest has stale source ref'
+grep -Fxq "image_size=$(stat -c '%s' "$system_payload" 2>/dev/null || stat -f '%z' "$system_payload")" \
+    "$boot_root/system-slots/system-b.manifest" || \
+    fail 'Inactive System slot text manifest has stale image size'
+system_payload_sha=$(sha256sum "$system_payload" | awk '{print $1}')
+grep -Fxq "image_sha256=$system_payload_sha" \
+    "$boot_root/system-slots/system-b.manifest" || \
+    fail 'Inactive System slot text manifest has stale image hash'
+[ -s "$boot_root/system-slots/system-b.manifest.json" ] || \
+    fail 'Inactive System slot signed manifest is missing'
+[ -s "$boot_root/system-slots/system-b.manifest.sig" ] || \
+    fail 'Inactive System slot manifest signature is missing'
 if run_updater mark-healthy >/dev/null 2>&1; then
     fail 'System slot was promoted before the pending slot booted'
 fi

@@ -24,6 +24,12 @@
     boot時の挿しっぱなしdongle列挙漏れを防ぎ、起動後の再挿入はV90S準拠のblocking
     uevent monitorからwpa/DHCP/network serviceを自動再開する。常時pollingは追加しない。
 
+- [x] System A/B更新時にslot metadataを全て同一transactionで更新する
+  - 2026-08-20: SquashFS、`.sha256`、署名`manifest.json`/`.sig`に加え、image生成時の
+    text `system-{a,b}.manifest`もinactive slotへのreadback後、pending commit前に原子的に
+    更新する。package builderはSystem内の`source_ref`と`source_date_epoch`を署名対象へ
+    取り込み、次回以降のcaptureでfactory seed情報が残らないようにする。
+
 - [x] build target、FE導線、runtime helper、Apps、standalone、storage/update、release準備を横断監査する
   - 2026-08-13: [実装リスト](docs/developer/implementation-status.md)を更新。SaturnをRK3326性能要件で非対応化し、97 system中87 enabled、109 libretro core、standalone 4 built / 4 pendingを現行baselineとする。
 - [x] FE catalogと生成app-layerの不整合を検出する自動監査を追加する

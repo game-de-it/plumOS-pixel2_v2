@@ -272,6 +272,8 @@ def build_system(args: argparse.Namespace) -> tuple[dict[str, Any], list[tuple[P
     source = args.input.resolve()
     if not source.is_file():
         raise SystemExit(f"error: system SquashFS is missing: {source}")
+    source_ref = args.version
+    source_date_epoch = 0
     if os.environ.get("PLUMOS_UPDATE_SKIP_EMBEDDED_CHECK") != "1":
         if not shutil.which("unsquashfs"):
             raise SystemExit(
@@ -291,6 +293,21 @@ def build_system(args: argparse.Namespace) -> tuple[dict[str, Any], list[tuple[P
             )
             if result.returncode != 0 or result.stdout.strip() != expected:
                 raise SystemExit(f"error: {label} does not match embedded {embedded_path}")
+        result = subprocess.run(
+            ["unsquashfs", "-cat", str(source), "usr/lib/plumos/system-manifest.json"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        try:
+            embedded_manifest = json.loads(result.stdout)
+            source_ref = str(embedded_manifest["source_ref"])
+            source_date_epoch = int(embedded_manifest["source_date_epoch"])
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise SystemExit("error: embedded System source metadata is invalid") from exc
+        if result.returncode != 0 or not source_ref or "\n" in source_ref:
+            raise SystemExit("error: embedded System source metadata is invalid")
     entry = {
         "path": "system.squashfs",
         "type": "file",
@@ -308,6 +325,8 @@ def build_system(args: argparse.Namespace) -> tuple[dict[str, Any], list[tuple[P
         "version": args.version,
         "system_abi": args.system_abi,
         "runtime_abi": args.runtime_abi,
+        "source_ref": source_ref,
+        "source_date_epoch": source_date_epoch,
         "kernel_update": False,
         "payload_uncompressed_bytes": int(entry["size"]),
         "files": [entry],
