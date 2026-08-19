@@ -45,7 +45,7 @@ test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
 test -x "$tmp/rootfs/usr/lib/plumos/adb-uevent"
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    e08ca8065094c640ca0ed2eee771c7c4cea68db6f01e35874397d20c4c43a26c
+    b832c97a05e724e6f5604e64c74b8f65856d27cb429048f9026545301b2f7af1
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{print $1}')" = \
     4dbcdabd55ba0aa2cf942a00ebc2c17aecde9da1d364a2b382cb195030f7fbde
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/adb-uevent" | awk '{print $1}')" = \
@@ -59,7 +59,9 @@ grep -q 'status_adbd' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 grep -q 'ADB daemon lost its FunctionFS endpoints' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 grep -q 'replug_adbd' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'result=replug-rebound' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q 'action=replug-restart reason=functionfs-disconnected' \
+    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q 'result=replug-restarted' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 grep -q 'busybox.*uevent' \
     "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
 ! grep -q 'while :' "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"

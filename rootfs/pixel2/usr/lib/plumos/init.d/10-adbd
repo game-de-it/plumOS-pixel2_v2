@@ -244,33 +244,17 @@ replug_adbd() {
     fi
     trap 'rmdir "$REPLUG_LOCK" 2>/dev/null || true' EXIT HUP INT TERM
 
-    if ! endpoints_open; then
-        log 'action=replug-restart reason=daemon-or-endpoint-missing'
-        stop_adbd
-        start_adbd
-        return $?
-    fi
-    udc=$(udc_name) || {
-        log 'result=replug-failed reason=udc-missing'
-        return 1
-    }
-
-    # Unbinding emits another android_usb DISCONNECTED uevent. Ignore only
-    # that self-generated event for a bounded interval.
-    set_replug_suppression
-    printf '\n' >"$GADGET/UDC" 2>>"$LOG" || {
-        log 'result=replug-failed stage=unbind'
-        return 1
-    }
-    sleep 1
-    printf '%s\n' "$udc" >"$GADGET/UDC" 2>>"$LOG" || {
-        log 'result=replug-failed stage=bind action=clean-restart'
-        stop_adbd
-        start_adbd
-        return $?
-    }
-    state=$(cat "$UDC_ROOT/$udc/state" 2>/dev/null || printf 'unknown\n')
-    log "result=replug-rebound udc=$udc state=$state pid=$pid"
+    # Pixel2's stock 5.10 FunctionFS disables and destroys adbd's USB
+    # connection object when the host disappears. The ep0/ep1/ep2 file
+    # descriptors can remain open in the daemon after that transition, so an
+    # endpoint-presence check followed by a UDC-only rebind leaves the gadget
+    # enumerated but permanently offline. Recreate the daemon connection and
+    # DWC2 device role together for every unsuppressed host disconnect.
+    log 'action=replug-restart reason=functionfs-disconnected'
+    stop_adbd
+    reset_dwc2_for_device || return $?
+    start_adbd || return $?
+    log "result=replug-restarted pid=$(cat "$PID" 2>/dev/null || true)"
 }
 
 restart_adbd() {

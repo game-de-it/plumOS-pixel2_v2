@@ -20,7 +20,8 @@ grep -q 'printf.*udc.*GADGET/UDC' "$SERVICE"
 grep -q 'status_adbd' "$SERVICE"
 grep -q 'ADB daemon lost its FunctionFS endpoints' "$SERVICE"
 grep -q 'replug_adbd' "$SERVICE"
-grep -q 'result=replug-rebound' "$SERVICE"
+grep -q 'action=replug-restart reason=functionfs-disconnected' "$SERVICE"
+grep -q 'result=replug-restarted' "$SERVICE"
 grep -q 'adbd-replug-suppress-until' "$SERVICE"
 grep -q 'start_watchdog' "$WATCHDOG"
 grep -q 'stop_watchdog' "$WATCHDOG"
@@ -31,6 +32,13 @@ grep -q 'ADBD_CONTROL.*replug' "$UEVENT_HELPER"
 grep -q 'ADBD_CONTROL.*takeover' "$UEVENT_HELPER"
 grep -q 'reset_dwc2_for_device' "$SERVICE"
 grep -q 'controller-reset-deferred reason=downstream-present' "$SERVICE"
+
+replug_body="$(sed -n '/^replug_adbd() {/,/^}/p' "$SERVICE")"
+grep -q 'stop_adbd' <<<"$replug_body"
+grep -q 'reset_dwc2_for_device' <<<"$replug_body"
+grep -q 'start_adbd' <<<"$replug_body"
+! grep -q 'GADGET/UDC' <<<"$replug_body"
+! grep -q 'endpoints_open' <<<"$replug_body"
 
 ! grep -q 'schedule_recovery' "$SERVICE"
 ! grep -q 'while :' "$WATCHDOG"
@@ -141,4 +149,4 @@ grep -Fxq ff300000.usb "$TMP/dwc2/bind"
 grep -q 'result=controller-reset-complete udc=ff300000.usb' \
     "$TMP/logs/controller.log"
 
-printf '%s\n' 'pixel2_adbd_recovery=result-ok source=v90s-event-driven mode=single-replug'
+printf '%s\n' 'pixel2_adbd_recovery=result-ok source=v90s-event-driven mode=functionfs-restart'
