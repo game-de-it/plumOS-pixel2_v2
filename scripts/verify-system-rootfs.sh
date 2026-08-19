@@ -43,22 +43,29 @@ grep -q '15-adbd-watchdog:wifi' "$tmp/rootfs/sbin/init"
 grep -q 'plumos-enable-adb' "$tmp/rootfs/sbin/init"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
+test -x "$tmp/rootfs/usr/lib/plumos/adb-uevent"
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd" | awk '{print $1}')" = \
-    2cfdfd45a4b4b30f9de11205ef7dd7f491af047269addf4b53e6f0fc3400f4e0
+    733814efe1d940aaec439f963949e447023272fe94de9653e8cc1d2a15cb4c59
 test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog" | awk '{print $1}')" = \
-    16e96435eef83b2a64939393252e5b5892dea8ff6aa6b8b680a0f64e9318661b
+    4dbcdabd55ba0aa2cf942a00ebc2c17aecde9da1d364a2b382cb195030f7fbde
+test "$(sha256sum "$tmp/rootfs/usr/lib/plumos/adb-uevent" | awk '{print $1}')" = \
+    7f951beb29ba67febf1497b5467b5fb6f14d2a03577a546512624f7f8de86410
 ! grep -q 'busybox.*uevent' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'watchdog-replug reason=transport-offline' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'schedule_recovery' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 ! grep -q 'action=watchdog-' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-! grep -Eq 'services\.conf|usb_mode|adb_enabled|recover|replug' \
-    "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 grep -q 'status_adbd' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
 grep -q 'ADB daemon lost its FunctionFS endpoints' \
     "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
-grep -q 'event=daemon-missing action=restart' \
+grep -q 'replug_adbd' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q 'result=replug-rebound' "$tmp/rootfs/usr/lib/plumos/init.d/10-adbd"
+grep -q 'busybox.*uevent' \
     "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
+! grep -q 'while :' "$tmp/rootfs/usr/lib/plumos/init.d/15-adbd-watchdog"
+grep -q 'SUBSYSTEM.*android_usb' "$tmp/rootfs/usr/lib/plumos/adb-uevent"
+grep -q 'USB_STATE.*DISCONNECTED' "$tmp/rootfs/usr/lib/plumos/adb-uevent"
+grep -q 'ADBD_CONTROL.*replug' "$tmp/rootfs/usr/lib/plumos/adb-uevent"
 test -x "$tmp/rootfs/usr/sbin/adbd"
 test -x "$tmp/rootfs/usr/bin/plumos-frontend-pixel2"
 test -x "$tmp/rootfs/usr/bin/plumos-library-scan"

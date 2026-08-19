@@ -3,11 +3,11 @@ set -u
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH HOME=/root
-SERVICE="${PLUMOS_ADB_SERVICE:-/usr/lib/plumos/init.d/10-adbd}"
-PID="${PLUMOS_ADB_PID:-/run/plumos/adbd.pid}"
+BUSYBOX="${PLUMOS_BUSYBOX:-/bin/busybox}"
+UEVENT_HELPER="${PLUMOS_ADB_UEVENT_HELPER:-/usr/lib/plumos/adb-uevent}"
 WATCHDOG_PID="${PLUMOS_ADB_WATCHDOG_PID:-/run/plumos/adbd-watchdog.pid}"
 LOG="${PLUMOS_ADB_LOG:-/state/plumos/logs/adbd.log}"
-INTERVAL="${PLUMOS_ADB_WATCHDOG_INTERVAL:-5}"
+PROC_ROOT="${PLUMOS_PROC_ROOT:-/proc}"
 
 log() {
     mkdir -p "${LOG%/*}"
@@ -19,21 +19,14 @@ watchdog_running() {
     watchdog_pid=$(cat "$WATCHDOG_PID" 2>/dev/null || true)
     case "$watchdog_pid" in ''|*[!0-9]*) return 1 ;; esac
     kill -0 "$watchdog_pid" 2>/dev/null || return 1
-    cmdline=$(tr '\000' ' ' <"/proc/$watchdog_pid/cmdline" 2>/dev/null || true)
-    case "$cmdline" in *15-adbd-watchdog*' watch'*) return 0 ;; esac
+    cmdline=$(tr '\000' ' ' <"$PROC_ROOT/$watchdog_pid/cmdline" 2>/dev/null || true)
+    case "$cmdline" in *"busybox uevent $UEVENT_HELPER"*) return 0 ;; esac
     return 1
 }
 
-watch() {
+monitor() {
     trap 'rm -f "$WATCHDOG_PID"; exit 0' TERM INT EXIT
-    while :; do
-        sleep "$INTERVAL"
-        if [ ! -s "$PID" ] || ! kill -0 "$(cat "$PID" 2>/dev/null)" 2>/dev/null; then
-            log 'event=daemon-missing action=restart'
-            "$SERVICE" restart >>"$LOG" 2>&1 || \
-                log 'result=restart-failed'
-        fi
-    done
+    exec "$BUSYBOX" uevent "$UEVENT_HELPER"
 }
 
 start_watchdog() {
@@ -41,10 +34,20 @@ start_watchdog() {
         return 0
     fi
     rm -f "$WATCHDOG_PID"
-    "$0" watch </dev/null >>"$LOG" 2>&1 &
+    [ -x "$BUSYBOX" ] && [ -x "$UEVENT_HELPER" ] || {
+        log 'result=start-failed reason=uevent-helper-missing'
+        return 1
+    }
+    "$0" monitor </dev/null >>"$LOG" 2>&1 &
     watchdog_pid=$!
     printf '%s\n' "$watchdog_pid" >"$WATCHDOG_PID"
-    log "result=started pid=$watchdog_pid"
+    sleep 1
+    if ! watchdog_running; then
+        log 'result=start-failed reason=uevent-monitor-exited'
+        rm -f "$WATCHDOG_PID"
+        return 1
+    fi
+    log "result=started mode=kernel-uevent pid=$watchdog_pid"
 }
 
 stop_watchdog() {
@@ -66,6 +69,6 @@ case "${1:-}" in
     start) start_watchdog ;;
     stop) stop_watchdog ;;
     restart) stop_watchdog; start_watchdog ;;
-    watch) watch ;;
+    monitor) monitor ;;
     *) printf 'usage: %s {start|stop|restart}\n' "$0" >&2; exit 2 ;;
 esac

@@ -6,6 +6,8 @@ export PATH HOME=/root
 GADGET=/sys/kernel/config/usb_gadget/plumos_pixel2
 FFS=/dev/usb-ffs/adb
 PID=/run/plumos/adbd.pid
+REPLUG_LOCK=/run/plumos/adbd-replug.lock
+REPLUG_SUPPRESS_UNTIL=/run/plumos/adbd-replug-suppress-until
 LOG=/state/plumos/logs/adbd.log
 SERIAL_FILE=/state/plumos/config/adb-serial
 
@@ -14,11 +16,43 @@ log() {
     printf '%s service=adb %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG"
 }
 
+pid_running() {
+    [ -s "$PID" ] || return 1
+    pid=$(cat "$PID" 2>/dev/null || true)
+    case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$pid" 2>/dev/null || return 1
+    cmdline=$(tr '\000' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)
+    case "$cmdline" in *adbd*) return 0 ;; esac
+    return 1
+}
+
+endpoints_open() {
+    pid_running || return 1
+    ep0=0
+    ep1=0
+    ep2=0
+    for fd in /proc/"$pid"/fd/*; do
+        target=$(readlink "$fd" 2>/dev/null || true)
+        case "$target" in
+            "$FFS/ep0") ep0=1 ;;
+            "$FFS/ep1") ep1=1 ;;
+            "$FFS/ep2") ep2=1 ;;
+        esac
+    done
+    [ "$ep0" -eq 1 ] && [ "$ep1" -eq 1 ] && [ "$ep2" -eq 1 ]
+}
+
+udc_name() {
+    set -- /sys/class/udc/*
+    [ -e "$1" ] || return 1
+    printf '%s\n' "${1##*/}"
+}
+
 stop_adbd() {
     if [ -e "$GADGET/UDC" ]; then
         : >"$GADGET/UDC" 2>>"$LOG" || true
     fi
-    if [ -s "$PID" ]; then
+    if pid_running; then
         pid=$(cat "$PID")
         kill "$pid" 2>/dev/null || true
         elapsed=0
@@ -29,41 +63,17 @@ stop_adbd() {
         kill -9 "$pid" 2>/dev/null || true
     fi
     rm -f "$PID"
+    rm -f "$REPLUG_SUPPRESS_UNTIL"
     log 'result=stopped'
 }
 
 status_adbd() {
-    if [ ! -s "$PID" ]; then
+    if ! pid_running; then
         printf '%s\n' 'state=stopped'
         printf '%s\n' 'summary=ADB daemon is not running'
         return 2
     fi
-    pid=$(cat "$PID" 2>/dev/null || true)
-    case "$pid" in
-        ''|*[!0-9]*)
-            printf '%s\n' 'state=stopped'
-            printf '%s\n' 'summary=ADB daemon pid is invalid'
-            return 2
-            ;;
-    esac
-    if ! kill -0 "$pid" 2>/dev/null; then
-        printf '%s\n' 'state=stopped'
-        printf '%s\n' 'summary=ADB daemon is not running'
-        return 2
-    fi
-
-    ep0_open=0
-    ep1_open=0
-    ep2_open=0
-    for fd in /proc/"$pid"/fd/*; do
-        target=$(readlink "$fd" 2>/dev/null || true)
-        case "$target" in
-            "$FFS/ep0") ep0_open=1 ;;
-            "$FFS/ep1") ep1_open=1 ;;
-            "$FFS/ep2") ep2_open=1 ;;
-        esac
-    done
-    if [ "$ep0_open" -ne 1 ] || [ "$ep1_open" -ne 1 ] || [ "$ep2_open" -ne 1 ]; then
+    if ! endpoints_open; then
         printf '%s\n' 'state=stopped'
         printf '%s\n' 'summary=ADB daemon lost its FunctionFS endpoints'
         return 2
@@ -92,7 +102,7 @@ start_adbd() {
         log 'result=failed reason=binary-missing'
         return 1
     }
-    if [ -s "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then
+    if pid_running; then
         log "result=already-running pid=$(cat "$PID")"
         return 0
     fi
@@ -161,10 +171,49 @@ start_adbd() {
     log "result=started udc=$udc auth=disabled-development"
 }
 
+replug_adbd() {
+    if ! mkdir "$REPLUG_LOCK" 2>/dev/null; then
+        log 'result=replug-coalesced'
+        return 0
+    fi
+    trap 'rmdir "$REPLUG_LOCK" 2>/dev/null || true' EXIT HUP INT TERM
+
+    if ! endpoints_open; then
+        log 'action=replug-restart reason=daemon-or-endpoint-missing'
+        stop_adbd
+        start_adbd
+        return $?
+    fi
+    udc=$(udc_name) || {
+        log 'result=replug-failed reason=udc-missing'
+        return 1
+    }
+
+    # Unbinding emits another android_usb DISCONNECTED uevent. Ignore only
+    # that self-generated event for a bounded interval.
+    now=$(date +%s 2>/dev/null || printf '0\n')
+    case "$now" in ''|*[!0-9]*) now=0 ;; esac
+    printf '%s\n' "$((now + 4))" >"$REPLUG_SUPPRESS_UNTIL"
+    printf '\n' >"$GADGET/UDC" 2>>"$LOG" || {
+        log 'result=replug-failed stage=unbind'
+        return 1
+    }
+    sleep 1
+    printf '%s\n' "$udc" >"$GADGET/UDC" 2>>"$LOG" || {
+        log 'result=replug-failed stage=bind action=clean-restart'
+        stop_adbd
+        start_adbd
+        return $?
+    }
+    state=$(cat "/sys/class/udc/$udc/state" 2>/dev/null || printf 'unknown\n')
+    log "result=replug-rebound udc=$udc state=$state pid=$pid"
+}
+
 case "${1:-}" in
     start) start_adbd ;;
     stop) stop_adbd ;;
     restart) stop_adbd; start_adbd ;;
+    replug) replug_adbd ;;
     status) status_adbd ;;
-    *) printf 'usage: %s {start|stop|restart|status}\n' "$0" >&2; exit 2 ;;
+    *) printf 'usage: %s {start|stop|restart|replug|status}\n' "$0" >&2; exit 2 ;;
 esac
