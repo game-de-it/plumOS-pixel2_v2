@@ -487,3 +487,26 @@ Shell syntax, Python compilation, PortMaster runtime gates, `pgrep` shim, and
 `df` shim tests passed. Physical acceptance after the signed Runtime update
 must confirm the current `Dark Mode` launch, another scheme change with an
 in-place GUI restart, normal exit, and frontend recovery.
+
+The committed adapter was rebuilt into the strict app layer and installed as
+an exact-source signed Runtime delta:
+
+```text
+commit=7e6b734
+runtime=0.1.0-dev-7e6b734
+base_runtime=0.1.0-dev-4ed3015
+adapter_version=38
+package_sha256=9a78de434a75373418d48647b6931dc71ef124bc0e38a7c4dc3bf43abb620e6f
+payload_files=11
+deleted_files=0
+update_result=runtime_healthy
+portmaster_checksums=ok total=172
+runtime_verify=result-ok total=4261
+```
+
+After the safe reboot, the RTL8821CU cold-boot path restored SSH at
+`192.168.10.110`, the frontend was running, and no request or Runtime pending
+state remained. A normal managed launch stopped the frontend, kept the new
+bootstrap process alive, loaded `default_theme/theme.json` with saved scheme
+`Dark Mode`, and left `.pugwash-reboot` absent. Physical LCD appearance,
+another scheme selection, and frontend return remain operator-visible gates.
