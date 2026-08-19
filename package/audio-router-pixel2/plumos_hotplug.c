@@ -20,19 +20,18 @@
 #define VOLUME_DEFAULT 8
 #define VOLUME_PROBE_INTERVAL 0
 #define SPEAKER_BOOST_STEP_MIN 0
-#define SPEAKER_BOOST_STEP_MAX 40
-#define SPEAKER_BOOST_STEP_DEFAULT 6
+#define SPEAKER_BOOST_STEP_MAX 30
+#define SPEAKER_BOOST_STEP_DEFAULT 30
 #define SPEAKER_BOOST_GAIN_DENOMINATOR 1000
 #define INTERNAL_CARD_ID "rockchiprk817"
 
-/* 0 through +20 dB in 0.5 dB steps, represented as linear gain x1000. */
+/* 0 through +15 dB in 0.5 dB steps, represented as linear gain x1000. */
 static const int speaker_boost_gain[] = {
     1000, 1059, 1122, 1189, 1259, 1334, 1413,
     1496, 1585, 1679, 1778, 1884, 1995, 2113,
     2239, 2371, 2512, 2661, 2818, 2985, 3162,
     3350, 3548, 3758, 3981, 4217, 4467, 4732,
-    5012, 5309, 5623, 5957, 6310, 6683, 7079,
-    7499, 7943, 8414, 8913, 9441, 10000,
+    5012, 5309, 5623,
 };
 _Static_assert(sizeof(speaker_boost_gain) / sizeof(speaker_boost_gain[0]) ==
                    SPEAKER_BOOST_STEP_MAX + 1,

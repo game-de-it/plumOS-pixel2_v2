@@ -9,7 +9,7 @@ BOOST_SAVED_STATE="${PLUMOS_SPEAKER_BOOST_SAVED_STATE:-$PLUMOS_ROOT/config/syste
 LOG="${PLUMOS_VOLUME_LOG:-/run/plumos/volume/last-apply.log}"
 VOLUME_MAX=20
 VOLUME_DEFAULT=8
-BOOST_STEP_DEFAULT=6
+BOOST_STEP_DEFAULT=30
 
 mkdir -p "${RUNTIME_STATE%/*}" "${BOOST_RUNTIME_STATE%/*}" "${LOG%/*}" \
   2>/dev/null || true
@@ -18,7 +18,7 @@ usage() {
   printf '%s\n' \
     'Usage: plumos-volume-control init|apply [0..20]|up|down|step +/-N|get|status' \
     '       plumos-volume-control runtime-up|runtime-down|runtime-step +/-N|persist-runtime' \
-    '       plumos-volume-control speaker-boost get|apply|runtime 0..20 (0.5 dB steps)'
+    '       plumos-volume-control speaker-boost get|apply|runtime 0..15 (0.5 dB steps)'
 }
 
 normalize() {
@@ -41,7 +41,7 @@ normalize_boost_step() {
   case "$value" in ""|*[!0-9]*) return 1 ;; esac
   value="$(printf '%s' "$value" | sed 's/^0*//')"
   [ -n "$value" ] || value=0
-  [ "$value" -le 40 ] || return 1
+  [ "$value" -le 30 ] || return 1
   printf '%s\n' "$value"
 }
 
@@ -56,8 +56,8 @@ boost_db_to_step() {
   case "$value" in ""|*[!0-9]*) return 1 ;; esac
   value="$(printf '%s' "$value" | sed 's/^0*//')"
   [ -n "$value" ] || value=0
-  [ "$value" -le 20 ] || return 1
-  [ "$half" -eq 0 ] || [ "$value" -lt 20 ] || return 1
+  [ "$value" -le 15 ] || return 1
+  [ "$half" -eq 0 ] || [ "$value" -lt 15 ] || return 1
   printf '%s\n' $((value * 2 + half))
 }
 
