@@ -171,5 +171,11 @@ Ed25519 signature and manifest/payload agreement. Slot A remained
 The stock `Image` remained SHA-256 `853eb041...` and the exact-stock runtime
 DTB remained `a7a438f7...`. Runtime, dispatcher, user configuration, ROMs,
 BIOS, saves and installed ports were not changed. `fsck_msdos -n` completed
-with exit code zero. Physical ADB acceptance is still pending and is not
-inferred from package or filesystem verification.
+with exit code zero.
+
+The physical boot of this generation failed. The frontend remained at
+`waiting`, `adb devices -l` was empty, and macOS again received no
+`18d1:4ee7` parent device. The direct `GUSBCFG.FORCEDEVMODE` experiment is
+therefore **not accepted** as a repair. Its persistent register/result log must
+still be recovered from the SD, but further role experiments are paused in
+favor of reconstructing the previously working exact-stock ADB lifecycle.

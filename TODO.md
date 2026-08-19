@@ -213,6 +213,15 @@
       disconnect後は同じgadgetをrebind」するcontractへ戻し、Pixel2固有差分を保存済み
       Wi-Fi時の明示host assignmentだけに縮小した。新System/Runtimeのoffline適用、
       cold boot、物理抜き差し、Wi-Fi saved-ON bootの再acceptanceを継続する。
+    - 2026-08-19: repository開始からADB履歴を再監査。stockOS `SYSTEM`本体は方針通り
+      保存されていないためstockOS userlandのADB有無は未証明。一方、`d18bc0e`のexact
+      stock Image/DTB移行後、`aff4656`の保存logでstock kernel 5.10.198、空のusb-role、
+      FunctionFS BIND/ENABLE、UDC configured、実ADB shellを確認。`5932ef9`、`e47ce97`、
+      `45b4505`にも独立したshell/update/replug成功証拠がある。回帰境界はcharger値で
+      ADB開始を抑止した`2e2077f`、DWC2 host rebindの`49a4f15`、VBUS DTB変更の`b1f6228`
+      以降。`8f3e5f5`のMMIO device-forceも実機waitingで不合格。次は失敗log回収後、
+      `aff4656`時点の単純な非同期FunctionFS lifecycleへ戻し、現行からはADB priority
+      guardだけを残してcold boot shellを先に再合格させる。
     - 2026-08-18: `0694c47`のcold bootもFE `waiting`で不合格。macOSには
       `18d1:4ee7 plumOS Pixel2 ADB`親deviceだけが列挙され、FunctionFS interfaceと
       `adb devices` entryが無かった。旧Runtimeのprotocol-offline 3秒replugと新Systemの

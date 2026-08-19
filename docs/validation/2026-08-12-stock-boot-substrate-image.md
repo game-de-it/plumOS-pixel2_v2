@@ -3,9 +3,10 @@
 Date: 2026-08-12
 Scope: host-side image generation after adopting the stock boot substrate
 
-> Superseded on 2026-08-19 for runtime-DTB policy only. The historical build
-> below used the one-property VBUS addition; current images require the exact
-> checksum-registered stock DTB.
+> Historical correction: the image built by `d18bc0e` on 2026-08-12 used the
+> exact checksum-registered stock DTB. The one-property VBUS addition did not
+> exist until `b1f6228` on 2026-08-17 and was later withdrawn. This record has
+> been restored to the artifact identities of its original `ff35746` commit.
 
 ## Result
 
@@ -13,8 +14,7 @@ The Pixel2 build now generates a plumOS `SYSTEM` and SD image that retain the
 stock Pixel2 boot substrate:
 
 - stock `Image`
-- checksum-registered stock `rk3326s-gkd-pixel2.dtb` as the runtime-DTB input
-- one gated `vbus-supply = <&otg_switch>` runtime-DTB addition
+- stock `rk3326s-gkd-pixel2.dtb`
 - stock kernel ABI `5.10.198`
 - stock kernel-overlay modules and selected USB Wi-Fi firmware
 
@@ -57,11 +57,9 @@ sd_image=result-ok image=/work/output/image/pixel2/plumOS-Pixel2-0.1.0-dev.img
 | generated `SYSTEM` | `74d62b69d31ceabca20214ecec4432f2b4e4fae02daf5120181ced478ea099e1` |
 | generated SD image | `cfc1f3d5d6478293dc3872699da85b5eec03ddb1367cc7bc40ebe26a5031b401` |
 
-The SD image verifier extracts the boot FAT, compares `Image` directly against
-`artifacts/vendor/pixel2-stock/boot/`, and compares the runtime DTB against the
-strictly generated stock-plus-VBUS artifact. The DTB builder decompiles both
-trees and rejects any difference besides the single DWC2 `vbus-supply` line.
-The generated boot manifest contains
+The SD image verifier extracts the boot FAT and compares `Image` and
+`rk3326s-gkd-pixel2.dtb` directly against
+`artifacts/vendor/pixel2-stock/boot/`. The generated boot manifest contains
 `boot_substrate=stock-pixel2`, and the generated System manifest contains
 `"boot_substrate": "stock-pixel2"`.
 
