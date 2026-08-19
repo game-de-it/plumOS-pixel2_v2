@@ -67,13 +67,48 @@ system-a.squashfs sha256=7d71d2f6cf2190141b37f46c2971161a120087db666dfdb3e2e3117
 system-b.squashfs sha256=7d71d2f6cf2190141b37f46c2971161a120087db666dfdb3e2e31179ce1b0787
 ```
 
-## Pending physical acceptance
+## Offline deployment
 
-The SD card is not connected to the Mac at the end of the host build. Before
-writing, inspect the active System slot and version read-only, back up the
-managed boot/System files, and preserve the inactive slot, Runtime, ROMs,
-BIOS, saves and settings. Then apply the complete dispatcher/System payload
-and verify its SHA-256 by readback.
+A read-only Runtime capture was completed under
+`output/live/2026-08-19-pixel2-state-capture/capture.vEKt93`. Its complete
+capture checksum passed and established this pre-write state:
+
+```text
+system-active=a
+system-booted=a
+system-pending=absent
+System A=0.1.0-dev-1eab72a
+Runtime=0.1.0-dev-21fba08
+usb_mode=adb
+```
+
+The signed System package has SHA-256
+`1659a1c532314603647c829d1463afbc948abe14d1454a55aea931a1e1cebfa0`.
+The real updater accepted its signature, exact source version, Pixel2 target,
+architecture and ABI before any card write.
+
+All five active-A managed files were copied and compared under both:
+
+- `/offline-backup-system-a-1eab72a-pre-adb-baseline/` on PLUMOS_USER;
+- `output/live/2026-08-19-pixel2-adb-baseline-restore/offline-backup-system-a-1eab72a/`
+  on the host.
+
+Only System A's SquashFS, text manifest, checksum, signed JSON manifest and
+signature were replaced through verified temporary files. Final card readback
+passed:
+
+```text
+version=0.1.0-dev-fde06bb
+system-a.squashfs sha256=7d71d2f6cf2190141b37f46c2971161a120087db666dfdb3e2e31179ce1b0787
+signature=verified
+inactive-system-b sha256=67ef22eee94cdd2f88f620128d384282575d175f631dbb7188ad7d6973b6a57c
+adb-marker sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+```
+
+The Runtime partition, inactive System B, dispatcher, kernel/DTB, ROMs, BIOS,
+saves, settings, installed ports and update inbox were not modified.
+
+## Pending physical acceptance
 
 The first acceptance is intentionally narrow: cold boot must provide a working
 `adb shell`. Frontend status text and cable-replug recovery are not substitutes

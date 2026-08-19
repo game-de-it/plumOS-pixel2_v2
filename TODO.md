@@ -159,8 +159,13 @@
         `/etc/plumos-adb-only`によりUSB host再列挙、USB Wi-Fi、Runtime network service
         bootstrapを休止する。`f30be85`と`fde06bb`に分割コミットし、exact SHA gate、
         System script、dispatcher、ARM64 rootfs検証は合格。System
-        `0.1.0-dev-fde06bb`を生成済み。SDのactive slotをread-only確認後にoffline適用し、
-        cold boot shellを最優先で確認する。Wi-Fi/USB mode再導入はADB合格後の別作業とする。
+        `0.1.0-dev-fde06bb`を生成済み。read-only captureでactive/booted A、pendingなし、
+        System `1eab72a`、Runtime `21fba08`、`usb_mode=adb`を確定。署名packageをexact
+        sourceとして実updater検証後、旧System Aの5管理ファイルをPLUMOS_USERとhostへ
+        二重退避し、Aだけをoffline置換した。署名とreadback SHA-256
+        `7d71d2f6...`は一致し、inactive B、Runtime、zero-byte ADB marker、全user dataは
+        不変。cold boot shellを最優先で確認する。Wi-Fi/USB mode再導入はADB合格後の
+        別作業とする。
     - 2026-08-14: Wi-Fi非搭載Pixel2で保守経路を失わないよう、設定未作成時だけADBを既定ONへ戻した。FEで保存した`adb_enabled=0/1`を最優先し、FAT32 rootの`plumos-enable-adb`は明示OFFからも復旧できる。新Systemの実機cold boot確認は継続。
     - 2026-08-14: ADB不能SDへ`67c25aa` System dispatcher/A/Bをoffline recoveryとして適用。旧`d56bf29`一式はFAT32 user volumeへ退避し、stock Image/DTB、Runtime、ROM、BIOS、設定を保持。cold boot ADB確認とRuntime transactional updateは継続。
     - 2026-08-16: USB給電のoffline/online transitionを常駐hardware-key serviceで
