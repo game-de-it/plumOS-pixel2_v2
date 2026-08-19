@@ -6312,8 +6312,6 @@ static void add_system_information_entries(struct ui_state *ui) {
 }
 
 static void add_network_settings_entries(struct ui_state *ui) {
-  const struct device_settings *device = &ui->device;
-
   add_setting_entry(ui, "network_connect_wifi", "Connect Wi-Fi",
                     "Scan SSID");
   add_setting_entry(ui, "network_services", "NW Service",
