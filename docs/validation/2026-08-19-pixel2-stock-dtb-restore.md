@@ -143,3 +143,33 @@ Host tests use a fake MMIO backend and verify device force, status reporting,
 and release to automatic OTG selection. Physical acceptance remains required:
 cold boot with a Mac cable, a real `adb shell`, one cable replug, then explicit
 ADB to Wi-Fi switching with the tested RTL8821CU.
+
+## Offline device-role deployment
+
+Implementation commit `8f3e5f5` produced System
+`0.1.0-dev-8f3e5f5`. Both A/B rootfs verifiers passed. The signed update
+package is retained at
+`output/live/2026-08-19-pixel2-adb-device-role/`:
+
+```text
+package_sha256=e1fd8ca36abe76e079c62a1408962b8a7dcf287f0cfb1e3c5f312fbeedbc4626
+system_sha256=dcfb7fea26b7b1892df530e901356cd96a1cc504d310681b729ea134419a31f8
+source_version=0.1.0-dev-dacbc83
+version=0.1.0-dev-8f3e5f5
+signature=verified
+```
+
+The card remained on active slot B from the preceding persistent capture.
+Before writing, all five signed slot-B files from `dacbc83` were copied to both
+the host evidence directory and
+`/offline-backup-system-b-dacbc83-pre-device-role/` on `PLUMOS_USER`; the two
+backup sets are byte-identical. Only those five slot-B files were staged,
+compared and renamed into place. Final readback passed the slot checksum,
+Ed25519 signature and manifest/payload agreement. Slot A remained
+`0.1.0-dev-626a1e8`.
+
+The stock `Image` remained SHA-256 `853eb041...` and the exact-stock runtime
+DTB remained `a7a438f7...`. Runtime, dispatcher, user configuration, ROMs,
+BIOS, saves and installed ports were not changed. `fsck_msdos -n` completed
+with exit code zero. Physical ADB acceptance is still pending and is not
+inferred from package or filesystem verification.
