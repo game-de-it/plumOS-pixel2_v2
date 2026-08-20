@@ -12,6 +12,7 @@ typedef void (*GLUseProgram)(GLuint program);
 typedef GLint (*GLGetUniformLocation)(GLuint program, const char *name);
 typedef void (*GLUniform1f)(GLint location, float value);
 typedef void (*GLUniform2f)(GLint location, float x, float y);
+typedef int (*SDLShowCursor)(int toggle);
 
 enum { MAX_PROGRAMS = 32 };
 
@@ -29,12 +30,14 @@ static GLUseProgram real_gl_use_program;
 static GLGetUniformLocation real_gl_get_uniform_location;
 static GLUniform1f real_gl_uniform_1f;
 static GLUniform2f real_gl_uniform_2f;
+static SDLShowCursor real_sdl_show_cursor;
 static struct program_state programs[MAX_PROGRAMS];
 static GLuint current_program;
 static int fit_enabled = -1;
 static float output_width = 640.0f;
 static float output_height = 480.0f;
 static int fit_reported;
+static int hide_cursor = -1;
 
 static int env_enabled(const char *name, int default_value)
 {
@@ -66,8 +69,21 @@ static void init_config(void)
         return;
     }
     fit_enabled = env_enabled("PLUMOS_PYXEL_FIT", 1);
+    hide_cursor = env_enabled("PLUMOS_PYXEL_HIDE_CURSOR", 1);
     output_width = env_dimension("PLUMOS_PYXEL_FIT_WIDTH", 640.0f);
     output_height = env_dimension("PLUMOS_PYXEL_FIT_HEIGHT", 480.0f);
+}
+
+int SDL_ShowCursor(int toggle)
+{
+    init_config();
+    if (!real_sdl_show_cursor) {
+        real_sdl_show_cursor = (SDLShowCursor)dlsym(RTLD_NEXT, "SDL_ShowCursor");
+    }
+    if (!real_sdl_show_cursor) {
+        return -1;
+    }
+    return real_sdl_show_cursor(hide_cursor ? 0 : toggle);
 }
 
 static struct program_state *program_state(GLuint program, int create)

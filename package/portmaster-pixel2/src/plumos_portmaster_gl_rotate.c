@@ -15,6 +15,13 @@
 #define GL_DEPTH24_STENCIL8 0x88F0
 #endif
 
+#ifndef PLUMOS_GL_ROTATION_ENV
+#define PLUMOS_GL_ROTATION_ENV "PLUMOS_PORTMASTER_GL_ROTATION"
+#endif
+#ifndef PLUMOS_GL_ROTATION_LABEL
+#define PLUMOS_GL_ROTATION_LABEL "PortMaster"
+#endif
+
 /*
  * SDL_Renderer ports are rotated by plumos_portmaster_sdl_rotate.  LÖVE and
  * other SDL/OpenGL ports bypass SDL_Renderer, so give them a landscape
@@ -122,7 +129,7 @@ static SDL_GLContext active_context;
     } while (0)
 
 static int rotation_enabled(void) {
-    const char *value = getenv("PLUMOS_PORTMASTER_GL_ROTATION");
+    const char *value = getenv(PLUMOS_GL_ROTATION_ENV);
     return value && strcmp(value, "270") == 0;
 }
 
@@ -235,8 +242,8 @@ static GLuint compile_shader(GLenum type, const char *source) {
     if (!ok) {
         if (real_gl_get_shader_info_log) {
             real_gl_get_shader_info_log(shader, (GLsizei)sizeof(log), &length, log);
-            fprintf(stderr, "[plumOS] PortMaster GL rotation shader: %.*s\n",
-                    (int)length, log);
+            fprintf(stderr, "[plumOS] %s GL rotation shader: %.*s\n",
+                    PLUMOS_GL_ROTATION_LABEL, (int)length, log);
         }
         if (real_gl_delete_shader)
             real_gl_delete_shader(shader);
@@ -306,8 +313,8 @@ static int initialise_rotation(void) {
         vertex_source = vertex_source_gl;
         fragment_source = fragment_source_gl;
     }
-    fprintf(stderr, "[plumOS] PortMaster GL rotation context: %s\n",
-            gl_version ? gl_version : "unknown");
+    fprintf(stderr, "[plumOS] %s GL rotation context: %s\n",
+            PLUMOS_GL_ROTATION_LABEL, gl_version ? gl_version : "unknown");
 
     real_gl_get_integerv(GL_FRAMEBUFFER_BINDING, &previous_fbo);
     real_gl_get_integerv(GL_TEXTURE_BINDING_2D, &previous_texture);
@@ -344,7 +351,8 @@ static int initialise_rotation(void) {
     real_gl_framebuffer_renderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
                                      GL_RENDERBUFFER, logical_depth_stencil);
     if (real_gl_check_framebuffer_status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        fprintf(stderr, "[plumOS] PortMaster GL rotation framebuffer incomplete\n");
+        fprintf(stderr, "[plumOS] %s GL rotation framebuffer incomplete\n",
+                PLUMOS_GL_ROTATION_LABEL);
         goto fail;
     }
 
@@ -369,8 +377,8 @@ static int initialise_rotation(void) {
             GLsizei length = 0;
             real_gl_get_program_info_log(rotate_program, (GLsizei)sizeof(log),
                                          &length, log);
-            fprintf(stderr, "[plumOS] PortMaster GL rotation program: %.*s\n",
-                    (int)length, log);
+            fprintf(stderr, "[plumOS] %s GL rotation program: %.*s\n",
+                    PLUMOS_GL_ROTATION_LABEL, (int)length, log);
         }
         goto fail;
     }
@@ -397,7 +405,8 @@ static int initialise_rotation(void) {
     real_gl_bind_framebuffer(GL_FRAMEBUFFER, logical_fbo);
     internal_gl = 0;
     gl_ready = 1;
-    fprintf(stderr, "[plumOS] PortMaster GL rotation: 640x480 -> 480x640 @ 270\n");
+    fprintf(stderr, "[plumOS] %s GL rotation: 640x480 -> 480x640 @ 270\n",
+            PLUMOS_GL_ROTATION_LABEL);
     return 1;
 
 fail:
@@ -431,7 +440,9 @@ GL_APICALL void GL_APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer)
     if (!internal_gl && framebuffer == 0 && initialise_rotation()) {
         framebuffer = logical_fbo;
         if (redirected_default_count++ == 0)
-            fprintf(stderr, "[plumOS] PortMaster GL rotation: redirected default framebuffer\n");
+            fprintf(stderr,
+                    "[plumOS] %s GL rotation: redirected default framebuffer\n",
+                    PLUMOS_GL_ROTATION_LABEL);
     }
     real_gl_bind_framebuffer(target, framebuffer);
 }

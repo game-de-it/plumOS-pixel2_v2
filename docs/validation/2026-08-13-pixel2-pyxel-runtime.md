@@ -104,13 +104,23 @@ device`: the launcher used the generic `plumos_output` PCM despite the router
 already providing `plumos_pyxel` for Pyxel's fixed 22.05 kHz mono SDL format.
 Both `plumos_pyxel` and the direct plughw control test remained alive until the
 6-second termination boundary without that error, so the launcher now selects
-`plumos_pyxel` by default. FE launch and operator-visible display/input/audio
-acceptance remain to be completed after the checksummed runtime deployment.
+`plumos_pyxel` by default.
+
+The native DRM scanout is 480x640 although the Pixel2 is held as a landscape
+device. A bounded live test therefore combined the already accepted GLES
+framebuffer presenter with the Pyxel shader-fit adapter. The capture confirmed
+that Last Emulator's 720x480 (3:2) canvas is fitted to 640x427 with factor
+0.888889 and centered with approximately 27 pixels above and below. The complete
+title and menu remained inside the 640x480 logical display without stretching.
+The Pyxel component now builds its own presenter from the shared plumOS source;
+it does not depend on an installed PortMaster component at runtime. The default
+launcher also hides the SDL hardware cursor before presentation.
 
 ## Still requires real-device validation
 
 - Pyxel launch from FE after the 2026-08-20 GLES correction
-- display orientation/aspect on the Pixel2 LCD
+- operator-visible orientation/aspect confirmation on the Pixel2 LCD
 - controls and exit hotkey
-- audio stability through `plumos_output`
+- audio stability through `plumos_pyxel` (Last Emulator separately opens pygame
+  mixer before Pyxel and still needs title-specific double-audio-owner handling)
 - `Pyxel Setup` behavior with a project-specific `/roms/pyxel/requirements.txt`

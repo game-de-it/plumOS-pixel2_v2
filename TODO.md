@@ -18,8 +18,13 @@
     `apps/pyxel` EGL/GLES、`rockchip_dri.so`、Mesa自動選択へ修正し、SSHの10秒bounded
     launchではwindow初期化失敗が消えた。続いて汎用`plumos_output`でのPyxel固定
     22.05kHz mono stream拒否を特定し、既存の専用`plumos_pyxel` PCMへ接続した6秒
-    bounded launchも終了要求まで継続。checksummed Runtime反映後にFE起動、向き、
-    アスペクト、入力、終了hotkey、音声をoperator確認する。
+    bounded launchも終了要求まで継続。
+  - 2026-08-20: native 480x640 DRM scanoutへ270度presentするPyxel専用GL adapterを
+    shared plumOS sourceからcomponent内に生成し、shader-fitを標準有効化。実機で
+    Last Emulatorの720x480（3:2）が640x427、factor 0.888889、上下約27pxへ等比縮小
+    され、全端が画面内に収まるcaptureを確認。SDL hardware cursorも非表示化した。
+    checksummed Runtime反映後にFE起動、実LCDの向き、入力、終了hotkey、音声を
+    operator確認する。Last Emulator固有のpygame/Pyxel二重audio初期化は継続課題。
 
 - [x] SDL/KMSのマウスカーソルがFE/PortMasterへ残留しないようにする
   - 2026-08-20: 実機DRM captureで64x64 ARGBのhardware cursor plane 69を確認。

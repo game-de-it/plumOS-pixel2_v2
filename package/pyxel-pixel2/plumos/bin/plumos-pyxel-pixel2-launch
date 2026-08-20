@@ -9,6 +9,7 @@ PYXEL_ROOT="${PLUMOS_PIXEL2_PYXEL_ROOT:-$PLUMOS_ROOT/apps/pyxel}"
 USER_SITE="${PLUMOS_PYXEL_USER_SITE:-$PLUMOS_ROOT/state/pyxel-site}"
 BASE_SITE="$PYXEL_ROOT/site"
 FIT_LIBRARY="${PLUMOS_PYXEL_FIT_LIBRARY:-$PYXEL_ROOT/lib/plumos-pyxel-fit.so}"
+ROTATE_LIBRARY="${PLUMOS_PYXEL_ROTATE_LIBRARY:-$PYXEL_ROOT/lib/plumos-pyxel-gl-rotate.so}"
 LOG_DIR="${PLUMOS_PYXEL_LOG_DIR:-$PLUMOS_ROOT/logs/pyxel}"
 STATE_ROOT="${PLUMOS_PYXEL_STATE_ROOT:-$PLUMOS_ROOT/state/pyxel}"
 CACHE_ROOT="${PLUMOS_PYXEL_CACHE_ROOT:-$RUNTIME_ROOT/cache/pyxel}"
@@ -77,15 +78,23 @@ export LD_LIBRARY_PATH="$SONAME_DIR:$PLUMOS_ROOT/emulator/lib:$PYXEL_ROOT/lib:$P
 export PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH="$PYXEL_ROOT/lib:$SONAME_DIR:$PLUMOS_ROOT/emulator/lib:$PLUMOS_ROOT/lib"
 export PYGAME_HIDE_SUPPORT_PROMPT=1
 
-# The GL symbol interposer can prevent Mesa's RK3326 EGL display selection on
-# the stock Pixel2 kernel.  Keep it as an explicit diagnostic option; native
-# Pyxel sizing is the safe default until the hardware presenter is validated.
-if [ -r "$FIT_LIBRARY" ] && [ "${PLUMOS_PYXEL_FIT:-0}" != "0" ]; then
-  export PLUMOS_PYXEL_FIT=1
-  export PLUMOS_PYXEL_FIT_WIDTH="${PLUMOS_PYXEL_FIT_WIDTH:-640}"
-  export PLUMOS_PYXEL_FIT_HEIGHT="${PLUMOS_PYXEL_FIT_HEIGHT:-480}"
-  export LD_PRELOAD="$FIT_LIBRARY${LD_PRELOAD:+:$LD_PRELOAD}"
-fi
+# Pyxel renders into a logical 640x480 framebuffer.  The presenter rotates it
+# onto Pixel2's panel-native 480x640 scanout, while the Pyxel shader interposer
+# uniformly shrinks oversized title canvases (for example Last Emulator's
+# 720x480 3:2 canvas) so no edge is cropped or stretched.
+for display_library in "$FIT_LIBRARY" "$ROTATE_LIBRARY"; do
+  if [ ! -r "$display_library" ]; then
+    printf 'plumos-pyxel-pixel2-launch: display adapter is missing: %s\n' \
+      "$display_library" >&2
+    exit 1
+  fi
+done
+export PLUMOS_PYXEL_FIT="${PLUMOS_PYXEL_FIT:-1}"
+export PLUMOS_PYXEL_FIT_WIDTH="${PLUMOS_PYXEL_FIT_WIDTH:-640}"
+export PLUMOS_PYXEL_FIT_HEIGHT="${PLUMOS_PYXEL_FIT_HEIGHT:-480}"
+export PLUMOS_PYXEL_HIDE_CURSOR="${PLUMOS_PYXEL_HIDE_CURSOR:-1}"
+export PLUMOS_PYXEL_GL_ROTATION="${PLUMOS_PYXEL_GL_ROTATION:-270}"
+export LD_PRELOAD="$FIT_LIBRARY:$ROTATE_LIBRARY${LD_PRELOAD:+:$LD_PRELOAD}"
 
 exec "$BB" sh "$PLUMOS_ROOT/bin/plumos-python-pixel2" "$@" \
   >>"$LOG_DIR/runtime.log" 2>&1

@@ -471,6 +471,16 @@ grep -q 'bin/runner' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 grep -q 'PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH' \
     "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'PLUMOS_PYXEL_GL_ROTATION.*270' \
+    "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'PLUMOS_PYXEL_FIT.*1' \
+    "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'PLUMOS_PYXEL_HIDE_CURSOR.*1' \
+    "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'plumos-pyxel-gl-rotate.so' \
+    "$ROOT_DIR/scripts/build-pyxel-runtime-pixel2.sh"
+grep -q 'PLUMOS_GL_ROTATION_ENV' \
+    "$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 grep -q '^Gpu3 = builtin_gpu$' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
 grep -q 'logical=640x480 ccw' \

@@ -15,6 +15,7 @@ PACKAGE_DIR="$ROOT_DIR/package/pyxel-pixel2/plumos"
 LOCK_FILE="${PLUMOS_PIXEL2_PYXEL_LOCK:-$PACKAGE_DIR/share/pyxel/requirements.lock.txt}"
 DEFAULT_REQUIREMENTS="${PLUMOS_PIXEL2_PYXEL_REQUIREMENTS:-$PACKAGE_DIR/share/pyxel/requirements.txt}"
 FIT_SOURCE="$ROOT_DIR/package/pyxel-pixel2/src/plumos_pyxel_fit.c"
+ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 SDL_VERSION="${PLUMOS_PIXEL2_PYXEL_SDL_VERSION:-2.28.4}"
 SDL_ARCHIVE="$ROOT_DIR/output/downloads/SDL2-${SDL_VERSION}.tar.gz"
 SDL_URL="${PLUMOS_PIXEL2_PYXEL_SDL_URL:-https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-${SDL_VERSION}.tar.gz}"
@@ -114,6 +115,7 @@ materialize_links() {
 [ -r "$DEFAULT_REQUIREMENTS" ] ||
     fail "Pyxel default requirements are missing: $DEFAULT_REQUIREMENTS"
 [ -r "$FIT_SOURCE" ] || fail "Pixel2 Pyxel display fit source is missing: $FIT_SOURCE"
+[ -r "$ROTATE_SOURCE" ] || fail "Pixel2 Pyxel GL rotation source is missing: $ROTATE_SOURCE"
 
 mkdir -p "$(dirname "$SDL_ARCHIVE")"
 if [ ! -f "$SDL_ARCHIVE" ]; then
@@ -235,6 +237,13 @@ install -m 0644 "$SDL_BUILD_ROOT/source/LICENSE.txt" \
     -Wl,-soname,plumos-pyxel-fit.so \
     -o "$PYXEL_LIB/plumos-pyxel-fit.so" "$FIT_SOURCE" -ldl
 "$STRIP" --strip-unneeded "$PYXEL_LIB/plumos-pyxel-fit.so" >/dev/null 2>&1 || true
+"$CC" -O2 -fPIC -Wall -Wextra -Werror -shared \
+    -I/usr/include/SDL2 -I/usr/include/GLES2 \
+    '-DPLUMOS_GL_ROTATION_ENV="PLUMOS_PYXEL_GL_ROTATION"' \
+    '-DPLUMOS_GL_ROTATION_LABEL="Pyxel"' \
+    -Wl,-z,defs -Wl,-soname,plumos-pyxel-gl-rotate.so \
+    -o "$PYXEL_LIB/plumos-pyxel-gl-rotate.so" "$ROTATE_SOURCE" -ldl
+"$STRIP" --strip-unneeded "$PYXEL_LIB/plumos-pyxel-gl-rotate.so" >/dev/null 2>&1 || true
 
 PYTHONHOME="$PYTHON_ROOT" \
 PYTHONPATH="$PYTHON_ROOT/site-packages:$PYXEL_SITE" \
@@ -257,6 +266,7 @@ find "$PYTHON_ROOT" "$PYXEL_ROOT" -type d -name __pycache__ -prune \
 
 lock_sha256="$(sha256sum "$LOCK_FILE" | awk '{print $1}')"
 fit_sha256="$(sha256sum "$FIT_SOURCE" | awk '{print $1}')"
+rotate_sha256="$(sha256sum "$ROTATE_SOURCE" | awk '{print $1}')"
 file_count="$(find "$PLUMOS_DIR/apps" -type f | wc -l | tr -d ' ')"
 cat >"$COMPONENT_DIR/manifest.json" <<EOF
 {
@@ -268,10 +278,11 @@ cat >"$COMPONENT_DIR/manifest.json" <<EOF
   "pip": "$PIP_VERSION",
   "requirements_sha256": "$lock_sha256",
   "display_fit_sha256": "$fit_sha256",
+  "display_rotation_sha256": "$rotate_sha256",
   "sdl2": {"version": "$SDL_VERSION", "source_sha256": "$SDL_SHA256", "kmsdrm": true},
   "source_ref": "$SOURCE_REF",
   "source_date_epoch": $SOURCE_EPOCH,
-  "runtime_contract": "Pixel2 bundled Python, Pyxel, pygame, SDL2 KMSDRM/GLES, ALSA plumos_output",
+  "runtime_contract": "Pixel2 bundled Python, Pyxel, pygame, SDL2 KMSDRM/GLES, 640x480 fit plus 270-degree scanout, ALSA plumos_pyxel",
   "launcher": "bin/plumos-pyxel-pixel2-launch",
   "setup": "bin/plumos-pyxel-setup",
   "file_count": $file_count
@@ -284,8 +295,8 @@ pip=$PIP_VERSION
 requirements_sha256=$lock_sha256
 baseline=$PLUMOS_DIR/apps/pyxel/site
 user_site=/mnt/plumos/state/pyxel-site
-display=SDL2 KMSDRM GLES with Pixel2 640x480 fit shim
-audio=ALSA plumos_output
+display=SDL2 KMSDRM GLES with Pixel2 640x480 fit and 270-degree scanout
+audio=ALSA plumos_pyxel
 EOF
 (
     cd "$PLUMOS_DIR"

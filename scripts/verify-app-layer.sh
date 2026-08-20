@@ -183,6 +183,8 @@ done < <(jq -r '.cores[] | select(.rendering == "hardware-gles") | .binary' \
     "$ROOT/components/libretro-cores/manifest.json")
 test -s "$ROOT/emulator/dri/rockchip_dri.so"
 test -s "$ROOT/emulator/egl_vendor.d/50_mesa.json"
+test -s "$ROOT/apps/pyxel/lib/plumos-pyxel-fit.so"
+test -s "$ROOT/apps/pyxel/lib/plumos-pyxel-gl-rotate.so"
 grep -q 'plumos-audio-output' "$ROOT/bin/plumos-picoarch-launch"
 grep -q 'plumos-audio-output' "$ROOT/bin/plumos-standalone-launch"
 test -x "$ROOT/standalone/drastic/bin/setarch"
@@ -205,6 +207,14 @@ grep -Fq '"$DRI_DIR/rockchip_dri.so"' \
 grep -Fq 'unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
 grep -Fq 'AUDIODEV="${AUDIODEV:-plumos_pyxel}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'PLUMOS_PYXEL_FIT="${PLUMOS_PYXEL_FIT:-1}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'PLUMOS_PYXEL_HIDE_CURSOR="${PLUMOS_PYXEL_HIDE_CURSOR:-1}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'PLUMOS_PYXEL_GL_ROTATION="${PLUMOS_PYXEL_GL_ROTATION:-270}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'plumos-pyxel-gl-rotate.so' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
 if grep -Fq 'MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-panfrost}"' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"; then
