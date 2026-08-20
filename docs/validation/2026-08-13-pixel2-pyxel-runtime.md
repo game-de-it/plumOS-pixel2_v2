@@ -99,8 +99,13 @@ contract:
 
 With those settings, `LastEmulator.pyxapp` remained alive for the bounded
 10-second SSH launch test and the prior `EGL not initialized` failure did not
-recur. FE launch and operator-visible display/input/audio acceptance remain to
-be completed after the checksummed runtime deployment.
+recur. The first corrected launch also exposed `Failed to initialize audio
+device`: the launcher used the generic `plumos_output` PCM despite the router
+already providing `plumos_pyxel` for Pyxel's fixed 22.05 kHz mono SDL format.
+Both `plumos_pyxel` and the direct plughw control test remained alive until the
+6-second termination boundary without that error, so the launcher now selects
+`plumos_pyxel` by default. FE launch and operator-visible display/input/audio
+acceptance remain to be completed after the checksummed runtime deployment.
 
 ## Still requires real-device validation
 

@@ -61,7 +61,10 @@ export SDL_RENDER_DRIVER="${SDL_RENDER_DRIVER:-opengles2}"
 export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
 export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$RUNTIME_ROOT/audio/asound.conf}"
 export ALSA_PLUGIN_DIR="${ALSA_PLUGIN_DIR:-$PLUMOS_ROOT/lib/alsa-lib}"
-export AUDIODEV="${AUDIODEV:-plumos_output}"
+# Pyxel 2.9 opens a fixed 22.05 kHz mono SDL stream. The audio router exposes
+# a plug-wrapped endpoint specifically for that immutable format; the generic
+# hotplug endpoint can reject Pyxel even though pygame's flexible probe works.
+export AUDIODEV="${AUDIODEV:-plumos_pyxel}"
 export SDL_VIDEO_KMSDRM_DEVICE_INDEX="${SDL_VIDEO_KMSDRM_DEVICE_INDEX:-0}"
 export SDL_VIDEO_EGL_DRIVER="${SDL_VIDEO_EGL_DRIVER:-$PYXEL_ROOT/lib/libEGL.so.1}"
 export SDL_VIDEO_GL_DRIVER="${SDL_VIDEO_GL_DRIVER:-$PYXEL_ROOT/lib/libGLESv2.so.2}"

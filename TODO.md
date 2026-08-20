@@ -16,7 +16,9 @@
   - 2026-08-20: 全Pyxelタイトルが`EGL not initialized`で終了する原因を、存在しない
     root EGL pathと誤った`panfrost` loader強制に特定。PortMaster実機合格経路と同じ
     `apps/pyxel` EGL/GLES、`rockchip_dri.so`、Mesa自動選択へ修正し、SSHの10秒bounded
-    launchではwindow初期化失敗が消えた。checksummed Runtime反映後にFE起動、向き、
+    launchではwindow初期化失敗が消えた。続いて汎用`plumos_output`でのPyxel固定
+    22.05kHz mono stream拒否を特定し、既存の専用`plumos_pyxel` PCMへ接続した6秒
+    bounded launchも終了要求まで継続。checksummed Runtime反映後にFE起動、向き、
     アスペクト、入力、終了hotkey、音声をoperator確認する。
 
 - [x] SDL/KMSのマウスカーソルがFE/PortMasterへ残留しないようにする

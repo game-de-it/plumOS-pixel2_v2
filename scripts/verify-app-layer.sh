@@ -204,6 +204,8 @@ grep -Fq '"$DRI_DIR/rockchip_dri.so"' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
 grep -Fq 'unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'AUDIODEV="${AUDIODEV:-plumos_pyxel}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
 if grep -Fq 'MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-panfrost}"' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"; then
     echo "Pixel2 Pyxel must not force the Panfrost Mesa loader name" >&2
