@@ -208,12 +208,27 @@ grep -Fq 'unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
 grep -Fq 'AUDIODEV="${AUDIODEV:-plumos_pyxel}"' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
-grep -Fq 'PLUMOS_PYXEL_FIT="${PLUMOS_PYXEL_FIT:-1}"' \
+grep -Fq 'SDL_GAMECONTROLLERCONFIG' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'a:b1,b:b0,x:b2,y:b3' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'TEMP_ROOT="${PLUMOS_PYXEL_TEMP_ROOT:-$CACHE_ROOT/tmp}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'export TMPDIR="$TEMP_ROOT"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'PLUMOS_PYXEL_FIT=0' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
 grep -Fq 'PLUMOS_PYXEL_HIDE_CURSOR="${PLUMOS_PYXEL_HIDE_CURSOR:-1}"' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
 grep -Fq 'PLUMOS_PYXEL_GL_ROTATION="${PLUMOS_PYXEL_GL_ROTATION:-270}"' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq 'PLUMOS_PYXEL_LOGICAL_SIZE="${PLUMOS_PYXEL_LOGICAL_SIZE:-640x480}"' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+grep -Fq -- '-m plumos_pyxel_pixel2_shim' \
+    "$ROOT/bin/plumos-pyxel-pixel2-launch"
+test -s "$ROOT/share/pyxel/plumos_pyxel_pixel2_shim.py"
 grep -Fq 'plumos-pyxel-gl-rotate.so' \
     "$ROOT/bin/plumos-pyxel-pixel2-launch"
 if grep -Fq 'MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-panfrost}"' \

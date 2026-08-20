@@ -23,8 +23,18 @@
     shared plumOS sourceからcomponent内に生成し、shader-fitを標準有効化。実機で
     Last Emulatorの720x480（3:2）が640x427、factor 0.888889、上下約27pxへ等比縮小
     され、全端が画面内に収まるcaptureを確認。SDL hardware cursorも非表示化した。
+    初回正式反映の目視で、shader-fitより後段の固定640x480回転FBOが720x480 sourceを
+    先に切り、log上は640x427でも実画面が左寄り・右見切れになることを検出。A30で
+    Last Emulatorを合格させた方式に揃え、`pyxel.init()`の実canvas寸法をOS shimから
+    presenterへ渡し、source全体を保持した最終回転段で任意解像度を等比fitする設計へ変更。
     checksummed Runtime反映後にFE起動、実LCDの向き、入力、終了hotkey、音声を
     operator確認する。Last Emulator固有のpygame/Pyxel二重audio初期化は継続課題。
+    物理AがSDL既定のBとして解釈されタイトルから終了していた入力漏れには、PortMaster
+    実機合格済みのPixel2 controller GUIDと`a:b1,b:b0,x:b2,y:b3`をPyxel launcherへ
+    共通適用した。AでStart Game、Bで戻る、D-pad、ABXY、終了復帰を実機確認する。
+    76 MB級pyxappの短時間再試験で公式CLIの5分stale猶予中に`/tmp`が満杯になるため、
+    live PIDの展開物を保持したままdead PID分を起動前に回収し、正常・異常終了時は自身の
+    展開rootだけを削除するshim cleanupも追加した。
 
 - [x] SDL/KMSのマウスカーソルがFE/PortMasterへ残留しないようにする
   - 2026-08-20: 実機DRM captureで64x64 ARGBのhardware cursor plane 69を確認。

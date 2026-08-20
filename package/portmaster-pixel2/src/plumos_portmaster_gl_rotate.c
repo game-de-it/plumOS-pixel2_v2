@@ -21,6 +21,9 @@
 #ifndef PLUMOS_GL_ROTATION_LABEL
 #define PLUMOS_GL_ROTATION_LABEL "PortMaster"
 #endif
+#ifndef PLUMOS_GL_LOGICAL_SIZE_ENV
+#define PLUMOS_GL_LOGICAL_SIZE_ENV ""
+#endif
 
 /*
  * SDL_Renderer ports are rotated by plumos_portmaster_sdl_rotate.  LÖVE and
@@ -34,9 +37,11 @@ static int (*real_sdl_gl_make_current)(SDL_Window *, SDL_GLContext);
 static void *(*real_sdl_gl_get_proc_address)(const char *);
 static void (*real_sdl_gl_get_drawable_size)(SDL_Window *, int *, int *);
 static void (*real_sdl_gl_swap_window)(SDL_Window *);
+static void (*real_sdl_get_window_size)(SDL_Window *, int *, int *);
 
 static void (GL_APIENTRYP real_gl_bind_framebuffer)(GLenum, GLuint);
 static void (GL_APIENTRYP real_gl_get_integerv)(GLenum, GLint *);
+static void (GL_APIENTRYP real_gl_get_floatv)(GLenum, GLfloat *);
 static const GLubyte *(GL_APIENTRYP real_gl_get_string)(GLenum);
 static void (GL_APIENTRYP real_gl_gen_framebuffers)(GLsizei, GLuint *);
 static void (GL_APIENTRYP real_gl_delete_framebuffers)(GLsizei, const GLuint *);
@@ -115,6 +120,12 @@ static int gl_initialise_attempted;
 static int internal_gl;
 static unsigned redirected_default_count;
 static SDL_GLContext active_context;
+static int logical_width = 640;
+static int logical_height = 480;
+static int present_x;
+static int present_y;
+static int present_width = 480;
+static int present_height = 640;
 
 #define LOAD_NEXT(name, symbol)                                                \
     do {                                                                       \
@@ -133,6 +144,51 @@ static int rotation_enabled(void) {
     return value && strcmp(value, "270") == 0;
 }
 
+static void configure_logical_geometry(void) {
+    const char *value = NULL;
+    char *separator;
+    char *end;
+    long width;
+    long height;
+    float scale;
+    float width_scale;
+    float height_scale;
+    int fitted_width;
+    int fitted_height;
+
+    logical_width = 640;
+    logical_height = 480;
+    if (PLUMOS_GL_LOGICAL_SIZE_ENV[0])
+        value = getenv(PLUMOS_GL_LOGICAL_SIZE_ENV);
+    if (value && value[0]) {
+        width = strtol(value, &separator, 10);
+        if (separator != value && (*separator == 'x' || *separator == 'X')) {
+            height = strtol(separator + 1, &end, 10);
+            if (*end == '\0' && width > 0 && height > 0 &&
+                width <= 4096 && height <= 4096) {
+                logical_width = (int)width;
+                logical_height = (int)height;
+            }
+        }
+    }
+
+    width_scale = 640.0f / (float)logical_width;
+    height_scale = 480.0f / (float)logical_height;
+    scale = width_scale < height_scale ? width_scale : height_scale;
+    fitted_width = (int)((float)logical_width * scale + 0.5f);
+    fitted_height = (int)((float)logical_height * scale + 0.5f);
+    if (fitted_width < 1) fitted_width = 1;
+    if (fitted_height < 1) fitted_height = 1;
+    if (fitted_width > 640) fitted_width = 640;
+    if (fitted_height > 480) fitted_height = 480;
+
+    /* A 270-degree presentation swaps logical axes on the native panel. */
+    present_width = fitted_height;
+    present_height = fitted_width;
+    present_x = (480 - present_width) / 2;
+    present_y = (640 - present_height) / 2;
+}
+
 static void reset_context_state(SDL_GLContext context) {
     active_context = context;
     logical_fbo = 0;
@@ -144,11 +200,13 @@ static void reset_context_state(SDL_GLContext context) {
     gl_ready = 0;
     gl_initialise_attempted = 0;
     redirected_default_count = 0;
+    configure_logical_geometry();
 }
 
 static int load_gl(void) {
     LOAD_GL(gl_bind_framebuffer, "glBindFramebuffer");
     LOAD_GL(gl_get_integerv, "glGetIntegerv");
+    LOAD_GL(gl_get_floatv, "glGetFloatv");
     LOAD_GL(gl_get_string, "glGetString");
     LOAD_GL(gl_gen_framebuffers, "glGenFramebuffers");
     LOAD_GL(gl_delete_framebuffers, "glDeleteFramebuffers");
@@ -207,7 +265,8 @@ static int load_gl(void) {
     LOAD_GL(gl_bind_vertex_array, "glBindVertexArray");
     if (!real_gl_bind_vertex_array)
         LOAD_GL(gl_bind_vertex_array, "glBindVertexArrayOES");
-    return real_gl_bind_framebuffer && real_gl_get_integerv && real_gl_get_string &&
+    return real_gl_bind_framebuffer && real_gl_get_integerv && real_gl_get_floatv &&
+           real_gl_get_string &&
            real_gl_gen_framebuffers && real_gl_framebuffer_texture_2d &&
            real_gl_gen_renderbuffers && real_gl_bind_renderbuffer &&
            real_gl_renderbuffer_storage && real_gl_framebuffer_renderbuffer &&
@@ -329,8 +388,8 @@ static int initialise_rotation(void) {
     real_gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     real_gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     real_gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    real_gl_tex_image_2d(GL_TEXTURE_2D, 0, GL_RGBA, 640, 480, 0, GL_RGBA,
-                         GL_UNSIGNED_BYTE, NULL);
+    real_gl_tex_image_2d(GL_TEXTURE_2D, 0, GL_RGBA, logical_width,
+                         logical_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     real_gl_gen_framebuffers(1, &logical_fbo);
     real_gl_bind_framebuffer(GL_FRAMEBUFFER, logical_fbo);
     real_gl_framebuffer_texture_2d(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
@@ -345,7 +404,8 @@ static int initialise_rotation(void) {
      */
     real_gl_gen_renderbuffers(1, &logical_depth_stencil);
     real_gl_bind_renderbuffer(GL_RENDERBUFFER, logical_depth_stencil);
-    real_gl_renderbuffer_storage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 640, 480);
+    real_gl_renderbuffer_storage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8,
+                                 logical_width, logical_height);
     real_gl_framebuffer_renderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                                      GL_RENDERBUFFER, logical_depth_stencil);
     real_gl_framebuffer_renderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
@@ -405,8 +465,11 @@ static int initialise_rotation(void) {
     real_gl_bind_framebuffer(GL_FRAMEBUFFER, logical_fbo);
     internal_gl = 0;
     gl_ready = 1;
-    fprintf(stderr, "[plumOS] %s GL rotation: 640x480 -> 480x640 @ 270\n",
-            PLUMOS_GL_ROTATION_LABEL);
+    fprintf(stderr,
+            "[plumOS] %s GL rotation: logical=%dx%d present=%dx%d+%d+%d "
+            "scanout=480x640 @ 270\n",
+            PLUMOS_GL_ROTATION_LABEL, logical_width, logical_height,
+            present_width, present_height, present_x, present_y);
     return 1;
 
 fail:
@@ -471,6 +534,7 @@ static int present_rotation(SDL_Window *window) {
     GLboolean depth;
     GLboolean scissor;
     GLboolean color_mask[4] = {GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE};
+    GLfloat clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
     if (!initialise_rotation())
         return 0;
@@ -481,6 +545,7 @@ static int present_rotation(SDL_Window *window) {
     real_gl_get_integerv(GL_TEXTURE_BINDING_2D, &texture);
     real_gl_get_integerv(GL_VERTEX_ARRAY_BINDING, &vertex_array);
     real_gl_get_integerv(GL_VIEWPORT, viewport);
+    real_gl_get_floatv(GL_COLOR_CLEAR_VALUE, clear_color);
     real_gl_get_booleanv(GL_COLOR_WRITEMASK, color_mask);
     blend = real_gl_is_enabled(GL_BLEND);
     cull = real_gl_is_enabled(GL_CULL_FACE);
@@ -498,6 +563,9 @@ static int present_rotation(SDL_Window *window) {
      * physical presenter must always write all four channels; otherwise the
      * previous KMS buffer is exposed for one swap and appears as flicker. */
     real_gl_color_mask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    real_gl_clear_color(0.0f, 0.0f, 0.0f, 1.0f);
+    real_gl_clear(GL_COLOR_BUFFER_BIT);
+    real_gl_viewport(present_x, present_y, present_width, present_height);
     real_gl_use_program(rotate_program);
     real_gl_active_texture(GL_TEXTURE0);
     real_gl_get_integerv(GL_TEXTURE_BINDING_2D, &texture_zero);
@@ -524,6 +592,8 @@ static int present_rotation(SDL_Window *window) {
     real_gl_bind_texture(GL_TEXTURE_2D, (GLuint)texture);
     real_gl_bind_buffer(GL_ARRAY_BUFFER, (GLuint)buffer);
     real_gl_viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+    real_gl_clear_color(clear_color[0], clear_color[1], clear_color[2],
+                        clear_color[3]);
     if (blend) real_gl_enable(GL_BLEND); else real_gl_disable(GL_BLEND);
     if (cull) real_gl_enable(GL_CULL_FACE); else real_gl_disable(GL_CULL_FACE);
     if (depth) real_gl_enable(GL_DEPTH_TEST); else real_gl_disable(GL_DEPTH_TEST);
@@ -577,11 +647,25 @@ void SDL_GL_GetDrawableSize(SDL_Window *window, int *width, int *height) {
         real_sdl_gl_get_drawable_size(window, width, height);
     if (!rotation_enabled())
         return;
+    configure_logical_geometry();
     initialise_rotation();
     if (width)
-        *width = 640;
+        *width = logical_width;
     if (height)
-        *height = 480;
+        *height = logical_height;
+}
+
+void SDL_GetWindowSize(SDL_Window *window, int *width, int *height) {
+    LOAD_NEXT(sdl_get_window_size, "SDL_GetWindowSize");
+    if (real_sdl_get_window_size)
+        real_sdl_get_window_size(window, width, height);
+    if (!rotation_enabled())
+        return;
+    configure_logical_geometry();
+    if (width)
+        *width = logical_width;
+    if (height)
+        *height = logical_height;
 }
 
 void SDL_GL_SwapWindow(SDL_Window *window) {

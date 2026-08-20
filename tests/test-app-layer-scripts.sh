@@ -473,12 +473,24 @@ grep -q 'PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH' \
     "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
 grep -q 'PLUMOS_PYXEL_GL_ROTATION.*270' \
     "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
-grep -q 'PLUMOS_PYXEL_FIT.*1' \
+grep -q 'PLUMOS_PYXEL_FIT=0' \
     "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
 grep -q 'PLUMOS_PYXEL_HIDE_CURSOR.*1' \
     "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
 grep -q 'plumos-pyxel-gl-rotate.so' \
     "$ROOT_DIR/scripts/build-pyxel-runtime-pixel2.sh"
+grep -q 'PLUMOS_PYXEL_LOGICAL_SIZE.*640x480' \
+    "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'plumos_pyxel_pixel2_shim' \
+    "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'SDL_GAMECONTROLLERCONFIG' \
+    "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'a:b1,b:b0,x:b2,y:b3' \
+    "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'PLUMOS_PYXEL_TEMP_ROOT.*CACHE_ROOT/tmp' \
+    "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
+grep -q 'PLUMOS_GL_LOGICAL_SIZE_ENV' \
+    "$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 grep -q 'PLUMOS_GL_ROTATION_ENV' \
     "$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 grep -q '^Gpu3 = builtin_gpu$' \

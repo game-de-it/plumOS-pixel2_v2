@@ -13,11 +13,13 @@ ROTATE_LIBRARY="${PLUMOS_PYXEL_ROTATE_LIBRARY:-$PYXEL_ROOT/lib/plumos-pyxel-gl-r
 LOG_DIR="${PLUMOS_PYXEL_LOG_DIR:-$PLUMOS_ROOT/logs/pyxel}"
 STATE_ROOT="${PLUMOS_PYXEL_STATE_ROOT:-$PLUMOS_ROOT/state/pyxel}"
 CACHE_ROOT="${PLUMOS_PYXEL_CACHE_ROOT:-$RUNTIME_ROOT/cache/pyxel}"
+TEMP_ROOT="${PLUMOS_PYXEL_TEMP_ROOT:-$CACHE_ROOT/tmp}"
 SONAME_DIR="$RUNTIME_ROOT/pyxel/lib"
 DRI_DIR="$RUNTIME_ROOT/pyxel/dri"
 
 [ -x "$BB" ] || BB=/bin/sh
-mkdir -p "$LOG_DIR" "$STATE_ROOT" "$CACHE_ROOT" "$SONAME_DIR" "$DRI_DIR" 2>/dev/null || true
+mkdir -p "$LOG_DIR" "$STATE_ROOT" "$CACHE_ROOT" "$TEMP_ROOT" \
+  "$SONAME_DIR" "$DRI_DIR" 2>/dev/null || true
 find "$SONAME_DIR" -type l -delete 2>/dev/null || true
 if [ -f "$PLUMOS_ROOT/config/standalone/soname-links.tsv" ]; then
   while IFS="$(printf '\t')" read -r soname real_name; do
@@ -53,10 +55,13 @@ export XDG_CONFIG_HOME="${PLUMOS_PYXEL_CONFIG_HOME:-$HOME/.config}"
 export XDG_DATA_HOME="${PLUMOS_PYXEL_DATA_HOME:-$STATE_ROOT/data}"
 export XDG_STATE_HOME="${PLUMOS_PYXEL_XDG_STATE_HOME:-$STATE_ROOT/state}"
 export XDG_CACHE_HOME="${PLUMOS_PYXEL_CACHE_HOME:-$CACHE_ROOT}"
+export TMPDIR="$TEMP_ROOT"
+export TEMP="$TEMP_ROOT"
+export TMP="$TEMP_ROOT"
 mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" \
   "$XDG_STATE_HOME" "$XDG_CACHE_HOME" 2>/dev/null || true
 
-export PLUMOS_PYTHON_EXTRA_PATH="$USER_SITE:$BASE_SITE"
+export PLUMOS_PYTHON_EXTRA_PATH="$PLUMOS_ROOT/share/pyxel:$USER_SITE:$BASE_SITE"
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
 export SDL_RENDER_DRIVER="${SDL_RENDER_DRIVER:-opengles2}"
 export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
@@ -77,11 +82,20 @@ unset LIBGL_ALWAYS_SOFTWARE MESA_LOADER_DRIVER_OVERRIDE
 export LD_LIBRARY_PATH="$SONAME_DIR:$PLUMOS_ROOT/emulator/lib:$PYXEL_ROOT/lib:$PYTHON_ROOT/lib:$PLUMOS_ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH="$PYXEL_ROOT/lib:$SONAME_DIR:$PLUMOS_ROOT/emulator/lib:$PLUMOS_ROOT/lib"
 export PYGAME_HIDE_SUPPORT_PROMPT=1
+# Pixel2 uses an east-confirm physical layout: A is BTN_EAST (SDL index 1)
+# and B is BTN_SOUTH (index 0). SDL's generic mapping swaps their user-facing
+# meaning, so share the physically accepted PortMaster controller contract.
+PIXEL2_CONTROLLER_CONFIG="19008d96010000000221000000010000,plumOS Pixel2 Controller,a:b1,b:b0,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,back:b8,start:b9,guide:b14,dpup:b10,dpdown:b11,dpleft:b12,dpright:b13,platform:Linux,"
+export SDL_GAMECONTROLLERCONFIG="${SDL_GAMECONTROLLERCONFIG:-$PIXEL2_CONTROLLER_CONFIG}"
+export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
+export PYTHONFAULTHANDLER="${PYTHONFAULTHANDLER:-1}"
 
-# Pyxel renders into a logical 640x480 framebuffer.  The presenter rotates it
-# onto Pixel2's panel-native 480x640 scanout, while the Pyxel shader interposer
-# uniformly shrinks oversized title canvases (for example Last Emulator's
-# 720x480 3:2 canvas) so no edge is cropped or stretched.
+# The init shim publishes each title's real canvas before GL context creation.
+# The presenter keeps that complete source (for example Last Emulator's
+# 720x480 3:2 canvas), then aspect-fits and rotates it onto Pixel2's panel-native
+# 480x640 scanout. The fit preload remains loaded only for cursor suppression;
+# shader geometry interception is disabled on this two-stage Pixel2
+# presentation path.
 for display_library in "$FIT_LIBRARY" "$ROTATE_LIBRARY"; do
   if [ ! -r "$display_library" ]; then
     printf 'plumos-pyxel-pixel2-launch: display adapter is missing: %s\n' \
@@ -89,12 +103,16 @@ for display_library in "$FIT_LIBRARY" "$ROTATE_LIBRARY"; do
     exit 1
   fi
 done
-export PLUMOS_PYXEL_FIT="${PLUMOS_PYXEL_FIT:-1}"
+export PLUMOS_PYXEL_FIT=0
 export PLUMOS_PYXEL_FIT_WIDTH="${PLUMOS_PYXEL_FIT_WIDTH:-640}"
 export PLUMOS_PYXEL_FIT_HEIGHT="${PLUMOS_PYXEL_FIT_HEIGHT:-480}"
 export PLUMOS_PYXEL_HIDE_CURSOR="${PLUMOS_PYXEL_HIDE_CURSOR:-1}"
 export PLUMOS_PYXEL_GL_ROTATION="${PLUMOS_PYXEL_GL_ROTATION:-270}"
+export PLUMOS_PYXEL_INIT_SHIM="${PLUMOS_PYXEL_INIT_SHIM:-1}"
+export PLUMOS_PYXEL_INIT_SHIM_LOG="${PLUMOS_PYXEL_INIT_SHIM_LOG:-1}"
+export PLUMOS_PYXEL_LOGICAL_SIZE="${PLUMOS_PYXEL_LOGICAL_SIZE:-640x480}"
 export LD_PRELOAD="$FIT_LIBRARY:$ROTATE_LIBRARY${LD_PRELOAD:+:$LD_PRELOAD}"
 
-exec "$BB" sh "$PLUMOS_ROOT/bin/plumos-python-pixel2" "$@" \
+exec "$BB" sh "$PLUMOS_ROOT/bin/plumos-python-pixel2" \
+  -m plumos_pyxel_pixel2_shim "$@" \
   >>"$LOG_DIR/runtime.log" 2>&1

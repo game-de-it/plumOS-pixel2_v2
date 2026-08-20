@@ -116,6 +116,23 @@ The Pyxel component now builds its own presenter from the shared plumOS source;
 it does not depend on an installed PortMaster component at runtime. The default
 launcher also hides the SDL hardware cursor before presentation.
 
+The first formal deployment showed that this shader fit cannot be placed before
+Pixel2's separate rotation presenter: that presenter had already allocated a
+fixed 640x480 intermediate framebuffer, so the right side of a 720x480 title
+could be lost before the final 480x640 scanout. The operator saw the resulting
+left-aligned crop even though the shader-fit log reported the intended
+640x427 rectangle.
+
+The corrected design follows the A30 Last Emulator solution rather than stacking
+the V90S/MF shader adapter in front of a rotated framebuffer. An OS-owned Python
+shim observes the public `pyxel.init()` call and publishes the real logical
+canvas before SDL creates its GL context. The Pixel2 presenter allocates that
+source size, keeps the complete frame, computes
+`min(640/source_width, 480/source_height)`, clears the unused area, and performs
+aspect fit and 270-degree rotation in the final presentation step. The official
+Pyxel package remains unchanged, and the same calculation handles square,
+portrait, wide, smaller, and oversized canvases.
+
 ## Still requires real-device validation
 
 - Pyxel launch from FE after the 2026-08-20 GLES correction
@@ -123,4 +140,13 @@ launcher also hides the SDL hardware cursor before presentation.
 - controls and exit hotkey
 - audio stability through `plumos_pyxel` (Last Emulator separately opens pygame
   mixer before Pyxel and still needs title-specific double-audio-owner handling)
+- physical A/B/X/Y through Pixel2's accepted `east-confirm` SDL mapping. The
+  launcher shares PortMaster's controller GUID and `a:b1,b:b0,x:b2,y:b3`
+  contract; generic SDL otherwise interprets physical A as Pyxel B and closes
+  Last Emulator's title screen.
+- repeated large `.pyxapp` launches without exhausting the 488 MiB `/tmp`.
+  The Pixel2 shim removes only dead PID-owned Pyxel extraction directories
+  before unpacking and removes its own controlled extraction on exit. The
+  launcher also fixes `TMPDIR` to `/run/plumos/cache/pyxel/tmp`, rather than
+  allowing a full generic `/tmp` to redirect extraction into persistent HOME.
 - `Pyxel Setup` behavior with a project-specific `/roms/pyxel/requirements.txt`

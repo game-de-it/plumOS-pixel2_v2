@@ -16,6 +16,7 @@ LOCK_FILE="${PLUMOS_PIXEL2_PYXEL_LOCK:-$PACKAGE_DIR/share/pyxel/requirements.loc
 DEFAULT_REQUIREMENTS="${PLUMOS_PIXEL2_PYXEL_REQUIREMENTS:-$PACKAGE_DIR/share/pyxel/requirements.txt}"
 FIT_SOURCE="$ROOT_DIR/package/pyxel-pixel2/src/plumos_pyxel_fit.c"
 ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
+SHIM_SOURCE="$ROOT_DIR/package/pyxel-pixel2/src/plumos_pyxel_pixel2_shim.py"
 SDL_VERSION="${PLUMOS_PIXEL2_PYXEL_SDL_VERSION:-2.28.4}"
 SDL_ARCHIVE="$ROOT_DIR/output/downloads/SDL2-${SDL_VERSION}.tar.gz"
 SDL_URL="${PLUMOS_PIXEL2_PYXEL_SDL_URL:-https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VERSION}/SDL2-${SDL_VERSION}.tar.gz}"
@@ -116,6 +117,7 @@ materialize_links() {
     fail "Pyxel default requirements are missing: $DEFAULT_REQUIREMENTS"
 [ -r "$FIT_SOURCE" ] || fail "Pixel2 Pyxel display fit source is missing: $FIT_SOURCE"
 [ -r "$ROTATE_SOURCE" ] || fail "Pixel2 Pyxel GL rotation source is missing: $ROTATE_SOURCE"
+[ -r "$SHIM_SOURCE" ] || fail "Pixel2 Pyxel init shim source is missing: $SHIM_SOURCE"
 
 mkdir -p "$(dirname "$SDL_ARCHIVE")"
 if [ ! -f "$SDL_ARCHIVE" ]; then
@@ -172,6 +174,8 @@ find "$PYXEL_SITE" -type d -name __pycache__ -prune -exec rm -rf {} +
 
 install -m 0644 "$DEFAULT_REQUIREMENTS" "$PLUMOS_DIR/share/pyxel/requirements.txt"
 install -m 0644 "$LOCK_FILE" "$PLUMOS_DIR/share/pyxel/requirements.lock.txt"
+install -m 0644 "$SHIM_SOURCE" \
+    "$PLUMOS_DIR/share/pyxel/plumos_pyxel_pixel2_shim.py"
 install -m 0644 /etc/ssl/certs/ca-certificates.crt \
     "$PYTHON_ROOT/ca-certificates.crt"
 install -m 0755 "$PACKAGE_DIR/bin/plumos-python-pixel2" "$PLUMOS_DIR/bin/"
@@ -241,6 +245,7 @@ install -m 0644 "$SDL_BUILD_ROOT/source/LICENSE.txt" \
     -I/usr/include/SDL2 -I/usr/include/GLES2 \
     '-DPLUMOS_GL_ROTATION_ENV="PLUMOS_PYXEL_GL_ROTATION"' \
     '-DPLUMOS_GL_ROTATION_LABEL="Pyxel"' \
+    '-DPLUMOS_GL_LOGICAL_SIZE_ENV="PLUMOS_PYXEL_LOGICAL_SIZE"' \
     -Wl,-z,defs -Wl,-soname,plumos-pyxel-gl-rotate.so \
     -o "$PYXEL_LIB/plumos-pyxel-gl-rotate.so" "$ROTATE_SOURCE" -ldl
 "$STRIP" --strip-unneeded "$PYXEL_LIB/plumos-pyxel-gl-rotate.so" >/dev/null 2>&1 || true
@@ -267,6 +272,7 @@ find "$PYTHON_ROOT" "$PYXEL_ROOT" -type d -name __pycache__ -prune \
 lock_sha256="$(sha256sum "$LOCK_FILE" | awk '{print $1}')"
 fit_sha256="$(sha256sum "$FIT_SOURCE" | awk '{print $1}')"
 rotate_sha256="$(sha256sum "$ROTATE_SOURCE" | awk '{print $1}')"
+shim_sha256="$(sha256sum "$SHIM_SOURCE" | awk '{print $1}')"
 file_count="$(find "$PLUMOS_DIR/apps" -type f | wc -l | tr -d ' ')"
 cat >"$COMPONENT_DIR/manifest.json" <<EOF
 {
@@ -279,10 +285,11 @@ cat >"$COMPONENT_DIR/manifest.json" <<EOF
   "requirements_sha256": "$lock_sha256",
   "display_fit_sha256": "$fit_sha256",
   "display_rotation_sha256": "$rotate_sha256",
+  "init_shim_sha256": "$shim_sha256",
   "sdl2": {"version": "$SDL_VERSION", "source_sha256": "$SDL_SHA256", "kmsdrm": true},
   "source_ref": "$SOURCE_REF",
   "source_date_epoch": $SOURCE_EPOCH,
-  "runtime_contract": "Pixel2 bundled Python, Pyxel, pygame, SDL2 KMSDRM/GLES, 640x480 fit plus 270-degree scanout, ALSA plumos_pyxel",
+  "runtime_contract": "Pixel2 bundled Python, Pyxel, pygame, SDL2 KMSDRM/GLES, source-sized aspect-fit plus 270-degree scanout, ALSA plumos_pyxel",
   "launcher": "bin/plumos-pyxel-pixel2-launch",
   "setup": "bin/plumos-pyxel-setup",
   "file_count": $file_count
@@ -295,7 +302,7 @@ pip=$PIP_VERSION
 requirements_sha256=$lock_sha256
 baseline=$PLUMOS_DIR/apps/pyxel/site
 user_site=/mnt/plumos/state/pyxel-site
-display=SDL2 KMSDRM GLES with Pixel2 640x480 fit and 270-degree scanout
+display=SDL2 KMSDRM GLES with source-sized aspect fit and 270-degree scanout
 audio=ALSA plumos_pyxel
 EOF
 (
