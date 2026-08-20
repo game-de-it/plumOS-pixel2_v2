@@ -31,7 +31,9 @@
     operator確認する。Last Emulator固有のpygame/Pyxel二重audio初期化は継続課題。
     物理AがSDL既定のBとして解釈されタイトルから終了していた入力漏れには、PortMaster
     実機合格済みのPixel2 controller GUIDと`a:b1,b:b0,x:b2,y:b3`をPyxel launcherへ
-    共通適用した。AでStart Game、Bで戻る、D-pad、ABXY、終了復帰を実機確認する。
+    共通適用した。production-equivalent動的試験で物理AからStart Gameへ遷移し、ゲームを
+    操作できることをoperator合格。正式Runtime `0.1.0-dev-f4aadf3`もchecksum整合反映済み。
+    FE導線からの再起動、Bで戻る、終了hotkey、音声のoperator確認を継続する。
     76 MB級pyxappの短時間再試験で公式CLIの5分stale猶予中に`/tmp`が満杯になるため、
     live PIDの展開物を保持したままdead PID分を起動前に回収し、正常・異常終了時は自身の
     展開rootだけを削除するshim cleanupも追加した。

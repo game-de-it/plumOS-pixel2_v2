@@ -150,3 +150,31 @@ portrait, wide, smaller, and oversized canvases.
   launcher also fixes `TMPDIR` to `/run/plumos/cache/pyxel/tmp`, rather than
   allowing a full generic `/tmp` to redirect extraction into persistent HOME.
 - `Pyxel Setup` behavior with a project-specific `/roms/pyxel/requirements.txt`
+
+## 2026-08-20 Last Emulator input and deployment acceptance
+
+The first physical A press closed Last Emulator without a Python traceback or
+kernel process fault. Inspection of the title code and the established Pixel2
+input contract showed that physical A is `BTN_EAST`/SDL index 1, while generic
+SDL exposed it as logical B. Last Emulator correctly treats logical B as title
+back/quit, so this was an unmapped Pixel2 controller contract rather than a
+Pyxel crash.
+
+With the accepted Pixel2 SDL mapping exported by the launcher, the operator
+confirmed that physical A enters `Start Game` and that the game can be
+controlled. The process later exited normally with status 0. The same run
+confirmed the complete 720x480 source at `present=427x640+26+0` on the native
+480x640 scanout.
+
+Commit `f4aadf3` was rebuilt into the strict app layer and deployed as
+`0.1.0-dev-f4aadf3`. Before deployment, the installed Pyxel component and root
+checksum lists both passed. The transaction staged and verified four managed
+payload files plus component/root metadata, retained the prior managed files
+under `state/deploy-backups/f4aadf3-pyxel`, and passed the final 2,257-file
+Pyxel and 4,263-file root checksum gates before restarting the frontend.
+
+Key deployed SHA-256 values:
+
+- `plumos-pyxel-gl-rotate.so`: `cffafe534ed6a50403cf5c4cfb018cecc548acd592f14f547a4bc4c8854796c6`
+- `plumos-pyxel-pixel2-launch`: `7c30b9da680fe68f8cfded1bd6d82dea8d435cc00f3593b5d30393ac4069224c`
+- `plumos_pyxel_pixel2_shim.py`: `5aa9c88d90e341a51c6a230900bdea8e960086eb1a13b6933293fc082e3244cf`
