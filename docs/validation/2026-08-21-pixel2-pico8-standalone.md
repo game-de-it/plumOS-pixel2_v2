@@ -77,5 +77,6 @@ Celesteの128x128画面が歪みなく中央の正方形へ拡大されること
 左右80pxの黒帯を残して正方形を維持した。4:3への横伸びは発生していない。
 正式launcherから`-pixel_perfect 0`で再起動し、GLES2、controller、
 `SDL_OpenAudio ok`、cart load、継続processを再確認した。
+実LCDの480x480拡大表示はoperator合格となった。
 
 物理D-pad/ABXY/Start pause、実音声、終了、FE復帰はoperator acceptanceを継続する。

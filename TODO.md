@@ -504,7 +504,7 @@
     - [x] FE既定SA導線、mutable home/cdata分離、Pixel2 controller mapping、ALSA `plumos_output`、GLES2 SDL回転adapter、bounded stop ownershipを実装する
     - [x] commit `529f78f`のstrict app-layerとrelease gateを合格させ、実機Runtime `0.1.0-dev-529f78f`へcomponent/root checksum整合で反映する
     - [x] `Celeste.p8`のKMSDRM/GLES2起動、controller 1台15 button認識、`SDL_OpenAudio ok`、cart load、DRM captureの640x480正方向・正方形表示を確認する
-    - [x] 既定のinteger 3x（384x384）をaspect-fit（480x480）へ拡大し、左右80pxの黒帯で1:1比率が維持されることを`X-Zero.p8`のDRM比較captureで確認する
+    - [x] 既定のinteger 3x（384x384）をaspect-fit（480x480）へ拡大し、左右80pxの黒帯で1:1比率が維持されることを`X-Zero.p8`のDRM比較captureで確認。operatorも拡大表示を合格判定
     - [ ] 物理D-pad/ABXY/Start pause、実音声、終了、FE復帰をoperator確認する
   - [ ] PCSX-ReARMed
     - [x] pinned sourceからAArch64 binaryとpackage-local sdl12-compatをbuildし、component manifest/checksumへ統合する
