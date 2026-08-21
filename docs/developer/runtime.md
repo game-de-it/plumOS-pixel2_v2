@@ -6,14 +6,14 @@
 2. The stock initramfs mounts the boot volume and hands off to `/boot/SYSTEM`.
 3. plumOS `/sbin/init` mounts proc/sys/dev, `/mnt/plumos`, `/mnt/plumos-user`,
    `/state`, and `/roms`, then brings up IPv4/IPv6 loopback.
-4. init migrates retired ADB settings, keeps the single Pixel2 port in stock
-   OTG unless a physical Wi-Fi host cable is present, then starts
+4. init migrates retired ADB settings, probes the single Pixel2 port only when
+   stock OTG reports no upstream charger, then starts
    network/frontend services.
 
 ## Service Order
 
 ```text
-15-usb-host-reenumerate  physical-host-gated recovery and OTG charge release
+15-usb-host-reenumerate  bounded Wi-Fi host probe and OTG charge release
 20-usb-wifi  saved USB Wi-Fi configuration, if a dongle exists
 30-ssh       compatibility slot; delegates policy to network services
 35-network-services  saved SSH/FTP/SFTP/Samba state
@@ -21,9 +21,11 @@
 ```
 
 On a fresh image, SSH defaults to ON. Pixel2 has one dual-role USB port. A
-physical OTG/Wi-Fi attachment may own host mode, while dongle removal or an
-upstream charger releases the PHY to stock OTG so Linux can charge while
-running. ADB, FunctionFS, the USB Mode selector, and the recovery marker are
+successfully enumerated OTG/Wi-Fi device may own host mode, while dongle
+removal, an empty bounded probe, or an upstream charger releases the PHY to
+stock OTG so Linux can charge while running. Pixel2 extcon is not used as the
+physical-host oracle because it reports `USB-HOST=0` with the validated
+RTL8821CU connected. ADB, FunctionFS, the USB Mode selector, and the recovery marker are
 not shipped. Existing `usb_mode`, `adb_enabled`, and marker state is removed
 during migration without changing Wi-Fi credentials. SSH uses the common plumOS
 `root / plumos` initial credential, generated as a device-local salted shadow

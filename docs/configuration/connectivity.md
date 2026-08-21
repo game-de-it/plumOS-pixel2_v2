@@ -4,10 +4,10 @@ Pixel2には内蔵Wi-Fiがないため、USB Wi-FiとSSH/SFTPを保守経路に�
 FunctionFS、USB Mode、FAT recovery markerは配布しない。USB Wi-Fi dongleは任意で、
 認証情報がない場合はnetworkを起動しない。
 
-単一USB portはWi-Fi優先のdual-role OTGである。extconが物理OTG host接続を報告する
-場合だけcold-boot recoveryが`otg_mode=host`を使用する。dongleを抜くとkernel uevent
-経路が`otg_mode=otg`へ戻し、起動したまま充電器へ差し替えられる。USB Wi-FiとUSB充電は
-同じ物理portを使うため同時利用できない。
+単一USB portはWi-Fi優先のdual-role OTGである。cold boot時はstock OTGのまま
+upstream VBUSを確認し、充電器がなければbounded host probeを行う。dongleを抜くと
+kernel uevent経路が`otg_mode=otg`へ戻し、起動したまま充電器へ差し替えられる。
+USB Wi-FiとUSB充電は同じ物理portを使うため同時利用できない。
 
 ## USB Wi-Fi
 
@@ -46,10 +46,17 @@ stock kernel 5.10.198から採取した`r8188eu`に加え、V90Sで実機実績�
 RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して
 再現可能にbuildしてSystemへ収録する。V90Sのkernel 4.9用module binaryは流用しない。
 
-保存済みSSIDだけではUSB host所有権を与えない。起動時に`usb/online=1`、または
-extconの`USB-HOST=1`がない場合はstock `otg`を維持する。dongle removeは即時にOTGを
-解放するが、RTL8821CUの`0bda:1a2b` storage identityだけは意図したeject/re-enumerationを
-壊さないよう、5秒後にdownstream不在を再確認してから解放する。常時pollingは行わない。
+保存済みSSIDだけでは恒久的なUSB host所有権を与えない。起動時に`usb/online=1`、または
+stock OTG中のRockchip USB2 PHY BVALIDがactiveならupstreamを優先する。それ以外では
+hostへ切り替えてDWC2を再列挙するが、downstream deviceが現れなければ必ずOTGへ戻す。
+Pixel2実機ではWi-Fi動作中もextconの`USB-HOST`が0だったため、extconは物理接続判定に
+使わない。dongle removeは即時にOTGを解放するが、RTL8821CUの`0bda:1a2b` storage
+identityだけは意図したeject/re-enumerationを壊さないよう、5秒後にdownstream不在を
+再確認してから解放する。常時pollingは行わない。
+
+OTGへ解放した後は、電源を供給しないUSB Wi-Fi dongleの再挿入をhardware eventだけでは
+検出できない。FEのWi-Fi ON、SSID scan、接続操作は、adapter不在時に1回だけbounded host
+probeを要求する。probeでadapterが見つからなければOTGへ戻るため、充電待受を壊さない。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
 Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、

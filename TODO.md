@@ -10,9 +10,10 @@
     host helper、build依存を撤去。旧`usb_mode`/`adb_enabled`/FAT markerは起動時に除去し、
     Wi-Fi資格情報、network service設定、ROM、BIOS、saveは保持する。
   - 2026-08-21: 保存済みSSIDだけを根拠に`otg_mode=host`へ固定すると、dongleを充電器へ
-    差し替えても`usb/online=0`のままsinkへ戻れない循環を修正。extconの実`USB-HOST=1`
-    がある時だけcold-boot host recoveryを行い、dongle remove、charger/extcon changeで
-    stock `otg`へ解放する。起動中充電とWi-Fi再挿入の実機acceptanceは充電後に行う。
+    差し替えても`usb/online=0`のままsinkへ戻れない循環を修正。初案のextcon gateは、
+    実機でRTL8821CU接続中も`USB-HOST=0`だったため撤回した。stock OTG中のPHY BVALIDで
+    chargerを優先し、bounded host probeが空なら必ずOTGへ解放する。FE Wi-Fi操作からの
+    明示probeも追加。起動中充電とWi-Fi再挿入の実機acceptanceは適用後に行う。
 
 ## Implementation audit and release blockers
 
@@ -59,8 +60,9 @@
     非接続時だけRockchip stock sysfs ABIの`otg_mode=host`をDWC2 bind前に適用する。
     boot時の挿しっぱなしdongle列挙漏れを防ぎ、起動後の再挿入はV90S準拠のblocking
     uevent monitorからwpa/DHCP/network serviceを自動再開する。常時pollingは追加しない。
-  - 2026-08-21: cold-boot force-host条件へextcon `USB-HOST=1`を追加し、保存済みSSIDのみ・
-    charger接続・dongle抜去時はPHYをstock `otg`へ戻す。RTL8821CUのstorage-mode ejectだけは
+  - 2026-08-21: cold-boot force-host条件へextcon `USB-HOST=1`を追加した初案は実機反証に
+    より撤回し、OTG中のPHY BVALIDと実downstream列挙を使うbounded probeへ置換。charger、
+    dongle抜去、空probeではPHYをstock `otg`へ戻す。RTL8821CUのstorage-mode ejectだけは
     5秒遅延後にdownstream不在を再確認し、意図した`1a2b -> c811`再列挙を壊さない。
 
 - [x] System A/B更新時にslot metadataを全て同一transactionで更新する

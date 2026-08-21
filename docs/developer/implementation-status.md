@@ -72,8 +72,8 @@ Pixel2では存在しないAudio Output切替とLid Suspendだけをdevice capab
 
 Pixel2はWi-Fiを内蔵せずUSB portも1つだけなので、2026-08-20以降はUSB Wi-Fiを
 優先し、ADB、FunctionFS、USB Mode、recovery markerを配布物から撤去する。
-host固定は物理OTG/Wi-Fi接続中だけとし、dongle抜去後はstock OTGへ戻して起動中充電を
-許可する。
+host固定は実downstream列挙中だけとし、dongle抜去または空のbounded probe後はstock
+OTGへ戻して起動中充電を許可する。FEのWi-Fi操作はadapter不在時だけ明示probeを行う。
 旧`usb_mode`/`adb_enabled`/markerだけを起動時に除去し、SSID/PSKやサービス設定は
 保持する。SSHはV90S/MF共通の初期password、公開鍵、UI toggle、boot状態の一致を
 確認する。
