@@ -8,9 +8,9 @@ diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
 +
 +   if (gl2_menu_display_rotation())
 +   {
-+      x *= (float)gl2_menu_font_width(gl) / (float)gl->vp.width;
++      x *= (float)gl->vp.width / (float)gl2_menu_font_width(gl);
 +      y  = 1.0f - ((1.0f - y) *
-+            (float)gl2_menu_font_height(gl) / (float)gl->vp.height);
++            (float)gl->vp.height / (float)gl2_menu_font_height(gl));
 +   }
  
     if (    !string_is_empty(msg)

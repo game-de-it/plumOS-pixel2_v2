@@ -83,9 +83,9 @@ for contract in \
         fail "Graphical RetroArch logical menu layout patch is missing: $contract"
 done
 for contract in \
-    'x *= (float)gl2_menu_font_width(gl) / (float)gl->vp.width' \
+    'x *= (float)gl->vp.width / (float)gl2_menu_font_width(gl)' \
     'y  = 1.0f - ((1.0f - y)' \
-    'gl2_menu_font_height(gl) / (float)gl->vp.height'; do
+    'gl->vp.height / (float)gl2_menu_font_height(gl)'; do
     grep -Fq "$contract" "$GL_FONT_POSITION_PATCH" ||
         fail "Graphical RetroArch font-position patch is missing: $contract"
 done
