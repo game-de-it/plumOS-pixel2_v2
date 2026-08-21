@@ -90,14 +90,16 @@ Reboot uses the stock-kernel sysrq path. An unplugged Shutdown uses RK817 PMIC
 i2c bus 0, addr 0x20, reg 0xf4, bit 0
 ```
 
-If a charger is already attached, Shutdown writes Rockchip
-`BOOT_CHARGING=0x5242c30b` to the stock reboot-mode register and uses sysrq to
-enter the U-Boot charging animation. A failed boot-mode write falls back to
-RK817 `DEV_OFF`.
+If a charger is already attached, Shutdown executes the restricted
+`plumos-reboot-mode charge` helper. It uses Linux `RESTART2` so the stock
+syscon reboot-mode notifier maps DT property `mode-charge` to
+`BOOT_CHARGING=0x5242c30b` at the final kernel restart stage. A missing or
+failed helper falls back to RK817 `DEV_OFF`; it must never continue with a
+normal reboot.
 
 The FE power action path has been validated for reboot and physical power-off.
 The conditional transition into U-Boot charging mode remains a terminal
-physical-device acceptance test.
+physical-device acceptance test after the `RESTART2` correction.
 
 Power is read from the stock `rk805 pwrkey` input (`/dev/input/event0` on the
 validated Pixel2). The hardware-key service remains running after the FE is

@@ -22,10 +22,13 @@
     `0bda:c820`/IPv4/SSH復帰まで実機合格。stock driverは充電中も`usb/online=0`のため、
     充電判定はbattery status/currentを使う。充電器を挿したcold bootだけ継続確認する。
   - 2026-08-22: 充電器を挿したままShutdownすると、RK817 `DEV_OFF`後はLED/充電animationが
-    消え、cable再挿入でだけ復帰する未検証境界を発見。充電中ShutdownはRockchip
-    `BOOT_CHARGING=0x5242c30b`を設定してstock U-Boot charge UIへ遷移し、非充電時だけ
-    `DEV_OFF`を使うよう修正。Charging、満充電+BVALID、満充電+cableなしのfixtureは合格。
-    実機で充電器接続中のShutdownと、非充電時の完全OFFを確認する。
+    消え、cable再挿入でだけ復帰する未検証境界を発見。最初の直接
+    `BOOT_CHARGING=0x5242c30b`書込み+sysrq方式は実機で通常OSが起動して不合格となり、
+    kernel reboot notifierが後段で`mode-normal`を上書きする経路と整合した。充電中Shutdownは
+    Linux `RESTART2("charge")`からstock `CONFIG_SYSCON_REBOOT_MODE`へ委譲し、非充電時だけ
+    `DEV_OFF`を使うよう修正。Charging、満充電+BVALID、満充電+cableなしのfixtureと
+    AArch64 frontend component build/checksumは合格。修正版を実機反映し、充電器接続中の
+    Shutdownと非充電時の完全OFFを確認する。
 
 ## Implementation audit and release blockers
 

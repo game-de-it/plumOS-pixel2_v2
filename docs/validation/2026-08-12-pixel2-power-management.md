@@ -170,13 +170,22 @@ Rockchip U-Boot defines charging boot mode as `0x5242c30b`; its boot-mode setup
 turns that value into the `charge` preboot command, and the captured stock
 U-Boot DT enables `rockchip,uboot-charge-on`.
 
-Pixel2 now separates the two Shutdown cases:
+The first 2026-08-22 implementation wrote `BOOT_CHARGING` directly and then
+used sysrq `b`. Physical testing showed that the OS booted normally. This is
+consistent with the stock kernel reboot-mode notifier running later and
+writing `mode-normal`, and also repeated the earlier documented result where a
+pre-written charge flag followed by forced poweroff returned to the OS.
 
-- with an attached charger, record `BOOT_CHARGING` and use the already-proven
-  sysrq reboot path to enter the stock U-Boot charging UI;
+Pixel2 therefore separates the two Shutdown cases as follows:
+
+- with an attached charger, call Linux `RESTART2` with the exact command
+  `charge`; the built-in stock `CONFIG_REBOOT_MODE` and
+  `CONFIG_SYSCON_REBOOT_MODE` drivers then resolve DT `mode-charge` and write
+  `BOOT_CHARGING` during the kernel restart notifier sequence;
 - without a charger, retain RK817 `DEV_OFF` for a true cold power-off;
-- if the charging boot-mode write fails, fall back to RK817 `DEV_OFF` instead
-  of risking an ordinary OS reboot.
+- if the restricted reboot helper is missing, rejected, or unexpectedly
+  returns, fall back to RK817 `DEV_OFF` instead of risking an ordinary OS
+  reboot.
 
 Charger detection accepts `battery/status=Charging`, an online power-supply,
 or positive battery current. At a full battery, where those signals may be
@@ -184,4 +193,7 @@ idle, the same stock-OTG BVALID signal used by System is accepted only when no
 downstream USB device is enumerated and the PHY is not forced to host. This
 prevents a Wi-Fi dongle or an unplugged full battery from selecting charging
 mode. Fixtures cover active charging, full-battery BVALID, and full-battery
-charger-absent behavior. Physical plugged-Shutdown acceptance remains pending.
+charger-absent behavior. The helper accepts only `charge`, is compiled for
+AArch64 in the frontend component, and is covered by the component checksum.
+Physical plugged-Shutdown acceptance remains pending for the corrected
+`RESTART2` path.

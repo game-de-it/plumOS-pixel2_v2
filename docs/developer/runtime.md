@@ -89,8 +89,9 @@ adjustments are persisted after a short idle delay.
 content/user mounts where possible, syncs, and then:
 
 - reboots via sysrq `b` / BusyBox fallback;
-- when a charger is attached, writes the stock Rockchip `BOOT_CHARGING` mode
-  and reboots into the U-Boot charging UI;
+- when a charger is attached, invokes Linux `RESTART2` with `charge`, allowing
+  the stock kernel reboot-mode driver to write `BOOT_CHARGING` at the final
+  restart notifier stage before entering the U-Boot charging UI;
 - otherwise shuts down through RK817 `DEV_OFF`, then BusyBox poweroff fallback.
 
 The physical `rk805 pwrkey` is owned continuously by the hardware-key service.
