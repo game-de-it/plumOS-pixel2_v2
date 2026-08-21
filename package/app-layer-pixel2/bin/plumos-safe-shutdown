@@ -35,8 +35,7 @@ phy_status_addr=${PLUMOS_POWER_PHY_STATUS_ADDR:-0xff2c0120}
 phy_bvalid_mask=${PLUMOS_POWER_PHY_BVALID_MASK:-0x200}
 usb_host_control=${PLUMOS_USB_HOST_CONTROL:-/usr/lib/plumos/init.d/15-usb-host-reenumerate}
 devmem_command=${PLUMOS_DEVMEM:-}
-reboot_mode_reg=${PLUMOS_REBOOT_MODE_REG:-0xff010200}
-reboot_mode_charge=${PLUMOS_REBOOT_MODE_CHARGE:-0x5242c30b}
+reboot_mode_helper=${PLUMOS_REBOOT_MODE_HELPER:-$root/bin/plumos-reboot-mode}
 terminal_test=${PLUMOS_POWER_TEST_TERMINAL:-0}
 software_sleep_marker=${PLUMOS_SOFTWARE_SLEEP_MARKER:-$runtime_root/software-sleep}
 software_sleep_force=${PLUMOS_FORCE_SOFTWARE_SLEEP:-0}
@@ -227,34 +226,32 @@ charger_present() {
     return 1
 }
 
-write_charge_boot_mode() {
-    if [ -n "$devmem_command" ]; then
-        "$devmem_command" "$reboot_mode_reg" 32 "$reboot_mode_charge"
-    else
-        "$bb" devmem "$reboot_mode_reg" 32 "$reboot_mode_charge"
-    fi
-}
-
 charge_mode_reboot() {
     if [ -x "$usb_host_control" ]; then
         "$usb_host_control" release >>"$log_file" 2>&1 || \
             log 'power=usb-host-release-failed action=charge-mode'
     fi
-    if ! write_charge_boot_mode; then
-        log "power=charge-mode-failed stage=reboot-mode-write reg=$reboot_mode_reg"
+    if [ ! -x "$reboot_mode_helper" ]; then
+        log "power=charge-mode-failed stage=restart2 reason=helper-missing path=$reboot_mode_helper"
         return 1
     fi
-    log "power=charge-mode-ready reg=$reboot_mode_reg value=$reboot_mode_charge"
     "$bb" sync
     if [ "$terminal_test" = 1 ]; then
-        log 'power=terminal-test action=charge-mode-reboot'
-        return 0
+        if "$reboot_mode_helper" charge >>"$log_file" 2>&1; then
+            log 'power=terminal-test action=charge-mode-restart2 mode=charge'
+            return 0
+        fi
+        log 'power=charge-mode-failed stage=restart2 reason=helper-error terminal-test=1'
+        return 1
     fi
-    if [ -w /proc/sysrq-trigger ]; then
-        log 'power=charge-mode-method method=sysrq-trigger-b'
-        printf b >/proc/sysrq-trigger
+    log 'power=charge-mode-method method=restart2 mode=charge'
+    if "$reboot_mode_helper" charge >>"$log_file" 2>&1; then
+        log 'power=charge-mode-failed stage=restart2 reason=unexpected-return rc=0'
+    else
+        rc=$?
+        log "power=charge-mode-failed stage=restart2 reason=helper-error rc=$rc"
     fi
-    exec "$bb" reboot -f
+    return 1
 }
 
 run_rk817_resume() {

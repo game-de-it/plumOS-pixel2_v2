@@ -438,6 +438,10 @@ grep -q 'rk817-dev-off' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 grep -q 'i2cset -f -y 0 0x20 0xf4' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
+grep -q 'plumos-reboot-mode' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
+grep -q 'LINUX_REBOOT_CMD_RESTART2' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_reboot_mode.c"
 grep -q 'printf.*sleep_backend.*power_state' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
 ! grep -qi 'adbd\|functionfs' \

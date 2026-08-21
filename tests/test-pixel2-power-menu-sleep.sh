@@ -111,7 +111,11 @@ cat >"$TEST_ROOT/devmem" <<'EOF'
 #!/bin/sh
 printf 'devmem %s\n' "$*" >>"$PLUMOS_TEST_CALLS"
 EOF
-chmod 0755 "$TEST_ROOT/devmem"
+cat >"$TEST_ROOT/reboot-mode" <<'EOF'
+#!/bin/sh
+printf 'reboot-mode %s\n' "$*" >>"$PLUMOS_TEST_CALLS"
+EOF
+chmod 0755 "$TEST_ROOT/devmem" "$TEST_ROOT/reboot-mode"
 : >"$TEST_ROOT/calls"
 PLUMOS_ROOT="$TEST_ROOT/plumos" \
 PLUMOS_RUNTIME_ROOT="$TEST_ROOT/run" \
@@ -123,15 +127,15 @@ PLUMOS_BATTERY_CURRENT="$TEST_ROOT/battery-current" \
 PLUMOS_USB_ONLINE="$TEST_ROOT/usb-online" \
 PLUMOS_AC_ONLINE="$TEST_ROOT/ac-online" \
 PLUMOS_DEVMEM="$TEST_ROOT/devmem" \
+PLUMOS_REBOOT_MODE_HELPER="$TEST_ROOT/reboot-mode" \
 PLUMOS_POWER_TEST_TERMINAL=1 \
 PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown" --shutdown
-grep -q '^devmem 0xff010200 32 0x5242c30b$' "$TEST_ROOT/calls"
+grep -q '^reboot-mode charge$' "$TEST_ROOT/calls"
+! grep -q '^devmem ' "$TEST_ROOT/calls"
 grep -q 'power=charger-detected source=battery-status value=Charging' \
     "$TEST_ROOT/logs/power.log"
-grep -q 'power=charge-mode-ready reg=0xff010200 value=0x5242c30b' \
-    "$TEST_ROOT/logs/power.log"
-grep -q 'power=terminal-test action=charge-mode-reboot' \
+grep -q 'power=terminal-test action=charge-mode-restart2 mode=charge' \
     "$TEST_ROOT/logs/power.log"
 
 printf 'Full\n' >"$TEST_ROOT/battery-status"
@@ -153,10 +157,11 @@ PLUMOS_USB_DEVICES_ROOT="$TEST_ROOT/usb-devices" \
 PLUMOS_OTG_MODE="$TEST_ROOT/otg-mode" \
 PLUMOS_POWER_PHY_STATUS_FILE="$TEST_ROOT/phy-status" \
 PLUMOS_DEVMEM="$TEST_ROOT/devmem" \
+PLUMOS_REBOOT_MODE_HELPER="$TEST_ROOT/reboot-mode" \
 PLUMOS_POWER_TEST_TERMINAL=1 \
 PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown" --shutdown
-grep -q '^devmem 0xff010200 32 0x5242c30b$' "$TEST_ROOT/calls"
+grep -q '^reboot-mode charge$' "$TEST_ROOT/calls"
 grep -q 'power=charger-detected source=phy-bvalid status=Full' \
     "$TEST_ROOT/logs/power.log"
 
@@ -175,6 +180,7 @@ PLUMOS_USB_DEVICES_ROOT="$TEST_ROOT/usb-devices" \
 PLUMOS_OTG_MODE="$TEST_ROOT/otg-mode" \
 PLUMOS_POWER_PHY_STATUS_FILE="$TEST_ROOT/phy-status" \
 PLUMOS_DEVMEM="$TEST_ROOT/devmem" \
+PLUMOS_REBOOT_MODE_HELPER="$TEST_ROOT/reboot-mode" \
 PLUMOS_POWER_TEST_TERMINAL=1 \
 PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown" --shutdown

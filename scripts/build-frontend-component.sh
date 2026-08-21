@@ -77,6 +77,8 @@ gcc "${common[@]}" $drm_cflags "$SOURCE_DIR/plumos_pixel2_hardware_keys.c" \
 gcc "${common[@]}" "$SOURCE_DIR/plumos_rk817_resume.c" \
     -o "$BIN_DIR/plumos-rk817-resume" \
     -Wl,-rpath,'$ORIGIN/../frontend/lib' -lasound
+gcc "${common[@]}" "$SOURCE_DIR/plumos_reboot_mode.c" \
+    -o "$BIN_DIR/plumos-reboot-mode"
 readelf -d "$BIN_DIR/plumos-rk817-resume" |
     grep -Fq '$ORIGIN/../frontend/lib'
 strip "$BIN_DIR"/* 2>/dev/null || true
