@@ -31,7 +31,7 @@ fi
 }
 for applet in \
   awk cat cmp crc32 cut date dd dirname find grep head ls mkdir mv od rm sed \
-  sh sort tail tr unzip wc wget; do
+  sh sleep sort tail tr unzip wc wget; do
   "$BUSYBOX" ln -sf "$BUSYBOX" "$TOOL_DIR/$applet" || {
     printf 'error: cannot install scraper applet: %s\n' "$applet" >&2
     exit 1
@@ -55,6 +55,8 @@ KIND=Named_Boxarts
 REPLACE_EXISTING=0
 FETCH_TIMEOUT="${PLUMOS_THUMBNAIL_FETCH_TIMEOUT:-45}"
 FETCH_RETRY="${PLUMOS_THUMBNAIL_FETCH_RETRY:-2}"
+INDEX_LOCK_WAIT="${PLUMOS_THUMBNAIL_INDEX_LOCK_WAIT:-240}"
+INDEX_LOCK_ROOT="${STATE_DIR}/index-locks-$$"
 
 usage() {
   cat <<'USAGE'
@@ -87,6 +89,7 @@ Environment:
   PLUMOS_THUMBNAIL_TOOL_DIR      Default: $PLUMOS_THUMBNAIL_STATE_DIR/bin
   PLUMOS_THUMBNAIL_FETCH_TIMEOUT Default: 45 seconds
   PLUMOS_THUMBNAIL_FETCH_RETRY   Default: 2 retries
+  PLUMOS_THUMBNAIL_INDEX_LOCK_WAIT Default: 240 seconds
   PLUMOS_THUMBNAIL_SERVER_FALLBACK Set to 1 to fallback to thumbnails.libretro.com for PNGs
   PLUMOS_THUMBNAIL_PROGRESS      Print fetch progress TSV rows when set to 1
   PLUMOS_THUMBNAIL_TIMING        Print fetch phase timing TSV rows when set to 1
@@ -515,7 +518,8 @@ fetch_url() {
   rm -f "$tmp" 2>/dev/null || true
   mkdir -p "$(dirname "$output")" 2>/dev/null || true
   if command -v curl >/dev/null 2>&1; then
-    if curl -fsSL --retry "$FETCH_RETRY" --connect-timeout 10 --max-time "$FETCH_TIMEOUT" \
+    if curl -fsSL --retry "$FETCH_RETRY" --retry-all-errors --retry-delay 1 \
+      --connect-timeout 10 --max-time "$FETCH_TIMEOUT" \
       -o "$tmp" "$url" 2>/dev/null; then
       mv "$tmp" "$output"
       return 0
@@ -671,6 +675,28 @@ thumb_index_valid() {
   ' "$index_file"
 }
 
+acquire_index_lock() {
+  lock_name="$1"
+  lock_dir="${INDEX_LOCK_ROOT}/${lock_name}"
+  waited=0
+
+  mkdir -p "$INDEX_LOCK_ROOT" 2>/dev/null || return 1
+  while ! mkdir "$lock_dir" 2>/dev/null; do
+    waited=$((waited + 1))
+    if [ "$waited" -ge "$INDEX_LOCK_WAIT" ]; then
+      log "fetch index_lock_timeout lock=${lock_name} waited=${waited}"
+      return 1
+    fi
+    sleep 1
+  done
+  printf '%s\n' "$lock_dir"
+}
+
+release_index_lock() {
+  lock_dir="$1"
+  rm -rf "$lock_dir" 2>/dev/null || true
+}
+
 ensure_dat_index() {
   system="$1"
   preloaded="${PRELOAD_DIR}/dat/${system}.crc.tsv"
@@ -678,6 +704,7 @@ ensure_dat_index() {
   source_dat="${CACHE_DIR}/dat-source/${system}.dat"
   tmp_cached="${cached}.tmp.$$-${SCRAPER_WORKER_ID:-main}"
   url=""
+  lock_dir=""
 
   if [ -s "$preloaded" ]; then
     printf '%s\n' "$preloaded"
@@ -688,12 +715,28 @@ ensure_dat_index() {
     return 0
   fi
 
+  lock_dir="$(acquire_index_lock "dat-${system}" || true)"
+  [ -n "$lock_dir" ] || return 1
+  if [ -s "$cached" ]; then
+    release_index_lock "$lock_dir"
+    printf '%s\n' "$cached"
+    return 0
+  fi
+
   url="$(dat_source_url "$system" || true)"
-  [ -n "$url" ] || return 1
+  if [ -z "$url" ]; then
+    release_index_lock "$lock_dir"
+    return 1
+  fi
   mkdir -p "${CACHE_DIR}/dat" "${CACHE_DIR}/dat-source" 2>/dev/null || true
-  fetch_url "$url" "$source_dat" || return 1
-  dat_to_crc_index "$source_dat" "$tmp_cached" || return 1
-  mv "$tmp_cached" "$cached"
+  if ! fetch_url "$url" "$source_dat" ||
+     ! dat_to_crc_index "$source_dat" "$tmp_cached" ||
+     ! mv "$tmp_cached" "$cached"; then
+    rm -f "$tmp_cached" 2>/dev/null || true
+    release_index_lock "$lock_dir"
+    return 1
+  fi
+  release_index_lock "$lock_dir"
   printf '%s\n' "$cached"
 }
 
@@ -704,6 +747,7 @@ ensure_thumb_index() {
   html="${CACHE_DIR}/thumb-html/${system}/${KIND}.html"
   tmp_cached="${cached}.tmp.$$-${SCRAPER_WORKER_ID:-main}"
   base=""
+  lock_dir=""
 
   if thumb_index_valid "$preloaded"; then
     printf '%s\n' "$preloaded"
@@ -715,12 +759,30 @@ ensure_thumb_index() {
   fi
   rm -f "$cached" 2>/dev/null || true
 
+  lock_dir="$(acquire_index_lock "thumb-${system}-${KIND}" || true)"
+  [ -n "$lock_dir" ] || return 1
+  if thumb_index_valid "$cached"; then
+    release_index_lock "$lock_dir"
+    printf '%s\n' "$cached"
+    return 0
+  fi
+  rm -f "$cached" 2>/dev/null || true
+
   base="$(thumb_base_url "$system" || true)"
-  [ -n "$base" ] || return 1
+  if [ -z "$base" ]; then
+    release_index_lock "$lock_dir"
+    return 1
+  fi
   mkdir -p "${CACHE_DIR}/thumb-names/${system}" "${CACHE_DIR}/thumb-html/${system}" 2>/dev/null || true
-  fetch_url "${base}/" "$html" || return 1
-  html_to_thumb_index "$html" "$tmp_cached" || return 1
-  mv "$tmp_cached" "$cached"
+  if ! fetch_url "${base}/" "$html" ||
+     ! html_to_thumb_index "$html" "$tmp_cached" ||
+     ! thumb_index_valid "$tmp_cached" ||
+     ! mv "$tmp_cached" "$cached"; then
+    rm -f "$tmp_cached" 2>/dev/null || true
+    release_index_lock "$lock_dir"
+    return 1
+  fi
+  release_index_lock "$lock_dir"
   printf '%s\n' "$cached"
 }
 
@@ -1688,6 +1750,8 @@ done
 [ -r "$SYSTEMS_JSON" ] || die "systems.json is not readable: $SYSTEMS_JSON"
 is_positive_int_or_zero "$FETCH_TIMEOUT" || die "invalid PLUMOS_THUMBNAIL_FETCH_TIMEOUT: $FETCH_TIMEOUT"
 is_positive_int_or_zero "$FETCH_RETRY" || die "invalid PLUMOS_THUMBNAIL_FETCH_RETRY: $FETCH_RETRY"
+is_positive_int_or_zero "$INDEX_LOCK_WAIT" || die "invalid PLUMOS_THUMBNAIL_INDEX_LOCK_WAIT: $INDEX_LOCK_WAIT"
+[ "$INDEX_LOCK_WAIT" -gt 0 ] || die "PLUMOS_THUMBNAIL_INDEX_LOCK_WAIT must be greater than zero"
 case "$KIND" in
   Named_Boxarts|Named_Snaps|Named_Titles) ;;
   *) die "invalid --kind: $KIND" ;;

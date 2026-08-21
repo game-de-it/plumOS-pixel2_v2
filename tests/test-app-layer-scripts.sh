@@ -546,6 +546,11 @@ grep -q 'PLUMOS_SDCARD_ROOT:-/mnt/plumos-user' \
 grep -q 'PLUMOS_BUSYBOX:-/bin/busybox' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
 grep -q 'scraper-sources.tsv' "$ROOT_DIR/scripts/build-frontend-component.sh"
+grep -q -- '--retry-all-errors' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
+grep -q 'acquire_index_lock' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
+"$ROOT_DIR/tests/test-thumbnail-scraper-concurrency.sh"
 
 feature_tmp="$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-feature-test.XXXXXX")"
 trap 'rm -rf "$feature_tmp"' EXIT
