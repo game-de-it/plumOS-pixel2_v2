@@ -1,7 +1,7 @@
 # Pixel2 runtime USB charging recovery
 
 Date: 2026-08-21
-Status: revised fixtures pass; physical charge acceptance pending deployment
+Status: revised fixtures and runtime dongle/charger swap pass; charger cold-boot pending
 
 ## Regression
 
@@ -51,15 +51,28 @@ empty-probe OTG release, immediate dongle release, delayed storage-mode release,
 root-hub exclusion, and power-supply reconciliation. System rootfs and complete
 app-layer script gates pass.
 
-## Physical acceptance pending
+## Physical acceptance
 
-After the battery has charged:
+The following runtime path passed on 2026-08-22 with System and Runtime
+`0.1.0-dev-4993d8c`:
 
-1. boot with RTL8821CU inserted and confirm saved Wi-Fi plus SSH;
-2. remove the dongle, attach a charger without reboot, and confirm
-   `/sys/class/power_supply/usb/online=1` plus increasing battery capacity;
-3. remove the charger, reinsert the dongle, and confirm Wi-Fi/SSH recovery;
-4. cold boot with the charger already attached and confirm charging continues.
+1. RTL8821CU `0bda:c820` enumerated during cold boot without a DWC2 reset;
+2. saved Wi-Fi and SSH returned at `192.168.10.110`;
+3. removing the dongle changed `otg_mode` from `host` to `otg` and removed the
+   downstream device;
+4. attaching a charger without reboot lit the charge LED, changed the FE to its
+   charging indication, changed `battery/status` to `Charging`, and produced a
+   positive `current_now` up to about 1.248 A;
+5. removing the charger and reinserting the dongle restored `0bda:c820`, the
+   saved IPv4 address, and SSH without a reboot.
+
+The stock power-supply driver kept `/sys/class/power_supply/usb/online=0` even
+while `battery/status=Charging` and `current_now` was positive. Physical charge
+acceptance must therefore use the battery status/current plus the LED/FE
+indication, not `usb/online` alone. Battery capacity is also too coarse for the
+short swap test.
+
+Cold boot with the charger already attached remains pending.
 
 ## 2026-08-22 deployment race and correction
 
@@ -78,3 +91,9 @@ rebind, and marks an intentional controller transition. Runtime ignores USB
 remove events carrying that transition marker. An actual removal during the
 probe is still safe: the worker observes no downstream device and returns to
 OTG itself. Fixtures reproduce late enumeration and concurrent probe attempts.
+
+On the accepted build, the cold-boot worker logged
+`result=enumerated-without-reset`. The runtime swap log then recorded
+`host`/downstream-present to `otg`/downstream-absent, a charging interval, and
+the returning downstream device. This confirms that the race correction and
+the charging ownership correction work together on the physical Pixel2.

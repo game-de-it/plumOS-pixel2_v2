@@ -17,7 +17,10 @@
   - 2026-08-22: `97bf49c`適用後のoffline logで、c820列挙直後にboot workerがDWC2を
     unbindし、意図的removeをRuntimeが物理抜去と誤認してOTGへ解放、並行probeも競合する
     regressionを特定。host切替後の自然列挙待ち、全role操作の単一lock、意図的遷移markerを
-    実装しfixtureへ追加した。修正版System/Runtimeの実機充電acceptanceを継続する。
+    実装しfixtureへ追加した。System/Runtime `4993d8c`でcold boot Wi-Fi、dongle抜去後の
+    起動中充電（LED、FE表示、`battery/status=Charging`、最大約+1.248 A）、dongle再挿入後の
+    `0bda:c820`/IPv4/SSH復帰まで実機合格。stock driverは充電中も`usb/online=0`のため、
+    充電判定はbattery status/currentを使う。充電器を挿したcold bootだけ継続確認する。
 
 ## Implementation audit and release blockers
 
