@@ -151,15 +151,22 @@ case "$id" in
     export SDL_NOMOUSE=1
     export SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1
     export SDL_GAMECONTROLLERCONFIG='19008d96010000000221000000010000,plumOS Pixel2 Controller,a:b1,b:b0,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,back:b8,start:b9,guide:b14,dpup:b10,dpdown:b11,dpleft:b12,dpright:b13,platform:Linux,'
+    pico8_pixel_perfect="${PLUMOS_PICO8_PIXEL_PERFECT:-0}"
+    case "$pico8_pixel_perfect" in
+      0|1) ;;
+      *) fail "invalid PICO-8 pixel-perfect setting: $pico8_pixel_perfect" 2 ;;
+    esac
     case "${rom##*/}" in
       *[sS][pP][lL][oO][rR][eE]*)
         set -- -home "$HOME" -desktop "$HOME/desktop" \
-          -root_path "$pico8_system_root" -joystick 0 -pixel_perfect 1 \
+          -root_path "$pico8_system_root" -joystick 0 \
+          -pixel_perfect "$pico8_pixel_perfect" \
           -splore "$@"
         ;;
       *)
         set -- -home "$HOME" -desktop "$HOME/desktop" \
-          -root_path "$pico8_system_root" -joystick 0 -pixel_perfect 1 \
+          -root_path "$pico8_system_root" -joystick 0 \
+          -pixel_perfect "$pico8_pixel_perfect" \
           -run "$rom" "$@"
         ;;
     esac

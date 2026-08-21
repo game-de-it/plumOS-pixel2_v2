@@ -158,10 +158,11 @@ for contract in \
     'roms/pico8' \
     'PLUMOS_PICO8_SDL_ROTATION=270' \
     'SDL_RENDER_DRIVER=opengles2' \
+    'PLUMOS_PICO8_PIXEL_PERFECT:-0' \
     'SDL_GAMECONTROLLERCONFIG=' \
     'dpup:b10,dpdown:b11,dpleft:b12,dpright:b13' \
     '-root_path "$pico8_system_root"' \
-    '-pixel_perfect 1' \
+    '-pixel_perfect "$pico8_pixel_perfect"' \
     '-run "$rom"'; do
     grep -Fq -- "$contract" "$SA_LAUNCHER" ||
         fail "PICO-8 Pixel2 launch contract missing: $contract"
