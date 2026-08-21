@@ -55,7 +55,7 @@ KIND=Named_Boxarts
 REPLACE_EXISTING=0
 FETCH_TIMEOUT="${PLUMOS_THUMBNAIL_FETCH_TIMEOUT:-45}"
 FETCH_RETRY="${PLUMOS_THUMBNAIL_FETCH_RETRY:-2}"
-INDEX_LOCK_WAIT="${PLUMOS_THUMBNAIL_INDEX_LOCK_WAIT:-240}"
+INDEX_LOCK_WAIT="${PLUMOS_THUMBNAIL_INDEX_LOCK_WAIT:-900}"
 INDEX_LOCK_ROOT="${STATE_DIR}/index-locks-$$"
 
 usage() {
@@ -89,7 +89,7 @@ Environment:
   PLUMOS_THUMBNAIL_TOOL_DIR      Default: $PLUMOS_THUMBNAIL_STATE_DIR/bin
   PLUMOS_THUMBNAIL_FETCH_TIMEOUT Default: 45 seconds
   PLUMOS_THUMBNAIL_FETCH_RETRY   Default: 2 retries
-  PLUMOS_THUMBNAIL_INDEX_LOCK_WAIT Default: 240 seconds
+  PLUMOS_THUMBNAIL_INDEX_LOCK_WAIT Default: 900 seconds
   PLUMOS_THUMBNAIL_SERVER_FALLBACK Set to 1 to fallback to thumbnails.libretro.com for PNGs
   PLUMOS_THUMBNAIL_PROGRESS      Print fetch progress TSV rows when set to 1
   PLUMOS_THUMBNAIL_TIMING        Print fetch phase timing TSV rows when set to 1
@@ -800,6 +800,16 @@ ensure_rescue_index() {
     return 0
   fi
   return 1
+}
+
+preflight_lookup_indexes() {
+  preflight_system="$1"
+  preflight_dat="$(ensure_dat_index "$preflight_system" 2>/dev/null || true)"
+  [ -n "$preflight_dat" ] || return 1
+  preflight_thumb="$(ensure_thumb_index "$preflight_system" 2>/dev/null || true)"
+  [ -n "$preflight_thumb" ] || return 1
+  thumb_base_url "$preflight_system" >/dev/null 2>&1 || return 1
+  return 0
 }
 
 lookup_crc_name() {
@@ -1610,6 +1620,10 @@ fetch_system() {
   emit_fetch_progress "$fetch_system_id" "$missing_processed" "$missing_thumbnails"
 
   crc_stage_start="$(thumbnail_now_seconds)"
+  if [ "$missing_thumbnails" -gt 0 ] &&
+     ! preflight_lookup_indexes "$fetch_system_id"; then
+    log "fetch preflight_failed system=${fetch_system_id} source=${fetch_system_id} reason=missing_index_or_source"
+  fi
   mkdir -p "$crc_result_dir" "$crc_download_dir" "$download_result_dir" "$download_success_dir" 2>/dev/null || true
   split_worker_queue "$missing_list" "$crc_queue_dir" "$crc_worker_count"
   crc_worker_i=1

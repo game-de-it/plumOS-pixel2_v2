@@ -550,6 +550,8 @@ grep -q -- '--retry-all-errors' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
 grep -q 'acquire_index_lock' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
+grep -q 'preflight_lookup_indexes "$fetch_system_id"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
 "$ROOT_DIR/tests/test-thumbnail-scraper-concurrency.sh"
 
 feature_tmp="$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-feature-test.XXXXXX")"
