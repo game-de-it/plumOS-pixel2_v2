@@ -43,8 +43,9 @@ handler、4 network services、11 mandatory componentsを検査する。さら�
 
 network service設定は`/mnt/plumos/config/network/services.conf`へ統一する。
 `35-network-services`が起動時に`start-enabled`を実行する。設定未作成時はSSHを
-ONにする。Pixel2の単一USB portは常にUSB Wi-Fi host用であり、FEにUSB ModeやADB
-項目は表示しない。旧`usb_mode`、`adb_enabled`、FAT recovery markerは起動時に
+ONにする。Pixel2の単一USB portはUSB Wi-Fiを優先するが、dongle非接続時はstock
+OTGへ解放して起動中充電を許可する。FEにUSB ModeやADB項目は表示しない。
+旧`usb_mode`、`adb_enabled`、FAT recovery markerは起動時に
 削除するが、SSID/PSK、service設定、ROM、BIOS、saveは変更しない。
 
 ## Hardware acceptance still required

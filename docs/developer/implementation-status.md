@@ -70,8 +70,10 @@ Pixel2では存在しないAudio Output切替とLid Suspendだけをdevice capab
 表示しない。FTP/SFTP/Sambaは共通plumOS機能として実装し、daemon欠落を理由に
 非表示にしない。
 
-Pixel2はWi-Fiを内蔵せずUSB portも1つだけなので、2026-08-20以降はportをUSB Wi-Fi
-host専用とし、ADB、FunctionFS、USB Mode、recovery markerを配布物から撤去する。
+Pixel2はWi-Fiを内蔵せずUSB portも1つだけなので、2026-08-20以降はUSB Wi-Fiを
+優先し、ADB、FunctionFS、USB Mode、recovery markerを配布物から撤去する。
+host固定は物理OTG/Wi-Fi接続中だけとし、dongle抜去後はstock OTGへ戻して起動中充電を
+許可する。
 旧`usb_mode`/`adb_enabled`/markerだけを起動時に除去し、SSID/PSKやサービス設定は
 保持する。SSHはV90S/MF共通の初期password、公開鍵、UI toggle、boot状態の一致を
 確認する。

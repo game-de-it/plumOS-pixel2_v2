@@ -51,8 +51,9 @@ stock-compatible boot prefix、512 MiB `PLUMOS_BOOT`、2048 MiB ext4
 partition更新を受け付けない場合は、初回setup中に一度だけ自動再起動して処理を
 再開します。ROMやBIOSをmacOSから配置するのは、この初回起動完了後です。
 
-Pixel2の単一USB portはUSB Wi-Fi dongle専用です。plumOS Pixel2はADBを搭載せず、
-Wi-Fi接続後のSSH/SFTPを保守経路にします。
+Pixel2の単一USB portはWi-Fi優先のdual-role OTGとして扱います。USB Wi-Fi dongleの
+接続中だけhost roleを使用し、抜去後はstock OTGへ戻して起動中のUSB充電を許可します。
+plumOS Pixel2はADBを搭載せず、Wi-Fi接続後のSSH/SFTPを保守経路にします。
 
 `release-image`は実装監査のrelease blockerが0になるまで失敗します。開発中の
 実機試験には`sd-image`を使い、書き込みにはstock SDとは別のカードを使用します。

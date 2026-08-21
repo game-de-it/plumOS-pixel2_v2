@@ -5,10 +5,14 @@
 - [x] 既存plumOS機のupdate/storage/frontend/emulator設計を調査する
 - [x] Pixel2のRockchip prefix + System A/B + ext4 Runtime + FAT32 User構成を決定する
 - [x] ownership、update、rollback、first-boot provisioning contractを文書化する
-- [x] Pixel2の単一USB portをWi-Fi host専用とし、ADBをSystem/Runtime/FE/buildから廃止する
+- [x] Pixel2の単一USB portをWi-Fi優先のdual-role OTGとし、ADBをSystem/Runtime/FE/buildから廃止する
   - 2026-08-20: adbd/FunctionFS/device-role helper、ADB監視・復旧、FE項目、USB Mode、
     host helper、build依存を撤去。旧`usb_mode`/`adb_enabled`/FAT markerは起動時に除去し、
     Wi-Fi資格情報、network service設定、ROM、BIOS、saveは保持する。
+  - 2026-08-21: 保存済みSSIDだけを根拠に`otg_mode=host`へ固定すると、dongleを充電器へ
+    差し替えても`usb/online=0`のままsinkへ戻れない循環を修正。extconの実`USB-HOST=1`
+    がある時だけcold-boot host recoveryを行い、dongle remove、charger/extcon changeで
+    stock `otg`へ解放する。起動中充電とWi-Fi再挿入の実機acceptanceは充電後に行う。
 
 ## Implementation audit and release blockers
 
@@ -55,6 +59,9 @@
     非接続時だけRockchip stock sysfs ABIの`otg_mode=host`をDWC2 bind前に適用する。
     boot時の挿しっぱなしdongle列挙漏れを防ぎ、起動後の再挿入はV90S準拠のblocking
     uevent monitorからwpa/DHCP/network serviceを自動再開する。常時pollingは追加しない。
+  - 2026-08-21: cold-boot force-host条件へextcon `USB-HOST=1`を追加し、保存済みSSIDのみ・
+    charger接続・dongle抜去時はPHYをstock `otg`へ戻す。RTL8821CUのstorage-mode ejectだけは
+    5秒遅延後にdownstream不在を再確認し、意図した`1a2b -> c811`再列挙を壊さない。
 
 - [x] System A/B更新時にslot metadataを全て同一transactionで更新する
   - 2026-08-20: SquashFS、`.sha256`、署名`manifest.json`/`.sig`に加え、image生成時の

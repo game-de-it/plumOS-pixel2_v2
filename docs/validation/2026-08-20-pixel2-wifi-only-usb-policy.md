@@ -4,8 +4,10 @@ Date: 2026-08-20
 
 ## Decision
 
-Pixel2の単一USB portはUSB Wi-Fi dongle専用とする。plumOS Pixel2ではADBを
-提供しない。stock boot prefix、Image、kernel、initramfs、runtime DTBは変更しない。
+Pixel2の単一USB portはWi-Fi優先のdual-role OTGとする。物理dongle接続中だけUSB
+hostを使用し、抜去またはupstream charger検出後はstock OTGへ解放する。plumOS
+Pixel2ではADBを提供しない。stock boot prefix、Image、kernel、initramfs、runtime
+DTBは変更しない。
 
 ## Removed surface
 
@@ -19,7 +21,9 @@ Pixel2の単一USB portはUSB Wi-Fi dongle専用とする。plumOS Pixel2ではA
 
 起動時に旧`usb_mode`、`adb_enabled`、`plumos-enable-adb`だけを削除する。SSID/PSK、
 SSH/FTP/SFTP/Samba設定、ROM、BIOS、save、PortMaster、ユーザー設定は変更しない。
-保存済みWi-Fi設定がある場合はUSB host再列挙とbounded Wi-Fi recoveryを起動する。
+保存済みWi-Fi設定があり、extconが物理`USB-HOST=1`を報告する場合だけUSB host再列挙を
+行う。bounded Wi-Fi recoveryのuevent monitorはdongle removeとcharger/extcon changeも
+role再調停へ接続する。
 
 ## Host acceptance
 

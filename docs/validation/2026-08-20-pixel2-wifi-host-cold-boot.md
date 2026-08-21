@@ -32,16 +32,19 @@ mode.
 ## Contract
 
 Pixel2 keeps the stock DTB and kernel boot sequence. When saved Wi-Fi
-credentials exist and the upstream USB/charger signal is not active,
-`15-usb-host-reenumerate` writes `host` through the stock Rockchip sysfs ABI
-before it checks the downstream device or rebinds DWC2.
+credentials exist, the upstream USB/charger signal is not active, and extcon
+reports a physical `USB-HOST=1` attachment, `15-usb-host-reenumerate` writes
+`host` through the stock Rockchip sysfs ABI before it checks the downstream
+device or rebinds DWC2.
 
 The operation is idempotent and asynchronous. It is skipped for an upstream
 USB cable, never resets an already enumerated downstream device, and logs a
 warning rather than blocking boot if the stock sysfs ABI is unavailable.
 
 Runtime unplug/reinsert remains handled by the V90S-derived blocking kernel
-uevent monitor. No polling loop or custom DTB is introduced.
+uevent monitor. Dongle removal writes `otg` through the same stock PHY ABI;
+charger and extcon change events reconcile the role again. No polling loop or
+custom DTB is introduced.
 
 ## Acceptance
 
@@ -49,3 +52,5 @@ Host fixtures verify OTG-to-host, upstream-cable skip, and already-enumerated
 dongle paths. Physical acceptance requires leaving the RTL8821CU inserted,
 performing a cold boot, and confirming that the saved SSID, DHCP address, SSH,
 and later unplug/reinsert recovery all return without manual FE Wi-Fi toggles.
+It also requires replacing the dongle with a charger, confirming battery charge
+while Linux remains running, and then confirming Wi-Fi after reinsertion.

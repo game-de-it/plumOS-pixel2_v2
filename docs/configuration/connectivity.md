@@ -1,35 +1,13 @@
 # Pixel2 connectivity
 
-Pixel2には内蔵Wi-Fiがないため、bring-up用の保守経路はUSB ADBを優先する。
-USB Wi-Fi dongleは任意であり、認証情報がない場合はnetworkを起動しない。
+Pixel2には内蔵Wi-Fiがないため、USB Wi-FiとSSH/SFTPを保守経路にする。ADB、
+FunctionFS、USB Mode、FAT recovery markerは配布しない。USB Wi-Fi dongleは任意で、
+認証情報がない場合はnetworkを起動しない。
 
-## USB ADB
-
-boot時にconfigfs gadget `plumos_pixel2`とFunctionFS `adb`を作成し、USB
-VID:PID `18d1:4ee7`、product `plumOS Pixel2 ADB`として公開する。host側では
-次のように接続する。
-
-```sh
-adb devices
-adb shell
-```
-
-Pixel2には内蔵Wi-Fiがないため、設定がまだ存在しないfresh imageではADBを既定ON
-にする。START > Network > NW Service > ADBをONにすると保存設定を1にし、FAT32
-user partitionへ`plumos-enable-adb`も作成する。ADBがONである限り、保存済みWi-Fi
-設定の有無に関係なく唯一のOTG portをdevice roleとして占有する。FE操作時に接続中の
-USB gadgetを破壊しないため、変更は再起動後に反映する。
-設定画面へ到達できない場合は、SDカードのFAT32 user partition直下へ次の空fileを
-置くとrecovery opt-inになる。
-
-```text
-plumos-enable-adb
-```
-
-ADBをOFFにすると保存設定を0にし、このrecovery markerも削除する。保存済みWi-Fi
-設定があれば、この状態で再起動した場合だけportをhost roleへ割り当てる。markerは
-明示OFFより強いrecovery overrideでもある。ADB有効中も
-信頼できないhostへUSB接続しないこと。
+単一USB portはWi-Fi優先のdual-role OTGである。extconが物理OTG host接続を報告する
+場合だけcold-boot recoveryが`otg_mode=host`を使用する。dongleを抜くとkernel uevent
+経路が`otg_mode=otg`へ戻し、起動したまま充電器へ差し替えられる。USB Wi-FiとUSB充電は
+同じ物理portを使うため同時利用できない。
 
 ## USB Wi-Fi
 
@@ -68,25 +46,10 @@ stock kernel 5.10.198から採取した`r8188eu`に加え、V90Sで実機実績�
 RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して
 再現可能にbuildしてSystemへ収録する。V90Sのkernel 4.9用module binaryは流用しない。
 
-Pixel2のUSB portは1つのdual-role OTGでADBとUSB Wi-Fiが排他的に共有する。
-ADBはV90Sで実績のあるFunctionFS contractと同様に、保存ON時はcharger状態を
-参照せずdevice roleとbound gadgetを維持する。`usb/online`はroleをhostへ変更すると
-Mac/PC接続中でも0のままになるため、USB ownerの判定には使用しない。
-
-ADBの保存設定またはFAT32 rootの`plumos-enable-adb`がONなら、後続のUSB host
-再列挙とWi-Fi hotplug recoveryは起動せず、DWC2をunbind/bindしない。ADBを明示OFFに
-したうえで保存済みWi-Fi設定がONかつ`wpa_supplicant.conf`が存在する場合だけ、通常bootは
-portをhost roleへ割り当てる。V90S `d1721a9`と同様に、
-ADBデーモンは、Pixel2で最初に実機合格した`45b4505`と同じ
-nonblocking FunctionFS経路を使う。起動4秒後にUDC状態を1回だけ確認し、
-`configured`/`suspended`なら何もしない。それ以外の場合だけbounded
-unbind/rebindを試し、失敗時はadbdを1回clean restartする。
-
-物理USB抜き差しはhardware-key daemonが`usb/online` 0→1を検出し、2秒後に
-専用`replug`を1回要求する。`start`/`stop`/`restart`/`recover`/`replug`は
-同じPID lockで直列化し、複数adbdや連続UDC rebindを起動しない。kernel uevent
-monitor、protocol-stateファイル、複数の固定timerは使用しない。回復履歴は
-`/state/plumos/logs/adbd.log`へ永続保存する。
+保存済みSSIDだけではUSB host所有権を与えない。起動時に`usb/online=1`、または
+extconの`USB-HOST=1`がない場合はstock `otg`を維持する。dongle removeは即時にOTGを
+解放するが、RTL8821CUの`0bda:1a2b` storage identityだけは意図したeject/re-enumerationを
+壊さないよう、5秒後にdownstream不在を再確認してから解放する。常時pollingは行わない。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
 Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、
