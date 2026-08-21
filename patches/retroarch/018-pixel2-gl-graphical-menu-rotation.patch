@@ -11,11 +11,11 @@ diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
 +   return menu_rotation && strcmp(menu_rotation, "display") == 0;
 +}
 +
-+static void gl2_rotate_menu_rect(unsigned logical_height,
-+      int *x, int *y, unsigned *width, unsigned *height)
++static void gl2_rotate_menu_rect(float logical_height,
++      float *x, float *y, unsigned *width, unsigned *height)
 +{
-+   int old_x           = *x;
-+   int old_y           = *y;
++   float old_x         = *x;
++   float old_y         = *y;
 +   unsigned old_width  = *width;
 +   unsigned old_height = *height;
 +
@@ -23,7 +23,7 @@ diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
 +    * logical 640x480 surface. Rotate the lower-left GL viewport rectangle
 +    * counter-clockwise into the native scanout. The user then sees the same
 +    * landscape orientation as the plumOS frontend and plain-DRM RGUI. */
-+   *x      = (int)logical_height - old_y - (int)old_height;
++   *x      = logical_height - old_y - (float)old_height;
 +   *y      = old_x;
 +   *width  = old_height;
 +   *height = old_width;
@@ -80,17 +80,23 @@ diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
 +         : (rotate_menu ? &gl->mvp : &gl->mvp_no_rot));
  
  
-@@ -615,6 +653,13 @@ static void gfx_display_gl2_scissor_begin(
+@@ -615,6 +653,19 @@ static void gfx_display_gl2_scissor_begin(
        int x, int y,
        unsigned width, unsigned height)
  {
 -   glScissor(x, video_height - y - height, width, height);
-+   int scissor_x = x;
-+   int scissor_y = (int)video_height - y - (int)height;
++   int scissor_x     = x;
++   int scissor_y     = (int)video_height - y - (int)height;
++   float rotated_x   = (float)scissor_x;
++   float rotated_y   = (float)scissor_y;
 +
 +   if (gl2_menu_display_rotation())
-+      gl2_rotate_menu_rect(video_height,
-+            &scissor_x, &scissor_y, &width, &height);
++   {
++      gl2_rotate_menu_rect((float)video_height,
++            &rotated_x, &rotated_y, &width, &height);
++      scissor_x = (int)rotated_x;
++      scissor_y = (int)rotated_y;
++   }
 +
 +   glScissor(scissor_x, scissor_y, width, height);
     glEnable(GL_SCISSOR_TEST);
