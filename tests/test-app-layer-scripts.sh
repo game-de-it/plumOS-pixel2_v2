@@ -136,7 +136,7 @@ import sys
 
 path = Path(sys.argv[1])
 data = path.read_bytes()
-assert hashlib.sha256(data).hexdigest() == "0fe41cce8ee36e4ca0b346ad2aee17563f08afb9f402fe1a3f8ea5e46a1744ef"
+assert hashlib.sha256(data).hexdigest() == "c88ea45f9d341d31dfacc272d1b2cb930702c399b8c992d5953784d7aac44ac8"
 lines = data.decode().splitlines()
 pairs = [line.split(" = ", 1) for line in lines if " = " in line]
 values = dict(pairs)

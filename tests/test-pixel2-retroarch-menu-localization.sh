@@ -8,6 +8,7 @@ MENU_LAUNCHER="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-laun
 APP_LAYER_VERIFY="$ROOT_DIR/scripts/verify-app-layer.sh"
 GL_MENU_PATCH="$ROOT_DIR/patches/retroarch/018-pixel2-gl-graphical-menu-rotation.patch"
 GL_FONT_PATCH="$ROOT_DIR/patches/retroarch/019-pixel2-gl-menu-font-coordinates.patch"
+GL_LAYOUT_PATCH="$ROOT_DIR/patches/retroarch/020-pixel2-gl-menu-logical-layout.patch"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -71,6 +72,14 @@ for contract in \
     'window_height'; do
     grep -Fq "$contract" "$GL_FONT_PATCH" ||
         fail "Graphical RetroArch menu font-coordinate patch is missing: $contract"
+done
+for contract in \
+    'menu_render_width  = video_st->width' \
+    'menu_render_width  = video_st->height' \
+    'PLUMOS_GL_MENU_ROTATION' \
+    'menu->driver_ctx->render'; do
+    grep -Fq "$contract" "$GL_LAYOUT_PATCH" ||
+        fail "Graphical RetroArch logical menu layout patch is missing: $contract"
 done
 for font_pattern in \
     'retroarch/assets/rgui/font/bitmap10x10_*.bin' \

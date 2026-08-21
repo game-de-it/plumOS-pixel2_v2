@@ -1,0 +1,30 @@
+diff --git a/runloop.c b/runloop.c
+--- a/runloop.c
++++ b/runloop.c
+@@ -6310,10 +6310,20 @@ int runloop_iterate(void)
+             if (BIT64_GET(menu->state, MENU_STATE_BLIT))
+             {
+                if (menu->driver_ctx->render)
+-                  menu->driver_ctx->render(
+-                        menu->userdata,
+-                        video_st->width,
+-                        video_st->height,
+-                        (runloop_st->flags & RUNLOOP_FLAG_IDLE) ? true : false);
++               {
++                  unsigned menu_render_width  = video_st->width;
++                  unsigned menu_render_height = video_st->height;
++                  const char *menu_rotation   = getenv("PLUMOS_GL_MENU_ROTATION");
++
++                  if (menu_rotation && string_is_equal(menu_rotation, "display"))
++                  {
++                     menu_render_width  = video_st->height;
++                     menu_render_height = video_st->width;
++                  }
++
++                  menu->driver_ctx->render(menu->userdata,
++                        menu_render_width, menu_render_height,
++                        (runloop_st->flags & RUNLOOP_FLAG_IDLE) ? true : false);
++               }
+             }
+
+             if (      (menu_st->flags & MENU_ST_FLAG_ALIVE)
