@@ -37,8 +37,18 @@ case "${ACTION:-}:${SUBSYSTEM:-}" in
         ;;
     esac
     ;;
-  change:extcon|change:power_supply)
+  change:extcon)
     reconcile_usb_role
+    ;;
+  change:power_supply)
+    supply="${POWER_SUPPLY_NAME:-}"
+    if [ -z "$supply" ] && [ -n "${DEVPATH:-}" ]; then
+      supply="${DEVPATH##*/}"
+    fi
+    case "$supply" in
+      usb) reconcile_usb_role ;;
+      *) exit 0 ;;
+    esac
     ;;
 esac
 

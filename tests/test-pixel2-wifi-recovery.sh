@@ -113,6 +113,8 @@ env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=usb DEVTYPE=usb_device \
 
 env "${recovery_env[@]}" ACTION=change SUBSYSTEM=power_supply \
   POWER_SUPPLY_NAME=usb "$root/bin/plumos-wifi-uevent"
+env "${recovery_env[@]}" ACTION=change SUBSYSTEM=power_supply \
+  POWER_SUPPLY_NAME=battery "$root/bin/plumos-wifi-uevent"
 env "${recovery_env[@]}" ACTION=change SUBSYSTEM=extcon \
   "$root/bin/plumos-wifi-uevent"
 [ "$(grep -c '^reconcile$' "$TEST_USB_ROLE_CALLS")" -eq 2 ]
