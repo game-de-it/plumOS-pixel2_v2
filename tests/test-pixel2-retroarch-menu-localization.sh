@@ -9,6 +9,7 @@ APP_LAYER_VERIFY="$ROOT_DIR/scripts/verify-app-layer.sh"
 GL_MENU_PATCH="$ROOT_DIR/patches/retroarch/018-pixel2-gl-graphical-menu-rotation.patch"
 GL_FONT_PATCH="$ROOT_DIR/patches/retroarch/019-pixel2-gl-menu-font-coordinates.patch"
 GL_LAYOUT_PATCH="$ROOT_DIR/patches/retroarch/020-pixel2-gl-menu-logical-layout.patch"
+GL_FONT_POSITION_PATCH="$ROOT_DIR/patches/retroarch/021-pixel2-gl-menu-font-position.patch"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -80,6 +81,13 @@ for contract in \
     'menu->driver_ctx->render'; do
     grep -Fq "$contract" "$GL_LAYOUT_PATCH" ||
         fail "Graphical RetroArch logical menu layout patch is missing: $contract"
+done
+for contract in \
+    'x *= (float)gl2_menu_font_width(gl) / (float)gl->vp.width' \
+    'y  = 1.0f - ((1.0f - y)' \
+    'gl2_menu_font_height(gl) / (float)gl->vp.height'; do
+    grep -Fq "$contract" "$GL_FONT_POSITION_PATCH" ||
+        fail "Graphical RetroArch font-position patch is missing: $contract"
 done
 for font_pattern in \
     'retroarch/assets/rgui/font/bitmap10x10_*.bin' \
