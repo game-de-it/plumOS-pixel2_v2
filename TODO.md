@@ -333,6 +333,7 @@
       Off -> ADB、物理ケーブル接続、抜き差し後の実transportを最終acceptanceとして継続する。
   - [x] `plumos-thumbnail-scraper`、scraper sources、plan/fetch/result導線を実装する
     - 2026-08-13: MFの実績あるrunnerをPixel2のmulti-line catalogと`/mnt/plumos-user`へ適合。owned curl/dependency/CA bundle、AppsのScraping導線、atomic PNG、cache、bounded fetchを統合し、ROM setのNES 1本でCRC match/download成功をhost検証。
+    - 2026-08-21: 実機の初回NES scrapingで2つのCRC workerが同一DAT・thumbnail一覧を競合取得し、118件すべてが`skipped_tool`になる回帰を確認。`7ee72d7`で共有index生成を排他化し、`c1cd822`でworker開始前の親process preflightへ変更した。空cache・2 workerの実機試験は2/2 download、skip 0。全118 ROMでは既存2件に105件を追加し、CRC miss 5、thumbnail miss 6、download failure 0、最終107画像。FE library scanも118 ROM中107 thumbnailを解決した。
   - [x] `plumos-sdcard-cleanup`をPixel2 storage contractへ実装する
     - 2026-08-13: `/mnt/plumos-user/{roms,images}`を既定scopeとし、macOS/Windows sidecarだけを削除するbounded lock/interval/dry-run/cache-invalidation helperを追加。host fixtureでdry-runと削除を検証。
   - [x] ch/pt/fr/de translationを同梱し、6言語のkeyを検証する
