@@ -195,8 +195,7 @@ prevents a Wi-Fi dongle or an unplugged full battery from selecting charging
 mode. Fixtures cover active charging, full-battery BVALID, and full-battery
 charger-absent behavior. The helper accepts only `charge`, is compiled for
 AArch64 in the frontend component, and is covered by the component checksum.
-Physical plugged-Shutdown acceptance remains pending for the corrected
-`RESTART2` path.
+Physical plugged-Shutdown acceptance passed for the corrected `RESTART2` path.
 
 ### Corrected Runtime deployment
 
@@ -223,5 +222,10 @@ plumos-safe-shutdown=780aea75e758ac6a315966a537bdcfaf14e6961161ae23470814650f882
 ```
 
 Frontend component and full Runtime checksum verification passed after the
-reboot. The remaining gate is the operator-visible result of Shutdown while
-the charger is already attached.
+reboot.
+
+The operator then replaced the Wi-Fi dongle with the charger and selected FE
+Shutdown. Without removing or reinserting the cable, Pixel2 entered the stock
+charging screen instead of booting the OS. This closes the plugged-Shutdown
+acceptance that the direct register-write implementation had failed. A final
+unplugged cold power-off retest remains separate.

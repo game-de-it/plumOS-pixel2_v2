@@ -29,7 +29,8 @@
     `DEV_OFF`を使うよう修正。Charging、満充電+BVALID、満充電+cableなしのfixtureと
     AArch64 frontend component build/checksumは合格。署名Runtime `16150d5`を実機へ
     通常transactionで反映し、FE ready、`runtime_healthy`、frontend/root checksum合格まで
-    確認済み。充電器接続中のShutdownと非充電時の完全OFFをoperator確認する。
+    確認済み。Wi-Fi dongleを充電器へ差し替え、FEからShutdown後にcable再挿入なしで
+    stock充電画面へ遷移することをoperator合格。非充電時の完全OFFだけ再確認する。
 
 ## Implementation audit and release blockers
 

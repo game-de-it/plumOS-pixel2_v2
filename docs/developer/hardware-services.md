@@ -98,8 +98,9 @@ failed helper falls back to RK817 `DEV_OFF`; it must never continue with a
 normal reboot.
 
 The FE power action path has been validated for reboot and physical power-off.
-The conditional transition into U-Boot charging mode remains a terminal
-physical-device acceptance test after the `RESTART2` correction.
+The corrected `RESTART2("charge")` path has also been physically validated:
+with the charger already attached, FE Shutdown entered the stock charging
+screen without a cable replug and did not boot the OS.
 
 Power is read from the stock `rk805 pwrkey` input (`/dev/input/event0` on the
 validated Pixel2). The hardware-key service remains running after the FE is
