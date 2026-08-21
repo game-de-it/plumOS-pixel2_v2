@@ -66,13 +66,18 @@ test ! -e "$ROOT_DIR/scripts/build-adbd-overlay.sh"
 test ! -e "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-adbd-watchdog"
 ! grep -q 'plumos-pixel2-usb-role' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 test ! -e "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/adb-uevent"
-grep -q 'plumos-init=usb-owner mode=wifi-host' "$ROOT_DIR/rootfs/pixel2/sbin/init"
+grep -q 'plumos-init=usb-owner mode=wifi-preferred charging=otg-auto' \
+    "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'plumos-enable-adb' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 test -x "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 "$ROOT_DIR/tests/test-pixel2-usb-host-reenumerate.sh"
 grep -q 'ff300000.usb' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'force_wifi_host_mode' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
+grep -q 'release_wifi_host_mode' \
+    "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
+grep -q "printf 'otg" \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 grep -q 'usb2-phy@100/otg_mode' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"

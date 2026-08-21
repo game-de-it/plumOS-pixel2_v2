@@ -6,6 +6,7 @@ export PATH
 
 USB_ONLINE="${PLUMOS_USB_HOST_USB_ONLINE:-/sys/class/power_supply/usb/online}"
 USB_DEVICES_ROOT="${PLUMOS_USB_HOST_DEVICES_ROOT:-/sys/bus/usb/devices}"
+EXTCON_ROOT="${PLUMOS_USB_HOST_EXTCON_ROOT:-/sys/class/extcon}"
 DWC2_DRIVER="${PLUMOS_USB_HOST_DWC2_DRIVER:-/sys/bus/platform/drivers/dwc2}"
 PLATFORM_DEVICE="${PLUMOS_USB_HOST_PLATFORM_DEVICE:-/sys/bus/platform/devices/ff300000.usb}"
 DEVICE_ID="${PLUMOS_USB_HOST_DEVICE_ID:-ff300000.usb}"
@@ -15,6 +16,7 @@ LOG="${PLUMOS_USB_HOST_LOG:-/state/plumos/logs/usb-host-reenumerate.log}"
 RESET_DELAY="${PLUMOS_USB_HOST_RESET_DELAY:-2}"
 MODE_SETTLE="${PLUMOS_USB_HOST_MODE_SETTLE:-1}"
 ENUMERATION_WAIT="${PLUMOS_USB_HOST_ENUMERATION_WAIT:-3}"
+RELEASE_DELAY="${PLUMOS_USB_HOST_RELEASE_DELAY:-5}"
 
 log() {
     mkdir -p "${LOG%/*}"
@@ -40,6 +42,41 @@ downstream_present() {
         return 0
     done
     return 1
+}
+
+otg_host_attached() {
+    for state in "$EXTCON_ROOT"/*/state; do
+        [ -r "$state" ] || continue
+        grep -q '^USB-HOST=1$' "$state" 2>/dev/null && return 0
+    done
+    return 1
+}
+
+release_wifi_host_mode() {
+    [ -r "$OTG_MODE" ] || {
+        log "result=warning reason=otg-mode-missing path=$OTG_MODE"
+        return 0
+    }
+    mode=$(tr -d '[:space:]' <"$OTG_MODE" 2>/dev/null || true)
+    if [ "$mode" = otg ]; then
+        log 'stage=otg-mode-ready source=sysfs'
+        return 0
+    fi
+    [ -w "$OTG_MODE" ] || {
+        log "result=warning reason=otg-mode-read-only mode=${mode:-unknown} path=$OTG_MODE"
+        return 0
+    }
+    if ! printf 'otg\n' >"$OTG_MODE"; then
+        log "result=warning reason=otg-mode-release-failed mode=${mode:-unknown} path=$OTG_MODE"
+        return 0
+    fi
+    mode=$(tr -d '[:space:]' <"$OTG_MODE" 2>/dev/null || true)
+    if [ "$mode" != otg ]; then
+        log "result=warning reason=otg-mode-release-verify-failed mode=${mode:-unknown}"
+        return 0
+    fi
+    log 'stage=otg-mode-released source=sysfs'
+    sleep "$MODE_SETTLE"
 }
 
 force_wifi_host_mode() {
@@ -71,15 +108,26 @@ force_wifi_host_mode() {
 
 worker() {
     wifi_requested || {
+        release_wifi_host_mode
         log 'result=skipped reason=wifi-not-requested'
         return 0
     }
     [ -r "$USB_ONLINE" ] || {
+        release_wifi_host_mode
         log "result=skipped reason=usb-upstream-signal-missing path=$USB_ONLINE"
         return 0
     }
     if usb_upstream_online; then
+        release_wifi_host_mode
         log 'result=skipped reason=usb-upstream-online'
+        return 0
+    fi
+    if ! otg_host_attached; then
+        # A saved SSID is not proof that a downstream OTG adapter is attached.
+        # Keep the PHY in stock OTG mode so a charger inserted while Linux is
+        # running can become the upstream power source.
+        release_wifi_host_mode
+        log 'result=skipped reason=usb-host-cable-absent'
         return 0
     fi
     # Pixel2 keeps the stock DTB's dr_mode=otg, but this project dedicates the
@@ -132,6 +180,41 @@ worker() {
     log 'result=reset-complete downstream=absent'
 }
 
+release_if_idle() {
+    if usb_upstream_online; then
+        release_wifi_host_mode
+        log 'result=released reason=usb-upstream-online'
+        return 0
+    fi
+    if downstream_present; then
+        log 'result=skipped reason=downstream-still-present'
+        return 0
+    fi
+    release_wifi_host_mode
+    log 'result=released reason=downstream-absent'
+}
+
+reconcile_role() {
+    if usb_upstream_online; then
+        release_wifi_host_mode
+        log 'result=reconciled owner=upstream'
+        return 0
+    fi
+    if otg_host_attached; then
+        log 'result=reconciled owner=downstream-host'
+        return 0
+    fi
+    release_if_idle
+}
+
+start_release_worker() {
+    (
+        sleep "$RELEASE_DELAY"
+        exec "$0" release-if-idle
+    ) </dev/null >>"$LOG" 2>&1 &
+    log "result=release-scheduled pid=$! delay=$RELEASE_DELAY"
+}
+
 start_worker() {
     # Do not add DWC2 reset time to the boot critical path.  Service 20 starts
     # the Wi-Fi uevent monitor while this worker holds the controller unbound,
@@ -149,5 +232,21 @@ case "${1:-}" in
             worker
         fi
         ;;
-    *) printf 'usage: %s {start|worker}\n' "$0" >&2; exit 2 ;;
+    release)
+        release_wifi_host_mode
+        log 'result=released reason=requested'
+        ;;
+    release-if-idle)
+        release_if_idle
+        ;;
+    release-later)
+        start_release_worker
+        ;;
+    reconcile)
+        reconcile_role
+        ;;
+    *)
+        printf 'usage: %s {start|worker|release|release-if-idle|release-later|reconcile}\n' "$0" >&2
+        exit 2
+        ;;
 esac

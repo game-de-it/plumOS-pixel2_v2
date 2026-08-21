@@ -177,7 +177,9 @@ apply_pending_update
 
 # ADB was retired from Pixel2.  Preserve network credentials and service
 # selections, but remove the obsolete single-port ownership keys and recovery
-# marker so every boot leaves the controller available to USB host/Wi-Fi.
+# marker so every boot leaves the controller under the Wi-Fi-preferred OTG
+# policy. Physical host attachment may claim it; charger/dongle removal returns
+# it to the stock automatic role.
 services_conf=/mnt/plumos/config/network/services.conf
 if [ -r "$services_conf" ]; then
     services_tmp=${services_conf}.wifi-migration
@@ -186,7 +188,7 @@ if [ -r "$services_conf" ]; then
     $bb mv "$services_tmp" "$services_conf"
 fi
 $bb rm -f /mnt/plumos-user/plumos-enable-adb 2>/dev/null || true
-printf 'plumos-init=usb-owner mode=wifi-host adb=retired\n' \
+printf 'plumos-init=usb-owner mode=wifi-preferred charging=otg-auto adb=retired\n' \
     >>/mnt/plumos/logs/init.log 2>/dev/null || true
 
 for service in /usr/lib/plumos/init.d/*; do

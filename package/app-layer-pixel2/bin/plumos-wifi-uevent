@@ -3,6 +3,44 @@ set -u
 
 PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
 RECOVERY_CONTROL="${PLUMOS_ROOT}/bin/plumos-wifi-recovery"
+USB_HOST_CONTROL="${PLUMOS_PIXEL2_USB_HOST_CONTROL:-/usr/lib/plumos/init.d/15-usb-host-reenumerate}"
+
+release_usb_host() {
+  [ -x "$USB_HOST_CONTROL" ] || exit 0
+  exec "$USB_HOST_CONTROL" release >/dev/null 2>&1
+}
+
+release_usb_host_later() {
+  [ -x "$USB_HOST_CONTROL" ] || exit 0
+  exec "$USB_HOST_CONTROL" release-later >/dev/null 2>&1
+}
+
+reconcile_usb_role() {
+  [ -x "$USB_HOST_CONTROL" ] || exit 0
+  exec "$USB_HOST_CONTROL" reconcile >/dev/null 2>&1
+}
+
+case "${ACTION:-}:${SUBSYSTEM:-}" in
+  remove:usb)
+    # The RTL8821CU storage identity disappears once during its intentional
+    # eject-based mode switch. Delay that release so the c811 identity can
+    # enumerate; a real dongle removal is released immediately.
+    case "${PRODUCT:-}" in
+      0bda/1a2b/*|0BDA/1A2B/*|bda/1a2b/*|BDA/1A2B/*)
+        release_usb_host_later
+        ;;
+      1d6b/*|1D6B/*)
+        exit 0
+        ;;
+      *)
+        release_usb_host
+        ;;
+    esac
+    ;;
+  change:extcon|change:power_supply)
+    reconcile_usb_role
+    ;;
+esac
 
 [ "${ACTION:-}" = add ] || exit 0
 

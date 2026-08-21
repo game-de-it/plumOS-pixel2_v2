@@ -6,12 +6,13 @@ SERVICE="$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/15-usb-host-reenumerate"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-usb-host.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
-mkdir -p "$TMP/usb" "$TMP/dwc2" "$TMP/platform" "$TMP/config/system" \
+mkdir -p "$TMP/usb" "$TMP/extcon/extcon0" "$TMP/dwc2" "$TMP/platform" "$TMP/config/system" \
     "$TMP/log"
 printf 'network={}\n' >"$TMP/config/wpa_supplicant.conf"
 printf '{"wifi_enabled": true}\n' >"$TMP/config/system/settings.json"
 printf '0\n' >"$TMP/usb-online"
 printf 'otg\n' >"$TMP/otg-mode"
+printf 'USB=0\nUSB-HOST=1\nUSB_VBUS_EN=1\n' >"$TMP/extcon/extcon0/state"
 : >"$TMP/dwc2/bind"
 : >"$TMP/dwc2/unbind"
 ln -s "$TMP/dwc2" "$TMP/platform/driver"
@@ -19,6 +20,7 @@ ln -s "$TMP/dwc2" "$TMP/platform/driver"
 service_env=(
     PLUMOS_USB_HOST_USB_ONLINE="$TMP/usb-online"
     PLUMOS_USB_HOST_DEVICES_ROOT="$TMP/usb"
+    PLUMOS_USB_HOST_EXTCON_ROOT="$TMP/extcon"
     PLUMOS_USB_HOST_DWC2_DRIVER="$TMP/dwc2"
     PLUMOS_USB_HOST_PLATFORM_DEVICE="$TMP/platform"
     PLUMOS_USB_HOST_DEVICE_ID=ff300000.usb
@@ -40,7 +42,7 @@ grep -q 'result=reset-complete downstream=absent' "$TMP/log/service.log"
 : >"$TMP/dwc2/bind"
 : >"$TMP/dwc2/unbind"
 printf '1\n' >"$TMP/usb-online"
-printf 'otg\n' >"$TMP/otg-mode"
+printf 'host\n' >"$TMP/otg-mode"
 env "${service_env[@]}" "$SERVICE" worker
 grep -Fxq otg "$TMP/otg-mode"
 test ! -s "$TMP/dwc2/bind"
@@ -59,10 +61,35 @@ grep -q 'result=skipped reason=downstream-already-enumerated' \
     "$TMP/log/service.log"
 
 rm -rf "$TMP/usb/1-1"
-printf '{"wifi_enabled": false}\n' >"$TMP/config/system/settings.json"
+printf 'USB=0\nUSB-HOST=0\nUSB_VBUS_EN=0\n' >"$TMP/extcon/extcon0/state"
+printf 'host\n' >"$TMP/otg-mode"
+: >"$TMP/dwc2/bind"
+: >"$TMP/dwc2/unbind"
 env "${service_env[@]}" "$SERVICE" worker
-grep -Fxq 'ff300000.usb' "$TMP/dwc2/bind"
-grep -Fxq 'ff300000.usb' "$TMP/dwc2/unbind"
-grep -q 'result=reset-complete downstream=absent' "$TMP/log/service.log"
+grep -Fxq otg "$TMP/otg-mode"
+test ! -s "$TMP/dwc2/bind"
+test ! -s "$TMP/dwc2/unbind"
+grep -q 'result=skipped reason=usb-host-cable-absent' "$TMP/log/service.log"
+
+printf 'host\n' >"$TMP/otg-mode"
+env "${service_env[@]}" "$SERVICE" release
+grep -Fxq otg "$TMP/otg-mode"
+grep -q 'result=released reason=requested' "$TMP/log/service.log"
+
+printf 'host\n' >"$TMP/otg-mode"
+mkdir -p "$TMP/usb/1-1"
+printf '0bda\n' >"$TMP/usb/1-1/idVendor"
+env "${service_env[@]}" "$SERVICE" release-if-idle
+grep -Fxq host "$TMP/otg-mode"
+grep -q 'result=skipped reason=downstream-still-present' "$TMP/log/service.log"
+
+rm -rf "$TMP/usb/1-1"
+env "${service_env[@]}" PLUMOS_USB_HOST_RELEASE_DELAY=0 \
+  "$SERVICE" release-later
+for _ in 1 2 3 4 5; do
+  grep -Fxq otg "$TMP/otg-mode" && break
+  sleep 0.1
+done
+grep -Fxq otg "$TMP/otg-mode"
 
 printf 'pixel2_usb_host_reenumerate=result-ok\n'

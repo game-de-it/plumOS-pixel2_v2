@@ -19,7 +19,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$root/bin" "$root/network/bin" "$root/config/system" \
-  "$root/config/network" "$root/logs" "$run"
+  "$root/config/network" "$root/logs" "$run" "$tmp/system"
 cp "$RECOVERY_SOURCE" "$root/bin/plumos-wifi-recovery"
 cp "$UEVENT_SOURCE" "$root/bin/plumos-wifi-uevent"
 chmod 0755 "$root/bin/plumos-wifi-recovery" "$root/bin/plumos-wifi-uevent"
@@ -58,11 +58,17 @@ case "$*" in
 esac
 EOF
 chmod 0755 "$root/network/bin/busybox" "$root/bin/plumos-network-control"
+cat >"$tmp/system/usb-host-control" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$1" >>"$TEST_USB_ROLE_CALLS"
+EOF
+chmod 0755 "$tmp/system/usb-host-control"
 
 printf 'network={}\n' >"$root/config/wpa_supplicant.conf"
 printf '{"wifi_enabled": true}\n' >"$root/config/system/settings.json"
 export TEST_RECOVERY_CALLS="$tmp/recovery-calls"
 export TEST_RECOVERY_CONNECTED="$tmp/recovery-connected"
+export TEST_USB_ROLE_CALLS="$tmp/usb-role-calls"
 
 recovery_env=(
   PLUMOS_ROOT="$root"
@@ -71,6 +77,7 @@ recovery_env=(
   PLUMOS_PROC_ROOT="$tmp/proc"
   PLUMOS_BUSYBOX="$root/network/bin/busybox"
   PLUMOS_WIFI_RECOVERY_SETTLE_SECONDS=0
+  PLUMOS_PIXEL2_USB_HOST_CONTROL="$tmp/system/usb-host-control"
 )
 
 env "${recovery_env[@]}" "$root/bin/plumos-wifi-recovery" start
@@ -89,6 +96,26 @@ env "${recovery_env[@]}" ACTION=add SUBSYSTEM=net INTERFACE=eth0 \
 env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=net INTERFACE=wlan0 \
   "$root/bin/plumos-wifi-uevent"
 [ "$(wc -l <"$TEST_RECOVERY_CALLS" | tr -d ' ')" -eq 1 ]
+test ! -e "$TEST_USB_ROLE_CALLS"
+
+env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=usb DEVTYPE=usb_device \
+  PRODUCT=0bda/c811/200 "$root/bin/plumos-wifi-uevent"
+grep -Fxq release "$TEST_USB_ROLE_CALLS"
+
+env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=usb DEVTYPE=usb_device \
+  PRODUCT=0bda/1a2b/200 "$root/bin/plumos-wifi-uevent"
+grep -Fxq release-later "$TEST_USB_ROLE_CALLS"
+
+before_role_calls="$(wc -l <"$TEST_USB_ROLE_CALLS" | tr -d ' ')"
+env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=usb DEVTYPE=usb_device \
+  PRODUCT=1d6b/0002/510 "$root/bin/plumos-wifi-uevent"
+[ "$(wc -l <"$TEST_USB_ROLE_CALLS" | tr -d ' ')" -eq "$before_role_calls" ]
+
+env "${recovery_env[@]}" ACTION=change SUBSYSTEM=power_supply \
+  POWER_SUPPLY_NAME=usb "$root/bin/plumos-wifi-uevent"
+env "${recovery_env[@]}" ACTION=change SUBSYSTEM=extcon \
+  "$root/bin/plumos-wifi-uevent"
+[ "$(grep -c '^reconcile$' "$TEST_USB_ROLE_CALLS")" -eq 2 ]
 
 rm -f "$TEST_RECOVERY_CONNECTED"
 env "${recovery_env[@]}" ACTION=add SUBSYSTEM=usb PRODUCT=0bda/1a2b/200 \
