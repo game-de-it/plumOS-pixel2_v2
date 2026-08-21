@@ -499,6 +499,12 @@
   - 2026-08-12: PPSSPP v1.20.4をpinned source buildし、Pixel2向けSDL2/GLES/EGL binary、assets、factory `ppsspp.ini`/`controls.ini`、manifest/checksumへ統合。ROM set route validationでPSP `standalone:ppsspp`は`ok`へ移行し、代表ROMがある29 systemのpending binaryは0。実機での画面向き・入力・音声・終了hotkeyは未検証。
   - 2026-08-14: PPSSPPの縦画面とFunction無反応を実機再現。Pixel2の480x640 panelを論理640x480からCCW回転するpresenterと、実測した15-button mapping（Function=SDL Guide button 14）をsource buildへ統合。`612822f`でPSP比率補正0.5625とUI scale -2へ移行し、署名Runtime `0.1.0-dev-612822f`のhealth昇格、DRM実画面640x363、物理Functionでの拡大pause menu表示を確認。オペレータも画面表示と文字サイズを合格判定。
   - 2026-08-14: `Telegraph Crosswords.cso`のDRM primary planeを直接captureし、ゲーム領域が640x204（約3.14:1）へ潰れることを確認。同じportrait panelのA30で実績あるLandscape補正`0.562500`により640x363（PSP native約1.76:1）へ修正し、UI scaleも`-8`から`-2`へ拡大。正式Runtime適用後のゲーム画面とpause menuのDRM capture、物理Function操作、FE復帰まで合格。
+  - [ ] PICO-8 official standalone
+    - [x] `roms/pico-8/aarch64`と`roms/pico8/aarch64`からuser-supplied runtimeを検出し、ELF machineがAArch64のbinaryだけを選択する
+    - [x] FE既定SA導線、mutable home/cdata分離、Pixel2 controller mapping、ALSA `plumos_output`、GLES2 SDL回転adapter、bounded stop ownershipを実装する
+    - [x] commit `529f78f`のstrict app-layerとrelease gateを合格させ、実機Runtime `0.1.0-dev-529f78f`へcomponent/root checksum整合で反映する
+    - [x] `Celeste.p8`のKMSDRM/GLES2起動、controller 1台15 button認識、`SDL_OpenAudio ok`、cart load、DRM captureの640x480正方向・正方形表示を確認する
+    - [ ] 物理D-pad/ABXY/Start pause、実音声、終了、FE復帰をoperator確認する
   - [ ] PCSX-ReARMed
     - [x] pinned sourceからAArch64 binaryとpackage-local sdl12-compatをbuildし、component manifest/checksumへ統合する
     - [x] Pixel2の480x640 framebufferへCCW回転した論理640x480/4:3 presenter、物理button/hat、`plumos_output` 48 kHz routeを実装する

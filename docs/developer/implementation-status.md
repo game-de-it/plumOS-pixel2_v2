@@ -1,7 +1,7 @@
 # Pixel2 Implementation Inventory
 
-最終更新: 2026-08-20
-監査ベース: 2026-08-20 Wi-Fi専用保守経路への移行後
+最終更新: 2026-08-21
+監査ベース: 2026-08-21 PICO-8 standalone統合後
 
 この文書は「buildできる」「FEに表示される」「hostでrouteが解決する」
 「Pixel2実機で合格した」を区別する、実装作業のsource of truthである。
@@ -24,15 +24,15 @@
 `./scripts/docker-build.sh audit --release-gate` は、ユーザーに公開されているのに
 実装がない項目が1件でもあれば失敗する。`release-image`にも同じgateを組み込んだ。
 
-2026-08-13の監査結果は次の通り。
+2026-08-21の監査結果は次の通り。
 
 | 対象 | 結果 |
 | --- | ---: |
-| frontend systems | 97 total / 87 enabled / 10 disabled |
-| required app-layer components | 7 / 7 present |
+| frontend systems | 97 total / 88 enabled / 9 disabled |
+| required app-layer components | 11 / 11 present |
 | libretro cores | 109 built |
-| standalone emulator | 4 built / 4 pending |
-| visible Apps entries | 2 |
+| standalone emulator | 5 built / 4 pending |
+| visible Apps entries | 7 |
 | enabled systems with pending content policy | 33 |
 | release blockers detected by audit | 0 |
 
@@ -48,6 +48,7 @@ Device verifiedを意味しない。
 - PicoArchと共有libretro core route;
 - OpenBOR、DraStic、PPSSPP standalone;
 - PCSX-ReARMed standalone（host build済み、実機acceptance待ち）;
+- user-supplied公式AArch64 runtimeを使うPICO-8 standalone;
 - Pyxel/Python 3.11/pygame/numpy/Pillow runtimeとPyxel Setup;
 - RK817/USB向けALSA `plumos_output`、global volume/brightness service;
 - strict app-layer metadata、SquashFS `SYSTEM`、4 GiB SD image generation。
