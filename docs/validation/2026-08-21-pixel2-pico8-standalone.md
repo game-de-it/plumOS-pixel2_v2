@@ -1,8 +1,9 @@
 # Pixel2 PICO-8 Standalone Validation
 
 Date: 2026-08-21  
-Final source ref: `529f78f`  
-Device Runtime: `0.1.0-dev-529f78f`
+Implementation source ref: `18f0fd7`
+
+Validated Device Runtime: `0.1.0-dev-18f0fd7`
 
 ## Scope
 
@@ -41,7 +42,9 @@ ROM/runtime treeは読取り元として扱い、config、cdata、backup、captu
 - Pixel2 GUIDへABXY swap、D-pad buttons 10--13、Start/Select、shoulder/trigger、
   Function=Guide 14を登録する。
 - 音声は共通ALSA `plumos_output`を使用する。
-- `-home`、`-desktop`、`-root_path`、`-joystick 0`、`-pixel_perfect 1`を明示する。
+- `-home`、`-desktop`、`-root_path`、`-joystick 0`を明示する。
+- 既定は`-pixel_perfect 0`で128x128を1:1のまま480x480へaspect-fitする。
+  整数3倍の384x384へ戻す場合だけ`PLUMOS_PICO8_PIXEL_PERFECT=1`を指定する。
 
 ## Host verification
 
@@ -68,5 +71,11 @@ ROM/runtime treeは読取り元として扱い、config、cdata、backup、captu
 
 DRM primary planeをcaptureし、native 480x640から物理向きへ戻した画像が640x480、
 Celesteの128x128画面が歪みなく中央の正方形へ拡大されることを確認した。
+
+`X-Zero.p8`でinteger scaleとaspect-fitを同じDRM primary planeから比較した。
+`-pixel_perfect 1`は384x384、`-pixel_perfect 0`は480x480となり、後者も
+左右80pxの黒帯を残して正方形を維持した。4:3への横伸びは発生していない。
+正式launcherから`-pixel_perfect 0`で再起動し、GLES2、controller、
+`SDL_OpenAudio ok`、cart load、継続processを再確認した。
 
 物理D-pad/ABXY/Start pause、実音声、終了、FE復帰はoperator acceptanceを継続する。
