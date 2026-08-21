@@ -1,0 +1,60 @@
+diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -395,6 +395,16 @@ static void gl2_rotate_menu_rect(float logical_height,
+    *height = old_width;
+ }
+ 
++static unsigned gl2_menu_font_width(gl2_t *gl)
++{
++   return gl2_menu_display_rotation() ? gl->vp.height : gl->vp.width;
++}
++
++static unsigned gl2_menu_font_height(gl2_t *gl)
++{
++   return gl2_menu_display_rotation() ? gl->vp.width : gl->vp.height;
++}
++
+ static void *gfx_display_gl2_get_default_mvp(void *data)
+ {
+    gl2_t *gl = (gl2_t*)data;
+@@ -895,15 +905,17 @@ static void gl2_raster_font_render_line(gl2_t *gl,
+    GLfloat font_vertex[2 * 6 * MAX_MSG_LEN_CHUNK];
+    GLfloat font_color[4 * 6 * MAX_MSG_LEN_CHUNK];
+    GLfloat font_lut_tex_coord[2 * 6 * MAX_MSG_LEN_CHUNK];
+-   const char* msg_end  = msg + msg_len;
+-   int x                = roundf(pos_x * gl->vp.width);
+-   int y                = roundf(pos_y * gl->vp.height);
++   unsigned window_width  = gl2_menu_font_width(gl);
++   unsigned window_height = gl2_menu_font_height(gl);
++   const char* msg_end    = msg + msg_len;
++   int x                  = roundf(pos_x * window_width);
++   int y                  = roundf(pos_y * window_height);
+    int delta_x          = 0;
+    int delta_y          = 0;
+    float inv_tex_size_x = 1.0f / font->tex_width;
+    float inv_tex_size_y = 1.0f / font->tex_height;
+-   float inv_win_width  = 1.0f / gl->vp.width;
+-   float inv_win_height = 1.0f / gl->vp.height;
++   float inv_win_width  = 1.0f / window_width;
++   float inv_win_height = 1.0f / window_height;
+ 
+    switch (text_align)
+    {
+@@ -975,7 +987,7 @@ static void gl2_raster_font_render_message(gl2_t *gl,
+    struct font_line_metrics *line_metrics = NULL;
+    int lines                              = 0;
+    font->font_driver->get_line_metrics(font->font_data, &line_metrics);
+-   line_height = line_metrics->height * scale / gl->vp.height;
++   line_height = line_metrics->height * scale / gl2_menu_font_height(gl);
+ 
+    for (;;)
+    {
+@@ -1103,5 +1115,5 @@ static void gl2_raster_font_render_msg(
+          gl2_raster_font_render_message(gl, font, msg, scale, color_dark,
+-               x + scale * drop_x / gl->vp.width,
+-               y + scale * drop_y / gl->vp.height,
++               x + scale * drop_x / gl2_menu_font_width(gl),
++               y + scale * drop_y / gl2_menu_font_height(gl),
+                text_align);
+       }

@@ -16,6 +16,7 @@ legacy_incomplete_full_sha256=9f4aaebdab3cc3a9be24b203161e63f63f1887e4eb0b79c826
 regressed_pixel2_sha256=8d9a8e71cc38e63d1c6084d6bcf99701507cb632ff2dd1f4ebf9963b82beae77
 osd_disabled_factory_sha256=2db551beda3cd62e4f87d15d77a56ae2df1905fa3bc3925dbf5aaee803a4dcc6
 black_osd_factory_sha256=231ee2585779c098d9512a64cc8b17322c3b86e07d3e84889aaac815893d7280
+small_menu_factory_sha256=0fe41cce8ee36e4ca0b346ad2aee17563f08afb9f402fe1a3f8ea5e46a1744ef
 
 [ -s "$factory" ] || {
     printf 'retroarch_config=result-error reason=factory-missing path=%s\n' "$factory" >&2
@@ -196,6 +197,32 @@ migrate_managed_assets_path() {
     fi
 }
 
+migrate_pixel2_menu_scale_values() {
+    migrate_next="${config}.next.$$"
+    migrate_count="$state_dir/migrate-menu-scale-count.$$"
+    $bb awk '
+        $0 == "menu_scale_factor = \"1.000000\"" {
+            $0 = "menu_scale_factor = \"1.500000\""; changed++
+        }
+        $0 == "ozone_font_scale = \"0\"" {
+            $0 = "ozone_font_scale = \"1\""; changed++
+        }
+        $0 == "ozone_font_scale_factor_global = \"1.000000\"" {
+            $0 = "ozone_font_scale_factor_global = \"1.350000\""; changed++
+        }
+        { print }
+        END { print changed + 0 > count_file }
+    ' count_file="$migrate_count" "$config" >"$migrate_next"
+    menu_scale_changed=$($bb sed -n '1p' "$migrate_count" 2>/dev/null || printf '0')
+    $bb rm -f "$migrate_count"
+    if [ "$menu_scale_changed" -gt 0 ]; then
+        $bb sync
+        $bb mv "$migrate_next" "$config"
+    else
+        $bb rm -f "$migrate_next"
+    fi
+}
+
 write_marker() {
     printf '%s\n' "$factory_sha256" >"$marker.next"
     $bb sync
@@ -239,6 +266,15 @@ elif [ -r "$marker" ] &&
     merge_key_file "$factory" "$config" config
     main_result=migrated-osd
     main_added=$((osd_changed + merge_added))
+elif [ -r "$marker" ] &&
+        [ "$($bb sed -n '1p' "$marker")" = "$small_menu_factory_sha256" ]; then
+    # The first selectable graphical-menu generation used desktop-oriented
+    # 1.0x scaling. Move only values that still match that exact Pixel2
+    # factory; explicit user scale/font choices remain authoritative.
+    migrate_pixel2_menu_scale_values
+    merge_key_file "$factory" "$config" config
+    main_result=migrated-menu-scale
+    main_added=$((menu_scale_changed + merge_added))
 elif [ ! -r "$marker" ] ||
         [ "$($bb sed -n '1p' "$marker")" != "$factory_sha256" ]; then
     merge_key_file "$factory" "$config" config

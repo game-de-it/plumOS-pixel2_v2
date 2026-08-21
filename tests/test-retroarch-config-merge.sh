@@ -165,4 +165,31 @@ grep -q "^assets_directory = \"/mnt/plumos/retroarch/assets\"$" \
 grep -q "^menu_driver = \"ozone\"$" "$active/retroarch.cfg"
 grep -q "^user_language = \"1\"$" "$active/retroarch.cfg"
 grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
+
+# The first graphical-menu factory was usable but too small on the physical
+# 3.5-inch panel. Migrate only values that still match that generation while
+# preserving the selected driver, language and unrelated user settings.
+cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
+sed -i \
+    -e "s/menu_scale_factor = \"1.500000\"/menu_scale_factor = \"1.000000\"/" \
+    -e "s/ozone_font_scale = \"1\"/ozone_font_scale = \"0\"/" \
+    -e "s/ozone_font_scale_factor_global = \"1.350000\"/ozone_font_scale_factor_global = \"1.000000\"/" \
+    -e "s/menu_driver = \"rgui\"/menu_driver = \"ozone\"/" \
+    -e "s/user_language = \"0\"/user_language = \"1\"/" \
+    -e "s/input_save_state_btn = \"5\"/input_save_state_btn = \"42\"/" \
+    "$active/retroarch.cfg"
+printf "%s\n" "0fe41cce8ee36e4ca0b346ad2aee17563f08afb9f402fe1a3f8ea5e46a1744ef" \
+    > "$root/state/retroarch/factory-config.sha256"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/menu-scale.log
+grep -q "retroarch_config=result-migrated-menu-scale added=3" \
+    /tmp/menu-scale.log
+grep -q "^menu_scale_factor = \"1.500000\"$" "$active/retroarch.cfg"
+grep -q "^ozone_font_scale = \"1\"$" "$active/retroarch.cfg"
+grep -q "^ozone_font_scale_factor_global = \"1.350000\"$" \
+    "$active/retroarch.cfg"
+grep -q "^menu_driver = \"ozone\"$" "$active/retroarch.cfg"
+grep -q "^user_language = \"1\"$" "$active/retroarch.cfg"
+grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 '
