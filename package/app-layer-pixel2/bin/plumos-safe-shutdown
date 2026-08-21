@@ -24,11 +24,26 @@ rk817_resume=${PLUMOS_RK817_RESUME_HELPER:-$root/bin/plumos-rk817-resume}
 backlight=${PLUMOS_PIXEL2_BACKLIGHT:-/sys/class/backlight/backlight/brightness}
 backlight_power=${PLUMOS_PIXEL2_BACKLIGHT_POWER:-${backlight%/*}/bl_power}
 framebuffer_blank=${PLUMOS_PIXEL2_FB_BLANK:-/sys/class/graphics/fb0/blank}
+battery_status=${PLUMOS_BATTERY_STATUS:-/sys/class/power_supply/battery/status}
+battery_current=${PLUMOS_BATTERY_CURRENT:-/sys/class/power_supply/battery/current_now}
+usb_online=${PLUMOS_USB_ONLINE:-/sys/class/power_supply/usb/online}
+ac_online=${PLUMOS_AC_ONLINE:-/sys/class/power_supply/ac/online}
+usb_devices_root=${PLUMOS_USB_DEVICES_ROOT:-/sys/bus/usb/devices}
+otg_mode=${PLUMOS_OTG_MODE:-/sys/devices/platform/ff2c0000.syscon/ff2c0000.syscon:usb2-phy@100/otg_mode}
+phy_status_file=${PLUMOS_POWER_PHY_STATUS_FILE:-}
+phy_status_addr=${PLUMOS_POWER_PHY_STATUS_ADDR:-0xff2c0120}
+phy_bvalid_mask=${PLUMOS_POWER_PHY_BVALID_MASK:-0x200}
+usb_host_control=${PLUMOS_USB_HOST_CONTROL:-/usr/lib/plumos/init.d/15-usb-host-reenumerate}
+devmem_command=${PLUMOS_DEVMEM:-}
+reboot_mode_reg=${PLUMOS_REBOOT_MODE_REG:-0xff010200}
+reboot_mode_charge=${PLUMOS_REBOOT_MODE_CHARGE:-0x5242c30b}
+terminal_test=${PLUMOS_POWER_TEST_TERMINAL:-0}
 software_sleep_marker=${PLUMOS_SOFTWARE_SLEEP_MARKER:-$runtime_root/software-sleep}
 software_sleep_force=${PLUMOS_FORCE_SOFTWARE_SLEEP:-0}
 software_backlight_saved=
 software_backlight_power_saved=
 sleep_display_blanked=0
+shutdown_charger_present=0
 
 mkdir -p "$log_dir" "$runtime_root" 2>/dev/null || true
 
@@ -149,6 +164,97 @@ rk817_dev_off() {
     value=$((value | 0x01))
     log "$(printf 'power=shutdown-method method=rk817-dev-off bus=0 addr=0x20 reg=0xf4 value=0x%02x' "$value")"
     i2cset -f -y 0 0x20 0xf4 "$value"
+}
+
+read_power_value() {
+    path=$1
+    [ -r "$path" ] || return 1
+    tr -d '[:space:]' <"$path" 2>/dev/null
+}
+
+downstream_present() {
+    for device in "$usb_devices_root"/*; do
+        [ -r "$device/idVendor" ] || continue
+        case "${device##*/}" in usb*) continue ;; esac
+        return 0
+    done
+    return 1
+}
+
+charger_vbus_present() {
+    downstream_present && return 1
+    mode=$(read_power_value "$otg_mode" 2>/dev/null || true)
+    [ "$mode" = host ] && return 1
+    if [ -n "$phy_status_file" ]; then
+        phy_status=$(read_power_value "$phy_status_file" 2>/dev/null || true)
+    elif [ -n "$devmem_command" ]; then
+        phy_status=$("$devmem_command" "$phy_status_addr" 32 2>/dev/null || true)
+    else
+        phy_status=$("$bb" devmem "$phy_status_addr" 32 2>/dev/null || true)
+    fi
+    case "$phy_status" in 0x*|0X*|[0-9]*) ;; *) return 1 ;; esac
+    [ $((phy_status & phy_bvalid_mask)) -ne 0 ]
+}
+
+charger_present() {
+    status=$(read_power_value "$battery_status" 2>/dev/null || true)
+    case "$status" in
+        Charging)
+            log "power=charger-detected source=battery-status value=$status"
+            return 0
+            ;;
+    esac
+    for path in "$usb_online" "$ac_online"; do
+        online=$(read_power_value "$path" 2>/dev/null || true)
+        if [ "$online" = 1 ]; then
+            log "power=charger-detected source=power-supply path=$path value=1"
+            return 0
+        fi
+    done
+    current=$(read_power_value "$battery_current" 2>/dev/null || true)
+    case "$current" in
+        ''|0|-*|*[!0-9]*) ;;
+        *)
+            log "power=charger-detected source=battery-current value=$current"
+            return 0
+            ;;
+    esac
+    if charger_vbus_present; then
+        log "power=charger-detected source=phy-bvalid status=${status:-unknown}"
+        return 0
+    fi
+    log "power=charger-absent status=${status:-unknown} current=${current:-unknown}"
+    return 1
+}
+
+write_charge_boot_mode() {
+    if [ -n "$devmem_command" ]; then
+        "$devmem_command" "$reboot_mode_reg" 32 "$reboot_mode_charge"
+    else
+        "$bb" devmem "$reboot_mode_reg" 32 "$reboot_mode_charge"
+    fi
+}
+
+charge_mode_reboot() {
+    if [ -x "$usb_host_control" ]; then
+        "$usb_host_control" release >>"$log_file" 2>&1 || \
+            log 'power=usb-host-release-failed action=charge-mode'
+    fi
+    if ! write_charge_boot_mode; then
+        log "power=charge-mode-failed stage=reboot-mode-write reg=$reboot_mode_reg"
+        return 1
+    fi
+    log "power=charge-mode-ready reg=$reboot_mode_reg value=$reboot_mode_charge"
+    "$bb" sync
+    if [ "$terminal_test" = 1 ]; then
+        log 'power=terminal-test action=charge-mode-reboot'
+        return 0
+    fi
+    if [ -w /proc/sysrq-trigger ]; then
+        log 'power=charge-mode-method method=sysrq-trigger-b'
+        printf b >/proc/sysrq-trigger
+    fi
+    exec "$bb" reboot -f
 }
 
 run_rk817_resume() {
@@ -333,6 +439,9 @@ case "$action" in
     reboot|shutdown)
         $bb sync
         [ "$dry_run" -eq 0 ] || exit 0
+        if [ "$action" = shutdown ] && charger_present; then
+            shutdown_charger_present=1
+        fi
         prepare_power_transition
         case "$action" in
             reboot)
@@ -343,6 +452,16 @@ case "$action" in
                 exec "$bb" reboot -f
                 ;;
             shutdown)
+                if [ "$shutdown_charger_present" -eq 1 ]; then
+                    if charge_mode_reboot; then
+                        exit 0
+                    fi
+                    log 'power=charge-mode-fallback method=rk817-dev-off'
+                fi
+                if [ "$terminal_test" = 1 ]; then
+                    log 'power=terminal-test action=rk817-dev-off'
+                    exit 0
+                fi
                 rk817_dev_off || log 'power=shutdown-method method=rk817-dev-off rc=1'
                 $bb sleep 5
                 log 'power=shutdown-method method=busybox-poweroff-fallback'
