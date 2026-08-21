@@ -157,6 +157,7 @@ for contract in \
     'roms/pico-8' \
     'roms/pico8' \
     'PLUMOS_PICO8_SDL_ROTATION=270' \
+    'SDL_RENDER_DRIVER=opengles2' \
     'SDL_GAMECONTROLLERCONFIG=' \
     'dpup:b10,dpdown:b11,dpleft:b12,dpright:b13' \
     '-root_path "$pico8_system_root"' \

@@ -143,6 +143,10 @@ case "$id" in
     [ -f "$pico8_rotation" ] ||
       fail "PICO-8 Pixel2 display adapter is missing: $pico8_rotation" 127
     export PLUMOS_PICO8_SDL_ROTATION=270
+    # PICO-8 otherwise prefers SDL's desktop OpenGL renderer on this runtime.
+    # That backend cannot create the target texture needed for the Pixel2's
+    # final landscape-to-native rotation; the GLES2 renderer supports it.
+    export SDL_RENDER_DRIVER=opengles2
     export LD_PRELOAD="${pico8_rotation}${LD_PRELOAD:+:$LD_PRELOAD}"
     export SDL_NOMOUSE=1
     export SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1

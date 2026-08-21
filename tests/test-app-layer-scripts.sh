@@ -480,6 +480,8 @@ grep -q '_pico8_64' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 grep -q 'PLUMOS_PICO8_SDL_ROTATION=270' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q 'SDL_RENDER_DRIVER=opengles2' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 grep -q 'binary_policy.*external-proprietary' \
     "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 grep -q 'PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH' \
