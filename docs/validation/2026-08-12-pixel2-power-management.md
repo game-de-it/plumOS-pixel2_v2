@@ -154,3 +154,34 @@ Validate reboot and shutdown from the FE Start menu on physical hardware. The
 menu uses the same deployed `plumos-safe-shutdown` script that passed the ADB
 validation above, but the frontend-initiated path still needs direct operator
 confirmation.
+
+## 2026-08-22 plugged-shutdown correction
+
+The earlier RK817 `DEV_OFF` acceptance proved only that the screen and remote
+transport stayed off. It did not verify the expected U-Boot charging LED and
+battery animation while a charger remained inserted. Physical validation later
+showed that direct `DEV_OFF` left both indications off until the cable was
+removed and reinserted. The PMIC could charge after a new plug event, but the
+shutdown path had not handed the already-present charger to U-Boot.
+
+Rockchip's 5.10 `drivers/mfd/rk808.c` uses a full syscore shutdown sequence,
+including RK817 sleep-pin power-down setup before its PMIC shutdown callback.
+Rockchip U-Boot defines charging boot mode as `0x5242c30b`; its boot-mode setup
+turns that value into the `charge` preboot command, and the captured stock
+U-Boot DT enables `rockchip,uboot-charge-on`.
+
+Pixel2 now separates the two Shutdown cases:
+
+- with an attached charger, record `BOOT_CHARGING` and use the already-proven
+  sysrq reboot path to enter the stock U-Boot charging UI;
+- without a charger, retain RK817 `DEV_OFF` for a true cold power-off;
+- if the charging boot-mode write fails, fall back to RK817 `DEV_OFF` instead
+  of risking an ordinary OS reboot.
+
+Charger detection accepts `battery/status=Charging`, an online power-supply,
+or positive battery current. At a full battery, where those signals may be
+idle, the same stock-OTG BVALID signal used by System is accepted only when no
+downstream USB device is enumerated and the PHY is not forced to host. This
+prevents a Wi-Fi dongle or an unplugged full battery from selecting charging
+mode. Fixtures cover active charging, full-battery BVALID, and full-battery
+charger-absent behavior. Physical plugged-Shutdown acceptance remains pending.

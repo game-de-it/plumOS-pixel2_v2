@@ -89,7 +89,9 @@ adjustments are persisted after a short idle delay.
 content/user mounts where possible, syncs, and then:
 
 - reboots via sysrq `b` / BusyBox fallback;
-- shuts down through RK817 `DEV_OFF`, then BusyBox poweroff fallback.
+- when a charger is attached, writes the stock Rockchip `BOOT_CHARGING` mode
+  and reboots into the U-Boot charging UI;
+- otherwise shuts down through RK817 `DEV_OFF`, then BusyBox poweroff fallback.
 
 The physical `rk805 pwrkey` is owned continuously by the hardware-key service.
 While the normal FE owns the display, the FE opens the power menu directly.

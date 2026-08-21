@@ -83,15 +83,21 @@ during gameplay.
 
 ## Power
 
-Reboot uses the stock-kernel sysrq path. Shutdown uses RK817 PMIC `DEV_OFF`:
+Reboot uses the stock-kernel sysrq path. An unplugged Shutdown uses RK817 PMIC
+`DEV_OFF`:
 
 ```text
 i2c bus 0, addr 0x20, reg 0xf4, bit 0
 ```
 
-The FE power action path has been validated for reboot. FE shutdown has been
-validated through dry-run plus the RK817 helper path; actual FE-menu poweroff
-is still a terminal physical-device test.
+If a charger is already attached, Shutdown writes Rockchip
+`BOOT_CHARGING=0x5242c30b` to the stock reboot-mode register and uses sysrq to
+enter the U-Boot charging animation. A failed boot-mode write falls back to
+RK817 `DEV_OFF`.
+
+The FE power action path has been validated for reboot and physical power-off.
+The conditional transition into U-Boot charging mode remains a terminal
+physical-device acceptance test.
 
 Power is read from the stock `rk805 pwrkey` input (`/dev/input/event0` on the
 validated Pixel2). The hardware-key service remains running after the FE is
