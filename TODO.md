@@ -27,8 +27,9 @@
     kernel reboot notifierが後段で`mode-normal`を上書きする経路と整合した。充電中Shutdownは
     Linux `RESTART2("charge")`からstock `CONFIG_SYSCON_REBOOT_MODE`へ委譲し、非充電時だけ
     `DEV_OFF`を使うよう修正。Charging、満充電+BVALID、満充電+cableなしのfixtureと
-    AArch64 frontend component build/checksumは合格。修正版を実機反映し、充電器接続中の
-    Shutdownと非充電時の完全OFFを確認する。
+    AArch64 frontend component build/checksumは合格。署名Runtime `16150d5`を実機へ
+    通常transactionで反映し、FE ready、`runtime_healthy`、frontend/root checksum合格まで
+    確認済み。充電器接続中のShutdownと非充電時の完全OFFをoperator確認する。
 
 ## Implementation audit and release blockers
 

@@ -197,3 +197,31 @@ charger-absent behavior. The helper accepts only `charge`, is compiled for
 AArch64 in the frontend component, and is covered by the component checksum.
 Physical plugged-Shutdown acceptance remains pending for the corrected
 `RESTART2` path.
+
+### Corrected Runtime deployment
+
+The corrected implementation was built from `16150d5` as a signed Runtime
+delta against the installed `0.1.0-dev-724965f` generation:
+
+```text
+package=plumos-pixel2-runtime-0.1.0-dev-16150d5.tar.gz
+sha256=7db1bace357f7430b47bcf1156d216a016589561c28848145d9b7bf44bb3b268
+payload_files=10
+deleted_files=0
+```
+
+Host and live-device updater inspection both accepted the Ed25519 signature,
+Pixel2 device/vendor, named ABI, and exact source version. The normal Runtime
+transaction returned with FE ready, no request or pending marker, and:
+
+```text
+Runtime=0.1.0-dev-16150d5
+System=0.1.0-dev-4993d8c
+last-result=runtime_healthy
+plumos-reboot-mode=df1d479d6c14a00c1275482326155c043b8b712c11aac906f1a9f5940028ca09
+plumos-safe-shutdown=780aea75e758ac6a315966a537bdcfaf14e6961161ae23470814650f88225fd1
+```
+
+Frontend component and full Runtime checksum verification passed after the
+reboot. The remaining gate is the operator-visible result of Shutdown while
+the charger is already attached.
