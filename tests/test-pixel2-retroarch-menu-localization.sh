@@ -5,6 +5,7 @@ ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 BUILD="$ROOT_DIR/scripts/build-retroarch.sh"
 CFG="$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 MENU_LAUNCHER="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"
+APP_LAYER_VERIFY="$ROOT_DIR/scripts/verify-app-layer.sh"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -40,5 +41,11 @@ if grep -Eq '^[[:space:]]*(menu_driver|user_language)[[:space:]]*=' \
         "$MENU_LAUNCHER"; then
     fail 'RetroArch menu launcher overrides persistent menu or language choice'
 fi
+for font_pattern in \
+    'retroarch/assets/rgui/font/bitmap10x10_*.bin' \
+    'retroarch/assets/rgui/font/bitmap6x10_*.bin'; do
+    grep -Fq "$font_pattern" "$APP_LAYER_VERIFY" ||
+        fail "RGUI language font is rejected as ROM content: $font_pattern"
+done
 
 printf 'PASS: Pixel2 RetroArch menu and localization contract\n'

@@ -334,6 +334,7 @@ while IFS= read -r path; do
     rel=${path#"$ROOT"/}
     case "$rel" in
         standalone/ppsspp/assets/shaders/smiley_16x16_rgba.bin|apps/*/bin/*.bin|ssh/libexec/*.bin) continue ;;
+        retroarch/assets/rgui/font/bitmap10x10_*.bin|retroarch/assets/rgui/font/bitmap6x10_*.bin) continue ;;
     esac
     [ -n "$rom_like_content" ] || rom_like_content="$rel"
 done < <(
