@@ -15,7 +15,11 @@ LOG="${PLUMOS_USB_HOST_LOG:-/state/plumos/logs/usb-host-reenumerate.log}"
 RESET_DELAY="${PLUMOS_USB_HOST_RESET_DELAY:-2}"
 MODE_SETTLE="${PLUMOS_USB_HOST_MODE_SETTLE:-1}"
 ENUMERATION_WAIT="${PLUMOS_USB_HOST_ENUMERATION_WAIT:-3}"
+PRE_RESET_WAIT="${PLUMOS_USB_HOST_PRE_RESET_WAIT:-3}"
 RELEASE_DELAY="${PLUMOS_USB_HOST_RELEASE_DELAY:-5}"
+LOCK_WAIT="${PLUMOS_USB_HOST_LOCK_WAIT:-8}"
+LOCK_DIR="${PLUMOS_USB_HOST_LOCK_DIR:-/run/plumos/usb-host-control.lock}"
+TRANSITION_MARKER="${PLUMOS_USB_HOST_TRANSITION_MARKER:-/run/plumos/usb-host-probe-active}"
 BUSYBOX="${PLUMOS_USB_HOST_BUSYBOX:-/bin/busybox}"
 PHY_STATUS_ADDR="${PLUMOS_USB_HOST_PHY_STATUS_ADDR:-0xff2c0120}"
 PHY_BVALID_MASK="${PLUMOS_USB_HOST_PHY_BVALID_MASK:-0x200}"
@@ -45,6 +49,17 @@ downstream_present() {
         return 0
     done
     return 1
+}
+
+wait_for_downstream() {
+    limit="$1"
+    elapsed=0
+    while [ "$elapsed" -lt "$limit" ]; do
+        downstream_present && return 0
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    downstream_present
 }
 
 current_otg_mode() {
@@ -107,7 +122,7 @@ release_wifi_host_mode() {
 force_wifi_host_mode() {
     [ -r "$OTG_MODE" ] || {
         log "result=warning reason=otg-mode-missing path=$OTG_MODE"
-        return 0
+        return 1
     }
     mode=$(tr -d '[:space:]' <"$OTG_MODE" 2>/dev/null || true)
     if [ "$mode" = host ]; then
@@ -116,7 +131,7 @@ force_wifi_host_mode() {
     fi
     [ -w "$OTG_MODE" ] || {
         log "result=warning reason=otg-mode-read-only mode=${mode:-unknown} path=$OTG_MODE"
-        return 0
+        return 1
     }
     if ! printf 'host\n' >"$OTG_MODE"; then
         log "result=warning reason=otg-mode-write-failed mode=${mode:-unknown} path=$OTG_MODE"
@@ -158,10 +173,19 @@ worker() {
     # still in OTG mode can miss a dongle that remained inserted across boot.
     # Use Rockchip's stock sysfs ABI to force host before probing/rebinding;
     # this changes neither the DTB nor the kernel and is safe to repeat.
+    mkdir -p "${TRANSITION_MARKER%/*}"
+    : >"$TRANSITION_MARKER"
     if ! force_wifi_host_mode; then
         release_wifi_host_mode
         log 'result=failed reason=host-mode-unavailable owner=otg'
         return 1
+    fi
+    # Writing host is normally sufficient for a dongle that remained inserted
+    # across boot.  Give that natural enumeration priority over a DWC2 reset;
+    # otherwise the reset's remove uevent can be mistaken for physical unplug.
+    if wait_for_downstream "$PRE_RESET_WAIT"; then
+        log 'result=enumerated-without-reset'
+        return 0
     fi
     [ -d "$PLATFORM_DEVICE" ] || {
         release_wifi_host_mode
@@ -236,6 +260,11 @@ reconcile_role() {
     release_if_idle
 }
 
+release_requested() {
+    release_wifi_host_mode
+    log 'result=released reason=requested'
+}
+
 start_release_worker() {
     (
         sleep "$RELEASE_DELAY"
@@ -253,29 +282,55 @@ start_worker() {
     log "result=scheduled pid=$!"
 }
 
+cleanup_control_lock() {
+    rm -f "$TRANSITION_MARKER" 2>/dev/null || true
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
+run_locked() {
+    wait_policy="$1"
+    operation="$2"
+    shift 2
+    elapsed=0
+    mkdir -p "${LOCK_DIR%/*}"
+    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        if [ "$wait_policy" != wait ] || [ "$elapsed" -ge "$LOCK_WAIT" ]; then
+            log "result=skipped reason=operation-in-progress operation=$operation"
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    trap cleanup_control_lock 0 1 2 15
+    "$@"
+    rc=$?
+    cleanup_control_lock
+    trap - 0 1 2 15
+    return "$rc"
+}
+
 case "${1:-}" in
     start|worker)
         if [ "$1" = start ]; then
             start_worker
         else
-            worker
+            run_locked wait worker worker
         fi
         ;;
     probe)
-        worker no
+        run_locked wait probe worker no
         ;;
     release)
-        release_wifi_host_mode
-        log 'result=released reason=requested'
+        run_locked nowait release release_requested
         ;;
     release-if-idle)
-        release_if_idle
+        run_locked nowait release-if-idle release_if_idle
         ;;
     release-later)
         start_release_worker
         ;;
     reconcile)
-        reconcile_role
+        run_locked nowait reconcile reconcile_role
         ;;
     *)
         printf 'usage: %s {start|worker|probe|release|release-if-idle|release-later|reconcile}\n' "$0" >&2

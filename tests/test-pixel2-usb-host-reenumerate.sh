@@ -31,6 +31,10 @@ service_env=(
     PLUMOS_USB_HOST_RESET_DELAY=0
     PLUMOS_USB_HOST_MODE_SETTLE=0
     PLUMOS_USB_HOST_ENUMERATION_WAIT=0
+    PLUMOS_USB_HOST_PRE_RESET_WAIT=0
+    PLUMOS_USB_HOST_LOCK_WAIT=0
+    PLUMOS_USB_HOST_LOCK_DIR="$TMP/control.lock"
+    PLUMOS_USB_HOST_TRANSITION_MARKER="$TMP/probe-active"
 )
 
 env "${service_env[@]}" "$SERVICE" worker
@@ -38,6 +42,37 @@ grep -Fxq otg "$TMP/otg-mode"
 grep -Fxq 'ff300000.usb' "$TMP/dwc2/unbind"
 grep -Fxq 'ff300000.usb' "$TMP/dwc2/bind"
 grep -q 'result=reset-complete downstream=absent owner=otg' "$TMP/log/service.log"
+
+# A dongle that enumerates during the host-mode settle period must be retained
+# without an intentional DWC2 unbind/remove cycle.
+: >"$TMP/dwc2/bind"
+: >"$TMP/dwc2/unbind"
+printf '0\n' >"$TMP/usb-online"
+printf '0x00000000\n' >"$TMP/phy-status"
+printf 'otg\n' >"$TMP/otg-mode"
+(
+  sleep 0.1
+  mkdir -p "$TMP/usb/1-1"
+  printf '0bda\n' >"$TMP/usb/1-1/idVendor"
+) &
+late_pid=$!
+env "${service_env[@]}" PLUMOS_USB_HOST_MODE_SETTLE=1 \
+  "$SERVICE" worker
+wait "$late_pid"
+grep -Fxq host "$TMP/otg-mode"
+test ! -s "$TMP/dwc2/bind"
+test ! -s "$TMP/dwc2/unbind"
+grep -q 'result=enumerated-without-reset' "$TMP/log/service.log"
+rm -rf "$TMP/usb/1-1"
+
+# Concurrent boot recovery and FE scan probes must not reset the same DWC2
+# controller or change its role underneath each other.
+mkdir "$TMP/control.lock"
+printf 'otg\n' >"$TMP/otg-mode"
+env "${service_env[@]}" "$SERVICE" worker
+grep -Fxq otg "$TMP/otg-mode"
+grep -q 'reason=operation-in-progress operation=worker' "$TMP/log/service.log"
+rmdir "$TMP/control.lock"
 
 : >"$TMP/dwc2/bind"
 : >"$TMP/dwc2/unbind"
