@@ -14,6 +14,10 @@
     実機でRTL8821CU接続中も`USB-HOST=0`だったため撤回した。stock OTG中のPHY BVALIDで
     chargerを優先し、bounded host probeが空なら必ずOTGへ解放する。FE Wi-Fi操作からの
     明示probeも追加。起動中充電とWi-Fi再挿入の実機acceptanceは適用後に行う。
+  - 2026-08-22: `97bf49c`適用後のoffline logで、c820列挙直後にboot workerがDWC2を
+    unbindし、意図的removeをRuntimeが物理抜去と誤認してOTGへ解放、並行probeも競合する
+    regressionを特定。host切替後の自然列挙待ち、全role操作の単一lock、意図的遷移markerを
+    実装しfixtureへ追加した。修正版System/Runtimeの実機充電acceptanceを継続する。
 
 ## Implementation audit and release blockers
 

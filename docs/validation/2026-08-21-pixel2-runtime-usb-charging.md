@@ -60,3 +60,21 @@ After the battery has charged:
    `/sys/class/power_supply/usb/online=1` plus increasing battery capacity;
 3. remove the charger, reinsert the dongle, and confirm Wi-Fi/SSH recovery;
 4. cold boot with the charger already attached and confirm charging continues.
+
+## 2026-08-22 deployment race and correction
+
+The signed Runtime transaction reached `healthy` at version
+`0.1.0-dev-97bf49c`, but the following cold boot left the Wi-Fi dongle
+unpowered. Offline state-partition evidence showed that the hardware and driver
+had initially succeeded: `0bda:c820` enumerated at kernel time 5.78 seconds.
+The asynchronous boot worker then unbound DWC2 at 6.26 seconds. Runtime treated
+the resulting remove uevent as a physical unplug, released the PHY to OTG, and
+a concurrent recovery probe changed the role again. Repeated host/OTG changes
+prevented the adapter from remaining enumerated.
+
+The corrected worker now serializes boot and FE probes with one runtime lock,
+waits for natural enumeration after forcing host before considering DWC2
+rebind, and marks an intentional controller transition. Runtime ignores USB
+remove events carrying that transition marker. An actual removal during the
+probe is still safe: the worker observes no downstream device and returns to
+OTG itself. Fixtures reproduce late enumeration and concurrent probe attempts.

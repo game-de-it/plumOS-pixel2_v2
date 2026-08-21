@@ -32,6 +32,12 @@ during migration without changing Wi-Fi credentials. SSH uses the common plumOS
 entry. The public initial password can be changed without an OS update
 overwriting it; public-key authentication remains available.
 
+All `15-usb-host-reenumerate` worker/probe/release operations use one runtime
+lock. A probe waits for natural downstream enumeration before DWC2 rebind and
+sets `/run/plumos/usb-host-probe-active` around intentional controller
+transitions. The Runtime uevent helper ignores USB remove only while this marker
+exists; physical removal outside a probe still releases host immediately.
+
 `40-frontend` does not hash the complete app layer during a normal boot. Signed
 updates and live deployment verify the complete Runtime before reboot; a
 healthy unchanged generation is selected using constant-time metadata presence

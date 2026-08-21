@@ -57,6 +57,9 @@ identityだけは意図したeject/re-enumerationを壊さないよう、5秒後
 OTGへ解放した後は、電源を供給しないUSB Wi-Fi dongleの再挿入をhardware eventだけでは
 検出できない。FEのWi-Fi ON、SSID scan、接続操作は、adapter不在時に1回だけbounded host
 probeを要求する。probeでadapterが見つからなければOTGへ戻るため、充電待受を壊さない。
+boot worker、FE scan、recoveryからのprobeは単一lockで直列化する。hostへ切り替えた直後は
+自然列挙を先に待ち、既に現れたdongleをDWC2 resetで切断しない。必要なreset中はtransition
+markerを設定し、そのremove ueventを物理抜去として処理しない。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
 Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、
