@@ -176,6 +176,26 @@ migrate_osd_values() {
     fi
 }
 
+migrate_managed_assets_path() {
+    migrate_next="${config}.next.$$"
+    migrate_count="$state_dir/migrate-menu-assets-count.$$"
+    $bb awk '
+        $0 == "assets_directory = \"/mnt/plumos/config/retroarch/assets\"" {
+            $0 = "assets_directory = \"/mnt/plumos/retroarch/assets\""; changed++
+        }
+        { print }
+        END { print changed + 0 > count_file }
+    ' count_file="$migrate_count" "$config" >"$migrate_next"
+    assets_changed=$($bb sed -n '1p' "$migrate_count" 2>/dev/null || printf '0')
+    $bb rm -f "$migrate_count"
+    if [ "$assets_changed" -gt 0 ]; then
+        $bb sync
+        $bb mv "$migrate_next" "$config"
+    else
+        $bb rm -f "$migrate_next"
+    fi
+}
+
 write_marker() {
     printf '%s\n' "$factory_sha256" >"$marker.next"
     $bb sync
@@ -224,6 +244,16 @@ elif [ ! -r "$marker" ] ||
     merge_key_file "$factory" "$config" config
     main_result=$merge_result
     main_added=$merge_added
+fi
+
+# The previous Pixel2 factory pointed menu media at an intentionally mutable
+# but empty directory. Migrate only that exact obsolete path. User-selected
+# menu drivers, languages, custom asset paths and every unrelated setting are
+# preserved.
+migrate_managed_assets_path
+if [ "$assets_changed" -gt 0 ]; then
+    main_result=migrated-menu-assets
+    main_added=$((main_added + assets_changed))
 fi
 
 # These files are part of the same RetroArch factory contract. Explicit user

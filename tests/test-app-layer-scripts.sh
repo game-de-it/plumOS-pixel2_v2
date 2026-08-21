@@ -136,13 +136,14 @@ import sys
 
 path = Path(sys.argv[1])
 data = path.read_bytes()
-assert hashlib.sha256(data).hexdigest() == "979ff1bb63a8263c39fd1ce467081bad9b81550aafda0fa15cc1115ab88b7c4a"
+assert hashlib.sha256(data).hexdigest() == "0fe41cce8ee36e4ca0b346ad2aee17563f08afb9f402fe1a3f8ea5e46a1744ef"
 lines = data.decode().splitlines()
 pairs = [line.split(" = ", 1) for line in lines if " = " in line]
 values = dict(pairs)
 assert len(pairs) == 3376
 assert len(values) == 3376
 required = {
+    "assets_directory": "\"/mnt/plumos/retroarch/assets\"",
     "auto_overrides_enable": "\"true\"",
     "auto_remaps_enable": "\"true\"",
     "config_save_on_exit": "\"true\"",

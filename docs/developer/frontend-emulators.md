@@ -117,6 +117,23 @@ factory generation and old values both match. A separate two-key migration
 restores START+SELECT direct exit for the short-lived regressed factory;
 unrelated user values are kept.
 
+Pixel2 builds all four upstream menu drivers: RGUI, GLUI (MaterialUI), Ozone,
+and XMB. RGUI remains the factory default. The native RetroArch settings under
+`Settings -> Drivers -> Menu` and `Settings -> User -> Language` are the
+authoritative selectors; a normal RetroArch exit persists them and the new
+choice is used on the next start. The app launcher must not place
+`menu_driver` or `user_language` in its append config, because append values
+would silently override the mutable user config on every launch.
+
+Graphical menu media is app-layer-owned at
+`/mnt/plumos/retroarch/assets`. It includes every shipped XMB theme plus the
+Ozone/GLUI icons and the upstream `pkg` fallback fonts for Arabic/Persian,
+Chinese, and Korean. The previous empty mutable assets path is migrated only
+when it exactly equals `/mnt/plumos/config/retroarch/assets`; custom asset
+paths, menu choices, language choices, hotkeys, saves, and states are not
+overwritten. RGUI uses its smaller built-in font set, so Ozone or GLUI should
+be selected for languages whose script RGUI does not support.
+
 Normal saves and save states use the active ROM filesystem with content-folder
 and core sorting. `/mnt/plumos/saves/<system>` and
 `/mnt/plumos/states/<system>` remain fallback paths when content-local saving

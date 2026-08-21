@@ -111,7 +111,9 @@ grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 # message colour. Replace an active cfg only when it is byte-identical to that
 # exact factory generation.
 cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
-sed -i "s/video_message_color = \"ffff00\"/video_message_color = \"0\"/" \
+sed -i \
+    -e "s|assets_directory = \"/mnt/plumos/retroarch/assets\"|assets_directory = \"/mnt/plumos/config/retroarch/assets\"|" \
+    -e "s/video_message_color = \"ffff00\"/video_message_color = \"0\"/" \
     "$active/retroarch.cfg"
 test "$(sha256sum "$active/retroarch.cfg" | cut -d " " -f 1)" = \
     "231ee2585779c098d9512a64cc8b17322c3b86e07d3e84889aaac815893d7280"
@@ -129,6 +131,7 @@ grep -q "^video_message_color = \"ffff00\"$" "$active/retroarch.cfg"
 # Preserve both its explicit black colour and its unrelated hotkey.
 cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
 sed -i \
+    -e "s|assets_directory = \"/mnt/plumos/retroarch/assets\"|assets_directory = \"/mnt/plumos/config/retroarch/assets\"|" \
     -e "s/video_message_color = \"ffff00\"/video_message_color = \"0\"/" \
     -e "s/input_save_state_btn = \"5\"/input_save_state_btn = \"42\"/" \
     "$active/retroarch.cfg"
@@ -137,7 +140,29 @@ printf "%s\n" "231ee2585779c098d9512a64cc8b17322c3b86e07d3e84889aaac815893d7280"
 PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
     /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
     > /tmp/custom-black-osd.log
-grep -q "retroarch_config=result-unchanged added=0" /tmp/custom-black-osd.log
+grep -q "retroarch_config=result-migrated-menu-assets added=1" \
+    /tmp/custom-black-osd.log
+grep -q "^assets_directory = \"/mnt/plumos/retroarch/assets\"$" \
+    "$active/retroarch.cfg"
 grep -q "^video_message_color = \"0\"$" "$active/retroarch.cfg"
+grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
+
+# The legacy menu-assets path was empty on Pixel2. Move only that exact path
+# to the app-layer-managed assets while preserving the selected menu,
+# language and an unrelated hotkey.
+sed -i \
+    -e "s|assets_directory = \"/mnt/plumos/retroarch/assets\"|assets_directory = \"/mnt/plumos/config/retroarch/assets\"|" \
+    -e "s|menu_driver = \"rgui\"|menu_driver = \"ozone\"|" \
+    -e "s|user_language = \"0\"|user_language = \"1\"|" \
+    "$active/retroarch.cfg"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/menu-assets.log
+grep -q "retroarch_config=result-migrated-menu-assets added=1" \
+    /tmp/menu-assets.log
+grep -q "^assets_directory = \"/mnt/plumos/retroarch/assets\"$" \
+    "$active/retroarch.cfg"
+grep -q "^menu_driver = \"ozone\"$" "$active/retroarch.cfg"
+grep -q "^user_language = \"1\"$" "$active/retroarch.cfg"
 grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 '

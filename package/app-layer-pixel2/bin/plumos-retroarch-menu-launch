@@ -48,7 +48,6 @@ input_driver = "udev"
 input_joypad_driver = "udev"
 joypad_autoconfig_dir = "$root/factory-defaults/retroarch/autoconfig"
 input_menu_toggle_btn = "14"
-menu_driver = "rgui"
 system_directory = "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"
 EOF
 
