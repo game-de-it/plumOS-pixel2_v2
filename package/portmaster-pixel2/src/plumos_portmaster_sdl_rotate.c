@@ -7,6 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef PLUMOS_SDL_ROTATION_ENV
+#define PLUMOS_SDL_ROTATION_ENV "PLUMOS_PORTMASTER_SDL_ROTATION"
+#endif
+
+#ifndef PLUMOS_SDL_ROTATION_LABEL
+#define PLUMOS_SDL_ROTATION_LABEL "PortMaster"
+#endif
+
 /*
  * Pixel2's DRM mode is the panel-native 480x640 mode even though the handheld
  * is used as a 640x480 landscape device.  PortMaster games using SDL_Renderer
@@ -64,7 +72,7 @@ static void (*real_render_present)(SDL_Renderer *);
     } while (0)
 
 static int rotation_enabled(void) {
-    const char *value = getenv("PLUMOS_PORTMASTER_SDL_ROTATION");
+    const char *value = getenv(PLUMOS_SDL_ROTATION_ENV);
     return value && strcmp(value, "270") == 0;
 }
 
@@ -151,21 +159,22 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags) {
 
     state = allocate_state();
     if (!state) {
-        fprintf(stderr, "[plumOS] PortMaster SDL rotation: renderer limit reached\n");
+        fprintf(stderr, "[plumOS] %s SDL rotation: renderer limit reached\n",
+                PLUMOS_SDL_ROTATION_LABEL);
         return renderer;
     }
     frame = real_create_texture(renderer, SDL_PIXELFORMAT_ARGB8888,
                                 SDL_TEXTUREACCESS_TARGET, 640, 480);
     if (!frame) {
-        fprintf(stderr, "[plumOS] PortMaster SDL rotation: target unavailable: %s\n",
-                sdl_error());
+        fprintf(stderr, "[plumOS] %s SDL rotation: target unavailable: %s\n",
+                PLUMOS_SDL_ROTATION_LABEL, sdl_error());
         return renderer;
     }
     if (real_set_texture_blend_mode)
         real_set_texture_blend_mode(frame, SDL_BLENDMODE_NONE);
     if (real_set_render_target(renderer, frame) != 0) {
-        fprintf(stderr, "[plumOS] PortMaster SDL rotation: target rejected: %s\n",
-                sdl_error());
+        fprintf(stderr, "[plumOS] %s SDL rotation: target rejected: %s\n",
+                PLUMOS_SDL_ROTATION_LABEL, sdl_error());
         real_destroy_texture(frame);
         return renderer;
     }
@@ -173,7 +182,8 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags) {
     state->renderer = renderer;
     state->frame = frame;
     state->active = 1;
-    fprintf(stderr, "[plumOS] PortMaster SDL rotation: 640x480 -> 480x640 @ 270\n");
+    fprintf(stderr, "[plumOS] %s SDL rotation: 640x480 -> 480x640 @ 270\n",
+            PLUMOS_SDL_ROTATION_LABEL);
     return renderer;
 }
 

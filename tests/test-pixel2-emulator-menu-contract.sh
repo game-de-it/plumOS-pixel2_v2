@@ -19,6 +19,7 @@ PPSSPP_CONTROLS="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/sta
 PPSSPP_CONFIG="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/ppsspp.ini"
 PPSSPP_CONTROLLER_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
 PPSSPP_DISPLAY_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-display-rotation.patch"
+PICO8_SDL_ADAPTER="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_sdl_rotate.c"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -149,6 +150,40 @@ grep -Fq 'runner_rotation_patch_sha256' "$SA_BUILD" ||
     fail 'DraStic manifest does not record runner rotation patch'
 grep -Fq 'readlink "/proc/${pid}/exe"' "$SA_STOP" ||
     fail 'standalone stop ownership check is missing'
+
+for contract in \
+    'pico8_machine' \
+    '[ "$pico8_machine" = b700 ]' \
+    'roms/pico-8' \
+    'roms/pico8' \
+    'PLUMOS_PICO8_SDL_ROTATION=270' \
+    'SDL_GAMECONTROLLERCONFIG=' \
+    'dpup:b10,dpdown:b11,dpleft:b12,dpright:b13' \
+    '-root_path "$pico8_system_root"' \
+    '-pixel_perfect 1' \
+    '-run "$rom"'; do
+    grep -Fq -- "$contract" "$SA_LAUNCHER" ||
+        fail "PICO-8 Pixel2 launch contract missing: $contract"
+done
+for contract in \
+    'PICO8_SDL_ROTATE_SOURCE' \
+    'PLUMOS_SDL_ROTATION_ENV=' \
+    'libplumos-pico8-sdl-rotate.so' \
+    'binary_policy' \
+    'external-proprietary'; do
+    grep -Fq "$contract" "$SA_BUILD" ||
+        fail "PICO-8 external runtime build contract missing: $contract"
+done
+for contract in \
+    'PLUMOS_SDL_ROTATION_ENV' \
+    'PLUMOS_SDL_ROTATION_LABEL'; do
+    grep -Fq "$contract" "$PICO8_SDL_ADAPTER" ||
+        fail "shared Pixel2 SDL rotation adapter is not reusable: $contract"
+done
+grep -Fq '"${PLUMOS_USER_ROOT}/roms/pico-8/aarch64/"' "$SA_STOP" ||
+    fail 'PICO-8 external runtime stop ownership is missing'
+grep -Fq 'pico8_64|_pico8_64|pico8_dyn' "$SA_STOP" ||
+    fail 'PICO-8 external runtime stop ownership is too broad'
 
 grep -Eq '^Pause[[:space:]]*=.*(^|,)10-4(,|$)' "$PPSSPP_CONTROLS" ||
     fail 'PPSSPP factory FUNCTION pause binding is missing'

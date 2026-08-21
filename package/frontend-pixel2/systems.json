@@ -2073,6 +2073,11 @@
           "name": "pico-8",
           "source": "compatibility",
           "priority": 30
+        },
+        {
+          "name": "pico8",
+          "source": "compatibility",
+          "priority": 40
         }
       ],
       "extensions": [
@@ -2088,10 +2093,11 @@
         ]
       },
       "launch_profiles": [
+        "standalone:pico8",
         "retroarch:fake08",
         "retroarch:retro8"
       ],
-      "default_launch_profile": "retroarch:fake08",
+      "default_launch_profile": "standalone:pico8",
       "default_cpu_policy": "ondemand",
       "scraper": {
         "enabled": false,

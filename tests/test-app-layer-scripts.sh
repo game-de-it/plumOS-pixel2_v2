@@ -40,6 +40,7 @@ test -x "$ROOT_DIR/tests/test-pixel2-network-control.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-wifi-recovery.sh"
 "$ROOT_DIR/tests/test-pixel2-wifi-recovery.sh"
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-stop"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"
 grep -q 'root/lib/libretro:\$root/emulator/lib:\$root/frontend/lib:\$root/lib' \
@@ -105,6 +106,10 @@ assert "yabasanshiro" not in ids
 assert "mupen64plus_next" not in ids
 n64 = next(item for item in systems if item["id"] == "n64")
 assert n64["launch_profiles"] == ["retroarch:parallel_n64"]
+pico8 = next(item for item in systems if item["id"] == "pico8")
+assert pico8["launch_profiles"][0] == "standalone:pico8"
+assert pico8["default_launch_profile"] == "standalone:pico8"
+assert "pico8" in {entry["name"] for entry in pico8["directory_aliases"]}
 standalone_build = (root / "scripts/build-standalone-pixel2.sh").read_text()
 standalone_launch = (root / "package/standalone-pixel2/plumos/bin/plumos-standalone-launch").read_text()
 assert '"id": "mupen64plus"' not in standalone_build
@@ -469,6 +474,14 @@ grep -q 'mkdir -p /dev/shm' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 grep -q 'bin/runner' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q 'pico8_machine.*b700' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q '_pico8_64' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q 'PLUMOS_PICO8_SDL_ROTATION=270' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
+grep -q 'binary_policy.*external-proprietary' \
+    "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 grep -q 'PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH' \
     "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
 grep -q 'PLUMOS_PYXEL_GL_ROTATION.*270' \

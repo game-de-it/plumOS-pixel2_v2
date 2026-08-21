@@ -48,6 +48,7 @@ PPSSPP_COMMIT="${PLUMOS_PIXEL2_PPSSPP_COMMIT:-fa50bb1976065c4f8b1b47af227d367fe9
 PPSSPP_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-no-sdl2-ttf.patch"
 PPSSPP_DISPLAY_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-display-rotation.patch"
 PPSSPP_CONTROLLER_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
+PICO8_SDL_ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_sdl_rotate.c"
 COMMON_CFLAGS="${PLUMOS_PIXEL2_STANDALONE_CFLAGS:--O2 -pipe -march=armv8-a+crc -mtune=cortex-a35 -fomit-frame-pointer -fcommon}"
 VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
 PROJECT_SOURCE_REF="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
@@ -173,6 +174,28 @@ copy_runtime_deps() {
           printf '%s\n' "$map_line" >>"$PLUMOS_DIR/config/standalone/soname-links.tsv"
       fi
     done
+}
+
+build_pico8_adapter() {
+  require_command cc
+  [ -s "$PICO8_SDL_ROTATE_SOURCE" ] || {
+    printf 'error: PICO-8 Pixel2 SDL adapter source is missing: %s\n' \
+      "$PICO8_SDL_ROTATE_SOURCE" >&2
+    return 1
+  }
+  pico8_dst="$PLUMOS_DIR/standalone/pico8"
+  mkdir -p "$pico8_dst/bin" "$pico8_dst/lib"
+  cc -O2 -fPIC -Wall -Wextra -Werror -shared -I/usr/include/SDL2 \
+    -DPLUMOS_SDL_ROTATION_ENV='"PLUMOS_PICO8_SDL_ROTATION"' \
+    -DPLUMOS_SDL_ROTATION_LABEL='"PICO-8"' \
+    -Wl,-z,defs -Wl,-soname,libplumos-pico8-sdl-rotate.so \
+    -o "$pico8_dst/lib/libplumos-pico8-sdl-rotate.so" \
+    "$PICO8_SDL_ROTATE_SOURCE" -ldl
+  cat >"$pico8_dst/bin/USER_RUNTIME_REQUIRED.txt" <<'EOF'
+PICO-8 is proprietary and is not distributed by plumOS.
+Install the official AArch64 runtime and pico8.dat under
+roms/pico-8/aarch64 (roms/pico8/aarch64 is also accepted).
+EOF
 }
 
 build_openbor() {
@@ -748,6 +771,7 @@ OPENBOR_STATUS=pending-binary
 PCSX_STATUS=pending-binary
 DRASTIC_STATUS=pending-binary
 PPSSPP_STATUS=pending-binary
+PICO8_STATUS=pending-adapter
 if selected openbor; then
   build_openbor
   OPENBOR_STATUS=built
@@ -763,6 +787,10 @@ fi
 if selected ppsspp; then
   build_ppsspp
   PPSSPP_STATUS=built
+fi
+if selected pico8; then
+  build_pico8_adapter
+  PICO8_STATUS=built
 fi
 
 cat > "$COMPONENT_DIR/manifest.json" <<EOF
@@ -789,6 +817,9 @@ cat >> "$COMPONENT_DIR/manifest.json" <<EOF
 EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<EOF
     {"id": "openbor", "status": "$OPENBOR_STATUS"},
+EOF
+cat >> "$COMPONENT_DIR/manifest.json" <<EOF
+    {"id": "pico8", "status": "$PICO8_STATUS", "runtime": "user:roms/pico-8/aarch64", "binary_policy": "external-proprietary"},
 EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<'EOF'
     {"id": "scummvm", "status": "pending-binary"},

@@ -3,6 +3,7 @@ set -u
 
 PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
 PLUMOS_RUNTIME_ROOT="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
+PLUMOS_USER_ROOT="${PLUMOS_USER_ROOT:-/mnt/plumos-user}"
 id=${1:-}
 [ -n "$id" ] || { echo "usage: plumos-standalone-stop EMULATOR_ID" >&2; exit 2; }
 case "$id" in
@@ -15,6 +16,23 @@ pid="$(cat "$pid_file" 2>/dev/null || true)"
 expected_exe="$(cat "$exe_file" 2>/dev/null || true)"
 case "$expected_exe" in
   "${PLUMOS_ROOT}/standalone/${id}/"*) ;;
+  "${PLUMOS_USER_ROOT}/roms/pico-8/aarch64/"*|\
+  "${PLUMOS_USER_ROOT}/roms/pico8/aarch64/"*|\
+  "${PLUMOS_USER_ROOT}/roms/PICO8/aarch64/"*|\
+  "${PLUMOS_USER_ROOT}/roms/PICO/aarch64/"*|\
+  "${PLUMOS_USER_ROOT}/Roms/pico-8/aarch64/"*|\
+  "${PLUMOS_USER_ROOT}/Roms/pico8/aarch64/"*|\
+  "${PLUMOS_USER_ROOT}/Roms/PICO8/aarch64/"*|\
+  "${PLUMOS_USER_ROOT}/Roms/PICO/aarch64/"*)
+    [ "$id" = pico8 ] || {
+      echo "standalone stop refused: external executable is not PICO-8" >&2
+      exit 1
+    }
+    case "${expected_exe##*/}" in
+      pico8_64|_pico8_64|pico8_dyn) ;;
+      *) echo "standalone stop refused: invalid PICO-8 executable" >&2; exit 1 ;;
+    esac
+    ;;
   *) echo "standalone stop refused: invalid executable record for $id" >&2; exit 1 ;;
 esac
 if [ -z "$pid" ] || [ ! -r "/proc/${pid}/exe" ]; then

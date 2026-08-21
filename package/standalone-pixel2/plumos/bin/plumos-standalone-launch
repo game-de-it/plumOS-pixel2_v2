@@ -84,6 +84,82 @@ case "$cpu_policy" in
 esac
 
 case "$id" in
+  pico8)
+    rom=${1:-}
+    [ -n "$rom" ] || fail "missing PICO-8 cartridge path" 2
+    [ -f "$rom" ] || fail "missing PICO-8 cartridge: $rom" 2
+    shift
+    case "$rom" in
+      *.[pP]8|*.[pP][nN][gG]) ;;
+      *) fail "unsupported PICO-8 cartridge: $rom" 2 ;;
+    esac
+
+    pico8_system_root=""
+    for pico8_root in \
+      "${PLUMOS_USER_ROOT}/roms/pico-8" \
+      "${PLUMOS_USER_ROOT}/roms/pico8" \
+      "${PLUMOS_USER_ROOT}/roms/PICO8" \
+      "${PLUMOS_USER_ROOT}/roms/PICO" \
+      "${PLUMOS_USER_ROOT}/Roms/pico-8" \
+      "${PLUMOS_USER_ROOT}/Roms/pico8" \
+      "${PLUMOS_USER_ROOT}/Roms/PICO8" \
+      "${PLUMOS_USER_ROOT}/Roms/PICO"; do
+      case "$rom" in
+        "$pico8_root"/*)
+          pico8_system_root=$pico8_root
+          break
+          ;;
+      esac
+    done
+    [ -n "$pico8_system_root" ] ||
+      fail "PICO-8 cartridge is outside the user ROM tree: $rom" 2
+
+    pico8_runtime="${pico8_system_root}/aarch64"
+    [ -f "${pico8_runtime}/pico8.dat" ] ||
+      fail "PICO-8 data file is missing: ${pico8_runtime}/pico8.dat" 127
+    exe=""
+    for pico8_candidate in \
+      "${pico8_runtime}/pico8_64" \
+      "${pico8_runtime}/_pico8_64" \
+      "${pico8_runtime}/pico8_dyn"; do
+      [ -f "$pico8_candidate" ] || continue
+      pico8_magic="$($BB dd if="$pico8_candidate" bs=1 count=4 2>/dev/null | \
+        $BB od -An -tx1 | $BB tr -d ' \n')"
+      pico8_machine="$($BB dd if="$pico8_candidate" bs=1 skip=18 count=2 2>/dev/null | \
+        $BB od -An -tx1 | $BB tr -d ' \n')"
+      [ "$pico8_magic" = 7f454c46 ] || continue
+      [ "$pico8_machine" = b700 ] || continue
+      exe=$pico8_candidate
+      break
+    done
+    [ -n "$exe" ] ||
+      fail "no AArch64 PICO-8 executable found in: $pico8_runtime" 126
+    [ -x "$exe" ] || chmod 0755 "$exe" 2>/dev/null ||
+      fail "AArch64 PICO-8 executable is not executable: $exe" 126
+
+    workdir=$pico8_runtime
+    mkdir -p "$HOME/desktop" "$HOME/carts"
+    pico8_rotation="${EMU_ROOT}/pico8/lib/libplumos-pico8-sdl-rotate.so"
+    [ -f "$pico8_rotation" ] ||
+      fail "PICO-8 Pixel2 display adapter is missing: $pico8_rotation" 127
+    export PLUMOS_PICO8_SDL_ROTATION=270
+    export LD_PRELOAD="${pico8_rotation}${LD_PRELOAD:+:$LD_PRELOAD}"
+    export SDL_NOMOUSE=1
+    export SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1
+    export SDL_GAMECONTROLLERCONFIG='19008d96010000000221000000010000,plumOS Pixel2 Controller,a:b1,b:b0,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,back:b8,start:b9,guide:b14,dpup:b10,dpdown:b11,dpleft:b12,dpright:b13,platform:Linux,'
+    case "${rom##*/}" in
+      *[sS][pP][lL][oO][rR][eE]*)
+        set -- -home "$HOME" -desktop "$HOME/desktop" \
+          -root_path "$pico8_system_root" -joystick 0 -pixel_perfect 1 \
+          -splore "$@"
+        ;;
+      *)
+        set -- -home "$HOME" -desktop "$HOME/desktop" \
+          -root_path "$pico8_system_root" -joystick 0 -pixel_perfect 1 \
+          -run "$rom" "$@"
+        ;;
+    esac
+    ;;
   ppsspp)
     exe="${EMU_ROOT}/ppsspp/bin/PPSSPPSDL"
     workdir="${EMU_ROOT}/ppsspp"
