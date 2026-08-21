@@ -100,7 +100,9 @@ normal reboot.
 The FE power action path has been validated for reboot and physical power-off.
 The corrected `RESTART2("charge")` path has also been physically validated:
 with the charger already attached, FE Shutdown entered the stock charging
-screen without a cable replug and did not boot the OS.
+screen without a cable replug and did not boot the OS. A subsequent unplugged
+FE Shutdown reached complete power-off through RK817 `DEV_OFF`. Both terminal
+Shutdown branches are therefore accepted on physical Pixel2 hardware.
 
 Power is read from the stock `rk805 pwrkey` input (`/dev/input/event0` on the
 validated Pixel2). The hardware-key service remains running after the FE is

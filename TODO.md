@@ -30,7 +30,8 @@
     AArch64 frontend component build/checksumは合格。署名Runtime `16150d5`を実機へ
     通常transactionで反映し、FE ready、`runtime_healthy`、frontend/root checksum合格まで
     確認済み。Wi-Fi dongleを充電器へ差し替え、FEからShutdown後にcable再挿入なしで
-    stock充電画面へ遷移することをoperator合格。非充電時の完全OFFだけ再確認する。
+    stock充電画面へ遷移することをoperator合格。続けて非充電時のShutdownも完全OFFを
+    operator合格とし、充電有無の両terminal経路を完了。
 
 ## Implementation audit and release blockers
 

@@ -227,5 +227,7 @@ reboot.
 The operator then replaced the Wi-Fi dongle with the charger and selected FE
 Shutdown. Without removing or reinserting the cable, Pixel2 entered the stock
 charging screen instead of booting the OS. This closes the plugged-Shutdown
-acceptance that the direct register-write implementation had failed. A final
-unplugged cold power-off retest remains separate.
+acceptance that the direct register-write implementation had failed. The
+operator then repeated FE Shutdown without a charger and confirmed complete
+power-off. The charge-present `RESTART2("charge")` branch and charger-absent
+RK817 `DEV_OFF` branch are both physically accepted.
