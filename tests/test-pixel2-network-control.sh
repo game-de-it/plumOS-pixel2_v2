@@ -128,6 +128,7 @@ run_control() {
         PLUMOS_DHCP_WAIT_SECONDS=1 \
         PLUMOS_WIFI_SCAN_WAIT_SECONDS=1 \
         PLUMOS_USB_MODE_SWITCH_WAIT_ATTEMPTS=1 \
+        PLUMOS_PIXEL2_USB_HOST_CONTROL="$tmp/usb-host-control" \
         PLUMOS_UDHCPC_SCRIPT="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-udhcpc-script" \
         "$CONTROL" "$@"
 }
@@ -176,6 +177,24 @@ grep -Fxq 'insmod '"$modules/extra/8821cu.ko" "$TEST_COMMAND_LOG"
 grep -Fxq c811 "$usb/1-1/idProduct"
 grep -Fq 'usb wifi mode-switch complete id=0bda:c811' \
     "$plumos/logs/network-control.log"
+
+# Once dongle removal has returned the shared connector to OTG/sink mode,
+# an explicit FE scan must request one bounded host probe before declaring the
+# adapter missing.
+rm -rf "$usb"/* "$net/wlan0"
+cat >"$tmp/usb-host-control" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >>"$TEST_USB_HOST_CALLS"
+mkdir -p "$TEST_USB_SYSFS_ROOT/1-1"
+printf '0bda\n' >"$TEST_USB_SYSFS_ROOT/1-1/idVendor"
+printf 'c811\n' >"$TEST_USB_SYSFS_ROOT/1-1/idProduct"
+EOF
+chmod 0755 "$tmp/usb-host-control"
+export TEST_USB_HOST_CALLS="$tmp/usb-host-calls"
+export TEST_USB_SYSFS_ROOT="$usb"
+probe_scan="$(run_control --scan)"
+grep -Fxq probe "$TEST_USB_HOST_CALLS"
+grep -Fq $'network\tsecured\t-42\tPixel2 Test' <<<"$probe_scan"
 
 mkdir -p "$tmp/boot/config/system" "$tmp/boot/logs"
 printf 'network={}\n' >"$tmp/boot/wpa.conf"

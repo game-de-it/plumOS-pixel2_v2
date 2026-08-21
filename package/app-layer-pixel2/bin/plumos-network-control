@@ -37,6 +37,7 @@ NETWORK_SERVICES="${PLUMOS_ROOT}/bin/plumos-network-services"
 TIME_SYNC="${PLUMOS_ROOT}/bin/plumos-time-sync"
 DNS_RUNTIME="${PLUMOS_ROOT}/bin/plumos-dns-runtime"
 WIFI_RECOVERY="${PLUMOS_ROOT}/bin/plumos-wifi-recovery"
+USB_HOST_CONTROL="${PLUMOS_PIXEL2_USB_HOST_CONTROL:-/usr/lib/plumos/init.d/15-usb-host-reenumerate}"
 
 ACTION=status
 CONNECT_FILE=
@@ -162,6 +163,16 @@ usb_device_seen() {
     [ -r "$dev/idVendor" ] && [ -r "$dev/idProduct" ] && return 0
   done
   return 1
+}
+
+probe_usb_host() {
+  [ -x "$USB_HOST_CONTROL" ] || return 0
+  log "usb host probe requested reason=no-enumerated-device"
+  if run_limited 15 "$USB_HOST_CONTROL" probe >> "$LOG_FILE" 2>&1; then
+    log "usb host probe complete"
+  else
+    log "usb host probe returned nonzero"
+  fi
 }
 
 find_known_usb_wifi_storage() {
@@ -340,6 +351,10 @@ ensure_wifi_iface() {
   if iface="$(find_wifi_iface 2>/dev/null)"; then
     printf '%s\n' "$iface"
     return 0
+  fi
+
+  if ! usb_device_seen; then
+    probe_usb_host
   fi
 
   switch_known_usb_wifi_mode || true
