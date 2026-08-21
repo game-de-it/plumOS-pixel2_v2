@@ -6,6 +6,7 @@ BUILD="$ROOT_DIR/scripts/build-retroarch.sh"
 CFG="$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 MENU_LAUNCHER="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"
 APP_LAYER_VERIFY="$ROOT_DIR/scripts/verify-app-layer.sh"
+GL_MENU_PATCH="$ROOT_DIR/patches/retroarch/018-pixel2-gl-graphical-menu-rotation.patch"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -37,10 +38,25 @@ grep -Fqx 'menu_driver = "rgui"' "$CFG" ||
 grep -Fqx 'user_language = "0"' "$CFG" ||
     fail 'RetroArch factory default language must remain English'
 
-if grep -Eq '^[[:space:]]*(menu_driver|user_language)[[:space:]]*=' \
+if grep -Eq '^[[:space:]]*(menu_driver|user_language)[[:space:]]*=[[:space:]]*"' \
         "$MENU_LAUNCHER"; then
     fail 'RetroArch menu launcher overrides persistent menu or language choice'
 fi
+for contract in \
+    'glui|ozone|xmb)' \
+    'video_driver=gl' \
+    'PLUMOS_GL_MENU_ROTATION=display'; do
+    grep -Fq "$contract" "$MENU_LAUNCHER" ||
+        fail "Graphical RetroArch menu launch contract is missing: $contract"
+done
+for contract in \
+    'gl2_menu_display_rotation' \
+    'gl2_rotate_menu_rect' \
+    'rotated_menu_video_info' \
+    'gl2_raster_font_draw_vertices'; do
+    grep -Fq "$contract" "$GL_MENU_PATCH" ||
+        fail "Graphical RetroArch menu rotation patch is missing: $contract"
+done
 for font_pattern in \
     'retroarch/assets/rgui/font/bitmap10x10_*.bin' \
     'retroarch/assets/rgui/font/bitmap6x10_*.bin'; do

@@ -38,12 +38,35 @@ if [ -x "$root/bin/plumos-audio-output" ]; then
     export ALSA_CONFIG_PATH="${ALSA_CONFIG_PATH:-$runtime_root/audio/asound.conf}"
     export ALSA_PLUGIN_DIR="${ALSA_PLUGIN_DIR:-$root/lib/alsa-lib}"
 fi
+
+menu_driver=$(
+    sed -n 's/^[[:space:]]*menu_driver[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
+        "$config" | sed -n '1p'
+)
+video_driver=drm
+video_rotation=3
+aspect_ratio_index=0
+case "$menu_driver" in
+    glui|ozone|xmb)
+        # Graphical menu drivers need GLES. Present them on Pixel2's native
+        # portrait scanout through the same app-layer Mesa stack as hardware
+        # cores, then rotate their logical 640x480 draw coordinates once.
+        video_driver=gl
+        video_rotation=1
+        aspect_ratio_index=24
+        export PLUMOS_GL_MENU_ROTATION=display
+        export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-$root/emulator/dri}"
+        export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-$root/emulator/egl_vendor.d/50_mesa.json}"
+        ;;
+esac
+
 cat >"$append" <<EOF
-video_driver = "drm"
-video_rotation = "3"
+video_driver = "$video_driver"
+video_rotation = "$video_rotation"
 video_allow_rotate = "true"
 video_force_aspect = "true"
 video_aspect_ratio = "1.333333"
+aspect_ratio_index = "$aspect_ratio_index"
 input_driver = "udev"
 input_joypad_driver = "udev"
 joypad_autoconfig_dir = "$root/factory-defaults/retroarch/autoconfig"
