@@ -134,6 +134,15 @@ paths, menu choices, language choices, hotkeys, saves, and states are not
 overwritten. RGUI uses its smaller built-in font set, so Ozone or GLUI should
 be selected for languages whose script RGUI does not support.
 
+Pixel2 uses a native 480x640 DRM scanout but presents graphical RetroArch menus
+as a logical 640x480 surface. The GL menu contract therefore applies the same
+logical dimensions to the menu layout callback, viewport rectangles, and font
+coordinates. Fixing only the final rotation leaves XMB icons and labels laid
+out by different dimensions and makes them overlap. The factory menu scale is
+1.5, with Ozone global font scaling enabled at 1.35; migration changes only the
+three exact values from the first small-menu factory and preserves the selected
+driver, language, hotkeys, saves, and states.
+
 Normal saves and save states use the active ROM filesystem with content-folder
 and core sorting. `/mnt/plumos/saves/<system>` and
 `/mnt/plumos/states/<system>` remain fallback paths when content-local saving
