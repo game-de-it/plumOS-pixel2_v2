@@ -79,6 +79,18 @@ grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:gambatte' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:pcsx_rearmed' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'picoarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+jq -e '.systems[] | select(.id == "gameandwatch") |
+       .extensions == ["mgw", "zip"]' \
+    "$ROOT_DIR/package/frontend-pixel2/systems.json" >/dev/null
+jq -e '.systems[] | select(.id == "pcfx") |
+       .extensions == ["cue", "ccd", "toc", "chd"]' \
+    "$ROOT_DIR/package/frontend-pixel2/systems.json" >/dev/null
+grep -q 'retroarch_archive=result-extracted system=gameandwatch format=mgw' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'strcmp(core_id, "lutro") == 0 && directory_exists(plan->rom_path)' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_text_ui.c"
+grep -q 'first_file_with_extension(plan->rom_path, "svm"' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_text_ui.c"
 python3 - "$ROOT_DIR" <<'PY'
 import csv
 import json

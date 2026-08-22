@@ -2991,8 +2991,20 @@ static int build_launch_plan(struct launch_plan *plan, const char *plumos_root,
      * presents one project directory, then resolves its .scummvm marker for
      * the libretro core just as it resolves EasyRPG's database entry point. */
     if (strcmp(core_id, "scummvm") == 0 && directory_exists(plan->rom_path)) {
-      if (!first_file_with_extension(plan->rom_path, "scummvm", content_path,
-                                     sizeof(content_path)) ||
+      if ((!first_file_with_extension(plan->rom_path, "scummvm", content_path,
+                                      sizeof(content_path)) &&
+           !first_file_with_extension(plan->rom_path, "svm", content_path,
+                                      sizeof(content_path))) ||
+          !copy_string(plan->rom_path, sizeof(plan->rom_path), content_path)) {
+        return 0;
+      }
+      plan->rom_exists = rom_path_exists(plan->rom_path);
+    }
+    /* Lutro projects are directories whose launchable content is main.lua.
+     * Internal helper Lua files must never become independent FE entries. */
+    if (strcmp(core_id, "lutro") == 0 && directory_exists(plan->rom_path)) {
+      if (!join_path(content_path, sizeof(content_path), plan->rom_path,
+                     "main.lua") ||
           !copy_string(plan->rom_path, sizeof(plan->rom_path), content_path)) {
         return 0;
       }

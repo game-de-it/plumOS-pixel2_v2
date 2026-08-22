@@ -2027,6 +2027,9 @@
         }
       ],
       "scan_directories": true,
+      "directory_markers": [
+        "RPG_RT.ldb"
+      ],
       "extensions": [
         "easyrpg",
         "ldb",
@@ -2125,6 +2128,10 @@
         }
       ],
       "scan_directories": true,
+      "directory_markers": [
+        "*.scummvm",
+        "*.svm"
+      ],
       "extensions": [
         "scummvm",
         "svm"
@@ -2799,8 +2806,7 @@
       ],
       "extensions": [
         "mgw",
-        "zip",
-        "7z"
+        "zip"
       ],
       "artwork": {
         "lookup": [
@@ -4047,6 +4053,10 @@
           "priority": 20
         }
       ],
+      "scan_directories": true,
+      "directory_markers": [
+        "main.lua"
+      ],
       "extensions": [
         "lutro",
         "love",
@@ -4274,9 +4284,7 @@
         "cue",
         "ccd",
         "toc",
-        "chd",
-        "zip",
-        "bin"
+        "chd"
       ],
       "artwork": {
         "lookup": [

@@ -20,6 +20,7 @@
 #define MAX_SYSTEMS 128
 #define MAX_ALIASES 16
 #define MAX_EXTENSIONS 64
+#define MAX_DIRECTORY_MARKERS 8
 #define MAX_ARTWORK_LOOKUPS 16
 #define MAX_PROFILES 16
 #define MAX_SCANNED_DIRS 1024
@@ -43,6 +44,8 @@ struct system_def {
   int enabled;
   int pinned;
   int scan_directories;
+  char directory_markers[MAX_DIRECTORY_MARKERS][128];
+  size_t directory_marker_count;
   struct alias_def aliases[MAX_ALIASES];
   size_t alias_count;
   char extensions[MAX_EXTENSIONS][24];
@@ -863,6 +866,9 @@ static int load_systems(const char *path, struct system_def *systems, size_t *co
     system.enabled = json_get_bool(obj, obj + strlen(obj), "enabled", 1);
     system.pinned = json_get_bool(obj, obj + strlen(obj), "pinned", 0);
     system.scan_directories = json_get_bool(obj, obj + strlen(obj), "scan_directories", 0);
+    system.directory_marker_count =
+        parse_string_array(obj, obj + strlen(obj), "directory_markers",
+                           system.directory_markers, MAX_DIRECTORY_MARKERS);
     parse_aliases(obj, obj + strlen(obj), &system);
     parse_extensions(obj, obj + strlen(obj), &system);
     parse_artwork(obj, obj + strlen(obj), &system);
@@ -915,6 +921,75 @@ static int scan_ext_matches(const struct system_def *system, const char *ext,
     return 0;
   }
   return system_ext_matches(system, ext);
+}
+
+static int find_case_insensitive_file(const char *candidate, char *out,
+                                      size_t out_size);
+
+static int directory_has_required_marker(const struct system_def *system,
+                                         const char *directory) {
+  size_t i;
+
+  if (system->directory_marker_count == 0) {
+    return 1;
+  }
+  for (i = 0; i < system->directory_marker_count; i++) {
+    const char *marker = system->directory_markers[i];
+    if (marker[0] == '*' && marker[1] == '.' && marker[2]) {
+      DIR *dir = opendir(directory);
+      struct dirent *ent;
+      if (!dir) {
+        continue;
+      }
+      while ((ent = readdir(dir)) != NULL) {
+        char candidate[PATH_MAX];
+        if (ignored_sidecar_name(ent->d_name) ||
+            !ascii_equal_ci(file_extension(ent->d_name), marker + 2) ||
+            !join_path(candidate, sizeof(candidate), directory, ent->d_name) ||
+            !is_regular_file(candidate)) {
+          continue;
+        }
+        closedir(dir);
+        return 1;
+      }
+      closedir(dir);
+    } else {
+      char candidate[PATH_MAX];
+      char found[PATH_MAX];
+      if (join_path(candidate, sizeof(candidate), directory, marker) &&
+          find_case_insensitive_file(candidate, found, sizeof(found))) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+static int content_file_is_launchable(const struct system_def *system,
+                                      const char *path) {
+  FILE *f;
+  char line[1024];
+
+  if (strcmp(system->id, "neogeocd") != 0 ||
+      strcasecmp(file_extension(path), "cue") != 0) {
+    return 1;
+  }
+  f = fopen(path, "r");
+  if (!f) {
+    return 0;
+  }
+  while (fgets(line, sizeof(line), f)) {
+    char *p = line;
+    while (*p && isspace((unsigned char)*p)) {
+      p++;
+    }
+    if (strncasecmp(p, "FILE ", 5) == 0 && strcasestr(p, " MP3")) {
+      fclose(f);
+      return 0;
+    }
+  }
+  fclose(f);
+  return 1;
 }
 
 static int append_rom(struct rom_vector *roms, const struct rom_entry *entry) {
@@ -1195,7 +1270,8 @@ static void scan_dir_recursive(struct scan_ctx *ctx, size_t system_index, const 
     }
 
     if (is_directory(child_path)) {
-      if (system->scan_directories && !rel_dir[0]) {
+      if (system->scan_directories && !rel_dir[0] &&
+          directory_has_required_marker(system, child_path)) {
         add_rom_entry(ctx, system_index, alias_name, child_path, child_rel);
         continue;
       }
@@ -1209,6 +1285,9 @@ static void scan_dir_recursive(struct scan_ctx *ctx, size_t system_index, const 
 
     ctx->files_seen++;
     if (!scan_ext_matches(system, file_extension(name), filter_shared_archives)) {
+      continue;
+    }
+    if (!content_file_is_launchable(system, child_path)) {
       continue;
     }
     ctx->files_matched++;

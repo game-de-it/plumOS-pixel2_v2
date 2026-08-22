@@ -15,6 +15,8 @@ audio_latency=${PLUMOS_RETROARCH_AUDIO_LATENCY:-96}
 cpu_governor=${PLUMOS_RETROARCH_CPU_GOVERNOR:-}
 audio_output="$root/bin/plumos-audio-output"
 fast_forward_state=
+archive_content=
+archive_content_dir=
 
 export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-$root/emulator/dri}"
 export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-$root/emulator/egl_vendor.d/50_mesa.json}"
@@ -136,9 +138,43 @@ restore_cpu_governor() {
 cleanup_runtime() {
     restore_cpu_governor
     [ -z "$fast_forward_state" ] || "$bb" rm -f "$fast_forward_state"
+    [ -z "$archive_content" ] || "$bb" rm -f "$archive_content"
+    [ -z "$archive_content_dir" ] || "$bb" rmdir "$archive_content_dir" 2>/dev/null || true
 }
 trap 'cleanup_runtime' EXIT HUP INT TERM
 set_cpu_governor
+
+case "$system_id:$rom" in
+    gameandwatch:*.zip|gameandwatch:*.ZIP)
+        archive_stats=$(
+            "$bb" unzip -l "$rom" 2>/dev/null |
+                "$bb" awk '
+                    $1 ~ /^-+$/ { section++; next }
+                    section == 1 && NF >= 4 {
+                        files++
+                        name = tolower($NF)
+                        if (name ~ /\.mgw$/) mgw++
+                    }
+                    END { print files + 0, mgw + 0 }
+                '
+        )
+        [ "$archive_stats" = "1 1" ] || {
+            printf 'plumos-retroarch-launch: Game & Watch ZIP must contain exactly one MGW file\n' >&2
+            exit 1
+        }
+        archive_content_dir="$runtime_root/retroarch/gameandwatch.$$"
+        archive_content="$archive_content_dir/content.mgw"
+        "$bb" mkdir -p "$archive_content_dir"
+        if ! "$bb" unzip -p "$rom" >"$archive_content" ||
+           [ ! -s "$archive_content" ]; then
+            printf 'plumos-retroarch-launch: cannot extract Game & Watch MGW content\n' >&2
+            exit 1
+        fi
+        rom=$archive_content
+        printf 'retroarch_archive=result-extracted system=gameandwatch format=mgw\n' \
+            >>"$root/logs/retroarch-launch.log"
+        ;;
+esac
 
 append="$runtime_root/retroarch/append.cfg"
 video_driver=drm

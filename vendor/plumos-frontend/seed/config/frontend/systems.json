@@ -1007,6 +1007,7 @@
         {"name": "easyrpg", "source": "plumos", "priority": 20}
       ],
       "scan_directories": true,
+      "directory_markers": ["RPG_RT.ldb"],
       "extensions": ["easyrpg", "ldb", "zip"],
       "artwork": {
         "lookup": [
@@ -1061,6 +1062,7 @@
         {"name": "scummvm", "source": "plumos", "priority": 20}
       ],
       "scan_directories": true,
+      "directory_markers": ["*.scummvm", "*.svm"],
       "extensions": ["scummvm", "svm"],
       "artwork": {
         "lookup": [
@@ -1420,7 +1422,7 @@
         {"name": "GAMEANDWATCH", "source": "pixel2", "priority": 20},
         {"name": "gameandwatch", "source": "plumos", "priority": 30}
       ],
-      "extensions": ["mgw", "zip", "7z"],
+      "extensions": ["mgw", "zip"],
       "artwork": {
         "lookup": [
           {"root": "sdcard", "path": "Images/gameandwatch"}
@@ -2087,6 +2089,8 @@
         {"name": "LUTRO", "source": "plumos", "priority": 10},
         {"name": "lutro", "source": "plumos", "priority": 20}
       ],
+      "scan_directories": true,
+      "directory_markers": ["main.lua"],
       "extensions": ["lutro", "love", "lua"],
       "artwork": {
         "lookup": [
@@ -2217,7 +2221,7 @@
         {"name": "PCFX", "source": "onion", "priority": 10},
         {"name": "pcfx", "source": "plumos", "priority": 20}
       ],
-      "extensions": ["cue", "ccd", "toc", "chd", "zip", "bin"],
+      "extensions": ["cue", "ccd", "toc", "chd"],
       "artwork": {
         "lookup": [
           {"root": "sdcard", "path": "Images/pcfx"}
