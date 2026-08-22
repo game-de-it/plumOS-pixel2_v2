@@ -719,4 +719,14 @@
   - [ ] Channel Fの必須BIOS `sl31253.bin`、`sl31254.bin`、`sl90025.bin`を正規に用意し、残る1 profileを起動確認する
   - [ ] ROMセットにmatching contentが無い13 enabled systemへ代表contentを用意し、実機起動を記録する
     - `ngp`, `wonderswancolor`, `x68000`, `tic80`, `vectrex`, `sg1000`, `sharpx1`, `wolf3d`, `zx81`, `arduboy`, `megaduck`, `puzzlescript`, `superbroswar`
+  - [x] 2026-08-22時点の実機cacheにROMがある17 system・42 profileを、実emulator process、
+    panel-size DRM image、ALSA playback pointerで再検査する
+    - 38 profileは3項目合格。OpenBORは起動・音声合格だがDRM/fb0 captureが全黒のため
+      実LCD表示を要目視。Channel F、ColecoVision、VMUは明確な起動失敗。
+      [検証記録](docs/validation/2026-08-22-pixel2-device-media-smoke.md)を参照。
+    - 静止画で明らかな回転・表示領域逸脱は見えない。可聴音、音質、音飛び、動的な
+      ちらつき、厳密なaspect ratio、入力/menu/exit/saveはoperator確認を継続する。
+  - [ ] 現在ROM cacheが無い71 enabled systemへ代表contentを再配置し、同じ3項目を記録する
+  - [ ] ColecoVisionのBlueMSX BIOSをRA `system_directory`から読める形へmerge配置し、再起動する
+  - [ ] VMUのpaired content契約を確認し、`vemulator`の実機segfault (`rc=139`)を解消する
 - [ ] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する
