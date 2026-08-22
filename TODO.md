@@ -100,7 +100,10 @@
       BusyBox initをexecするよう修正し、隔離PID namespaceで孤児childの回収、System
       A/B rootfs build/verifyに合格。smoke validatorもprofile別の正規stop helperを
       優先し、全process-group同時killを廃止した。
-  - [ ] 修正版Systemを署名更新し、実機でPID 1=`busybox init`、FE→game→FE後のzombie増分0を確認する
+  - [x] 修正版Systemを署名更新し、実機でPID 1=`busybox init`、FE→game→FE後のzombie増分0を確認する
+    - 2026-08-22: `4993d8c -> 51e5ebd`のexact-source署名Systemを通常A/B更新。
+      inactive Bのreadback SHA、B boot/active、`system_healthy`、PID 1 BusyBox initに合格。
+      NES、Channel F、ColecoVision起動後もzombieは0のまま。
   - [x] `plumos-time-sync`とRK817 RTC/timezone/manual-time contractを実装する
     - 2026-08-13: RK817 `/dev/rtc0`へのUTC保存、8秒上限のRFC868同期、automatic/manual time、status/logをfrontend componentへ統合。実機RTC read/writeと再起動後保持は未検証。
   - [x] `plumos-storage-health`のbounded read-only FAT32検査を実装する
@@ -598,9 +601,11 @@
   - [x] 有効routeのlibretro `.info`とstandalone要求からPixel2 BIOS staging/manifestを生成する
   - [ ] ROMセットに無い必須firmwareを補完し、missing requiredを0件にする
   - [x] ROMセットに存在するBlueMSX archiveを含む486 firmware fileを実機`/mnt/plumos-user/bios`へmerge-only配置する
-  - [ ] fresh SDへ486 firmware fileをmerge-only復元し、manifest照合を486/486に戻す
+  - [x] fresh SDへfirmware fileをmerge-only復元し、manifest照合を合格させる
     - 2026-08-22: 現在の実機をホストstaging manifestでread-only照合すると0/486で、
       過去に配置したBIOSがfresh SDへ継承されていない。Channel F/ColecoVision失敗と整合。
+      競合0で486件を復元後、Analogue Pocketの既知`cfbios.bin`からMD5検証付きでChannel F
+      BIOS 2件を分割し、最終488/488 SHA一致。missing requiredは5から2へ減少。
   - [ ] enabled systemごとにBIOS検出と代表content起動を実機確認する
 - [ ] enabled 87 systemのcontent policyを確定する
   - [ ] arcade ROM set policy: arcade、cps1、cps2、cps3、fbneo、neogeo
@@ -729,7 +734,10 @@
   - [x] archival/shared/directory-backed contentを追加検出し、現行routeで73 system・164 profileのearly-start passを記録する
   - [x] early-start passに使用した73 system・78代表セットを通常FEディレクトリへ復元し、目視確認へ引き継ぐ
     - 2026-08-14: 一時smoke contentの自動削除だけで終了していた手順を是正。p2=8 GiB、p3=残り49.7 GiBへ実機SDを拡張し、旧p3の651 fileを651/651 SHA一致で復元。pass report由来1,447 source file + 2 markerを恒久配置し、再適用で0 transfer / 1,447 identical skip、cold boot後73 system・83 FE entry、frontend readyを確認。
-  - [ ] Channel Fの必須BIOS `sl31253.bin`、`sl31254.bin`、`sl90025.bin`を正規に用意し、残る1 profileを起動確認する
+  - [x] Channel Fの必須BIOSをユーザーROMセットから正規に用意し、残る1 profileを起動確認する
+    - 2026-08-22: Analogue Pocket用`cfbios.bin`の各1 KiB halfが`sl31253.bin`、
+      `sl31254.bin`のupstream既知MD5と一致する場合だけ分割。FreeChaF説明で代替扱いの
+      `sl90025.bin`はoptionalへ補正。実機でstartup、DRM image、ALSA pointer合格。
   - [ ] ROMセットにmatching contentが無い13 enabled systemへ代表contentを用意し、実機起動を記録する
     - `ngp`, `wonderswancolor`, `x68000`, `tic80`, `vectrex`, `sg1000`, `sharpx1`, `wolf3d`, `zx81`, `arduboy`, `megaduck`, `puzzlescript`, `superbroswar`
   - [x] 2026-08-22時点の実機cacheにROMがある17 system・42 profileを、実emulator process、
@@ -739,8 +747,12 @@
       [検証記録](docs/validation/2026-08-22-pixel2-device-media-smoke.md)を参照。
     - 静止画で明らかな回転・表示領域逸脱は見えない。可聴音、音質、音飛び、動的な
       ちらつき、厳密なaspect ratio、入力/menu/exit/saveはoperator確認を継続する。
+    - 2026-08-22: BIOS復元後のtargeted recheckでChannel FとColecoVisionを3項目合格へ
+      更新。現時点の集計はmachine pass 40、OpenBOR manual display 1、VMU fail 1。
   - [ ] 現在ROM cacheが無い71 enabled systemへ代表contentを再配置し、同じ3項目を記録する
-  - [ ] ColecoVisionのBlueMSX BIOSをRA `system_directory`から読める形へmerge配置し、再起動する
+  - [x] ColecoVisionのBlueMSX BIOSをRA `system_directory`から読める形へmerge配置し、再起動する
+    - 2026-08-22: BlueMSX `Machines`/`Databases`を含むBIOS復元後、実機でstartup、
+      DRM image、ALSA pointerに合格。項目を完了扱いとする。
   - [ ] VMUのpaired content契約を確認し、`vemulator`の実機segfault (`rc=139`)を解消する
   - 2026-08-22: Runtime full checksum、A/B状態、partition、RTC/time sync、全物理key capability、
     RK817 audio route、network往復、temperature/battery、factory reset dry-runを追加監査。

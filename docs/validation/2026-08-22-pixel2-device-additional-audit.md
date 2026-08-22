@@ -37,7 +37,7 @@ macOS browse互換性は別途確認対象とする。
 
 ## Findings requiring follow-up
 
-### Current SD is missing the staged BIOS set
+### Fresh SD BIOS loss and recovery
 
 ホストのPixel2 BIOS manifest
 `output/bios-staging/pixel2/plumos-bios-checksums.sha256`にある486 fileを、
@@ -45,6 +45,14 @@ macOS browse互換性は別途確認対象とする。
 以前merge-only配置に合格した記録はあるが、現在のfresh SDへ引き継がれていない。
 Channel FとColecoVisionの起動失敗はこの状態と整合する。ROM、BIOS、save、設定への
 書込みはこの監査では行っていない。
+
+その後、電池残量が十分ある状態で486件を競合0のmerge-only配置とし、実機で
+486/486 SHA一致を確認した。ROMセットの別階層にはAnalogue Pocket用の
+`cfbios.bin`があり、前半1 KiBが`sl31253.bin`、後半1 KiBが`sl31254.bin`の既知MD5と
+完全一致した。BIOS inventoryは、この厳密な2つのMD5が一致する場合だけcompound fileを
+分割するよう修正した。FreeChaF自身の説明に従い、代替`sl90025.bin`はoptionalとして
+扱う。再生成結果は488 file、missing required 2、missing optional 35。実機も488/488
+SHA一致となり、Channel FとColecoVisionはstartup、DRM image、ALSA pointerに合格した。
 
 ### PID 1 stopped reaping after the first frontend exit
 
@@ -57,8 +65,10 @@ smoke validatorを修正し、NES再検査ではRetroArchやlauncher shellの追
 System側はone-shot boot setup後にBusyBox initをPID 1としてexecし、明示
 `/etc/inittab`でrecovery consoleを保持する設計へ変更した。隔離コンテナでは意図的に
 孤児化したchildを回収し、System A/B rootfs build/verifyにも合格した。実機の既存186件は
-次回rebootで消える。修正版Systemの署名更新後に、PID 1、FE→game→FE、zombie増分0を
-実機確認する。
+次回rebootで消える。修正版System `0.1.0-dev-51e5ebd`を現行`4993d8c`からのexact-source
+署名packageとして通常A/B更新し、inactive Bへのreadback SHA一致、B boot/active、
+`system_healthy`を確認した。PID 1は`/bin/busybox init`となりzombieは0。NES、Channel F、
+ColecoVisionのFE→game→FEを含む再検査後もzombie増分0に合格した。
 
 ### Minor media hygiene
 
@@ -71,8 +81,8 @@ BOOTのsystem slot周辺に5件、user update inboxに2件のAppleDouble `._*`�
 - 現在ROM cacheがない71 enabled systemの起動・画面・音
 - OpenBORの実LCD表示
 - 全routeの実音、操作、menu/exit、save/load、動的ちらつき
-- BIOS 486件のmerge-only復元後、BIOS依存systemの再起動
-- 修正版Systemを実機反映後のPID 1 child reaping
+- inventoryで現在もmissing requiredの`ecwolf.pk3`と`kick34005.CDTV`
+- VMUのpaired content契約と`vemulator` segfault
 - SambaのmacOS share browse列挙
 
 ## Host verification
@@ -93,9 +103,25 @@ NES graceful-stop recheck
   zombies=186 -> 189
   added: old frontend, text-ui, sdcard cleanup only
   not added: retroarch, launcher shell
+
+Signed System device update
+  source=0.1.0-dev-4993d8c target=0.1.0-dev-51e5ebd
+  active=b booted=b result=system_healthy
+  PID 1=/bin/busybox init
+  NES round trip zombies=0 -> 0
+
+BIOS recovery
+  initial=0/486
+  first merge=486/486
+  Channel F compound split inventory=488/488
+  Channel F and ColecoVision startup/screen/audio=pass
+  post-test zombies=0
 ```
 
 Evidence is retained under ignored local paths:
 
 - `output/validation/pixel2-device-additional-2026-08-22/`
 - `output/validation/pixel2-device-media-2026-08-22-reaper-check/`
+- `output/validation/pixel2-device-media-2026-08-22-pid1-live-check/`
+- `output/validation/pixel2-device-media-2026-08-22-bios-recheck/`
+- `output/validation/pixel2-device-media-2026-08-22-channelf-fixed/`
