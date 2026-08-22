@@ -11,6 +11,10 @@ Wi-Fi接続中の実機で、ユーザーデータを変更しない診断と1 M
 - Runtime: `0.1.0-dev-16150d5`, transaction `runtime_healthy`
 - battery: 91%（完全checksum後）; 追加NES再検査後89%
 
+同日の修正完了時点ではSystem `0.1.0-dev-51e5ebd`（active/booted B）、Runtime
+`0.1.0-dev-947df02`（`runtime_healthy`）へ更新した。最終完全Runtime checksum、
+frontend component 199/199、FE起動、PID 1 BusyBox init、zombie 0に合格した。
+
 ## Passed checks
 
 | area | result |
@@ -76,13 +80,30 @@ BOOTのsystem slot周辺に5件、user update inboxに2件のAppleDouble `._*`�
 管理payload本体とchecksumは正常で、監査中は削除していない。既存のbounded
 `plumos-sdcard-cleanup`対象として扱い、広範囲な手動削除は行わない。
 
+### VMU descriptor and stale per-system cache
+
+`ANIMTEST.VMI`は108-byteのmetadata descriptorで、`vemulator`の対応content
+`vms|dci|bin`には含まれない。これをROMとして起動していたことが`rc=139`の直接原因で、
+有効なpaired VMS dataはROMセット内に存在しなかった。Pixel2 catalogから`vmi`を除外し、
+release auditへ非起動descriptor gateを追加した。
+
+修正後も起動時full scanが`library-index.json`だけを書き換え、FEが読む
+`state/frontend/systems/*.json`を残すため、VMUの古いentryが残った。full scanを88個の
+有効system cacheの正本更新境界とし、各fileをatomic renameした後にdirectoryを1回だけ
+同期する方式へ修正した。実機ではVMU cacheがROM 0件となり、`plumos-text-ui`でも空一覧を
+確認した。cache writeは2.110秒から0.237秒、scan全体は6.397秒から4.515秒へ短縮した。
+
+有効なVMS/DCI/BIN contentがないため、VMU emulatorそのもののstartup、画面、音は
+未検証であり、誤ったVMI起動の失敗とは分けて扱う。
+
 ## Remaining acceptance boundary
 
-- 現在ROM cacheがない71 enabled systemの起動・画面・音
+- launchable ROMがある57 systemのうち未検査41 systemの起動・画面・音
+- launchable ROMがない31 enabled systemへの代表content準備
 - OpenBORの実LCD表示
 - 全routeの実音、操作、menu/exit、save/load、動的ちらつき
 - inventoryで現在もmissing requiredの`ecwolf.pk3`と`kick34005.CDTV`
-- VMUのpaired content契約と`vemulator` segfault
+- VMUの有効なVMS/DCI/BIN contentを入手した後のemulator実機確認
 - SambaのmacOS share browse列挙
 
 ## Host verification
@@ -116,6 +137,14 @@ BIOS recovery
   Channel F compound split inventory=488/488
   Channel F and ColecoVision startup/screen/audio=pass
   post-test zombies=0
+
+Final Runtime/cache refresh
+  source=0.1.0-dev-05898c4 target=0.1.0-dev-947df02
+  transaction=runtime_healthy full_runtime_verify=result-ok
+  frontend checksum=199/199
+  per-system caches=88 VMU roms=0
+  scan total=6.397s -> 4.515s cache write=2.110s -> 0.237s
+  NES startup/screen/audio=pass zombies=0
 ```
 
 Evidence is retained under ignored local paths:

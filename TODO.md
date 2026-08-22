@@ -723,6 +723,10 @@
 - [x] 通常起動のruntime integrity gateを高速化する
   - 2026-08-14: [実機boot profile](docs/validation/2026-08-14-pixel2-boot-profile.md)でkernel開始からFE renderer-readyまで約67.3秒を計測。1.2 GiB・3490 fileのroot checksumが52.60秒（約78%）、request無しPython updaterがcold時4.30秒、System slot checksumが1.16秒、ROM scanは174 msだった。
   - 2026-08-14: `25d1af5`で通常bootのfull hashとidle Python updaterを除外し、`46fb284`で明示`verify-runtime`をBusyBox対応。署名System A/B更新、slot readback、health昇格、active slot再起動に合格。最終通常bootはfrontend process開始8.28秒、renderer-readyは8.67秒以内、ADB 6.97秒、ROM scan 162 ms。完全3490 checksumは更新前と明示保守時だけ合格確認した。
+  - 2026-08-22: full ROM scanだけ更新し、per-system cacheが残って旧拡張子や削除ROMを
+    表示し続ける欠陥を修正。88 cacheをatomic renameし、再生成可能なcacheはbatchで
+    directory durabilityを確定する。実機のcache writeは2.110秒から0.237秒、scan全体は
+    6.397秒から4.515秒へ短縮し、通常bootへの追加負担を約1.88秒削減した。
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [x] app-layer manifest/checksumを実機deploy単位で検証する
   - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。
@@ -748,12 +752,18 @@
     - 静止画で明らかな回転・表示領域逸脱は見えない。可聴音、音質、音飛び、動的な
       ちらつき、厳密なaspect ratio、入力/menu/exit/saveはoperator確認を継続する。
     - 2026-08-22: BIOS復元後のtargeted recheckでChannel FとColecoVisionを3項目合格へ
-      更新。現時点の集計はmachine pass 40、OpenBOR manual display 1、VMU fail 1。
-  - [ ] 現在ROM cacheが無い71 enabled systemへ代表contentを再配置し、同じ3項目を記録する
+      更新。VMUの108-byte `.VMI`はemulator contentではないdescriptorと判明し、catalogから
+      除外した。現時点の有効content集計はmachine pass 40 route、OpenBOR manual display 1。
+  - [ ] 現在launchable ROMがある57 systemのうち未検査41 systemを同じ3項目で記録する
+  - [ ] 現在launchable ROMが無い31 enabled systemへ代表contentを用意する
   - [x] ColecoVisionのBlueMSX BIOSをRA `system_directory`から読める形へmerge配置し、再起動する
     - 2026-08-22: BlueMSX `Machines`/`Databases`を含むBIOS復元後、実機でstartup、
       DRM image、ALSA pointerに合格。項目を完了扱いとする。
-  - [ ] VMUのpaired content契約を確認し、`vemulator`の実機segfault (`rc=139`)を解消する
+  - [x] VMUの`.VMI` descriptorをlaunchable contentから除外し、誤起動segfault (`rc=139`)を解消する
+    - 2026-08-22: `vemulator`対応は`vms|dci|bin`で、ROMセットの`ANIMTEST.VMI`は108-byteの
+      metadata descriptorだけだった。catalog、release audit、起動時per-system cache refreshを
+      修正し、実機VMU ROM list 0件を確認。有効なVMS/DCI/BINがないためemulator自体の
+      startup/display/audio acceptanceは未実施。
   - 2026-08-22: Runtime full checksum、A/B状態、partition、RTC/time sync、全物理key capability、
     RK817 audio route、network往復、temperature/battery、factory reset dry-runを追加監査。
     [検証記録](docs/validation/2026-08-22-pixel2-device-additional-audit.md)を参照。
