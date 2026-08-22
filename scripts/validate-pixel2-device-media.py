@@ -221,9 +221,13 @@ def analyze_capture(directory: Path, base: str) -> dict[str, Any]:
         info["logical_png"] = logical.name
         info["metrics"] = image_metrics(image)
         planes.append(info)
+    # The Pixel2 cursor plane is normally 64x64.  It must never turn a failed
+    # emulator launch into a display pass, so require a panel-sized plane.
     visible = [
         plane
         for plane in planes
+        if plane.get("width", 0) >= 400
+        and plane.get("height", 0) >= 400
         if plane.get("metrics", {}).get("nonblack_ratio", 0) >= 0.01
         and max(plane.get("metrics", {}).get("stddev", [0])) >= 2
     ]
@@ -280,19 +284,15 @@ def launch_one(
     ps_text = (output_dir / f"{base}.ps").read_text(
         encoding="utf-8", errors="replace"
     )
-    live_line = ""
+    live_processes = []
     for line in ps_text.splitlines():
         columns = line.split(None, 5)
-        if len(columns) >= 3 and pid and columns[2] == str(pid):
-            if "plumos-text-ui launch" not in line and "plumos-standalone-launch" not in line:
-                live_line = line.strip()
-                break
-    if not live_line and pid and re.search(rf"^\s*{pid}\s", ps_text, re.MULTILINE):
-        live_line = next(
-            line.strip()
-            for line in ps_text.splitlines()
-            if re.match(rf"^\s*{pid}\s", line)
-        )
+        if len(columns) < 5 or not pid or columns[2] != str(pid):
+            continue
+        stat, command = columns[3], columns[4]
+        if stat.startswith("Z") or command in {"plumos-text-ui", "sh", "bash"}:
+            continue
+        live_processes.append(line.strip())
     launch_log = (output_dir / f"{base}.launch.log").read_text(
         encoding="utf-8", errors="replace"
     )
@@ -310,7 +310,8 @@ def launch_one(
         and isinstance(audio2.get("hw_ptr"), int)
         and audio2["hw_ptr"] != audio1["hw_ptr"]
     )
-    startup = "pass" if live_line else "fail"
+    launch_failed = "execute: failed" in launch_log or "launch command failed" in launch_log
+    startup = "pass" if live_processes and not launch_failed else "fail"
     if capture["machine_visible"]:
         screen = "pass"
     elif startup == "fail":
@@ -340,7 +341,8 @@ def launch_one(
         "screen": screen,
         "audio": audio,
         "overall": overall,
-        "live_process": live_line,
+        "live_process": live_processes[0] if live_processes else "",
+        "live_processes": live_processes,
         "launch_log": launch_log.rstrip(),
         "capture": capture,
         "audio_samples": [audio1, audio2],
