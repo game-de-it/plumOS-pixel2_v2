@@ -477,6 +477,21 @@ patch_core_source() {
     printf '\n[plumOS] patched NeoCD UniBIOS 3.3 to use the Pixel2-compatible top-loader drive path\n' >> "$log"
   fi
 
+  if [ "$id" = "gw" ]; then
+    local soft_geometry_patch="$patch_dir/gw-libretro-soft-first-frame-geometry.patch"
+
+    if [ ! -f "$soft_geometry_patch" ]; then
+      printf '\n[plumOS] missing required Game & Watch first-frame geometry patch\n' >> "$log"
+      return 1
+    fi
+    if ! patch --dry-run -d "$src" -p1 < "$soft_geometry_patch" >/dev/null 2>> "$log"; then
+      printf '\n[plumOS] required Game & Watch first-frame geometry patch does not apply\n' >> "$log"
+      return 1
+    fi
+    patch -d "$src" -p1 < "$soft_geometry_patch" >> "$log" 2>&1
+    printf '\n[plumOS] patched Game & Watch to update only first-frame geometry\n' >> "$log"
+  fi
+
   case "$id" in
     mgba)
       if [ -f "$src/src/core/CMakeLists.txt" ]; then

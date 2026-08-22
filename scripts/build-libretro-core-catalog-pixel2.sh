@@ -119,11 +119,30 @@ forced_rebuild() {
 fingerprint_for() {
     local id="$1"
     local row
+    local patch_inputs=()
     row="$(recipe_row "$id")"
+    case "$id" in
+        gw)
+            patch_inputs+=(
+                "$ROOT_DIR/docker/pixel2-tools/patches/gw-libretro-soft-first-frame-geometry.patch"
+            )
+            ;;
+        neocd)
+            patch_inputs+=(
+                "$ROOT_DIR/docker/pixel2-tools/patches/neocd-unibios-toploader-drive.patch"
+            )
+            ;;
+        scummvm)
+            patch_inputs+=(
+                "$ROOT_DIR/docker/pixel2-tools/patches/scummvm-libretro-audio-clock.patch"
+            )
+            ;;
+    esac
     {
         printf 'pixel2-libretro-catalog-v1\n'
         printf '%s\n' "$row"
-        sha256sum "$ROOT_DIR/scripts/build-libretro-cores.sh" "$RECIPES" |
+        sha256sum "$ROOT_DIR/scripts/build-libretro-cores.sh" "$RECIPES" \
+            "${patch_inputs[@]}" |
             awk '{ print $1 "  " $2 }'
     } | sha256sum | awk '{ print $1 }'
 }

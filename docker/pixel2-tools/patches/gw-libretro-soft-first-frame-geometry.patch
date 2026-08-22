@@ -1,0 +1,20 @@
+diff --git a/src/libretro.c b/src/libretro.c
+index 9ca1d5e..8f6cf14 100644
+--- a/src/libretro.c
++++ b/src/libretro.c
+@@ -394,8 +394,14 @@ void retro_run(void)
+          return;
+       }
+ 
++      /*
++       * The frontend already has the 60 Hz / 44100 Hz timing returned by
++       * retro_get_system_av_info().  Updating the complete AV contract from
++       * the first retro_run() forces a nested video/audio/input driver reinit
++       * on Pixel2.  Only the game-dependent geometry changes here.
++       */
+       retro_get_system_av_info( &info );
+-      env_cb( RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, &info );
++      env_cb( RETRO_ENVIRONMENT_SET_GEOMETRY, &info.geometry );
+ 
+       init = 1;
+    }
