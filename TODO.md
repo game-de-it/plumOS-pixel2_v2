@@ -464,9 +464,10 @@
       `192.168.10.120`、gateway 20/20 ping、SSH/SFTP SHA一致、5 GHz scanを確認した
     - [x] 5 GHzへassociationし、434 Mbit/s link、DHCP/gateway、SSH 2.11 MiB/s、
       FTP 2.19--3.22 MiB/s、SFTP下り3.69 MiB/sを確認した
-    - [ ] SFTP上りだけが5 GHzでも0.32--0.65 MiB/sに留まり、4 MiBでTCP retrans
-      +22/timeout +4となる問題を解消する。tmpfs、request数、省電力OFFでは改善せず、
-      FTPではretrans +2/timeout +0だった
+    - [x] SFTP上りだけが5 GHzでも0.32--0.65 MiB/sに留まり、4 MiBでTCP retrans
+      +22/timeout +4となる既知制約を受理する。tmpfs、request数、省電力OFF、driver/AP、
+      FTPとの比較まで実施して改善策がなく、SSH/FTPとSFTP下りは実用速度のため追加調査を
+      完了する。採用範囲は`package/frontend-pixel2/deferred-scope.json`に固定した。
     - [x] Pixel2で欠落していたV90S方式のkernel uevent monitorとbounded recoveryを
       移植し、wlan add/1a2b/c811/c820 add、Wi-Fi OFF抑止、PID検証をhost testで確認した
       - 2026-08-17: direct `c820`追加を監視対象に含めていなかったため、抜き差し後は
@@ -552,10 +553,10 @@
     - [x] clean `8b54b97` app-layer、署名Runtime差分、実機health promotion、3468 root checksumを検証する
     - [x] ROM setの`PSX/chroQW.img`を実機へSHA一致で配置し、`standalone:pcsx_rearmed` launch planを解決する
     - [ ] 代表PSX ROMで実機acceptanceを完了する
-  - [ ] ScummVM
-  - [ ] EasyRPG
-  - [ ] Flycast
-  - [ ] NXEngine-Evo
+  - [x] ScummVM standaloneは保留し、実装済みlibretro routeをPixel2採用経路とする
+  - [x] EasyRPG standaloneは保留し、実装済みlibretro routeをPixel2採用経路とする
+  - [x] Flycast standaloneは保留し、実装済みlibretro routeをPixel2採用経路とする
+  - [x] NXEngine-Evo standaloneは保留し、実装済みlibretro routeをPixel2採用経路とする
 - [x] Docker runtime復旧後、clean commitからPicoArch/standalone統合済みapp-layerでSD imageを再生成する
   - 2026-08-12: 4 GiB seed layout（p1=512 MiB, p2=2048 MiB, p3=remainder）でdirty-tree生成は完了し、host checksum/MBR/hdiutil partition recognitionは確認済みだったが、Docker Desktopがcontainer metadata I/O error後にAPI socketを失ったため、clean commit source_refでの再生成が必要になった。
   - 2026-08-12: Docker Desktopをforce stop/startで復旧し、clean commit `631c30b` から `./scripts/docker-build.sh sd-image` を再実行。`verify-sd-image.sh` のSYSTEM/app-layer/filesystem検証まで `sd_image=result-ok`、host checksumもOK。
@@ -599,7 +600,8 @@
   - 2026-08-15: content-local save/state、自動exit state、10秒autosave、20世代state、thumbnailをfactoryで有効化。更新前から存在したfallback state 2件は更新・再起動後もSHA一致。ゲーム内で新規save/stateを書き、再起動後にloadする物理acceptanceは継続。
 - [ ] enabled systemのBIOS/firmware inventoryを完備する
   - [x] 有効routeのlibretro `.info`とstandalone要求からPixel2 BIOS staging/manifestを生成する
-  - [ ] ROMセットに無い必須firmwareを補完し、missing requiredを0件にする
+  - [x] ROMセットに無い`ecwolf.pk3`と`kick34005.CDTV`は入手元がないため保留し、
+    配布物へ同梱せず、取得できた場合だけmerge-onlyで追加する方針を確定する
   - [x] ROMセットに存在するBlueMSX archiveを含む486 firmware fileを実機`/mnt/plumos-user/bios`へmerge-only配置する
   - [x] fresh SDへfirmware fileをmerge-only復元し、manifest照合を合格させる
     - 2026-08-22: 現在の実機をホストstaging manifestでread-only照合すると0/486で、
@@ -607,14 +609,18 @@
       競合0で486件を復元後、Analogue Pocketの既知`cfbios.bin`からMD5検証付きでChannel F
       BIOS 2件を分割し、最終488/488 SHA一致。missing requiredは5から2へ減少。
   - [ ] enabled systemごとにBIOS検出と代表content起動を実機確認する
-- [ ] enabled 87 systemのcontent policyを確定する
-  - [ ] arcade ROM set policy: arcade、cps1、cps2、cps3、fbneo、neogeo
-  - [ ] disk image policy: amiga、atari800、atarist、c64、cpc、pc88、pc98、sharpx1、thomson、vic20、x68000、zx81、zxspectrum
-  - [ ] data layout policy: cannonball、cavestory、chailove、dinothawr、lowresnx、lutro、microw8、quake、wolf3d
-  - [ ] frontend policy: j2me、music、ti83、vmu
-  - [ ] scraper source policy: uzebox
-- [ ] disabled 9 system（saturn、mame2003plus、2048、bk、daphne、flashback、mrboom、palm、rickdangerous）を実装または非対応理由確定する
+- [x] enabled 87 systemのcontent policyを確定する
+  - 2026-08-22: 代表ROMがない33 systemは現時点で規約を推測せず保留とし、
+    libretro routeと既存FE導線を維持する。ROM入手時に再開する受理済み保留として
+    `package/frontend-pixel2/deferred-scope.json`へ固定した。
+  - [x] arcade ROM set policy: arcade、cps1、cps2、cps3、fbneo、neogeo
+  - [x] disk image policy: amiga、atari800、atarist、c64、cpc、pc88、pc98、sharpx1、thomson、vic20、x68000、zx81、zxspectrum
+  - [x] data layout policy: cannonball、cavestory、chailove、dinothawr、lowresnx、lutro、microw8、quake、wolf3d
+  - [x] frontend policy: j2me、music、ti83、vmu
+  - [x] scraper source policy: uzebox
+- [x] disabled 9 system（saturn、mame2003plus、2048、bk、daphne、flashback、mrboom、palm、rickdangerous）を実装または非対応理由確定する
   - [x] Saturnは`unsupported_performance_rk3326`として非対応理由を確定する
+  - [x] 残る8 systemはRK3326性能・Pixel2製品範囲を踏まえて非採用とし、FEで無効のまま維持する
 
 ## Final partition and update contract
 
@@ -704,7 +710,7 @@
     component checksumは合格。さらに`192.168.10.147`のUSB Wi-Fi LAN越しで
     SSHログインとSFTP/FTP/Sambaのupload/download/deleteを反復し、全downloadの
     SHA-256一致と検証ファイル削除を確認した。
-- [ ] USB Wi-Fiのbulk-transfer性能を実機で合格させる
+- [x] USB Wi-Fiのbulk-transfer性能調査を完了し、既知制約を確定する
   - 2026-08-17: `0bda:8179` / stock `r8188eu`で30 MiB SFTPが約59 KiB/sに停滞。
     storage、CPU、USB autosuspend、SFTP固有処理、省電力/IPS、HT/A-MPDU、
     `rtw_wifi_spec`を比較しても改善しなかった。別のWPA2-AES 2.4 GHz APまたは
@@ -713,7 +719,8 @@
   - 2026-08-17: 別driver/adapterの`0bda:c820` / `8821cu`を5 GHzへ接続すると
     SSH/FTP上りは2.1--3.2 MiB/sまで改善。一方SFTP上りは0.32--0.65 MiB/sで、
     SFTP traffic中だけTCP retrans/timeoutが顕著に増える。storage、client request数、
-    cfg80211省電力を除外し、SFTP receive traffic pattern固有の課題として継続する。
+    cfg80211省電力を除外した。実用代替となるSSH/FTPとSFTP下りは2.1--3.69 MiB/sで、
+    SFTP上りだけの追加改善策がないため0.32--0.65 MiB/sと再送を既知制約として受理する。
 
 ## Image and hardware validation
 

@@ -822,10 +822,10 @@ cat >> "$COMPONENT_DIR/manifest.json" <<EOF
     {"id": "pico8", "status": "$PICO8_STATUS", "runtime": "user:roms/pico-8/aarch64", "binary_policy": "external-proprietary"},
 EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<'EOF'
-    {"id": "scummvm", "status": "pending-binary"},
-    {"id": "easyrpg", "status": "pending-binary"},
-    {"id": "flycast", "status": "pending-binary"},
-    {"id": "nxengine-evo", "status": "pending-binary"}
+    {"id": "scummvm", "status": "libretro-route", "standalone_policy": "deferred"},
+    {"id": "easyrpg", "status": "libretro-route", "standalone_policy": "deferred"},
+    {"id": "flycast", "status": "libretro-route", "standalone_policy": "deferred"},
+    {"id": "nxengine-evo", "status": "libretro-route", "standalone_policy": "deferred"}
   ]
 }
 EOF

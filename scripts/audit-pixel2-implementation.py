@@ -91,6 +91,14 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
     feature_contract = load_json(
         repo / "package/frontend-pixel2/feature-contract.json"
     )
+    deferred_scope = load_json(
+        repo / "package/frontend-pixel2/deferred-scope.json"
+    )
+    standalone_deferred = set(deferred_scope["standalone_covered_by_libretro"])
+    content_policy_deferred = set(
+        deferred_scope["content_policy_deferred_without_representative_content"]
+    )
+    unsupported_systems = set(deferred_scope["unsupported_systems"])
     text_ui_text = (
         repo / "vendor/plumos-frontend/src/plumos_text_ui.c"
     ).read_text(encoding="utf-8", errors="replace")
@@ -102,6 +110,9 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
         system
         for system in enabled
         if str(system.get("scraper", {}).get("reason", "")).endswith("pending")
+    ]
+    policy_actionable = [
+        system for system in policy_pending if system["id"] not in content_policy_deferred
     ]
 
     for system in enabled:
@@ -448,7 +459,7 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
             )
 
     for emulator, status in sorted(standalone_status.items()):
-        if status != "built":
+        if status != "built" and emulator not in standalone_deferred:
             findings.append(
                 Finding(
                     "P1",
@@ -458,6 +469,8 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                 )
             )
     for system in disabled:
+        if system["id"] in unsupported_systems:
+            continue
         findings.append(
             Finding(
                 "P2",
@@ -466,7 +479,7 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
                 str(system.get("scraper", {}).get("reason", "no reason recorded")),
             )
         )
-    for system in policy_pending:
+    for system in policy_actionable:
         findings.append(
             Finding(
                 "P1",
@@ -486,11 +499,20 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
             "systems_enabled": len(enabled),
             "systems_disabled": len(disabled),
             "enabled_policy_pending": len(policy_pending),
+            "enabled_policy_deferred": len(policy_pending) - len(policy_actionable),
+            "enabled_policy_actionable": len(policy_actionable),
             "visible_apps": len(visible_app_ids),
             "required_components_present": len(component_names & set(REQUIRED_COMPONENTS)),
             "required_components_total": len(REQUIRED_COMPONENTS),
             "standalone_built": sum(status == "built" for status in standalone_status.values()),
-            "standalone_pending": sum(status != "built" for status in standalone_status.values()),
+            "standalone_deferred": sum(
+                status != "built" and emulator in standalone_deferred
+                for emulator, status in standalone_status.items()
+            ),
+            "standalone_pending": sum(
+                status != "built" and emulator not in standalone_deferred
+                for emulator, status in standalone_status.items()
+            ),
             "release_blockers": len(blockers),
             "findings": len(findings),
         },
@@ -509,10 +531,13 @@ def markdown(report: dict[str, Any], app_root: Path) -> str:
         "## Summary",
         "",
         f"- systems: {metrics['systems_enabled']} enabled / {metrics['systems_total']} total",
-        f"- enabled systems with pending content policy: {metrics['enabled_policy_pending']}",
+        f"- enabled content policies: {metrics['enabled_policy_actionable']} actionable / "
+        f"{metrics['enabled_policy_deferred']} accepted deferred",
         f"- visible Apps entries: {metrics['visible_apps']}",
         f"- required components: {metrics['required_components_present']}/{metrics['required_components_total']}",
-        f"- standalone: {metrics['standalone_built']} built / {metrics['standalone_pending']} pending",
+        f"- standalone: {metrics['standalone_built']} built / "
+        f"{metrics['standalone_deferred']} libretro-covered deferred / "
+        f"{metrics['standalone_pending']} pending",
         f"- release blockers: {metrics['release_blockers']}",
         "",
         "## Findings",

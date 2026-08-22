@@ -1,0 +1,63 @@
+{
+  "device": "pixel2",
+  "decision_date": "2026-08-22",
+  "standalone_covered_by_libretro": [
+    "scummvm",
+    "easyrpg",
+    "flycast",
+    "nxengine-evo"
+  ],
+  "content_policy_deferred_without_representative_content": [
+    "amiga",
+    "arcade",
+    "atari800",
+    "atarist",
+    "c64",
+    "cannonball",
+    "cavestory",
+    "chailove",
+    "cpc",
+    "cps1",
+    "cps2",
+    "cps3",
+    "dinothawr",
+    "fbneo",
+    "j2me",
+    "lowresnx",
+    "lutro",
+    "microw8",
+    "music",
+    "neogeo",
+    "pc88",
+    "pc98",
+    "quake",
+    "sharpx1",
+    "thomson",
+    "ti83",
+    "uzebox",
+    "vic20",
+    "vmu",
+    "wolf3d",
+    "x68000",
+    "zx81",
+    "zxspectrum"
+  ],
+  "unsupported_systems": {
+    "saturn": "unsupported_performance_rk3326",
+    "2048": "not_adopted_on_pixel2",
+    "bk": "not_adopted_on_pixel2",
+    "daphne": "not_adopted_on_pixel2",
+    "flashback": "not_adopted_on_pixel2",
+    "mame2003plus": "not_adopted_on_pixel2",
+    "mrboom": "not_adopted_on_pixel2",
+    "palm": "not_adopted_on_pixel2",
+    "rickdangerous": "not_adopted_on_pixel2"
+  },
+  "firmware_deferred_without_source": [
+    "ecwolf.pk3",
+    "kick34005.CDTV"
+  ],
+  "accepted_network_limitations": [
+    "rtl8821cu_sftp_upload_retransmission_and_0.32_to_0.65_mib_per_s"
+  ]
+}

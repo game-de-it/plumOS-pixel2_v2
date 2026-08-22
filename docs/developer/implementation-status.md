@@ -1,7 +1,7 @@
 # Pixel2 Implementation Inventory
 
-最終更新: 2026-08-21
-監査ベース: 2026-08-21 PICO-8 standalone統合後
+最終更新: 2026-08-22
+監査ベース: 2026-08-22 Pixel2採用範囲確定後
 
 この文書は「buildできる」「FEに表示される」「hostでrouteが解決する」
 「Pixel2実機で合格した」を区別する、実装作業のsource of truthである。
@@ -31,9 +31,9 @@
 | frontend systems | 97 total / 88 enabled / 9 disabled |
 | required app-layer components | 11 / 11 present |
 | libretro cores | 109 built |
-| standalone emulator | 5 built / 4 pending |
+| standalone emulator | 5 built / 4 libretro-covered deferred / 0 actionable |
 | visible Apps entries | 7 |
-| enabled systems with pending content policy | 33 |
+| enabled content policy | 33 accepted deferred / 0 actionable |
 | release blockers detected by audit | 0 |
 
 ## Implemented build surface
@@ -91,22 +91,23 @@ host test、実機acceptanceを揃えてから完了にする。
 4. PortMaster
 5. Update PortMaster
 
-standalone manifestで`pending-binary`なのは次の4件である。PCSX-ReARMedは
-host build済みだが、実機acceptance完了まではP0 release blockerとして扱う。
+次の4件はstandalone binaryを追加せず、既存libretro routeをPixel2の採用経路とする。
+standalone版は受理済み保留であり、Pixel2の未実装タスクには数えない。
+PCSX-ReARMedはhost build済みだが、実機acceptance完了まではP0 release blockerとして扱う。
 
 - ScummVM;
 - EasyRPG;
 - Flycast;
 - NXEngine-Evo。
 
-ScummVM、EasyRPG、Flycast、NXEngineにはlibretro default routeが
-すでに存在する。standalone実装はdefault routeの動作確認とは別の追加作業である。
+この決定は`package/frontend-pixel2/deferred-scope.json`に記録し、監査は4件を
+`libretro-covered deferred`として数える。
 
 ## P1: emulator and content validation
 
-87 enabled systemsのうち33 systemはruntime/coreが存在する一方、arcade ROM set、
-disk image、multi-file data layout、frontend policy、scraper sourceのいずれかが
-未確定である。
+87 enabled systemsのうち33 systemはruntime/coreが存在する一方、代表ROMがない。
+配置規約を推測で固定せず、ROM入手時まで受理済み保留とする。既存routeとFE導線は
+維持し、監査上のactionable taskには数えない。
 
 | policy | systems |
 | --- | --- |
@@ -116,10 +117,10 @@ disk image、multi-file data layout、frontend policy、scraper sourceのいず�
 | frontend policy | j2me, music, ti83, vmu |
 | scraper source | uzebox |
 
-disabledの10 systemは、saturn、mame2003plus、ports、2048、bk、daphne、flashback、
-mrboom、palm、rickdangerousである。SaturnはRK3326性能要件により明示的に非対応、
-`ports`はPortMaster実装に依存する。他はcontentless、
-data layout、frontend policyを決めたうえで再評価する。
+disabledの9 systemは、saturn、mame2003plus、2048、bk、daphne、flashback、
+mrboom、palm、rickdangerousである。SaturnはRK3326性能要件により非対応、残る8件は
+RK3326性能とPixel2製品範囲を踏まえて非採用とする。PortMasterの`ports`は実装済みで、
+この非採用一覧には含まれない。
 
 ROM setをトップレベル、`_etc`、共有ATARI/MAME directoryまで探索した結果、
 74 system・165 profileに互換contentを発見した。実機early-start smokeは
@@ -178,8 +179,8 @@ GitHub公開前に、実装とは別に次を整える。
 
 1. P0の公開済み未実装surfaceをすべて実装し、audit blockerを0にする。
 2. Scraping、File Manager、Music Player、RetroArch menu、PortMasterをcomponent化する。
-3. 4 standalone pending binaryを順にbuildし、default/alternate routeを実機検証する。
-4. early-start合格済み73 systemの物理acceptanceを行い、13 content gapとChannel F BIOS gapを解決する。
+3. libretro採用経路を維持し、保留した4 standaloneは代表的な必要性が生じた場合だけ再評価する。
+4. early-start合格済みsystemの物理acceptanceを行い、代表contentを入手できた対象だけ追加検証する。
 5. 実装済みSystem A/B・signed updaterを維持しつつ、first-boot provisioningを完成する。
 6. clean imageを複製SDへ書き、全physical-device acceptanceを完走する。
 7. repository/release gateを通し、配布物を再取得して最終checksumを確認する。

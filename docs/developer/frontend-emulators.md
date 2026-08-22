@@ -228,9 +228,10 @@ Do not expose a Nintendo DS libretro DeSmuME route on Pixel2 unless a real
 Pixel2 build-system component exists. The current DS route is
 `standalone:drastic`.
 
-Remaining standalone emulator binaries are intentionally marked
-`pending-binary` until each binary is built, packaged, and physically validated
-on Pixel2.
+ScummVM, EasyRPG, Flycast, and NXEngine-Evo use their existing libretro routes
+as the Pixel2 product path. Their optional standalone binaries are marked
+`libretro-route` / `standalone_policy=deferred`; they are not actionable Pixel2
+implementation gaps unless the product scope is changed explicitly.
 
 Pyxel is packaged as a Pixel2 app-layer component with a bundled Python 3.11
 runtime, pinned baseline Pyxel/pygame/numpy/Pillow wheels, SDL2 KMSDRM/GLES
