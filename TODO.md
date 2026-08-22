@@ -94,6 +94,13 @@
 - [x] FE catalogと生成app-layerの不整合を検出する自動監査を追加する
   - `./scripts/docker-build.sh audit`は開発中のreport、`audit --release-gate`は公開済み未実装があれば失敗する。`release-image`へrelease gateを統合。
 - [ ] P0 user surface blockerを0件にする
+  - [x] one-shot boot後もPID 1にchild reaperを保持する
+    - 2026-08-22: 現行Systemは最初のFE終了後にPID 1をlogin shellへ置換し、42 routeの
+      machine smoke後にPPID 1のzombieが186件蓄積した。boot setup後は明示inittab付き
+      BusyBox initをexecするよう修正し、隔離PID namespaceで孤児childの回収、System
+      A/B rootfs build/verifyに合格。smoke validatorもprofile別の正規stop helperを
+      優先し、全process-group同時killを廃止した。
+  - [ ] 修正版Systemを署名更新し、実機でPID 1=`busybox init`、FE→game→FE後のzombie増分0を確認する
   - [x] `plumos-time-sync`とRK817 RTC/timezone/manual-time contractを実装する
     - 2026-08-13: RK817 `/dev/rtc0`へのUTC保存、8秒上限のRFC868同期、automatic/manual time、status/logをfrontend componentへ統合。実機RTC read/writeと再起動後保持は未検証。
   - [x] `plumos-storage-health`のbounded read-only FAT32検査を実装する
@@ -153,6 +160,9 @@
       SSHへ到達しない欠陥をtraceで特定。System initとapp-layer service managerの
       双方で`lo`と`127.0.0.1/8`を保証し、実機password SSH loginとSFTP upload/
       download同一SHA-256を確認した。
+    - 2026-08-22: Wi-Fi実機でSSH login、SFTP/FTP/Samba `SDCARD`の1 MiB
+      upload/download/deleteを再検査し、全SHA-256一致。macOS `smbutil view`のshare
+      列挙だけ`Broken pipe`だが、`mount_smbfs`による直接mountと実転送は合格。
   - [x] ADBのboot既定値・UI設定・recoveryを一貫させる（2026-08-20 方針変更により廃止）
     - 2026-08-19: Pixel2の単一OTG portに独立したWi-Fi/ADB checkboxを持たせる設計を
       廃止。FEを`USB Mode = ADB / Wi-Fi / Off`の単一選択へ変更し、永続`usb_mode`を
@@ -588,6 +598,9 @@
   - [x] 有効routeのlibretro `.info`とstandalone要求からPixel2 BIOS staging/manifestを生成する
   - [ ] ROMセットに無い必須firmwareを補完し、missing requiredを0件にする
   - [x] ROMセットに存在するBlueMSX archiveを含む486 firmware fileを実機`/mnt/plumos-user/bios`へmerge-only配置する
+  - [ ] fresh SDへ486 firmware fileをmerge-only復元し、manifest照合を486/486に戻す
+    - 2026-08-22: 現在の実機をホストstaging manifestでread-only照合すると0/486で、
+      過去に配置したBIOSがfresh SDへ継承されていない。Channel F/ColecoVision失敗と整合。
   - [ ] enabled systemごとにBIOS検出と代表content起動を実機確認する
 - [ ] enabled 87 systemのcontent policyを確定する
   - [ ] arcade ROM set policy: arcade、cps1、cps2、cps3、fbneo、neogeo
@@ -729,4 +742,7 @@
   - [ ] 現在ROM cacheが無い71 enabled systemへ代表contentを再配置し、同じ3項目を記録する
   - [ ] ColecoVisionのBlueMSX BIOSをRA `system_directory`から読める形へmerge配置し、再起動する
   - [ ] VMUのpaired content契約を確認し、`vemulator`の実機segfault (`rc=139`)を解消する
+  - 2026-08-22: Runtime full checksum、A/B状態、partition、RTC/time sync、全物理key capability、
+    RK817 audio route、network往復、temperature/battery、factory reset dry-runを追加監査。
+    [検証記録](docs/validation/2026-08-22-pixel2-device-additional-audit.md)を参照。
 - [ ] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する
