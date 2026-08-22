@@ -365,7 +365,8 @@ def main() -> int:
         "target=/mnt/plumos-user/Music/plumos-sleep-test.mp3; "
         "size=$(stat -c %s \"$target\" 2>/dev/null || echo 0); "
         "if [ \"$size\" -lt 1048576 ]; then "
-        "source=$(find /mnt/plumos-user/roms/pyxel -type f -name '*.mp3' -size +1M 2>/dev/null | head -n 1); "
+        "source=/mnt/plumos-user/roms/pyxel/LastEmulator_assets/assets/sounds/bgm/BGM_16.mp3; "
+        "[ -f \"$source\" ] || source=$(find /mnt/plumos-user/roms/pyxel -type f -name '*.mp3' 2>/dev/null | head -n 1); "
         "[ -n \"$source\" ] && cp \"$source\" \"$target\" || true; fi"
     )
 
