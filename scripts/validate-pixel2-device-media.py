@@ -310,6 +310,10 @@ def launch_one(
         f"setsid /bin/sh -c {shlex.quote('exec env PLUMOS_ROOT=/mnt/plumos PLUMOS_SDCARD_ROOT=/mnt/plumos-user PLUMOS_RUNTIME_ROOT=/run/plumos /mnt/plumos/bin/plumos-text-ui launch ' + qsystem + ' ' + qrom + ' --profile ' + qprofile + ' --execute --no-scan')} "
         f">{prefix}.launch.log 2>&1 </dev/null & echo $! >{prefix}.pid"
     )
+    remote_pid = device.run(
+        f"cat {prefix}.pid 2>/dev/null || true", check=False
+    ).stdout.strip()
+    pid = int(remote_pid) if remote_pid.isdigit() else 0
     time.sleep(seconds)
     probe = device.run(
         f"pid=$(cat {prefix}.pid 2>/dev/null || true); "
@@ -326,11 +330,32 @@ def launch_one(
         f"for f in {prefix}*; do [ -f \"$f\" ] && printf '%s\\n' \"$f\"; done",
         check=False,
     ).stdout.splitlines()
+    if not remote_files:
+        time.sleep(1)
+        remote_files = device.run(
+            f"for f in {prefix}*; do [ -f \"$f\" ] && printf '%s\\n' \"$f\"; done"
+        ).stdout.splitlines()
     for remote_file in remote_files:
         device.copy_from(remote_file, output_dir / Path(remote_file).name)
 
-    pid_text = (output_dir / f"{base}.pid").read_text().strip()
-    pid = int(pid_text) if pid_text.isdigit() else 0
+    required_evidence = [
+        output_dir / f"{base}{suffix}"
+        for suffix in (
+            ".pid",
+            ".ps",
+            ".launch.log",
+            ".capture.log",
+            ".audio1",
+            ".audio2",
+        )
+    ]
+    missing_evidence = [path.name for path in required_evidence if not path.is_file()]
+    if missing_evidence:
+        stop_launch(device, pid, profile)
+        raise RuntimeError(
+            f"missing device evidence for {system}/{profile}: "
+            + ", ".join(missing_evidence)
+        )
     ps_text = (output_dir / f"{base}.ps").read_text(
         encoding="utf-8", errors="replace"
     )
