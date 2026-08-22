@@ -1352,7 +1352,8 @@ static size_t count_thumbnails_for_system(const struct scan_ctx *ctx, size_t sys
   return count;
 }
 
-static int write_library_index(const struct scan_ctx *ctx, const char *output_path) {
+static int write_library_index(const struct scan_ctx *ctx, const char *output_path,
+                               int durable) {
   char parent[PATH_MAX];
   char tmp_path[PATH_MAX];
   FILE *f;
@@ -1499,7 +1500,7 @@ static int write_library_index(const struct scan_ctx *ctx, const char *output_pa
   fprintf(f, "}\n");
 
   fd = fileno(f);
-  if (fflush(f) != 0 || fd < 0 || fsync(fd) != 0) {
+  if (fflush(f) != 0 || (durable && (fd < 0 || fsync(fd) != 0))) {
     write_ok = 0;
   }
   if (fclose(f) != 0) {
@@ -1514,7 +1515,7 @@ static int write_library_index(const struct scan_ctx *ctx, const char *output_pa
     unlink(tmp_path);
     return 0;
   }
-  return sync_parent_dir(output_path);
+  return durable ? sync_parent_dir(output_path) : 1;
 }
 
 static long long now_ms(void) {
@@ -1742,7 +1743,7 @@ int main(int argc, char **argv) {
   ctx.sort_ms = sorted_ms - scanned_ms;
   ctx.ready_ms = sorted_ms - started_ms;
 
-  if (!write_library_index(&ctx, output_path)) {
+  if (!write_library_index(&ctx, output_path, 1)) {
     free(ctx.roms.items);
     return 1;
   }
@@ -1754,6 +1755,7 @@ int main(int argc, char **argv) {
   if (!system_filter) {
     size_t system_index;
     size_t system_cache_count = 0;
+    char last_system_cache_path[PATH_MAX] = "";
     for (system_index = 0; system_index < ctx.system_count; system_index++) {
       char system_cache_path[PATH_MAX];
       if (!ctx.systems[system_index].enabled) {
@@ -1762,13 +1764,20 @@ int main(int argc, char **argv) {
       ctx.system_filter = ctx.systems[system_index].id;
       if (!build_system_cache_path(system_cache_path, sizeof(system_cache_path),
                                    default_plumos_root, ctx.system_filter) ||
-          !write_library_index(&ctx, system_cache_path)) {
+          !write_library_index(&ctx, system_cache_path, 0)) {
         fprintf(stderr, "error: cannot refresh system cache for %s\n",
                 ctx.system_filter);
         free(ctx.roms.items);
         return 1;
       }
+      copy_string(last_system_cache_path, sizeof(last_system_cache_path),
+                  system_cache_path);
       system_cache_count++;
+    }
+    if (system_cache_count > 0 && !sync_parent_dir(last_system_cache_path)) {
+      fprintf(stderr, "error: cannot sync refreshed system cache directory\n");
+      free(ctx.roms.items);
+      return 1;
     }
     ctx.system_filter = NULL;
     printf("wrote_system_caches=%zu\n", system_cache_count);
