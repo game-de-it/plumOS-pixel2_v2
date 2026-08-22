@@ -148,6 +148,12 @@
     - 2026-08-16: PicoArchは署名Runtime `0.1.0-dev-45b4505`でPower menuからの
       sleep/wakeと、ゲーム画面・内蔵menu双方の物理D-pad操作をoperator合格とした。
       `d1f5ea1`でPixel2固有`BTN_DPAD_*`をgame/menu bindへ追加済み。
+    - 2026-08-23: 物理menu選択だけをtest helperへ置換し、実overlay ownership、
+      RTC wake、DRM capture、ALSA pointerをRA/SA/PicoArch/Appsで共通検査する
+      `validate-pixel2-sleep-matrix.py`を追加。FDS/FCEUmm、PPSSPP、FBNeoはkernel
+      `mem` suspend、同一process group、前後画面、復帰後音声を機械合格。
+      Music Playerはblocking ALSA writeがresume後`SUSPENDED`で止まる問題を検出し、
+      nonblocking writeと`EAGAIN/EPIPE/ESTRPIPE`回復を実装。修正版の実機再試験を行う。
     - 2026-08-16: Gambatteで音声だけ継続してLCDが黒くなる状態を、fbdevには有効な
       frameがある一方KMS active planeがない問題と特定。`d242dfc`で初回frameと
       `SIGCONT`後だけUNBLANK/PANし、Gambatte固有RGB565 byte swapも既存XU20の

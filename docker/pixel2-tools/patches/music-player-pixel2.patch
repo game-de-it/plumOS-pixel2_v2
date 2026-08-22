@@ -39,12 +39,13 @@ diff --git a/plumos_music_player.c b/plumos_music_player.c
  }
  
  static void scan_music(struct player_state *state) {
-@@ -329,6 +360,10 @@
+@@ -329,6 +360,11 @@
        "roms/Music",
    };
    const char *sd2_roots[] = {
 +      "/mnt/plumos-user/music",
 +      "/mnt/plumos-user/MUSIC",
++      "/mnt/plumos-user/Music",
 +      "/mnt/plumos-user/roms/music",
 +      "/mnt/plumos-user/roms/MUSIC",
        "/run/plumos/sd2/music",
@@ -225,6 +226,41 @@ diff --git a/plumos_music_player.c b/plumos_music_player.c
    }
  
    state.running = 0;
+diff --git a/plumos_music_player.c b/plumos_music_player.c
+--- a/plumos_music_player.c
++++ b/plumos_music_player.c
+@@ -1697,4 +1697,5 @@ static int open_configured_alsa(struct player_state *state,
+-  rc = snd_pcm_open(&out->alsa, device, SND_PCM_STREAM_PLAYBACK, 0);
++  rc = snd_pcm_open(&out->alsa, device, SND_PCM_STREAM_PLAYBACK,
++                    SND_PCM_NONBLOCK);
+   if (rc < 0) {
+     pthread_mutex_lock(&state->lock);
+     set_audio_status_locked(state, "audio: ALSA open failed");
+@@ -1752,8 +1753,22 @@ static int music_audio_output_write(struct music_audio_output *out,
+           snd_pcm_writei(out->alsa,
+                          data + (size_t)pos * MUSIC_OUTPUT_CHANNELS,
+                          (snd_pcm_uframes_t)(frames - pos));
+-      if (rc == -EPIPE) {
+-        snd_pcm_prepare(out->alsa);
++      if (rc == -EAGAIN) {
++        rc = snd_pcm_wait(out->alsa, 20);
++        if (rc >= 0) {
++          continue;
++        }
++      }
++      if (rc == -EPIPE || rc == -ESTRPIPE) {
++        int recovery = snd_pcm_recover(out->alsa, (int)rc, 1);
++        if (recovery < 0 && rc == -ESTRPIPE) {
++          recovery = snd_pcm_prepare(out->alsa);
++        }
++        if (recovery < 0) {
++          fprintf(stderr, "audio alsa recovery failed rc=%d %s\n", recovery,
++                  snd_strerror(recovery));
++          return 0;
++        }
+         continue;
+       }
+       if (rc < 0) {
 diff --git a/plumos_music_pixel2_renderer.h b/plumos_music_pixel2_renderer.h
 --- a/plumos_music_pixel2_renderer.h
 +++ b/plumos_music_pixel2_renderer.h

@@ -686,6 +686,16 @@ grep -q 'case BTN_TRIGGER_HAPPY1:' \
     "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
 grep -q 'B/FUNCTION Exit' \
     "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+grep -q 'SND_PCM_NONBLOCK' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+grep -q 'rc == -EPIPE || rc == -ESTRPIPE' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+grep -q '/mnt/plumos-user/Music' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"
+test -x "$ROOT_DIR/scripts/pixel2-sleep-auto-select.sh"
+test -x "$ROOT_DIR/scripts/pixel2-sleep-cycle-device.sh"
+test -x "$ROOT_DIR/scripts/validate-pixel2-sleep-matrix.py"
+python3 -m py_compile "$ROOT_DIR/scripts/validate-pixel2-sleep-matrix.py"
 grep -q 'logical_width = (r->rotation == 1 || r->rotation == 3)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_fbdev_renderer.h"
 grep -q '? (int)r->physical_yres' \
