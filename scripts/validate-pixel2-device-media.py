@@ -421,6 +421,11 @@ def main() -> int:
     parser.add_argument("--seconds", type=int, default=8)
     parser.add_argument("--systems", default="")
     parser.add_argument("--all-profiles", action="store_true")
+    parser.add_argument(
+        "--skip-default-profile",
+        action="store_true",
+        help="with --all-profiles, exercise only non-default profiles",
+    )
     parser.add_argument("--output", default="")
     args = parser.parse_args()
 
@@ -453,6 +458,12 @@ def main() -> int:
             rom = select_rom(row["roms"])
             profiles = row["profiles"] if args.all_profiles else [row["default_profile"]]
             profiles = [profile for profile in profiles if profile]
+            if args.skip_default_profile:
+                profiles = [
+                    profile
+                    for profile in profiles
+                    if profile != row["default_profile"]
+                ]
             for profile in profiles:
                 print(
                     f"[{index}/{len(candidates)}] {row['id']} {profile}: {rom}",
