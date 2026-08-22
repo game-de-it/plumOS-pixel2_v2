@@ -1,0 +1,5 @@
+# plumOS Pixel2 performs one-shot system setup in /sbin/init, then execs the
+# BusyBox init applet solely as the long-lived child reaper and recovery-console
+# owner.  Do not add a sysinit action here: all boot services are already up.
+::askfirst:-/bin/sh
+::ctrlaltdel:/bin/busybox reboot

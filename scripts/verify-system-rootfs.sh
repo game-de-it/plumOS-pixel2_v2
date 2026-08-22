@@ -25,6 +25,10 @@ trap 'rm -rf "$tmp"' EXIT
 unsquashfs -d "$tmp/rootfs" "$IMAGE" >/dev/null
 
 test -x "$tmp/rootfs/sbin/init"
+test -r "$tmp/rootfs/etc/inittab"
+grep -q 'exec \$bb init' "$tmp/rootfs/sbin/init"
+grep -q '^::askfirst:-/bin/sh$' "$tmp/rootfs/etc/inittab"
+grep -q '^::ctrlaltdel:/bin/busybox reboot$' "$tmp/rootfs/etc/inittab"
 test -d "$tmp/rootfs/.plumos-dispatcher-old"
 grep -q 'umount /.plumos-dispatcher-old' "$tmp/rootfs/sbin/init"
 grep -q '^ID=plumos$' "$tmp/rootfs/etc/os-release"

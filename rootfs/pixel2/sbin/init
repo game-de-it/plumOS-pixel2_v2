@@ -202,16 +202,9 @@ done
 /usr/bin/plumos-diagnostics > /state/plumos/logs/runtime-diagnostics.txt 2>&1 || true
 
 printf 'plumos-init=result-ready console=tty1\n'
-if [ -s /run/plumos/frontend.pid ]; then
-    frontend_pid=$($bb cat /run/plumos/frontend.pid 2>/dev/null || true)
-    case "$frontend_pid" in
-        ''|*[!0-9]*) ;;
-        *)
-            while $bb kill -0 "$frontend_pid" 2>/dev/null; do
-                $bb sleep 2
-            done
-            printf 'plumos-init=warn frontend=stopped pid=%s\n' "$frontend_pid"
-            ;;
-    esac
-fi
-exec $bb setsid $bb cttyhack /bin/sh -l
+# Keep a real init as PID 1 after the one-shot plumOS boot setup.  The previous
+# frontend wait followed by a login shell left no child reaper once the first
+# frontend process exited; emulator and launcher descendants then accumulated
+# as zombies under PID 1.  BusyBox init preserves the recovery console while
+# continuously reaping orphaned descendants.
+exec $bb init
