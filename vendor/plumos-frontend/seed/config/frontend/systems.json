@@ -2454,7 +2454,7 @@
         {"name": "VMU", "source": "plumos", "priority": 10},
         {"name": "vmu", "source": "plumos", "priority": 20}
       ],
-      "extensions": ["vms", "vmi", "dci", "bin"],
+      "extensions": ["vms", "dci", "bin"],
       "artwork": {
         "lookup": [
           {"root": "sdcard", "path": "Images/vmu"}

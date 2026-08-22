@@ -4727,7 +4727,6 @@
       ],
       "extensions": [
         "vms",
-        "vmi",
         "dci",
         "bin"
       ],

@@ -48,6 +48,12 @@ USER_SURFACE_HELPERS = {
     "plumos-sdcard-cleanup": "post-scan removable-storage cleanup",
 }
 
+# Metadata descriptors are not executable content.  A frontend converter may
+# opt into one later, but no current Pixel2 launch route resolves these files.
+NON_LAUNCHABLE_DESCRIPTOR_EXTENSIONS = {
+    "vmi": "VeMUlator accepts vms/dci/bin data, not a 108-byte VMI descriptor",
+}
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -97,6 +103,20 @@ def audit(repo: Path, app_root: Path) -> dict[str, Any]:
         for system in enabled
         if str(system.get("scraper", {}).get("reason", "")).endswith("pending")
     ]
+
+    for system in enabled:
+        for extension in system.get("extensions", []):
+            reason = NON_LAUNCHABLE_DESCRIPTOR_EXTENSIONS.get(extension.casefold())
+            if reason:
+                findings.append(
+                    Finding(
+                        "P0",
+                        "frontend-content",
+                        f"{system['id']}:.{extension}",
+                        reason,
+                        True,
+                    )
+                )
 
     if not app_root.is_dir():
         findings.append(

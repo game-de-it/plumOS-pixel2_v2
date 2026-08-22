@@ -21,5 +21,8 @@ python3 "$AUDIT" --app-root "$ROOT_DIR/output/app-layer/pixel2/plumos" \
 grep -q 'implementation_audit=result-ok release_blockers=0' "$work/release-gate.log"
 grep -q './scripts/audit-pixel2-implementation.py --release-gate' \
   "$ROOT_DIR/scripts/docker-build.sh"
+jq -e '.systems[] | select(.id == "vmu") | (.extensions | index("vmi") | not)' \
+  "$ROOT_DIR/package/frontend-pixel2/systems.json" >/dev/null
+grep -q 'NON_LAUNCHABLE_DESCRIPTOR_EXTENSIONS' "$AUDIT"
 
 printf 'implementation_audit_test=result-ok\n'
