@@ -53,6 +53,14 @@ After the normal update reboot:
 - live PicoArch SHA-256 matched the host artifact at
   `0bee39143ddbf3ff26f3d6194644d86a1866727850c4a106cf7a0b09e0b786d4`;
 - `plumos-system-update verify-runtime` returned `runtime_verify=result-ok`;
-- FBNeo `jackal-arcade.zip` launched through the normal PicoArch profile.
+- FBNeo `jackal-arcade.zip` reached the expected PicoArch process through its
+  configured launch profile.
+
+The first SSH-driven launch did not stop the already-running frontend. Both
+processes then owned the display concurrently and PicoArch logged repeated
+`frame-resume ... Device or resource busy`; this was an invalid visual test,
+not an FBNeo crash. The test PicoArch process was stopped, the frontend was
+cleanly restarted as the sole display owner, and subsequent acceptance must use
+the real frontend launch transition.
 
 Physical Function/menu acceptance remains pending.
