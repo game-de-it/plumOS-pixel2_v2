@@ -452,6 +452,8 @@ if [ "$(uname -m)" = aarch64 ]; then
         -c 'import pyxel, pygame, numpy, PIL' >/dev/null
     printf 'NES-test-fixture' >"$runtime_tmp/roms/nes/test.nes"
     printf 'print("Pyxel test fixture")\n' >"$runtime_tmp/roms/pyxel/test.pyxapp"
+    printf '#!/bin/sh\nexit 0\n' >"$runtime_tmp/roms/ports/test.sh"
+    chmod 0755 "$runtime_tmp/roms/ports/test.sh"
     PLUMOS_ROOT="$runtime_tmp/app" \
         PLUMOS_SDCARD_ROOT="$runtime_tmp" \
         PLUMOS_ROM_ROOT="$runtime_tmp/roms" \
@@ -470,8 +472,6 @@ if [ "$(uname -m)" = aarch64 ]; then
         >"$runtime_tmp/pyxel-launch-plan.txt"
     grep -q '^launch_profile: pyxel:pixel2$' "$runtime_tmp/pyxel-launch-plan.txt"
     grep -q '^can_execute: yes$' "$runtime_tmp/pyxel-launch-plan.txt"
-    printf '#!/bin/sh\nexit 0\n' >"$runtime_tmp/roms/ports/test.sh"
-    chmod 0755 "$runtime_tmp/roms/ports/test.sh"
     PLUMOS_ROOT="$runtime_tmp/app" \
         PLUMOS_SDCARD_ROOT="$runtime_tmp" \
         PLUMOS_ROM_ROOT="$runtime_tmp/roms" \
