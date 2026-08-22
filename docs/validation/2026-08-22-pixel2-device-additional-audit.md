@@ -96,9 +96,46 @@ release auditへ非起動descriptor gateを追加した。
 有効なVMS/DCI/BIN contentがないため、VMU emulatorそのもののstartup、画面、音は
 未検証であり、誤ったVMI起動の失敗とは分けて扱う。
 
+### Remaining launchable systems and Game & Watch
+
+既存17 systemの検査後にROM cacheを持つ未検査41 systemをdefault profileで実行した。
+全41 systemで実emulator processが継続し、明確な起動失敗は0となった。最終の自動集計は
+次の通り。
+
+| dimension | pass | manual | fail |
+|---|---:|---:|---:|
+| startup | 41 | 0 | 0 |
+| panel-size DRM screen | 38 | 3 | 0 |
+| ALSA pointer | 37 | 4 | 0 |
+| overall | 35 | 6 | 0 |
+
+初回検査の明確な失敗5件は、emulatorへ渡すcontent契約を絞って4件を解消した。
+Neo Geo CDはMP3 trackのCUEを除外しWAV CUEを選択、ScummVMは`.scummvm`/`.svm`
+markerを持つdirectory、Game & Watchは単一MGWを含むZIP、Lutroは`main.lua`を持つ
+directory、PC-FXはCUE/CCD/TOC/CHDだけをlaunchableとした。
+
+Game & Watchだけはcontent修正後も`gw_libretro`が`rc=139`となった。core dumpと一時診断
+coreで、最初の`retro_run()`から`RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO`を発行し、Pixel2
+RetroArchのvideo/audio/input driverを入れ子で完全再初期化する境界を原因と特定した。
+初期`retro_get_system_av_info()`ですでに60 Hz / 44100 Hz timingは渡されているため、
+game依存geometryだけを`RETRO_ENVIRONMENT_SET_GEOMETRY`で更新する必須patchへ変更した。
+core patchはビルド時のdry-run/application gateとcore cache fingerprintへ含めた。
+
+正式AArch64 core SHA-256は
+`456400dcf5158446f085a89e40b02018847c3bdc7cb8e4501cefb050387a2ac6`。
+exact-source署名Runtime `0.1.0-dev-f49d7ed`を`3ec83c2`から適用し、app manifestと
+109-core manifestのsource ref、managed checksum、FE復帰、zombie 0を確認した。
+Snoopyを15秒実行してstartup、正立DRM image、ALSA pointerの全項目に合格した。
+
+manual 6件のうちLutroは非黒率0.8%のため自動閾値を下回っただけで、保存captureには
+正立したPong画面がある。FDSはALSA進行中もcaptureが全黒、PC-FXは白一色でALSAが
+PREPAREDへ戻る。J2ME、TI-83、Uzeboxは画面合格だが試験場面で音声を確定できない。
+これらは起動失敗とは分け、実LCD・可聴音または別contentでの確認を継続する。
+
 ## Remaining acceptance boundary
 
-- launchable ROMがある57 systemのうち未検査41 systemの起動・画面・音
+- FDSの全黒画面とPC-FXの白一色画面／音声停止を別contentまたは実LCDで確認
+- J2ME、TI-83、Uzeboxの可聴音（試験場面ではALSA進行を確定できない）
 - launchable ROMがない31 enabled systemへの代表content準備
 - OpenBORの実LCD表示
 - 全routeの実音、操作、menu/exit、save/load、動的ちらつき
@@ -145,6 +182,14 @@ Final Runtime/cache refresh
   per-system caches=88 VMU roms=0
   scan total=6.397s -> 4.515s cache write=2.110s -> 0.237s
   NES startup/screen/audio=pass zombies=0
+
+Remaining 41-system media smoke and Game & Watch fix
+  startup=41 pass / 0 manual / 0 fail
+  screen=38 pass / 3 manual / 0 fail
+  audio=37 pass / 4 manual / 0 fail
+  overall=35 pass / 6 manual / 0 fail
+  Game & Watch runtime=0.1.0-dev-f49d7ed startup/screen/audio=pass
+  frontend=running zombies=0 battery=55%
 ```
 
 Evidence is retained under ignored local paths:
@@ -154,3 +199,12 @@ Evidence is retained under ignored local paths:
 - `output/validation/pixel2-device-media-2026-08-22-pid1-live-check/`
 - `output/validation/pixel2-device-media-2026-08-22-bios-recheck/`
 - `output/validation/pixel2-device-media-2026-08-22-channelf-fixed/`
+- `output/validation/pixel2-device-media-2026-08-22-runtime-947df02-batch1/`
+- `output/validation/pixel2-device-media-2026-08-22-runtime-947df02-batch2/`
+- `output/validation/pixel2-device-media-2026-08-22-runtime-947df02-batch3b/`
+- `output/validation/pixel2-device-media-2026-08-22-runtime-947df02-batch4/`
+- `output/validation/pixel2-device-media-2026-08-22-runtime-947df02-batch5/`
+- `output/validation/pixel2-device-media-2026-08-22-content-contracts/`
+- `output/validation/pixel2-device-media-2026-08-22-gw-f49d7ed/`
+- `output/validation/pixel2-device-media-2026-08-22-long-recheck-f49d7ed/`
+- `output/validation/pixel2-device-media-2026-08-22-batch3-recheck-f49d7ed/`

@@ -754,7 +754,16 @@
     - 2026-08-22: BIOS復元後のtargeted recheckでChannel FとColecoVisionを3項目合格へ
       更新。VMUの108-byte `.VMI`はemulator contentではないdescriptorと判明し、catalogから
       除外した。現時点の有効content集計はmachine pass 40 route、OpenBOR manual display 1。
-  - [ ] 現在launchable ROMがある57 systemのうち未検査41 systemを同じ3項目で記録する
+  - [x] 現在launchable ROMがある57 systemのうち未検査41 systemを同じ3項目で記録する
+    - 2026-08-22: 全41 systemで実emulator processの継続を確認し、明確な起動失敗は0。
+      自動総合は35 pass / 6 manual、screenは38 pass / 3 manual、audioは37 pass /
+      4 manual。Lutroは非黒率0.8%で自動閾値未満だが、DRM captureでは正立したPong
+      画面を確認した。FDSは音声進行中も全黒、PC-FXは白一色かつ音声継続なし。
+      J2ME、TI-83、Uzeboxは画面合格だが試験場面でaudioを機械確定できない。
+    - Neo Geo CD、ScummVM、Game & Watch、Lutro、PC-FXの誤content選択を修正。
+      Game & Watchは初回`retro_run()`内の完全AV再初期化でPixel2 RetroArch DRM経路が
+      `rc=139`となっていたため、初回はgeometryだけを更新するcore patchをビルドシステムへ
+      必須化。署名Runtime `0.1.0-dev-f49d7ed`で15秒のstartup/DRM/ALSAを全て合格した。
   - [ ] 現在launchable ROMが無い31 enabled systemへ代表contentを用意する
   - [x] ColecoVisionのBlueMSX BIOSをRA `system_directory`から読める形へmerge配置し、再起動する
     - 2026-08-22: BlueMSX `Machines`/`Databases`を含むBIOS復元後、実機でstartup、
