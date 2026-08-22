@@ -89,4 +89,14 @@ assert any(x["destination"] == "required.bin" and x["match"] == "relative" for x
 assert any(x["destination"] == "saturn-required.bin" and x["consumers"] == ["libretro:beetle_saturn"] for x in data["files"])
 assert any(x["destination"] == "Machines/MSX/config.ini" and x["match"] == "archive" for x in data["files"])
 PY
+python3 - "$ROOT_DIR/scripts/prepare-pixel2-bios.py" <<'PY'
+import importlib.util, pathlib, sys
+spec = importlib.util.spec_from_file_location("pixel2_bios", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert ("freechaf", "sl90025.bin") in module.OPTIONAL_FIRMWARE_OVERRIDES
+assert [name for name, _ in module.CHANNEL_F_COMBINED_HALVES] == [
+    "sl31253.bin", "sl31254.bin"
+]
+PY
 printf 'pixel2_bios_prepare=result-ok\n'

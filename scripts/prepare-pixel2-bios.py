@@ -36,6 +36,18 @@ CORE_INFO_ALIASES = {
     "mba_mini": "fbneo",
 }
 
+# FreeChaF's core-info currently marks all three Channel F images required,
+# although its own description states that sl90025 only supersedes sl31253
+# when present.  The two original 1 KiB images remain the actual minimum set.
+OPTIONAL_FIRMWARE_OVERRIDES = {
+    ("freechaf", "sl90025.bin"),
+}
+
+CHANNEL_F_COMBINED_HALVES = (
+    ("sl31253.bin", "ac9804d4c0e9d07e33472e3726ed15c3"),
+    ("sl31254.bin", "da98f4bb3242ab80d76629021bb27585"),
+)
+
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -92,7 +104,10 @@ def collect_requirements(app_root: Path) -> dict[str, dict[str, Any]]:
             if not relative:
                 continue
             relative = safe_relative(relative)
-            optional = values.get(f"firmware{index}_opt", "false") == "true"
+            optional = (
+                values.get(f"firmware{index}_opt", "false") == "true"
+                or (core, relative) in OPTIONAL_FIRMWARE_OVERRIDES
+            )
             entry = requirements.setdefault(
                 relative,
                 {"consumers": set(), "optional": True, "folder": False},
@@ -252,6 +267,56 @@ def expand_bluemsx_distribution(
             )
 
 
+def expand_channel_f_combined(
+    candidates: list[Path],
+    staging: Path,
+    requirements: dict[str, dict[str, Any]],
+    rom_root: Path,
+    records: list[dict[str, Any]],
+) -> None:
+    """Split the Analogue Pocket Channel F combined BIOS when user-supplied.
+
+    Some ROM collections contain the original 1 KiB SL31253 and SL31254 dumps
+    concatenated as ``cfbios.bin``.  Accept only the exact known half hashes;
+    an arbitrary 2 KiB file must never be relabelled as firmware.
+    """
+    if any(name not in requirements for name, _ in CHANNEL_F_COMBINED_HALVES):
+        return
+    for candidate in sorted(set(candidates), key=lambda path: path.as_posix().casefold()):
+        payload = candidate.read_bytes()
+        if len(payload) != 2048:
+            continue
+        halves = (payload[:1024], payload[1024:])
+        if any(
+            hashlib.md5(part).hexdigest() != expected_md5
+            for part, (_, expected_md5) in zip(halves, CHANNEL_F_COMBINED_HALVES)
+        ):
+            continue
+        for index, (part, (destination_name, _)) in enumerate(
+            zip(halves, CHANNEL_F_COMBINED_HALVES)
+        ):
+            destination = staging / destination_name
+            if destination.exists():
+                continue
+            destination.write_bytes(part)
+            detail = requirements[destination_name]
+            records.append(
+                {
+                    "destination": destination_name,
+                    "source": (
+                        f"{source_relative(candidate, rom_root)}"
+                        f"#bytes={index * 1024}:{(index + 1) * 1024}"
+                    ),
+                    "sha256": sha256_file(destination),
+                    "size": destination.stat().st_size,
+                    "optional": bool(detail["optional"]),
+                    "match": "compound-split",
+                    "consumers": sorted(detail["consumers"]),
+                }
+            )
+        return
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app-root", type=Path, required=True)
@@ -283,6 +348,17 @@ def main() -> None:
 
         expand_bluemsx_distribution(
             by_name.get("bluemsxv282full.zip", []),
+            staging,
+            requirements,
+            rom_root,
+            records,
+        )
+        channel_f_candidates = list(by_name.get("cfbios.bin", []))
+        channel_f_candidates.extend(
+            rom_root.glob("*/analogue pocket/Assets/channel_f/common/cfbios.bin")
+        )
+        expand_channel_f_combined(
+            channel_f_candidates,
             staging,
             requirements,
             rom_root,
