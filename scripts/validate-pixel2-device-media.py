@@ -123,9 +123,15 @@ class Device:
         )
 
 
-def select_rom(roms: list[str]) -> str | None:
+def select_rom(roms: list[str], match: str = "") -> str | None:
     """Avoid scanner false positives from SAVE/STATE directories."""
     rejected_parts = {"save", "saves", "state", "states", "savestate", "savestates"}
+    if match:
+        wanted = match.casefold()
+        for rom in roms:
+            if wanted in rom.casefold():
+                return rom
+        return None
     for rom in roms:
         parts = {part.casefold() for part in Path(rom).parts[:-1]}
         if not parts.intersection(rejected_parts):
@@ -458,6 +464,11 @@ def main() -> int:
     )
     parser.add_argument("--seconds", type=int, default=8)
     parser.add_argument("--systems", default="")
+    parser.add_argument(
+        "--rom-match",
+        default="",
+        help="launch the first ROM whose relative path contains this text",
+    )
     parser.add_argument("--all-profiles", action="store_true")
     parser.add_argument(
         "--skip-default-profile",
@@ -493,7 +504,11 @@ def main() -> int:
     results = []
     try:
         for index, row in enumerate(candidates, 1):
-            rom = select_rom(row["roms"])
+            rom = select_rom(row["roms"], args.rom_match)
+            if rom is None:
+                raise RuntimeError(
+                    f"no ROM matching {args.rom_match!r} for system {row['id']}"
+                )
             profiles = row["profiles"] if args.all_profiles else [row["default_profile"]]
             profiles = [profile for profile in profiles if profile]
             if args.skip_default_profile:
