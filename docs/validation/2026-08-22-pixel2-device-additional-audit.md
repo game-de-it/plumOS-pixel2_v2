@@ -105,9 +105,9 @@ release auditへ非起動descriptor gateを追加した。
 | dimension | pass | manual | fail |
 |---|---:|---:|---:|
 | startup | 41 | 0 | 0 |
-| panel-size DRM screen | 38 | 3 | 0 |
+| panel-size DRM screen | 39 | 2 | 0 |
 | ALSA pointer | 37 | 4 | 0 |
-| overall | 35 | 6 | 0 |
+| overall | 36 | 5 | 0 |
 
 初回検査の明確な失敗5件は、emulatorへ渡すcontent契約を絞って4件を解消した。
 Neo Geo CDはMP3 trackのCUEを除外しWAV CUEを選択、ScummVMは`.scummvm`/`.svm`
@@ -127,14 +127,21 @@ exact-source署名Runtime `0.1.0-dev-f49d7ed`を`3ec83c2`から適用し、app m
 109-core manifestのsource ref、managed checksum、FE復帰、zombie 0を確認した。
 Snoopyを15秒実行してstartup、正立DRM image、ALSA pointerの全項目に合格した。
 
-manual 6件のうちLutroは非黒率0.8%のため自動閾値を下回っただけで、保存captureには
-正立したPong画面がある。FDSはALSA進行中もcaptureが全黒、PC-FXは白一色でALSAが
-PREPAREDへ戻る。J2ME、TI-83、Uzeboxは画面合格だが試験場面で音声を確定できない。
+manual 5件のうちLutroは非黒率0.8%のため自動閾値を下回っただけで、保存captureには
+正立したPong画面がある。PC-FXは白一色でALSAがPREPAREDへ戻る。J2ME、TI-83、Uzeboxは
+画面合格だが試験場面で音声を確定できない。
 これらは起動失敗とは分け、実LCD・可聴音または別contentでの確認を継続する。
+
+FDSは最初の15秒captureが黒フレームだったため全4 profileを再検査し、RA FCEUmm、
+RA Nestopia、PicoArch FCEUmm、PicoArch Nestopiaの全てでstartup、DRM image、ALSA
+pointerに合格した。さらに指定された`/Users/kroot/Downloads/Akumajou Dracula.zip`を
+merge-only配置した。ZIP CRCは正常、単一のheaderless 2-side FDSで、内部名にはbad dumpを
+示す`[b]`がある。4 profileの12秒検査は全項目合格し、RA FCEUmmの30秒captureでは
+悪魔城ドラキュラのtitle画面まで到達した。このROMをFDSのoperator確認基準として残した。
 
 ## Remaining acceptance boundary
 
-- FDSの全黒画面とPC-FXの白一色画面／音声停止を別contentまたは実LCDで確認
+- PC-FXの白一色画面／音声停止を別contentまたは実LCDで確認
 - J2ME、TI-83、Uzeboxの可聴音（試験場面ではALSA進行を確定できない）
 - launchable ROMがない31 enabled systemへの代表content準備
 - OpenBORの実LCD表示
@@ -185,9 +192,9 @@ Final Runtime/cache refresh
 
 Remaining 41-system media smoke and Game & Watch fix
   startup=41 pass / 0 manual / 0 fail
-  screen=38 pass / 3 manual / 0 fail
+  screen=39 pass / 2 manual / 0 fail
   audio=37 pass / 4 manual / 0 fail
-  overall=35 pass / 6 manual / 0 fail
+  overall=36 pass / 5 manual / 0 fail
   Game & Watch runtime=0.1.0-dev-f49d7ed startup/screen/audio=pass
   frontend=running zombies=0 battery=55%
 ```
@@ -208,3 +215,6 @@ Evidence is retained under ignored local paths:
 - `output/validation/pixel2-device-media-2026-08-22-gw-f49d7ed/`
 - `output/validation/pixel2-device-media-2026-08-22-long-recheck-f49d7ed/`
 - `output/validation/pixel2-device-media-2026-08-22-batch3-recheck-f49d7ed/`
+- `output/validation/pixel2-device-media-2026-08-22-fds-profiles-f49d7ed/`
+- `output/validation/pixel2-device-media-2026-08-22-fds-akumajou-f49d7ed/`
+- `output/validation/pixel2-device-media-2026-08-22-fds-akumajou-30s-f49d7ed/`

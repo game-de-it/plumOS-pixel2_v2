@@ -756,10 +756,13 @@
       除外した。現時点の有効content集計はmachine pass 40 route、OpenBOR manual display 1。
   - [x] 現在launchable ROMがある57 systemのうち未検査41 systemを同じ3項目で記録する
     - 2026-08-22: 全41 systemで実emulator processの継続を確認し、明確な起動失敗は0。
-      自動総合は35 pass / 6 manual、screenは38 pass / 3 manual、audioは37 pass /
+      自動総合は36 pass / 5 manual、screenは39 pass / 2 manual、audioは37 pass /
       4 manual。Lutroは非黒率0.8%で自動閾値未満だが、DRM captureでは正立したPong
-      画面を確認した。FDSは音声進行中も全黒、PC-FXは白一色かつ音声継続なし。
+      画面を確認した。PC-FXは白一色かつ音声継続なし。
       J2ME、TI-83、Uzeboxは画面合格だが試験場面でaudioを機械確定できない。
+    - FDSは指定`Akumajou Dracula.zip`でRA FCEUmm/Nestopia、PicoArch
+      FCEUmm/Nestopiaの4 profileをstartup/DRM/ALSA合格。30秒captureで悪魔城ドラキュラの
+      title到達も確認した。内部名は`[b]`だが、今回の実起動確認には利用可能だった。
     - Neo Geo CD、ScummVM、Game & Watch、Lutro、PC-FXの誤content選択を修正。
       Game & Watchは初回`retro_run()`内の完全AV再初期化でPixel2 RetroArch DRM経路が
       `rc=139`となっていたため、初回はgeometryだけを更新するcore patchをビルドシステムへ
