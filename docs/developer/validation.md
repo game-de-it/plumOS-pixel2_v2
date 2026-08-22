@@ -19,6 +19,7 @@ physical controls.
 - [Frontend input](../validation/2026-08-12-pixel2-frontend-input.md)
 - [Power management](../validation/2026-08-12-pixel2-power-management.md)
 - [Global power menu and sleep](../validation/2026-08-15-pixel2-global-power-menu-sleep.md)
+- [Sleep/resume machine matrix](../validation/2026-08-23-pixel2-sleep-machine-matrix.md)
 - [START menu](../validation/2026-08-12-pixel2-start-menu.md)
 - [Implementation audit](../validation/2026-08-13-pixel2-implementation-audit.md)
 - [User BIOS staging and device placement](../validation/2026-08-13-pixel2-user-bios.md)

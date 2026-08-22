@@ -153,7 +153,12 @@
       `validate-pixel2-sleep-matrix.py`を追加。FDS/FCEUmm、PPSSPP、FBNeoはkernel
       `mem` suspend、同一process group、前後画面、復帰後音声を機械合格。
       Music Playerはblocking ALSA writeがresume後`SUSPENDED`で止まる問題を検出し、
-      nonblocking writeと`EAGAIN/EPIPE/ESTRPIPE`回復を実装。修正版の実機再試験を行う。
+      nonblocking writeと`EAGAIN/EPIPE/ESTRPIPE`回復を実装。`f57f2b7`ではkernel
+      resume時のUSB removeを物理抜去と誤認しないmarkerと、既存host probe/Wi-Fi
+      recoveryの非同期再開も追加した。署名Runtime `0.1.0-dev-f57f2b7`でRA、PPSSPP、
+      PicoArch、Music Playerのpause、kernel sleep、同一process、前後画面・音声、
+      Wi-Fi/SSH自動復帰を全て機械合格。物理Power操作と目視・可聴品質だけをoperator
+      acceptanceとして残す。
     - 2026-08-16: Gambatteで音声だけ継続してLCDが黒くなる状態を、fbdevには有効な
       frameがある一方KMS active planeがない問題と特定。`d242dfc`で初回frameと
       `SIGCONT`後だけUNBLANK/PANし、Gambatte固有RGB565 byte swapも既存XU20の

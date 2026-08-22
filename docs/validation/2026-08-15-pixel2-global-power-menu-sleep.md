@@ -219,3 +219,17 @@ complete. The operator still needs to validate:
    family.
 
 These are physical acceptance gates, not missing implementation.
+
+## 2026-08-23 machine completion
+
+The remaining runtime-family Sleep paths were mechanically exercised with the
+production overlay, stock kernel `mem` suspend, RTC wake, DRM capture, and ALSA
+pointer checks. RetroArch/FCEUmm, PPSSPP, PicoArch/FBNeo, and Music Player all
+passed pause, suspend, same-process resume, screen, and audio checks on Runtime
+`0.1.0-dev-f57f2b7`. Kernel-resume USB remove events are now guarded and the
+existing Pixel2 host probe plus Wi-Fi recovery is scheduled after resume.
+
+See [Pixel2 sleep/resume machine matrix](2026-08-23-pixel2-sleep-machine-matrix.md)
+for the exact machine boundary and retained evidence. The physical Power-button
+and human-visible/audible quality checks remain operator acceptance rather than
+missing implementation.
