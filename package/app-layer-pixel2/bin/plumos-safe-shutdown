@@ -34,6 +34,10 @@ phy_status_file=${PLUMOS_POWER_PHY_STATUS_FILE:-}
 phy_status_addr=${PLUMOS_POWER_PHY_STATUS_ADDR:-0xff2c0120}
 phy_bvalid_mask=${PLUMOS_POWER_PHY_BVALID_MASK:-0x200}
 usb_host_control=${PLUMOS_USB_HOST_CONTROL:-/usr/lib/plumos/init.d/15-usb-host-reenumerate}
+wifi_recovery=${PLUMOS_WIFI_RECOVERY:-$root/bin/plumos-wifi-recovery}
+wifi_config=${PLUMOS_WPA_CONFIG:-$root/config/wpa_supplicant.conf}
+sleep_usb_recovery_marker=${PLUMOS_SLEEP_USB_RECOVERY_MARKER:-$runtime_root/sleep-usb-recovery}
+sleep_wifi_guard_settle_sec=${PLUMOS_SLEEP_WIFI_GUARD_SETTLE_SEC:-2}
 devmem_command=${PLUMOS_DEVMEM:-}
 reboot_mode_helper=${PLUMOS_REBOOT_MODE_HELPER:-$root/bin/plumos-reboot-mode}
 terminal_test=${PLUMOS_POWER_TEST_TERMINAL:-0}
@@ -43,6 +47,7 @@ software_backlight_saved=
 software_backlight_power_saved=
 sleep_display_blanked=0
 shutdown_charger_present=0
+sleep_usb_guard_armed=0
 
 mkdir -p "$log_dir" "$runtime_root" 2>/dev/null || true
 
@@ -346,6 +351,34 @@ restore_after_sleep() {
     run_rk817_resume rearm
 }
 
+arm_sleep_usb_guard() {
+    [ -s "$wifi_config" ] || return 0
+    [ -x "$usb_host_control" ] || return 0
+    mkdir -p "${sleep_usb_recovery_marker%/*}" 2>/dev/null || return 0
+    if : >"$sleep_usb_recovery_marker" 2>/dev/null; then
+        sleep_usb_guard_armed=1
+        log "sleep=usb-guard-armed marker=$sleep_usb_recovery_marker"
+    else
+        log "sleep=usb-guard-failed marker=$sleep_usb_recovery_marker"
+    fi
+}
+
+schedule_sleep_wifi_recovery() {
+    [ "$sleep_usb_guard_armed" -eq 1 ] || return 0
+    sleep_usb_guard_armed=0
+    (
+        trap 'rm -f "$sleep_usb_recovery_marker" 2>/dev/null || true' EXIT HUP INT TERM
+        "$usb_host_control" probe >>"$log_file" 2>&1 || true
+        if [ -x "$wifi_recovery" ]; then
+            PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+                "$wifi_recovery" recover >>"$log_file" 2>&1 || true
+        fi
+        [ "$sleep_wifi_guard_settle_sec" -eq 0 ] || \
+            "$bb" sleep "$sleep_wifi_guard_settle_sec"
+    ) </dev/null >/dev/null 2>&1 &
+    log "sleep=wifi-resume-recovery-scheduled pid=$!"
+}
+
 sleep_action() {
     case "$sleep_backend" in
         none)
@@ -369,6 +402,7 @@ sleep_action() {
     fi
     kernel_sleep=0
     set_wakealarm
+    arm_sleep_usb_guard
     blank_display_for_sleep
     if [ "$software_sleep_force" != 1 ]; then
         log "sleep=enter backend=$sleep_backend"
@@ -387,6 +421,7 @@ sleep_action() {
     fi
     unblank_display_after_sleep
     restore_after_sleep
+    schedule_sleep_wifi_recovery
     log "sleep=result-returned backend=$sleep_backend kernel_sleep=$kernel_sleep"
 }
 
@@ -414,6 +449,7 @@ case "$sleep_backend" in mem|freeze|none) ;; *) exit 2 ;; esac
 is_uint "$wakeup_sec" || exit 2
 is_uint "$wait_sec" || exit 2
 is_uint "$sleep_settle_sec" || exit 2
+is_uint "$sleep_wifi_guard_settle_sec" || exit 2
 
 if ! mkdir "$lock_dir" 2>/dev/null; then
     log "power=result-already-running action=$action"
@@ -421,6 +457,9 @@ if ! mkdir "$lock_dir" 2>/dev/null; then
 fi
 cleanup() {
     rm -f "$software_sleep_marker" 2>/dev/null || true
+    if [ "$sleep_usb_guard_armed" -eq 1 ]; then
+        rm -f "$sleep_usb_recovery_marker" 2>/dev/null || true
+    fi
     unblank_display_after_sleep
     rmdir "$lock_dir" 2>/dev/null || true
 }

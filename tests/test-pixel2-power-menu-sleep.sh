@@ -16,6 +16,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$TEST_ROOT/plumos/bin" "$TEST_ROOT/run" "$TEST_ROOT/logs"
+printf 'network={}\n' >"$TEST_ROOT/plumos/wpa_supplicant.conf"
 
 cat >"$TEST_ROOT/busybox" <<'EOF'
 #!/bin/sh
@@ -37,6 +38,15 @@ EOF
 
 chmod 0755 "$TEST_ROOT/busybox" \
     "$TEST_ROOT/display" "$TEST_ROOT/volume" "$TEST_ROOT/rk817"
+cat >"$TEST_ROOT/usb-host" <<'EOF'
+#!/bin/sh
+printf 'usb-host %s marker=%s\n' "$*" "$(test -e "$PLUMOS_SLEEP_USB_RECOVERY_MARKER" && echo present || echo absent)" >>"$PLUMOS_TEST_CALLS"
+EOF
+cat >"$TEST_ROOT/wifi-recovery" <<'EOF'
+#!/bin/sh
+printf 'wifi-recovery %s marker=%s\n' "$*" "$(test -e "$PLUMOS_SLEEP_USB_RECOVERY_MARKER" && echo present || echo absent)" >>"$PLUMOS_TEST_CALLS"
+EOF
+chmod 0755 "$TEST_ROOT/usb-host" "$TEST_ROOT/wifi-recovery"
 printf 'freeze mem\n' >"$TEST_ROOT/power-state"
 : >"$TEST_ROOT/wakealarm"
 : >"$TEST_ROOT/calls"
@@ -51,6 +61,11 @@ PLUMOS_RTC_WAKEALARM="$TEST_ROOT/wakealarm" \
 PLUMOS_DISPLAY_CONTROL="$TEST_ROOT/display" \
 PLUMOS_VOLUME_CONTROL="$TEST_ROOT/volume" \
 PLUMOS_RK817_RESUME_HELPER="$TEST_ROOT/rk817" \
+PLUMOS_USB_HOST_CONTROL="$TEST_ROOT/usb-host" \
+PLUMOS_WIFI_RECOVERY="$TEST_ROOT/wifi-recovery" \
+PLUMOS_WPA_CONFIG="$TEST_ROOT/plumos/wpa_supplicant.conf" \
+PLUMOS_SLEEP_USB_RECOVERY_MARKER="$TEST_ROOT/run/sleep-usb-recovery" \
+PLUMOS_SLEEP_WIFI_GUARD_SETTLE_SEC=0 \
 PLUMOS_SLEEP_SETTLE_SEC=0 \
 PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown" \
@@ -64,6 +79,13 @@ grep -q "^rk817_alsa $TEST_ROOT/plumos/config/alsa/alsa.conf$" \
     "$TEST_ROOT/calls"
 grep -q '^volume apply$' "$TEST_ROOT/calls"
 grep -q '^display apply$' "$TEST_ROOT/calls"
+for _ in 1 2 3 4 5; do
+    grep -q '^wifi-recovery recover marker=present$' "$TEST_ROOT/calls" && break
+    sleep 0.1
+done
+grep -q '^usb-host probe marker=present$' "$TEST_ROOT/calls"
+grep -q '^wifi-recovery recover marker=present$' "$TEST_ROOT/calls"
+[ ! -e "$TEST_ROOT/run/sleep-usb-recovery" ]
 grep -q 'sleep=result-returned backend=mem' "$TEST_ROOT/logs/power.log"
 
 printf '42\n' >"$TEST_ROOT/backlight"

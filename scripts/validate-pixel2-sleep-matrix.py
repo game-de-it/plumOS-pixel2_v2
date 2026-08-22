@@ -188,6 +188,17 @@ def run_case(
     try:
         time.sleep(startup_seconds)
         collect_remote(device, prefix, "pre")
+        pre_audio1_live = media.parse_audio(
+            device.run(f"cat {prefix}-pre.audio1", timeout=8).stdout
+        )
+        pre_audio2_live = media.parse_audio(
+            device.run(f"cat {prefix}-pre.audio2", timeout=8).stdout
+        )
+        if not audio_advances(pre_audio1_live, pre_audio2_live):
+            raise RuntimeError(
+                f"{case_id}: audio was not running before sleep "
+                f"({pre_audio1_live.get('state')} -> {pre_audio2_live.get('state')})"
+            )
         device.run(
             f"/bin/busybox setsid /bin/sh /tmp/pixel2-sleep-cycle-device "
             f"{prefix} {sleep_seconds} >{prefix}.cycle.log 2>&1 </dev/null &"
@@ -222,6 +233,12 @@ def run_case(
         post_live = live_group(post_ps, pid)
         pre_capture = media.analyze_capture(output, f"{base}-pre")
         post_capture = media.analyze_capture(output, f"{base}-post")
+        pre_audio1 = media.parse_audio(
+            (output / f"{base}-pre.audio1").read_text(errors="replace")
+        )
+        pre_audio2 = media.parse_audio(
+            (output / f"{base}-pre.audio2").read_text(errors="replace")
+        )
         post_audio1 = media.parse_audio(
             (output / f"{base}-post.audio1").read_text(errors="replace")
         )
@@ -243,6 +260,7 @@ def run_case(
         checks = {
             "startup": bool(pre_live),
             "screen_before": pre_capture["machine_visible"],
+            "audio_before": audio_advances(pre_audio1, pre_audio2),
             "paused_during_sleep": paused,
             "sleep_complete": sleep_complete,
             "same_process_group_resumed": bool(post_live),
@@ -259,6 +277,7 @@ def run_case(
             "post_processes": post_live,
             "pre_capture": pre_capture,
             "post_capture": post_capture,
+            "pre_audio": [pre_audio1, pre_audio2],
             "post_audio": [post_audio1, post_audio2],
             "power_log": power_log.rstrip(),
             "overlay_log": overlay_log.rstrip(),
@@ -275,7 +294,7 @@ def write_report(path: Path, report: dict[str, Any]) -> None:
         f"- device: `{report['device']}`",
         f"- automatic sleep interval: `{report['sleep_seconds']} seconds`",
         "",
-        "| family | route | startup | paused | sleep | screen pre/post | audio post | result |",
+        "| family | route | startup | paused | sleep | screen pre/post | audio pre/post | result |",
         "|---|---|---:|---:|---:|---:|---:|---:|",
     ]
     for row in report["results"]:
@@ -287,7 +306,7 @@ def write_report(path: Path, report: dict[str, Any]) -> None:
             f"{'PASS' if checks['paused_during_sleep'] else 'FAIL'} | "
             f"{'PASS' if checks['sleep_complete'] and checks['same_process_group_resumed'] else 'FAIL'} | "
             f"{'PASS' if screen else 'MANUAL'} | "
-            f"{'PASS' if checks['audio_after'] else 'MANUAL'} | "
+            f"{'PASS' if checks['audio_before'] and checks['audio_after'] else 'MANUAL'} | "
             f"**{row['overall'].upper()}** |"
         )
     lines.extend(
@@ -344,8 +363,9 @@ def main() -> int:
     device.run(
         "mkdir -p /mnt/plumos-user/Music; "
         "target=/mnt/plumos-user/Music/plumos-sleep-test.mp3; "
-        "if [ ! -e \"$target\" ]; then "
-        "source=$(find /mnt/plumos-user/roms/pyxel -type f -name '*.mp3' 2>/dev/null | head -n 1); "
+        "size=$(stat -c %s \"$target\" 2>/dev/null || echo 0); "
+        "if [ \"$size\" -lt 1048576 ]; then "
+        "source=$(find /mnt/plumos-user/roms/pyxel -type f -name '*.mp3' -size +1M 2>/dev/null | head -n 1); "
         "[ -n \"$source\" ] && cp \"$source\" \"$target\" || true; fi"
     )
 

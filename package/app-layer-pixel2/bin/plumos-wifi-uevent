@@ -5,6 +5,7 @@ PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
 RECOVERY_CONTROL="${PLUMOS_ROOT}/bin/plumos-wifi-recovery"
 USB_HOST_CONTROL="${PLUMOS_PIXEL2_USB_HOST_CONTROL:-/usr/lib/plumos/init.d/15-usb-host-reenumerate}"
 USB_HOST_TRANSITION_MARKER="${PLUMOS_PIXEL2_USB_HOST_TRANSITION_MARKER:-/run/plumos/usb-host-probe-active}"
+USB_HOST_SLEEP_MARKER="${PLUMOS_PIXEL2_USB_HOST_SLEEP_MARKER:-/run/plumos/sleep-usb-recovery}"
 
 release_usb_host() {
   [ -x "$USB_HOST_CONTROL" ] || exit 0
@@ -26,6 +27,10 @@ case "${ACTION:-}:${SUBSYSTEM:-}" in
     # A bounded System probe may intentionally unbind DWC2. Its remove event is
     # not a physical dongle removal and must not switch the PHY back to OTG.
     [ ! -e "$USB_HOST_TRANSITION_MARKER" ] || exit 0
+    # Kernel resume can transiently remove the USB Wi-Fi device even though
+    # the dongle never left the connector. The power path owns recovery while
+    # this marker exists, so do not misclassify that event as physical unplug.
+    [ ! -e "$USB_HOST_SLEEP_MARKER" ] || exit 0
     # The RTL8821CU storage identity disappears once during its intentional
     # eject-based mode switch. Delay that release so the c811 identity can
     # enumerate; a real dongle removal is released immediately.

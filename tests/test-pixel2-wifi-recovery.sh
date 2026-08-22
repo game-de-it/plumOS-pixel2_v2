@@ -79,6 +79,7 @@ recovery_env=(
   PLUMOS_WIFI_RECOVERY_SETTLE_SECONDS=0
   PLUMOS_PIXEL2_USB_HOST_CONTROL="$tmp/system/usb-host-control"
   PLUMOS_PIXEL2_USB_HOST_TRANSITION_MARKER="$tmp/usb-host-probe-active"
+  PLUMOS_PIXEL2_USB_HOST_SLEEP_MARKER="$tmp/sleep-usb-recovery"
 )
 
 env "${recovery_env[@]}" "$root/bin/plumos-wifi-recovery" start
@@ -109,6 +110,13 @@ env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=usb DEVTYPE=usb_device \
   PRODUCT=0bda/c820/200 "$root/bin/plumos-wifi-uevent"
 [ "$(wc -l <"$TEST_USB_ROLE_CALLS" | tr -d ' ')" -eq "$before_role_calls" ]
 rm -f "$tmp/usb-host-probe-active"
+
+before_role_calls="$(wc -l <"$TEST_USB_ROLE_CALLS" | tr -d ' ')"
+: >"$tmp/sleep-usb-recovery"
+env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=usb DEVTYPE=usb_device \
+  PRODUCT=0bda/c820/200 "$root/bin/plumos-wifi-uevent"
+[ "$(wc -l <"$TEST_USB_ROLE_CALLS" | tr -d ' ')" -eq "$before_role_calls" ]
+rm -f "$tmp/sleep-usb-recovery"
 
 env "${recovery_env[@]}" ACTION=remove SUBSYSTEM=usb DEVTYPE=usb_device \
   PRODUCT=0bda/1a2b/200 "$root/bin/plumos-wifi-uevent"
