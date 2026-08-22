@@ -7,6 +7,7 @@ RA_AUTOCONFIG="$ROOT_DIR/package/retroarch-pixel2/pixel2-joypad-udev.cfg"
 RA_LAUNCHER="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 INPUT_ENV="$ROOT_DIR/package/app-layer-pixel2/config/system/input-map.env"
 PICO_PATCH="$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch-pixel2-input-aspect.patch"
+PICO_POLL_PATCH="$ROOT_DIR/docker/pixel2-tools/picoarch/picoarch-pixel2-host-input-poll.patch"
 PCSX_PATCH="$ROOT_DIR/patches/pcsx_rearmed/pcsx-rearmed-r26l-pixel2-evdev-menu.patch"
 PCSX_PICOFE_PATCH="$ROOT_DIR/patches/pcsx_rearmed/libpicofe-r26l-pixel2-input.patch"
 OPENBOR_PATCH="$ROOT_DIR/patches/openbor/openbor-v6391-pixel2-sdl.patch"
@@ -47,6 +48,20 @@ for binding in \
     grep -Fq "$binding" "$PICO_PATCH" ||
         fail "PicoArch FUNCTION menu binding missing: $binding"
 done
+for token in \
+    'core_input_begin_frame();' \
+    'core_input_finish_frame();' \
+    'if (input_polled_this_frame)' \
+    'Core omitted input_poll_cb; enabling frontend fallback polling'; do
+    grep -Fq "$token" "$PICO_POLL_PATCH" ||
+        fail "PicoArch host input fallback missing: $token"
+done
+grep -Fq 'picoarch-pixel2-host-input-poll.patch' \
+    "$ROOT_DIR/scripts/build-picoarch-pixel2.sh" ||
+    fail 'PicoArch host input fallback patch is not applied by the build'
+grep -Fq 'apply_zero_context_once "$PATCH_DIR/picoarch-pixel2-host-input-poll.patch"' \
+    "$ROOT_DIR/scripts/build-picoarch-pixel2.sh" ||
+    fail 'PicoArch host input fallback must use the zero-context patch gate'
 for binding in \
     'BTN_DPAD_UP,    IN_BINDTYPE_PLAYER12, RETRO_DEVICE_ID_JOYPAD_UP' \
     'BTN_DPAD_DOWN,  IN_BINDTYPE_PLAYER12, RETRO_DEVICE_ID_JOYPAD_DOWN' \

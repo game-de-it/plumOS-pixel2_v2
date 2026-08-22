@@ -576,6 +576,11 @@
   - 2026-08-16: PicoArchはFunctionから内蔵menuを表示し、`d1f5ea1`適用後に
     game/menuの十字操作とsleep復帰を実機合格。RA、DraStic、PPSSPP、OpenBORの
     個別menu/exit確認は継続する。
+  - 2026-08-22: PicoArch + FBNeoだけFunction menuが開かない原因を、FBNeoの
+    `retro_run()`がlibretro必須の`input_poll_cb()`を呼ばない実装に特定。正常coreは
+    従来どおりcore callbackでpollし、省略coreだけ各frame終了時にfrontendが補完pollする
+    PicoArch host fallbackを実装。AArch64正規build、component checksum、Function契約と
+    app-layer host testに合格。正式Runtime反映後の物理Function menu確認を継続する。
 - [x] RetroArch factory configuration一式をPixel2へ実装する
   - 2026-08-15: 3,374 unique keyをPixel2 DRM/udev/button/audio/storage contractへ適合。旧57-key factoryは既知SHA一致時だけatomic置換し、変更済みuser cfgには不足keyだけを補完するmigrationを追加。署名Runtime `0.1.0-dev-aa3a3ab`を適用し、healthy、root 4241/4241 checksum、RGUIのDRM/event2取得、FE復帰を確認。[検証記録](docs/validation/2026-08-15-pixel2-retroarch-v90s-config-port.md)
   - 2026-08-15: 前記移植がmain cfgだけで、content-local save/state、L2/R2 hotkey変換、core-options、N64 remapを欠いていたことを訂正。`68abe6c`で3-file factory bundleと旧世代12項目の限定migrationを実装し、署名Runtime `0.1.0-dev-68abe6c`を適用。healthy、Frontend 191/191、RetroArch 59/59、root 4245/4245、既存state 2件のSHA不変を確認。[検証記録](docs/validation/2026-08-15-pixel2-retroarch-save-hotkeys.md)

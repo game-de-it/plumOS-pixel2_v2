@@ -1,0 +1,53 @@
+diff --git a/core.c b/core.c
+--- a/core.c
++++ b/core.c
+@@ -656,3 +656,6 @@ static size_t pa_audio_sample_batch(const int16_t *data, size_t frames) {
+ }
+ 
++static bool input_polled_this_frame;
++static bool input_fallback_reported;
++
+ static void pa_input_poll(void) {
+@@ -663 +666,2 @@ static void pa_input_poll(void) {
+-	in_update(actions);
++	input_polled_this_frame = true;
++	in_update(actions);
+@@ -674,3 +678,18 @@ static void pa_input_poll(void) {
+ }
+ 
++void core_input_begin_frame(void) {
++	input_polled_this_frame = false;
++}
++
++void core_input_finish_frame(void) {
++	if (input_polled_this_frame)
++		return;
++
++	if (!input_fallback_reported) {
++		PA_INFO("Core omitted input_poll_cb; enabling frontend fallback polling\n");
++		input_fallback_reported = true;
++	}
++	pa_input_poll();
++}
++
+ static int16_t pa_input_state(unsigned port, unsigned device, unsigned index, unsigned id) {
+diff --git a/core.h b/core.h
+--- a/core.h
++++ b/core.h
+@@ -52,6 +52,8 @@ bool state_allowed(void);
+ void core_run_frame_time_callback(void);
+ int core_start_audio_callback(void);
+ void core_stop_audio_callback(void);
++void core_input_begin_frame(void);
++void core_input_finish_frame(void);
+ void state_file_name(char *name, size_t size, int slot);
+ int state_read(void);
+ int state_write(void);
+diff --git a/main.c b/main.c
+--- a/main.c
++++ b/main.c
+@@ -650 +650,3 @@ int main(int argc, char **argv) {
+-		current_core.retro_run();
++		core_input_begin_frame();
++		current_core.retro_run();
++		core_input_finish_frame();

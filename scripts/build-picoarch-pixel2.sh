@@ -43,6 +43,16 @@ apply_once() {
   fi
 }
 
+apply_zero_context_once() {
+  local patch_file="$1"
+  if git -C "$SRC" apply --unidiff-zero --check "$patch_file" >/dev/null 2>&1; then
+    git -C "$SRC" apply --unidiff-zero "$patch_file"
+  elif ! git -C "$SRC" apply --unidiff-zero --reverse --check "$patch_file" >/dev/null 2>&1; then
+    printf 'error: PicoArch zero-context patch does not apply: %s\n' "$patch_file" >&2
+    exit 1
+  fi
+}
+
 mkdir -p "$SRC_ROOT"
 checkout_source "$PICOARCH_REPO" "$PICOARCH_REF" "$SRC"
 git -C "$SRC" submodule update --init --recursive
@@ -98,6 +108,7 @@ apply_once "$PATCH_DIR/picoarch-pixel2-frame-audio-callback.patch"
 git -C "$SRC" apply --recount "$PATCH_DIR/picoarch-pixel2-async-audio-callback.patch"
 apply_once "$PATCH_DIR/picoarch-pixel2-frame-pacing.patch"
 apply_once "$PATCH_DIR/picoarch-pixel2-display-audio-rate.patch"
+apply_zero_context_once "$PATCH_DIR/picoarch-pixel2-host-input-poll.patch"
 perl -0pi -e 'BEGIN { $count = 0 }
   $count += s{audio\.in_sample_rate = sample_rate;}{audio.in_sample_rate = plat_sound_input_rate();}g;
   END { die "audio input rate markers missing: $count\n" unless $count == 2 }' \
