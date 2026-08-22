@@ -575,6 +575,7 @@ grep -q 'acquire_index_lock' \
 grep -q 'preflight_lookup_indexes "$fetch_system_id"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-thumbnail-scraper"
 "$ROOT_DIR/tests/test-thumbnail-scraper-concurrency.sh"
+"$ROOT_DIR/tests/test-library-scan-cache-refresh.sh"
 
 feature_tmp="$(mktemp -d "${TMPDIR:-/tmp}/plumos-pixel2-feature-test.XXXXXX")"
 trap 'rm -rf "$feature_tmp"' EXIT

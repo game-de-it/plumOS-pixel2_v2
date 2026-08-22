@@ -1747,6 +1747,33 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  /* A full boot scan is also the authoritative refresh boundary for the
+   * per-system caches consumed when the user enters a system.  Keeping only
+   * library-index.json fresh leaves old extensions and removed ROMs visible
+   * indefinitely when scan-on-enter is disabled. */
+  if (!system_filter) {
+    size_t system_index;
+    size_t system_cache_count = 0;
+    for (system_index = 0; system_index < ctx.system_count; system_index++) {
+      char system_cache_path[PATH_MAX];
+      if (!ctx.systems[system_index].enabled) {
+        continue;
+      }
+      ctx.system_filter = ctx.systems[system_index].id;
+      if (!build_system_cache_path(system_cache_path, sizeof(system_cache_path),
+                                   default_plumos_root, ctx.system_filter) ||
+          !write_library_index(&ctx, system_cache_path)) {
+        fprintf(stderr, "error: cannot refresh system cache for %s\n",
+                ctx.system_filter);
+        free(ctx.roms.items);
+        return 1;
+      }
+      system_cache_count++;
+    }
+    ctx.system_filter = NULL;
+    printf("wrote_system_caches=%zu\n", system_cache_count);
+  }
+
   elapsed_ms = now_ms() - started_ms;
   print_system_summary(&ctx);
   printf("timing load_ms=%lld scan_ms=%lld sort_ms=%lld ready_ms=%lld write_ms=%lld total_ms=%lld\n",
