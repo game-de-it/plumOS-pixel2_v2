@@ -243,6 +243,50 @@ def safe_slug(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_.-]+", "-", value).strip("-")[:80]
 
 
+def stop_launch(device: Device, pid: int, profile: str) -> None:
+    """Stop the emulator first so its launcher can reap it and clean state."""
+    if not pid:
+        return
+    if profile.startswith("picoarch:"):
+        graceful = (
+            "PLUMOS_ROOT=/mnt/plumos PLUMOS_RUNTIME_ROOT=/run/plumos "
+            "/mnt/plumos/bin/plumos-picoarch-stop"
+        )
+    elif profile.startswith("standalone:"):
+        emulator_id = shlex.quote(profile.split(":", 1)[1])
+        graceful = (
+            "PLUMOS_ROOT=/mnt/plumos PLUMOS_RUNTIME_ROOT=/run/plumos "
+            "PLUMOS_USER_ROOT=/mnt/plumos-user "
+            f"/mnt/plumos/bin/plumos-standalone-stop {emulator_id}"
+        )
+    else:
+        # RetroArch and Pyxel have no external stop helper.  Signal only the
+        # real emulator children first.  Killing the whole process group at
+        # once prevents the shell/text-UI launcher chain from wait(2)-reaping
+        # its children and leaves stale runtime state on the minimal system.
+        graceful = (
+            f"ps -eo pid,pgid,stat,comm | awk -v pgid={pid} "
+            "'$2 == pgid && $3 !~ /^Z/ && "
+            "$4 != \"plumos-text-ui\" && $4 != \"sh\" && $4 != \"bash\" "
+            "{print $1}' | while read child; do "
+            "kill -TERM \"$child\" 2>/dev/null || true; done"
+        )
+    device.run(
+        f"{graceful} >/dev/null 2>&1 || true; "
+        "tries=0; while [ $tries -lt 50 ]; do "
+        f"live=$(ps -eo pgid,stat | awk -v pgid={pid} "
+        "'$1 == pgid && $2 !~ /^Z/ {n++} END {print n+0}'); "
+        "[ \"$live\" -eq 0 ] && break; sleep 0.1; tries=$((tries + 1)); done; "
+        # A launcher which did not unwind after its emulator received TERM is
+        # stopped as a final bounded fallback.  KILL is reserved for processes
+        # that remain after another grace period.
+        f"kill -TERM -{pid} 2>/dev/null || true; sleep 1; "
+        f"kill -KILL -{pid} 2>/dev/null || true",
+        check=False,
+        timeout=12,
+    )
+
+
 def launch_one(
     device: Device,
     output_dir: Path,
@@ -326,13 +370,7 @@ def launch_one(
     else:
         overall = "pass"
 
-    if pid:
-        device.run(
-            f"kill -TERM -{pid} 2>/dev/null || true; sleep 2; "
-            f"kill -KILL -{pid} 2>/dev/null || true",
-            check=False,
-            timeout=10,
-        )
+    stop_launch(device, pid, profile)
     return {
         "system": system,
         "profile": profile,
