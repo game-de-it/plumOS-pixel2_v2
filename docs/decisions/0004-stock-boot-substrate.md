@@ -64,8 +64,11 @@ experience: FE, emulators, ALSA/audio routing, connectivity and updates.
   DTB and stock-compatible userspace sequencing.
 - The System builder must target the stock `5.10.198` module ABI instead of
   `6.12.79-plumos-pixel2`.
-- Host verifiers must compare boot files against `artifacts/vendor/pixel2-stock`
-  rather than `output/kernel/pixel2`.
+- Host verifiers must compare boot files against `artifacts/vendor/pixel2-stock`.
+  The superseded Linux 6.12 experiment is isolated below
+  `experiments/linux-6.12/`, emits only below
+  `output/experimental/linux-6.12/`, requires explicit opt-in, and is not a
+  dependency of normal, System, SD-image, or release-image builds.
 - Runtime identity gates still reject stock/foreign product names in generated
   plumOS-owned files. Provenance manifests and documentation may name stockOS
   as the analyzed boot source.
@@ -76,7 +79,6 @@ experience: FE, emulators, ALSA/audio routing, connectivity and updates.
 
 ## Supersedes
 
-This decision supersedes 0002 for Pixel2 release builds. The Linux 6.12 build
-script may remain temporarily as an experiment, but release-image generation
-must not depend on it unless a later decision explicitly restores plumOS kernel
-ownership.
+This decision supersedes 0002 for Pixel2 release builds. The isolated Linux
+6.12 experiment must not become a release-image dependency unless a later
+accepted decision explicitly restores plumOS kernel ownership.

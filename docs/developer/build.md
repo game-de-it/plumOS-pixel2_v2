@@ -50,6 +50,15 @@ source. Before accepting the external module it rebuilds stock `r8188eu` and
 requires its `srcversion` and `vermagic` to match the captured stock module.
 `system-rootfs` and `release-image` run the same gate automatically.
 
+## Kernel boundary
+
+All normal targets use the registered stock Pixel2 5.10.198 boot substrate.
+The superseded Linux 6.12 bring-up path lives only under
+`experiments/linux-6.12/`; it is absent from `docker-build.sh` targets and
+release inputs, requires `PLUMOS_ENABLE_EXPERIMENTAL_LINUX_6_12=1`, and writes
+only to `output/experimental/linux-6.12/`. See Decision 0004 before changing
+this boundary.
+
 ## App Layer
 
 The app-layer root is `output/app-layer/pixel2/plumos`. It must contain:

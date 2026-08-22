@@ -1,4 +1,4 @@
-# 0002: plumOSがkernelとinitramfsを所有する
+# 0002: plumOSがkernelとinitramfsを所有する（廃止済み実験）
 
 日付: 2026-08-11
 Status: Superseded by 0004
@@ -10,6 +10,8 @@ kernel/initramfs/reboot/charger経路をboot substrateとして利用し、
 stock initramfsが`SYSTEM`へhandoffした後の`/sbin/init`以降をplumOSが所有する。
 
 以下は、完全なfirst-userspace所有を目指していた時点の履歴として残す。
+実装は`experiments/linux-6.12/`へ隔離され、明示的な環境変数なしには実行できず、
+通常build、System/Runtime update、SD image、release imageの入力にはならない。
 
 最終的なPixel2 imageでは、stock SDの`Image`をそのまま配布しない。
 plumOSのinitramfsを組み込んだPixel2対応kernelを再現可能にbuildし、PID 1
@@ -47,7 +49,7 @@ theme、製品名をplumOSへ取り込むものではない。
 必要なcopyright、SPDX、NOTICE、source URL、commit、変更内容は保持する。
 法的帰属は製品brandingとは分離し、削除しない。
 
-## 実装gate
+## 当時の実装gate（releaseでは使用しない）
 
 release image生成には以下を必須とする。
 
@@ -56,3 +58,5 @@ release image生成には以下を必須とする。
 3. plumOS initramfsを指定したkernel build
 4. boot後の`/proc/1/exe`がplumOS initである実機証明
 5. 成果物userspaceに旧distributionの名称、unit、設定がないこと
+
+現行release gateはDecision 0004のstock 5.10.198 artifact境界を検証する。

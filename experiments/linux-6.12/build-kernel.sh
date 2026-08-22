@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 IMAGE="${PLUMOS_PIXEL2_TOOLS_IMAGE:-plumos-pixel2-tools:dev}"
+
+if [ "${PLUMOS_ENABLE_EXPERIMENTAL_LINUX_6_12:-}" != 1 ]; then
+    printf '%s\n' \
+        'error: Linux 6.12 is an isolated experiment, not a Pixel2 release input' \
+        'set PLUMOS_ENABLE_EXPERIMENTAL_LINUX_6_12=1 to run it explicitly' >&2
+    exit 2
+fi
 
 if [ "${1:-}" != --inside ]; then
     docker image inspect "$IMAGE" >/dev/null 2>&1 || "$ROOT_DIR/scripts/build-tools-image.sh"
     exec docker run --rm --platform linux/arm64 \
         -e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-}" \
-        -v "$ROOT_DIR:/work" -w /work "$IMAGE" ./scripts/build-kernel.sh --inside
+        -e PLUMOS_ENABLE_EXPERIMENTAL_LINUX_6_12=1 \
+        -v "$ROOT_DIR:/work" -w /work "$IMAGE" \
+        ./experiments/linux-6.12/build-kernel.sh --inside
 fi
 
 ROOT_DIR=/work
@@ -22,7 +31,7 @@ SUPPORT="$CACHE/hardware-support"
 TARBALL="$CACHE/linux-$KERNEL_VERSION.tar.xz"
 BUILD=/tmp/plumos-pixel2-kernel
 SRC="$BUILD/linux-$KERNEL_VERSION"
-OUT="$ROOT_DIR/output/kernel/pixel2"
+OUT="$ROOT_DIR/output/experimental/linux-6.12/pixel2"
 SOURCE_EPOCH="${SOURCE_DATE_EPOCH:-}"
 [ -n "$SOURCE_EPOCH" ] || SOURCE_EPOCH="$(git -C "$ROOT_DIR" show -s --format=%ct HEAD)"
 export SOURCE_DATE_EPOCH="$SOURCE_EPOCH"
@@ -116,7 +125,7 @@ mkdir -p "$INITRAMFS/bin" "$INITRAMFS/sbin" "$INITRAMFS/dev" \
     "$INITRAMFS/proc" "$INITRAMFS/sys" "$INITRAMFS/run" \
     "$INITRAMFS/boot" "$INITRAMFS/newroot"
 install -m 0755 /bin/busybox "$INITRAMFS/bin/busybox"
-install -m 0755 "$ROOT_DIR/initramfs/pixel2/init" "$INITRAMFS/init"
+install -m 0755 "$ROOT_DIR/experiments/linux-6.12/initramfs/init" "$INITRAMFS/init"
 ln -s /bin/busybox "$INITRAMFS/sbin/mdev"
 mknod -m 0600 "$INITRAMFS/dev/console" c 5 1
 mknod -m 0666 "$INITRAMFS/dev/null" c 1 3
@@ -142,7 +151,7 @@ for option in CONFIG_BLK_DEV_LOOP CONFIG_DEVTMPFS CONFIG_DEVTMPFS_MOUNT \
     config_set --enable "$option"
 done
 make -C "$SRC" ARCH=arm64 olddefconfig
-BUILD_LOG="$ROOT_DIR/output/kernel/pixel2-build.log"
+BUILD_LOG="$ROOT_DIR/output/experimental/linux-6.12/pixel2-build.log"
 mkdir -p "${BUILD_LOG%/*}"
 if ! make -C "$SRC" -j"$(nproc)" --output-sync=target ARCH=arm64 Image \
     rockchip/rk3326s-gkd-pixel2.dtb modules >"$BUILD_LOG" 2>&1; then
@@ -158,6 +167,8 @@ install -m 0644 "$SRC/arch/arm64/boot/dts/rockchip/rk3326s-gkd-pixel2.dtb" \
 install -m 0644 "$SRC/.config" "$OUT/kernel.config"
 cp "$SRC/COPYING" "$OUT/licenses/linux-COPYING"
 cat >"$OUT/source.manifest" <<EOF
+experimental=true
+release_eligible=false
 kernel_url=$KERNEL_URL
 kernel_version=$KERNEL_VERSION
 kernel_sha256=$KERNEL_SHA256

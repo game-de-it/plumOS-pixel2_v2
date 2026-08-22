@@ -1,6 +1,8 @@
 #!/bin/busybox sh
 set -u
 
+# Experimental Linux 6.12 initramfs; never used by Pixel2 release images.
+
 bb=/bin/busybox
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 

@@ -661,7 +661,11 @@
 - [x] stock initramfsの`SYSTEM` handoff contractをhostで再確認する
 - [x] stock initramfsの`SYSTEM` handoff contractを実機で再確認する
 - [x] stock initramfs hookとplumOS init早期logを実機SDから回収する
-- [ ] Linux 6.12 plumOS-owned kernel経路をexperimental扱いへ隔離する
+- [x] Linux 6.12 plumOS-owned kernel経路をexperimental扱いへ隔離する
+  - 2026-08-22: build script、initramfs、専用testを`experiments/linux-6.12/`へ移動。
+    `PLUMOS_ENABLE_EXPERIMENTAL_LINUX_6_12=1`の明示指定を必須とし、成果物も
+    `output/experimental/linux-6.12/`へ隔離した。通常/System/SD/release buildから
+    参照されないことを専用contract testで検証する。
 - [x] 充電中rebootがstock boot substrate + plumOS SYSTEMでOSへ戻ることを実機確認する
 - [x] Pixel2のRK817 DEV_OFF経路で画面消灯することを実機確認する
 - [ ] FEメニュー経由のreboot/shutdownをapp-layer checksum込みで実機確認する
