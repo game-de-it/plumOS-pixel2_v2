@@ -20,6 +20,10 @@ printf 'network={}\n' >"$TEST_ROOT/plumos/wpa_supplicant.conf"
 
 cat >"$TEST_ROOT/busybox" <<'EOF'
 #!/bin/sh
+if [ "${1:-}" = ip ] && [ -n "${PLUMOS_TEST_IP_OUTPUT:-}" ]; then
+    cat "$PLUMOS_TEST_IP_OUTPUT"
+    exit 0
+fi
 exec "$@"
 EOF
 
@@ -41,15 +45,28 @@ chmod 0755 "$TEST_ROOT/busybox" \
 cat >"$TEST_ROOT/usb-host" <<'EOF'
 #!/bin/sh
 printf 'usb-host %s marker=%s\n' "$*" "$(test -e "$PLUMOS_SLEEP_USB_RECOVERY_MARKER" && echo present || echo absent)" >>"$PLUMOS_TEST_CALLS"
+if [ "${PLUMOS_TEST_USB_HOST_LATE_WIFI:-0}" = 1 ] && [ "${1:-}" = probe ]; then
+    printf 'probe\n' >>"$PLUMOS_TEST_USB_HOST_PROBES"
+    if [ "$(wc -l <"$PLUMOS_TEST_USB_HOST_PROBES")" -ge 2 ]; then
+        mkdir -p "$PLUMOS_WIFI_INTERFACE_ROOT/wlan0"
+    fi
+fi
 EOF
 cat >"$TEST_ROOT/wifi-recovery" <<'EOF'
 #!/bin/sh
 printf 'wifi-recovery %s marker=%s\n' "$*" "$(test -e "$PLUMOS_SLEEP_USB_RECOVERY_MARKER" && echo present || echo absent)" >>"$PLUMOS_TEST_CALLS"
+if [ "${PLUMOS_TEST_USB_HOST_LATE_WIFI:-0}" = 1 ] && \
+    [ -d "$PLUMOS_WIFI_INTERFACE_ROOT/wlan0" ]; then
+    printf '2: wlan0    inet 192.0.2.2/24\n' >"$PLUMOS_TEST_IP_OUTPUT"
+fi
 EOF
 chmod 0755 "$TEST_ROOT/usb-host" "$TEST_ROOT/wifi-recovery"
 printf 'freeze mem\n' >"$TEST_ROOT/power-state"
 : >"$TEST_ROOT/wakealarm"
 : >"$TEST_ROOT/calls"
+: >"$TEST_ROOT/usb-host-probes"
+: >"$TEST_ROOT/ip-output"
+mkdir -p "$TEST_ROOT/net"
 
 PLUMOS_ROOT="$TEST_ROOT/plumos" \
 PLUMOS_RUNTIME_ROOT="$TEST_ROOT/run" \
@@ -66,6 +83,12 @@ PLUMOS_WIFI_RECOVERY="$TEST_ROOT/wifi-recovery" \
 PLUMOS_WPA_CONFIG="$TEST_ROOT/plumos/wpa_supplicant.conf" \
 PLUMOS_SLEEP_USB_RECOVERY_MARKER="$TEST_ROOT/run/sleep-usb-recovery" \
 PLUMOS_SLEEP_WIFI_GUARD_SETTLE_SEC=0 \
+PLUMOS_SLEEP_WIFI_RECOVERY_WINDOW_SEC=3 \
+PLUMOS_SLEEP_WIFI_RECOVERY_RETRY_SEC=1 \
+PLUMOS_WIFI_INTERFACE_ROOT="$TEST_ROOT/net" \
+PLUMOS_TEST_USB_HOST_LATE_WIFI=1 \
+PLUMOS_TEST_USB_HOST_PROBES="$TEST_ROOT/usb-host-probes" \
+PLUMOS_TEST_IP_OUTPUT="$TEST_ROOT/ip-output" \
 PLUMOS_SLEEP_SETTLE_SEC=0 \
 PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown" \
@@ -81,12 +104,15 @@ grep -q '^volume apply$' "$TEST_ROOT/calls"
 grep -q '^display apply$' "$TEST_ROOT/calls"
 # The recovery is intentionally asynchronous. A full release build can leave
 # Docker and the host under enough I/O load that 500 ms is not a reliable gate.
-for _ in $(seq 1 30); do
+for _ in $(seq 1 50); do
     grep -q '^wifi-recovery recover marker=present$' "$TEST_ROOT/calls" && break
     sleep 0.1
 done
 grep -q '^usb-host probe marker=present$' "$TEST_ROOT/calls"
+[ "$(wc -l <"$TEST_ROOT/usb-host-probes")" -ge 2 ]
 grep -q '^wifi-recovery recover marker=present$' "$TEST_ROOT/calls"
+grep -q 'sleep=wifi-resume-recovery-result result=connected attempts=2' \
+    "$TEST_ROOT/logs/power.log"
 [ ! -e "$TEST_ROOT/run/sleep-usb-recovery" ]
 grep -q 'sleep=result-returned backend=mem' "$TEST_ROOT/logs/power.log"
 

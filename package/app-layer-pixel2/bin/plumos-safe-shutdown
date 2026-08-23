@@ -38,6 +38,9 @@ wifi_recovery=${PLUMOS_WIFI_RECOVERY:-$root/bin/plumos-wifi-recovery}
 wifi_config=${PLUMOS_WPA_CONFIG:-$root/config/wpa_supplicant.conf}
 sleep_usb_recovery_marker=${PLUMOS_SLEEP_USB_RECOVERY_MARKER:-$runtime_root/sleep-usb-recovery}
 sleep_wifi_guard_settle_sec=${PLUMOS_SLEEP_WIFI_GUARD_SETTLE_SEC:-2}
+sleep_wifi_recovery_window_sec=${PLUMOS_SLEEP_WIFI_RECOVERY_WINDOW_SEC:-120}
+sleep_wifi_recovery_retry_sec=${PLUMOS_SLEEP_WIFI_RECOVERY_RETRY_SEC:-3}
+wifi_interface_root=${PLUMOS_WIFI_INTERFACE_ROOT:-/sys/class/net}
 devmem_command=${PLUMOS_DEVMEM:-}
 reboot_mode_helper=${PLUMOS_REBOOT_MODE_HELPER:-$root/bin/plumos-reboot-mode}
 terminal_test=${PLUMOS_POWER_TEST_TERMINAL:-0}
@@ -368,11 +371,36 @@ schedule_sleep_wifi_recovery() {
     sleep_usb_guard_armed=0
     (
         trap 'rm -f "$sleep_usb_recovery_marker" 2>/dev/null || true' EXIT HUP INT TERM
-        "$usb_host_control" probe >>"$log_file" 2>&1 || true
-        if [ -x "$wifi_recovery" ]; then
-            PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
-                "$wifi_recovery" recover >>"$log_file" 2>&1 || true
-        fi
+        started=$(date '+%s' 2>/dev/null || echo 0)
+        deadline=$((started + sleep_wifi_recovery_window_sec))
+        attempt=0
+        recovery_result=timeout
+        while :; do
+            if [ -d "$wifi_interface_root/wlan0" ] && \
+                "$bb" ip -4 addr show dev wlan0 2>/dev/null | \
+                    grep -q 'inet '; then
+                recovery_result=connected
+                break
+            fi
+            attempt=$((attempt + 1))
+            log "sleep=wifi-resume-recovery-attempt attempt=$attempt window_sec=$sleep_wifi_recovery_window_sec"
+            "$usb_host_control" probe >>"$log_file" 2>&1 || true
+            if [ -d "$wifi_interface_root/wlan0" ] && [ -x "$wifi_recovery" ]; then
+                PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+                    "$wifi_recovery" recover >>"$log_file" 2>&1 || true
+            fi
+            if [ -d "$wifi_interface_root/wlan0" ] && \
+                "$bb" ip -4 addr show dev wlan0 2>/dev/null | \
+                    grep -q 'inet '; then
+                recovery_result=connected
+                break
+            fi
+            now=$(date '+%s' 2>/dev/null || echo "$deadline")
+            [ "$sleep_wifi_recovery_window_sec" -gt 0 ] && \
+                [ "$now" -lt "$deadline" ] || break
+            "$bb" sleep "$sleep_wifi_recovery_retry_sec"
+        done
+        log "sleep=wifi-resume-recovery-result result=$recovery_result attempts=$attempt"
         [ "$sleep_wifi_guard_settle_sec" -eq 0 ] || \
             "$bb" sleep "$sleep_wifi_guard_settle_sec"
     ) </dev/null >/dev/null 2>&1 &
@@ -460,6 +488,9 @@ is_uint "$wakeup_sec" || exit 2
 is_uint "$wait_sec" || exit 2
 is_uint "$sleep_settle_sec" || exit 2
 is_uint "$sleep_wifi_guard_settle_sec" || exit 2
+is_uint "$sleep_wifi_recovery_window_sec" || exit 2
+is_uint "$sleep_wifi_recovery_retry_sec" || exit 2
+[ "$sleep_wifi_recovery_retry_sec" -gt 0 ] || exit 2
 
 if ! mkdir "$lock_dir" 2>/dev/null; then
     log "power=result-already-running action=$action"
