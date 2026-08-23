@@ -365,3 +365,34 @@ Release acceptance remains open until the real device passes all of:
 5. dongle unplug/replug recovery (pass on the tested direct-`c820` adapter);
 6. saved Wi-Fi recovery after a true power-off cold boot (pass on the tested
    direct-`c820` adapter without a physical replug).
+
+## 2026-08-23 UGREEN RTL8811CU driver-disk release candidate
+
+The V90S `0bda:1a2b -> eject -s /dev/sr0 -> 0bda:c811` contract was audited
+against Pixel2. Pixel2 already carried the bounded mode-switch logic and the
+`8821cu` aliases, but its immutable System did not contain the `eject` binary;
+the host fixture had hidden that release-rootfs omission with a fake helper.
+System now ships `/usr/bin/eject` and its complete ARM64 dependency closure,
+the production control path names that binary explicitly, and the rootfs
+verifier requires it. The delayed OTG release was also moved from five to
+eight seconds so it cannot race the five-second driver-disk transition.
+
+Signed System and Runtime packages from commit `3e60e41` were applied to the
+physical Pixel2 through the A/B updater:
+
+- System package SHA-256:
+  `7d8f079876e9c7d4eed0dc4b269532529251f9ea626b92ebce67f8119e5e1bc6`
+- Runtime package SHA-256:
+  `90a7ac9f941ebbfb8bc9289c656a786da3ba1e7eacaae887bb7694aec966b4c7`
+- booted System and Runtime version: `0.1.0-dev-3e60e41`
+- post-boot app-layer verification: `runtime_verify=result-ok`
+- installed helper: `eject from util-linux 2.38.1`
+- managed `plumos-network-control` SHA-256:
+  `e1b22bb8e1d81f5bdf090335d4f68d550ea71cb5522b13858d31bffc0f3fd2bf`
+
+The currently attached direct-`c820` adapter loaded `8821cu`, restored
+`wlan0` at `192.168.10.110`, brought up SSH/FTP/SFTP/Samba, and returned to
+the frontend after both update reboots. This proves that the release
+candidate preserves the already-accepted direct-adapter path. Physical UGREEN
+acceptance remains open until the actual adapter proves `1a2b -> c811`,
+association, DHCP, unplug/replug, transfer, and cold-boot restoration.
