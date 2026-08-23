@@ -60,6 +60,25 @@ checksums in the immutable System image.
 - alias-driven load of `extra/8821cu.ko`;
 - normal scan continuation after `wlan0` appears.
 
+## 2026-08-23 UGREEN driver-disk completion
+
+The V90S-compatible mode-switch logic was already present, but Pixel2's
+immutable System did not contain the `eject` executable used by that logic.
+The host fixture passed only because it injected a fake eject command, so it
+did not prove the release root filesystem contract.
+
+Pixel2 now installs Debian's `eject` utility and its runtime libraries at
+`/usr/bin/eject`, records the package copyright in the System license set, and
+requires the executable in `verify-system-rootfs.sh`. The network controller
+uses that exact path while retaining the V90S safety boundary: only an `sr*`
+block node below USB ID `0bda:1a2b` is ejected; unrelated storage is untouched.
+
+The Pixel2-only OTG release worker now waits eight seconds after the intentional
+`1a2b` removal. This exceeds the complete five-second V90S re-enumeration
+window and prevents a same-second race that could return the shared PHY to OTG
+before `c811` appears. It still rechecks for any downstream device before
+releasing host mode.
+
 ## Stock loader correction
 
 The first device-side load attempt was intentionally performed from `/tmp`

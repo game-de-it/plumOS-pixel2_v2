@@ -528,6 +528,10 @@
         stop時は両force bitを解除してstock OTG自動判定へ戻すhelperを追加。常駐監視なしで
         cold boot、実`adb shell`、抜き差し、ADB -> Wi-Fiを実機再検証する。
     - [ ] `1a2b -> c811`実adapter、物理抜き差し、cold boot後の保存接続を確認する
+      - 2026-08-23: V90Sのmode-switch処理は移植済みだったが、Pixel2 Systemに実行時
+        `eject`が未収録と判明。`/usr/bin/eject`とlicenseをSystemへ追加し、rootfs verifierを
+        必須化。1a2b remove後のOTG解放もV90Sの5秒待ちと競合しない8秒へ延長した。
+        host fixture・System生成物検証後、UGREEN実adapterでのacceptanceを行う。
 - [x] frontendをSystemからapp-layer componentへ分離する
 - [x] `plumos-text-ui`とPixel2 launcher lifecycleを統合する
 - [x] Pixel2向けRetroArchをpinned sourceからbuildする

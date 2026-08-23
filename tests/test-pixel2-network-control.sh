@@ -177,6 +177,7 @@ grep -Fxq 'insmod '"$modules/extra/8821cu.ko" "$TEST_COMMAND_LOG"
 grep -Fxq c811 "$usb/1-1/idProduct"
 grep -Fq 'usb wifi mode-switch complete id=0bda:c811' \
     "$plumos/logs/network-control.log"
+grep -Fq 'PLUMOS_EJECT_BIN:-/usr/bin/eject' "$CONTROL"
 
 # Once dongle removal has returned the shared connector to OTG/sink mode,
 # an explicit FE scan must request one bounded host probe before declaring the

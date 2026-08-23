@@ -78,7 +78,7 @@ ln -s /bin/busybox "$ROOTFS_DIR/usr/bin/env"
 mkdir -p "$ROOTFS_DIR/usr/lib"
 ln -s /mnt/plumos/ssh/libexec/sftp-server "$ROOTFS_DIR/usr/lib/sftp-server"
 for binary in ip iw wpa_supplicant wpa_cli dropbear dropbearkey kmod python3 openssl \
-    blkid sfdisk partx resize2fs mkfs.fat fsck.fat; do
+    blkid eject sfdisk partx resize2fs mkfs.fat fsck.fat; do
     copy_elf "$binary"
 done
 cp -a /usr/lib/python3.11 "$ROOTFS_DIR/usr/lib/"
@@ -115,7 +115,7 @@ ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/modinfo"
 
 mkdir -p "$ROOTFS_DIR/usr/share/licenses/debian"
 for package in busybox-static kmod iproute2 iw wpasupplicant dropbear-bin \
-    python3.11-minimal openssl fdisk util-linux e2fsprogs dosfstools; do
+    python3.11-minimal openssl fdisk util-linux eject e2fsprogs dosfstools; do
     install -m 0644 "/usr/share/doc/$package/copyright" \
         "$ROOTFS_DIR/usr/share/licenses/debian/$package-copyright"
 done

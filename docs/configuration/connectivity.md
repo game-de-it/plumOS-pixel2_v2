@@ -51,8 +51,9 @@ stock OTG中のRockchip USB2 PHY BVALIDがactiveならupstreamを優先する。
 hostへ切り替えてDWC2を再列挙するが、downstream deviceが現れなければ必ずOTGへ戻す。
 Pixel2実機ではWi-Fi動作中もextconの`USB-HOST`が0だったため、extconは物理接続判定に
 使わない。dongle removeは即時にOTGを解放するが、RTL8821CUの`0bda:1a2b` storage
-identityだけは意図したeject/re-enumerationを壊さないよう、5秒後にdownstream不在を
-再確認してから解放する。常時pollingは行わない。
+identityだけは意図したeject/re-enumerationを壊さないよう、V90Sと同じ5秒の
+mode-switch待ちを越える8秒後にdownstream不在を再確認してから解放する。常時pollingは
+行わない。
 
 OTGへ解放した後は、電源を供給しないUSB Wi-Fi dongleの再挿入をhardware eventだけでは
 検出できない。FEのWi-Fi ON、SSID scan、接続操作は、adapter不在時に1回だけbounded host
@@ -62,7 +63,8 @@ boot worker、FE scan、recoveryからのprobeは単一lockで直列化する。
 markerを設定し、そのremove ueventを物理抜去として処理しない。
 
 UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
-Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をbounded ejectし、
+Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をSystem同梱の`/usr/bin/eject -s`で
+bounded ejectし、
 `0bda:c811`への再列挙を待って`8821cu`をloadする。直接`0bda:c811`または
 `0bda:c820`で現れるadapterもmodule aliasから検出する。driver buildはUSB
 autosuspendを無効、driver標準power savingを有効にしたV90Sと同じfeature

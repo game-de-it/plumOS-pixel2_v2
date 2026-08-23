@@ -111,6 +111,8 @@ grep -q ') &' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/35-network-services"
 grep -q '/mnt/plumos/ssh/libexec/sftp-server' \
     "$ROOT_DIR/scripts/build-system-rootfs.sh"
+grep -q 'blkid eject sfdisk' "$ROOT_DIR/scripts/build-system-rootfs.sh"
+grep -q 'rootfs/usr/bin/eject' "$ROOT_DIR/scripts/verify-system-rootfs.sh"
 grep -q 'PLUMOS_SYS' "$ROOT_DIR/rootfs/pixel2/sbin/init"
 grep -q 'app-layer-selected' \
     "$ROOT_DIR/rootfs/pixel2/usr/lib/plumos/init.d/40-frontend"

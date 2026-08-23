@@ -138,4 +138,8 @@ for _ in 1 2 3 4 5; do
 done
 grep -Fxq otg "$TMP/otg-mode"
 
+# Production must outlast the network controller's five-second 1a2b -> c811
+# re-enumeration window before deciding that the dongle was physically removed.
+grep -q 'PLUMOS_USB_HOST_RELEASE_DELAY:-8' "$SERVICE"
+
 printf 'pixel2_usb_host_reenumerate=result-ok\n'

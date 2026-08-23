@@ -16,7 +16,10 @@ RESET_DELAY="${PLUMOS_USB_HOST_RESET_DELAY:-2}"
 MODE_SETTLE="${PLUMOS_USB_HOST_MODE_SETTLE:-1}"
 ENUMERATION_WAIT="${PLUMOS_USB_HOST_ENUMERATION_WAIT:-3}"
 PRE_RESET_WAIT="${PLUMOS_USB_HOST_PRE_RESET_WAIT:-3}"
-RELEASE_DELAY="${PLUMOS_USB_HOST_RELEASE_DELAY:-5}"
+# The V90S-proven 1a2b -> c811 path gives the SCSI eject/re-enumeration loop
+# five seconds. Keep Pixel2 in host mode beyond that complete window so its
+# delayed 1a2b remove handler cannot race the c811 add event at second five.
+RELEASE_DELAY="${PLUMOS_USB_HOST_RELEASE_DELAY:-8}"
 LOCK_WAIT="${PLUMOS_USB_HOST_LOCK_WAIT:-8}"
 LOCK_DIR="${PLUMOS_USB_HOST_LOCK_DIR:-/run/plumos/usb-host-control.lock}"
 TRANSITION_MARKER="${PLUMOS_USB_HOST_TRANSITION_MARKER:-/run/plumos/usb-host-probe-active}"

@@ -128,6 +128,7 @@ for directory in dev dev/pts proc sys run tmp boot state roms root \
     }
 done
 test -f "$tmp/rootfs/usr/lib/plumos/kernel-runtime.sha256"
+test -x "$tmp/rootfs/usr/bin/eject"
 release=$(find "$tmp/rootfs/lib/modules" -mindepth 1 -maxdepth 1 -type d \
     -printf '%f\n')
 case "$release" in
