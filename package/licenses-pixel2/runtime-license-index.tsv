@@ -1,0 +1,18 @@
+# runtime_id	origin	license_family	evidence	status
+stock-substrate	GKD Pixel2 stock runtime	vendor/upstream terms	licenses/pixel2-stock-vendor-runtime-NOTICE.txt	documented boundary
+system-rootfs	plumOS, BusyBox, Debian packages, stock modules/firmware	MIT, GPL/LGPL/BSD, vendor	System /usr/share/licenses; System manifest; stock notice	build-gated
+frontend	plumOS, Noto CJK, DejaVu	MIT, OFL/Apache/mixed	licenses/plumOS-MIT.txt; licenses/plumos-frontend/	complete
+retroarch	libretro/RetroArch	GPL-3.0	licenses/RetroArch-COPYING	complete
+libretro-cores	pinned repositories in libretro-core-recipes.tsv	mixed	licenses/*; components/libretro-cores/manifest.json	per-core audit
+picoarch	shauninman/picoarch and SDL compatibility	GPL-3.0, mixed	licenses/picoarch-LICENSE; licenses/picoarch-sdl12-compat-LICENSE.txt	complete
+standalone	PCSX-ReARMed, steward-fu/nds with DraStic, PPSSPP, OpenBOR	mixed	component manifest and runtime rows below	per-runtime audit
+pcsx-rearmed-standalone	notaz/pcsx_rearmed	GPL-2.0	licenses/pcsx-rearmed-COPYING.txt	complete
+drastic-standalone	steward-fu/nds integration and DraStic binary	LGPL-2.1 integration, DraStic separate	licenses/steward-fu-nds-LGPL-2.1; licenses/drastic-upstream-NOTICE.txt	project-approved inclusion
+ppsspp-standalone	hrydgard/ppsspp	GPL-2.0-or-later	licenses/ppsspp-LICENSE.txt	complete
+openbor-standalone	DCurrent/openbor	BSD-3-Clause	licenses/openbor-LICENSE.txt	complete
+audio-router	plumOS ALSA ioplug	MIT	licenses/plumos-audio-router-MIT.txt	complete
+pyxel	CPython, Pyxel, pygame, NumPy, Pillow and modules	mixed	apps/python/lib/python3.11/LICENSE.txt; package metadata	retained metadata
+nextcommander	LoveRetro/NextCommander	NOASSERTION	licenses/nextcommander-upstream-NOTICE.txt	project-approved inclusion
+music-player	plumOS and miniaudio	MIT, MIT-0	licenses/plumOS-MIT.txt; component manifest	complete
+network-services	BusyBox, Dropbear, OpenSSH SFTP, Samba and dependencies	mixed	components/network-services/manifest.json; package materials	documented sources
+portmaster	PortsMaster/PortMaster-GUI and compatibility libraries	mixed	apps/portmaster/upstream/PortMaster/licenses; licenses/*compat*	complete

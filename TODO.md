@@ -460,7 +460,7 @@
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [x] user/developer文書を分離し、主要取扱説明書と技術ガイドを英語・日本語の対にする
-  - [ ] top-level project licenseを決定・追加する
+  - [x] top-level project licenseを他plumOSシリーズと同じMITとして追加する
   - [ ] third-party noticeとDraStic redistribution条件をrelease payload単位で監査する
   - [ ] CIへhost tests、identity/content gate、implementation audit、checksum検証を追加する
   - [ ] versioned artifact、SHA256SUMS、archive検査、GitHub再download検証を実装する

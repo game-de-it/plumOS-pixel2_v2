@@ -1,0 +1,17 @@
+NextCommander upstream license status notice
+
+Upstream: https://github.com/LoveRetro/NextCommander.git
+Pinned revision: 49c24bb67c12aea8078f48c833815f9ef2dcc5e2
+
+The inspected pinned source tree did not contain a separate LICENSE, COPYING,
+or equivalent file. This notice records that absence; it is not a substitute
+for an upstream license grant.
+
+plumOS-authored Pixel2 integration patches remain under the plumOS MIT License.
+That license does not relicense the NextCommander upstream source or binary.
+
+Release inclusion policy:
+NextCommander is intentionally included in plumOS Pixel2 releases, following
+its documented use in the other plumOS handheld projects. This decision does
+not change the NOASSERTION license record; this notice and pinned source
+reference must remain in every binary release.

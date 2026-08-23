@@ -32,6 +32,15 @@ grep -q '^::ctrlaltdel:/bin/busybox reboot$' "$tmp/rootfs/etc/inittab"
 test -d "$tmp/rootfs/.plumos-dispatcher-old"
 grep -q 'umount /.plumos-dispatcher-old' "$tmp/rootfs/sbin/init"
 grep -q '^ID=plumos$' "$tmp/rootfs/etc/os-release"
+for path in \
+    usr/share/licenses/plumOS-MIT.txt \
+    usr/share/licenses/NOTICE.txt \
+    usr/share/licenses/pixel2-stock-vendor-runtime-NOTICE.txt; do
+    test -s "$tmp/rootfs/$path" || {
+        printf 'error: System license material missing: %s\n' "$path" >&2
+        exit 1
+    }
+done
 grep -q '"device": "pixel2"' "$tmp/rootfs/usr/lib/plumos/system-manifest.json"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/20-usb-wifi"
 test -x "$tmp/rootfs/usr/lib/plumos/init.d/15-usb-host-reenumerate"

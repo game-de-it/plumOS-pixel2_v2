@@ -54,3 +54,9 @@ audio, sleep, charging, storage, or emulator behavior on physical hardware.
 Current implementation and release blockers are tracked in
 [TODO](TODO.md) and the
 [implementation inventory](docs/developer/implementation-status.md).
+
+## License and Notices
+
+plumOS-authored material is [MIT licensed](LICENSE). Stock/vendor boot material
+and bundled third-party components retain their own terms; see
+[NOTICE](NOTICE.md) and [Third-Party Notices](THIRD_PARTY_NOTICES.md).

@@ -48,3 +48,9 @@ Pixel2版はリリース候補の実機検証中です。ホスト上のビル�
 実機の画面方向、入力、音声、スリープ、充電、ストレージ、エミュレータ動作を保証しません。
 現在の実装とrelease blockerは[TODO](TODO.md)および
 [実装一覧](docs/developer/implementation-status.ja.md)で管理します。
+
+## Licenseと通知
+
+plumOS作成部分は[MIT License](LICENSE)です。stock/vendor boot materialとthird-party
+componentはそれぞれ元の条件を保持します。[NOTICE](NOTICE.md)と
+[サードパーティー通知](THIRD_PARTY_NOTICES.ja.md)を参照してください。

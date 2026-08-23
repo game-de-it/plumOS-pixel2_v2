@@ -1,0 +1,11 @@
+GKD Pixel2 stock boot substrate notice
+
+The release image contains a checksum-registered Rockchip boot prefix, stock
+Linux 5.10.198 kernel Image, runtime DTB, stock initramfs, selected modules, and
+firmware required for GKD Pixel2 hardware compatibility.
+
+These vendor-derived files retain their original terms and are not covered by
+the plumOS MIT License. The repository records capture provenance, exact hashes,
+and the rule that the registered runtime DTB is used byte-for-byte. ROMs, game
+BIOS files, saves, and stock userland applications are not part of this
+compatibility boundary.

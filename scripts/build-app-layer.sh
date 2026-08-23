@@ -61,6 +61,35 @@ rsync -a "$PORTMASTER/" "$PLUMOS_DIR/"
 rsync -a "$ROOT_DIR/package/app-layer-pixel2/" "$PLUMOS_DIR/"
 chmod 0755 "$PLUMOS_DIR/bin/"*
 
+# Publish the repository and third-party license boundary inside the binary
+# app layer.  Component-provided license files are already merged above; the
+# files below make the top-level policy and exact component manifests visible
+# without relying on the GitHub page remaining available.
+mkdir -p "$PLUMOS_DIR/licenses/component-manifests"
+install -m 0644 "$ROOT_DIR/LICENSE" \
+    "$PLUMOS_DIR/licenses/plumOS-MIT.txt"
+install -m 0644 "$ROOT_DIR/NOTICE.md" \
+    "$PLUMOS_DIR/licenses/NOTICE.txt"
+install -m 0644 "$ROOT_DIR/THIRD_PARTY_NOTICES.md" \
+    "$PLUMOS_DIR/licenses/THIRD_PARTY_NOTICES.md"
+install -m 0644 "$ROOT_DIR/THIRD_PARTY_NOTICES.ja.md" \
+    "$PLUMOS_DIR/licenses/THIRD_PARTY_NOTICES.ja.md"
+install -m 0644 "$ROOT_DIR/package/licenses-pixel2/runtime-license-index.tsv" \
+    "$PLUMOS_DIR/licenses/RUNTIME_LICENSE_INDEX.tsv"
+for notice in \
+    pixel2-stock-vendor-runtime-NOTICE.txt \
+    drastic-upstream-NOTICE.txt \
+    nextcommander-upstream-NOTICE.txt; do
+    install -m 0644 "$ROOT_DIR/package/licenses-pixel2/$notice" \
+        "$PLUMOS_DIR/licenses/$notice"
+done
+for component in \
+    frontend retroarch libretro-cores picoarch standalone audio-router pyxel \
+    nextcommander music-player network-services portmaster; do
+    install -m 0644 "$PLUMOS_DIR/components/$component/manifest.json" \
+        "$PLUMOS_DIR/licenses/component-manifests/$component.json"
+done
+
 # Normalize component-specific defaults into the public Factory Reset ABI.
 # Paths below each target are relative to PLUMOS_ROOT and are restored by
 # plumos-factory-reset with a timestamped backup of any existing file.
@@ -137,4 +166,5 @@ EOF
         while IFS= read -r file; do sha256sum "$file"; done
 ) >"$PLUMOS_DIR/checksums.sha256"
 "$ROOT_DIR/scripts/verify-app-layer.sh" "$PLUMOS_DIR"
+"$ROOT_DIR/scripts/audit-pixel2-license-bundle.sh" --app-only "$PLUMOS_DIR"
 printf 'app_layer=result-ok strict=%s output=%s\n' "$STRICT" "$PLUMOS_DIR"

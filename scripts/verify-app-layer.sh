@@ -5,6 +5,12 @@ ROOT="${1:-}"
 [ -d "$ROOT" ] || { printf 'usage: %s APP_LAYER_ROOT\n' "$0" >&2; exit 2; }
 for path in \
     manifest.json checksums.sha256 VERSION COMPAT_VENDOR RUNTIME_ABI \
+    licenses/plumOS-MIT.txt licenses/NOTICE.txt \
+    licenses/THIRD_PARTY_NOTICES.md licenses/THIRD_PARTY_NOTICES.ja.md \
+    licenses/RUNTIME_LICENSE_INDEX.tsv \
+    licenses/pixel2-stock-vendor-runtime-NOTICE.txt \
+    licenses/drastic-upstream-NOTICE.txt \
+    licenses/nextcommander-upstream-NOTICE.txt \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
     bin/plumos-retroarch-config-merge bin/plumos-retroarch-launch \
     bin/plumos-ensure-udev-input-db \
@@ -45,6 +51,14 @@ for path in \
     components/network-services/manifest.json \
     components/portmaster/manifest.json; do
     [ -f "$ROOT/$path" ] || { printf 'error: app-layer file missing: %s\n' "$path" >&2; exit 1; }
+done
+for component in frontend retroarch libretro-cores picoarch standalone \
+    audio-router pyxel nextcommander music-player network-services portmaster; do
+    cmp -s "$ROOT/components/$component/manifest.json" \
+        "$ROOT/licenses/component-manifests/$component.json" || {
+        printf 'error: component license manifest drift: %s\n' "$component" >&2
+        exit 1
+    }
 done
 for path in \
     config/frontend/feature-contract.json \

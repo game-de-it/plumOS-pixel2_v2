@@ -1,0 +1,21 @@
+DraStic upstream status notice
+
+Integration source: https://github.com/steward-fu/nds
+Pinned integration revision: b88e6b75963106c0bd54dfe112f860c6bdbfe593
+Binary release family: steward-fu/nds final-china-devices
+Packaged asset: drastic_miyoo-flip_20251104.zip
+
+The steward-fu/nds integration source carries LGPL-2.1 terms. The DraStic
+executable is a separately authored third-party emulator and is not relicensed
+by plumOS or by the integration source's LGPL license.
+
+The app layer retains the integration LGPL text, official release README, exact
+asset SHA-256, component manifest, and this notice. This notice makes no
+additional claim about redistribution rights for the DraStic executable.
+
+Release inclusion policy:
+DraStic standalone is intentionally included in plumOS Pixel2 releases,
+following the documented policy used by other plumOS handheld releases. This
+decision does not apply LGPL-2.1 or the plumOS MIT License to the separately
+authored executable; this status disclosure and pinned provenance must remain
+in every binary release.

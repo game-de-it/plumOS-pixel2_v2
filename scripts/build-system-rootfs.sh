@@ -114,6 +114,13 @@ ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/depmod"
 ln -s /usr/bin/kmod "$ROOTFS_DIR/sbin/modinfo"
 
 mkdir -p "$ROOTFS_DIR/usr/share/licenses/debian"
+install -m 0644 "$ROOT_DIR/LICENSE" \
+    "$ROOTFS_DIR/usr/share/licenses/plumOS-MIT.txt"
+install -m 0644 "$ROOT_DIR/NOTICE.md" \
+    "$ROOTFS_DIR/usr/share/licenses/NOTICE.txt"
+install -m 0644 \
+    "$ROOT_DIR/package/licenses-pixel2/pixel2-stock-vendor-runtime-NOTICE.txt" \
+    "$ROOTFS_DIR/usr/share/licenses/pixel2-stock-vendor-runtime-NOTICE.txt"
 for package in busybox-static kmod iproute2 iw wpasupplicant dropbear-bin \
     python3.11-minimal openssl fdisk util-linux eject e2fsprogs dosfstools; do
     install -m 0644 "/usr/share/doc/$package/copyright" \
