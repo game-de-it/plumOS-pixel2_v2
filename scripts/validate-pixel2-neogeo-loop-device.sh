@@ -29,27 +29,33 @@ import sys
 
 best_ratio = 0.0
 best_colors = 0
+visible = False
 for path in glob.glob(sys.argv[1] + "-plane-*.xrgb8888"):
     data = open(path, "rb").read()
     if len(data) < 4:
         continue
     pixels = len(data) // 4
-    nonblack = sum(
-        1
-        for offset in range(0, pixels * 4, 4)
-        if data[offset] or data[offset + 1] or data[offset + 2]
-    )
+    nonblack = 0
+    sampled_colors = set()
+    for offset in range(0, pixels * 4, 4):
+        color = bytes(data[offset : offset + 3])
+        if color != b"\x00\x00\x00":
+            nonblack += 1
+        # Cap memory while inspecting the complete plane. Sampling a fixed
+        # stride can repeatedly hit the same scanline position and undercount
+        # a perfectly valid low-resolution game frame.
+        if len(sampled_colors) < 16:
+            sampled_colors.add(color)
     ratio = nonblack / pixels
-    colors = len(
-        {
-            bytes(data[offset : offset + 3])
-            for offset in range(0, pixels * 4, 256)
-        }
-    )
-    if ratio > best_ratio:
+    colors = len(sampled_colors)
+    plane_visible = ratio >= 0.01 and colors >= 3
+    if plane_visible:
+        visible = True
+    if (plane_visible and best_colors < 3) or (
+        plane_visible == (best_colors >= 3) and ratio > best_ratio
+    ):
         best_ratio = ratio
         best_colors = colors
-visible = best_ratio >= 0.01 and best_colors >= 3
 print(f"{int(visible)} {best_ratio:.6f} {best_colors}")
 PY
 }
@@ -117,7 +123,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
   storage_errors="$(count_storage_errors)"
   rom_sha256="$(sha256sum "$ROM_PATH" 2>/dev/null | awk '{print $1}')"
   runtime_read=0
-  if sha256sum -c /mnt/plumos/components/frontend/checksums.sha256 >/dev/null 2>&1; then
+  if (cd /mnt/plumos && sha256sum -c components/frontend/checksums.sha256 >/dev/null 2>&1); then
     runtime_read=1
   fi
 
