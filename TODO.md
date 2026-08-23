@@ -161,6 +161,14 @@
       PicoArch、Music Playerのpause、kernel sleep、同一process、前後画面・音声、
       Wi-Fi/SSH自動復帰を全て機械合格。物理Power操作と目視・可聴品質だけをoperator
       acceptanceとして残す。
+    - 2026-08-24: Sleep充電の2経路を実機合格。充電器接続後のSleepは画面を完全消灯した
+      まま15%から72%まで充電し、未接続Sleep後の充電器挿入もkernel wake後に表示復帰を
+      保留してsoftware standbyへ戻る`e256391`で、消灯維持・充電・物理Power復帰に合格した。
+      復帰直後の単発Wi-Fi probeが充電器を見て終了し、後から挿したdongleを拾わない問題は、
+      Sleep復帰後だけ120秒・3秒間隔で既存host probe/recoveryを再試行する`b66efd3`で修正。
+      10回目に`0bda:c811`を再列挙し、再起動なしでIPv4 `192.168.10.107`へ復帰した。
+      frontend 199件、app-layer 11,267件、Runtime verifierも合格。
+      [検証記録](docs/validation/2026-08-24-pixel2-sleep-charging.md)を参照。
     - 2026-08-16: Gambatteで音声だけ継続してLCDが黒くなる状態を、fbdevには有効な
       frameがある一方KMS active planeがない問題と特定。`d242dfc`で初回frameと
       `SIGCONT`後だけUNBLANK/PANし、Gambatte固有RGB565 byte swapも既存XU20の
