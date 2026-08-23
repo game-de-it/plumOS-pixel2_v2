@@ -816,6 +816,13 @@
     manufacturer/OEMとも0の媒体であり、再挿入後のRuntime/System A/B/ROM readbackは
     全合格。媒体または接点不良としてこのSDをrelease acceptanceから除外し、
     known-good branded SDで同じRC1の最終確認を継続する。
+  - 2026-08-23: 別の`ASTC` SDでRetroArch/FBNeoの`aof.zip`を20回連続起動・終了。
+    全回でemulator起動、DRM非黒画面、ALSA進行、RetroArch残留0、FE 1 process復帰、
+    ROM SHA一致を確認した。周回前から存在したforced-off由来FAT dirty警告1件は増えず、
+    MMC tuning/timeout/I/O errorは0、最終Runtime全checksumも合格。追加の判定器証明周回
+    も合格し、Wi-Fiは10/10 ping、FE操作可能状態へ復帰した。この反復試験範囲では
+    NEOGEO/FBNeoを前回の媒体脱落原因から除外し、generic `USD`媒体または接点不良という
+    判断を維持する。詳細は`docs/validation/2026-08-23-pixel2-neogeo-loop.md`。
 - [x] app-layer manifest/checksumを実機deploy単位で検証する
   - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。
 - [x] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する

@@ -81,3 +81,11 @@ stock DTB or lower the SD clock based on one unidentified marginal card: a
 app layer. Reflash the existing RC1 image to a known-good branded SD and repeat
 the cold-boot, Neo Geo exit, START/ROM launch, Wi-Fi, and safe power checks.
 
+The requested Neo Geo isolation was subsequently completed on a different
+`ASTC` SD. Twenty consecutive RetroArch/FBNeo `aof.zip` launch/exit cycles all
+returned to one frontend process with no emulator left behind. Display, audio,
+ROM hash, managed Runtime reads, and the storage-error baseline remained valid;
+the final full Runtime verification passed. No MMC tuning, timeout, or I/O error
+was added. This strongly excludes Neo Geo/FBNeo as the trigger under the tested
+conditions and preserves the original generic `USD` media/contact diagnosis.
+See [Pixel2 Neo Geo repeat test](2026-08-23-pixel2-neogeo-loop.md).

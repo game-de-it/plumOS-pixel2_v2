@@ -215,3 +215,11 @@ and Neo Geo ROM readback, so no persistent image corruption was found. This is
 treated as a marginal card/contact incident, not an RC1 software pass. Final
 acceptance must use a known-good branded SD. See
 [Pixel2 RC1 SD dropout investigation](2026-08-23-pixel2-rc1-sd-dropout.md).
+
+A different `ASTC` SD then completed twenty consecutive Neo Geo/FBNeo
+launch/exit cycles without adding an MMC, FAT, ext4, timeout, or I/O error.
+Every cycle restored the frontend without a surviving emulator, and final
+Runtime verification passed. The prior dropout is therefore not reproducible
+from Neo Geo itself and remains attributed to the excluded generic `USD` card
+or its contact. See
+[Pixel2 Neo Geo repeat test](2026-08-23-pixel2-neogeo-loop.md).
