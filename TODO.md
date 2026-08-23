@@ -681,6 +681,9 @@
   - 2026-08-14: 現行64 GB実機SDで最終境界（p2=8192 MiB、p3=残り49.7 GiB）、既存user data復元、cold boot mountには合格。この時点ではrelease seed側が未実装だったため項目を継続した。
   - 2026-08-14: release seed provisionerを実装し、16 GB sparse-cardで最終MBR、ext4 8 GiB、残容量FAT32、directory seed、中断resume、idempotency、既存p3保護までhost合格。新規compact imageからの物理Pixel2初回bootのみ継続。
   - 2026-08-14: `e1b05ed` compact imageを64 GB実機SDで初回bootし、約1秒でp2=8 GiB、p3=49.7 GiB、complete/userdata markerまで完了。旧p3 FAT32 signatureをpreserveしてformatを省略したため短時間だった。初回sessionだけprovisioner mountへinitがfallback tmpfsを重ねる不具合を検出し、通常再起動後はp3 49.7 GiB、required directory 10/10、FE/ADB、mount count 1に合格。`cf8e96f`で既存mount採用guardを追加し、修正版imageの初回session確認を継続。
+  - 2026-08-23: release candidate `0.1.0-rc1-28aaf65`を全componentから再生成。
+    16 GB first-boot fixture、System A/B、Runtime再展開、固定partition geometry、2回の
+    image SHA再現性に合格。新規SDでのfirst-bootと最終partition readbackをrelease gateとする。
 
 ## Boot artifact boundary
 
@@ -783,6 +786,10 @@
     directory durabilityを確定する。実機のcache writeは2.110秒から0.237秒、scan全体は
     6.397秒から4.515秒へ短縮し、通常bootへの追加負担を約1.88秒削減した。
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
+  - 2026-08-23: `plumOS-Pixel2-0.1.0-rc1-28aaf65.img`（2,701,131,776 bytes、
+    SHA-256 `ca9275c3...f108929`）を生成。release audit blocker 0、109/109 core、
+    strict app-layer、System A/B、SD image verifier、host contract suiteに合格。
+    この候補imageを書いた別SDでの物理最終確認を継続する。
 - [x] app-layer manifest/checksumを実機deploy単位で検証する
   - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。
 - [x] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
