@@ -485,6 +485,13 @@
       通常rebootでuptime 10.44秒に`c811`、11.09秒にdriver、31.39秒に`.107`を自動取得。
       host SSHは再起動要求から37秒で復帰し、gateway 10/10、FE、RX/TX error 0を確認した。
       物理再挿入復旧も`.107`再取得まで合格。5 GHzとtrue cold bootは継続する。
+    - [x] release candidateを別々の2枚のSDで初期化した際、初回のSSID接続だけ
+      WPA associationが固定15秒上限をわずかに超えて失敗し、失敗候補が残留して
+      2回目だけ成功しやすくなる競合を再現した。明示的なFE接続だけWPA待機を30秒へ
+      延長し、保存済み設定がないfresh cardでも失敗候補を必ず停止する。host fixture、
+      frontend/app-layer strict build、実機Runtime checksumを合格。実機では保存設定を
+      変更せず18秒で`.107`へ初回接続でき、旧15秒経路なら失敗する境界を通過した。
+      詳細は`docs/validation/2026-08-23-pixel2-first-wifi-connect.md`に記録した。
     - [x] `0bda:c820`実adapterを`rtl8821cu`へ直接bindし、2.4 GHz接続、DHCP
       `192.168.10.120`、gateway 20/20 ping、SSH/SFTP SHA一致、5 GHz scanを確認した
     - [x] 5 GHzへassociationし、434 Mbit/s link、DHCP/gateway、SSH 2.11 MiB/s、

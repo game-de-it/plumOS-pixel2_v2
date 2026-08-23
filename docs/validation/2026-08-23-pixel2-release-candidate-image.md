@@ -142,10 +142,25 @@ UGREEN AC650 address at about 31 seconds, and restored SSH at
 
 The first manual Wi-Fi connect attempt stopped before WPA reached COMPLETED;
 DHCP was never started. The second attempt reached WPA COMPLETED and obtained
-the `.107` lease immediately. This log is consistent with the reported first
-password-entry mistake or a transient authentication failure; it contains no
-evidence of a DHCP fault. The active adapter readback was `0bda:c811`, driver
-`rtl8821cu`, RSSI -46, and 434 Mbps link speed.
+the `.107` lease. A second independently initialized SD reproduced the same
+sequence with the same password, disproving the original password-error
+hypothesis. The manual path used the 15-second boot-recovery bound, while a
+cold RTL8821CU association could take slightly longer. In addition, the failed
+candidate remained alive on a fresh card with no previous config, warming the
+driver/BSS state without ever requesting DHCP. This made the second attempt
+systematically more likely to succeed.
+
+Commit `dccd872` gives only explicit FE connections a 30-second WPA bound and
+always stops a failed uncommitted candidate. The deployed fix connected the
+same device at `.107` after 18 seconds without changing the saved config. The
+active adapter readback was `0bda:c811`, driver `rtl8821cu`, RSSI -44, and
+434 Mbps link speed. See
+[Pixel2 first Wi-Fi connection](2026-08-23-pixel2-first-wifi-connect.md).
+
+The image recorded by this document remains an exact artifact from `28aaf65`
+and therefore does not contain `dccd872`. It is superseded for release use; a
+new candidate image must be generated from `dccd872` or later after the
+remaining release gates are closed.
 
 ## RC1 media smoke
 
