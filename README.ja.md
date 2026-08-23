@@ -1,74 +1,50 @@
 # plumOS Pixel2
 
-[English](README.md)
+[English](README.md) | [ユーザー向け取扱説明書](docs/user/README.ja.md) | [開発者向けガイド](docs/developer/README.ja.md)
 
-GKD Pixel2（RK3326S）向けplumOSを、再現可能なbuildと検証可能な
-component metadataから構築するプロジェクトです。
+plumOS Pixel2は、RK3326Sを搭載したGKD Pixel2向けのLinux
+ディストリビューションです。ハードウェア互換性に必要なstockのboot substrateを
+保持し、stock initramfsが`SYSTEM`へ引き渡した後は、plumOS独自のsystem、
+フロントエンド、サービス、エミュレータ環境を起動します。
 
-現在採用しているboot境界は、Pixel2 stockのRockchip boot prefix、kernel
-5.10.198、内蔵initramfs、checksum登録済みruntime DTBをbyte-for-byteで
-boot substrateとして保持し、stock initramfsが
-`/boot/SYSTEM`へhandoffした後の`/sbin/init`以降をplumOSが所有する構成です。
-stockの通常userland、frontend、service、設定、テーマは実行時に使用しません。
+## 主な機能
 
-## 現在の実装
+- 6個のシステムアイコンとText・Graphic・Gallery表示を備えたゲーム画面
+- RetroArch、PicoArch、スタンドアロンエミュレータ、PICO-8、Pyxel、PortMaster
+- ROM、BIOS、画像、セーブ、アップデート用のFAT32 `PLUMOS_USER`
+- 共通の音量・明るさ操作、電源メニュー、スリープ、再起動、シャットダウン
+- 対応USB Wi-FiアダプターとSSH、SFTP、FTP、Samba
+- rollback検査付きの署名済みRuntime更新とA/B System更新
 
-- plumOS `SYSTEM` SquashFS、init、USB Wi-Fi、SSH、persistent logs;
-- Pixel2 frontend、START menu、ROM scanner、physical input contract;
-- RetroArchとPixel2対応112 libretro core、PicoArch;
-- OpenBOR、DraStic、PPSSPP standalone;
-- Python 3.11、Pyxel、pygame runtime;
-- RK817/USB向けplumOS audio routing、音量・輝度service;
-- component manifest/checksum付きapp-layerと4 GiB SD image builder。
+ROMおよび利用者が用意するBIOSファイルは同梱されません。合法的に利用できる
+コンテンツだけを使用してください。
 
-実装済みcomponentと実機合格は同じ意味ではありません。公開済みだがbackendが
-不足するFE項目、未実装Apps、standalone、update、全system実機試験は
-[Pixel2 Implementation Inventory](docs/developer/implementation-status.md)と
-[TODO](TODO.md)で追跡します。
+## Pixel2固有の重要事項
 
-## Build
+- このイメージはGKD Pixel2専用です。
+- 16 GB以上の別SDカードを使用し、stockOSカードへ上書きしないでください。
+- 初回起動ではSystem領域の拡張と`PLUMOS_USER`作成を行い、1回だけ自動再起動する
+  場合があります。セットアップ中は電源を切らないでください。
+- Pixel2のUSBポートは1つです。外部分岐機器がなければWi-Fiアダプターと充電器を
+  同時に接続できません。Wi-Fiを抜くとUSB充電に戻ります。
+- ADBは搭載しません。リモート保守にはWi-FiとSSH/SFTPを使用します。
+- SDカードを抜く前には、必ずPOWERメニューからシャットダウンしてください。
 
-Docker Desktopまたは互換Docker engineと、stock Pixel2から読み取り専用で
-採取したboot artifactが必要です。private stock captureはGitへ追加しません。
+## ドキュメント
 
-```sh
-./scripts/docker-build.sh frontend
-./scripts/docker-build.sh retroarch
-./scripts/docker-build.sh core-catalog --filter all --concurrency 4
-./scripts/docker-build.sh picoarch
-./scripts/docker-build.sh standalone
-./scripts/docker-build.sh pyxel-runtime
-./scripts/docker-build.sh app-layer --strict
-./scripts/docker-build.sh audit
-./scripts/docker-build.sh system-rootfs
-./scripts/docker-build.sh sd-image
-```
+インストール、操作、ストレージ、ネットワーク、エミュレータ、更新、問題対応は
+[ユーザー向け取扱説明書](docs/user/README.ja.md)から読んでください。
 
-成果物は`output/`へ生成されます。SD imageは約2.5 GiBのcompact seedで、
-stock-compatible boot prefix、512 MiB `PLUMOS_BOOT`、2048 MiB ext4
-`PLUMOS_SYS`だけを収録します。16 GB以上のSDで初回起動すると、`PLUMOS_SYS`を
-8192 MiBへ拡張し、残り全域にFAT32 `PLUMOS_USER`を作成します。kernelがmount中の
-partition更新を受け付けない場合は、初回setup中に一度だけ自動再起動して処理を
-再開します。ROMやBIOSをmacOSから配置するのは、この初回起動完了後です。
+ビルド、boot所有範囲、Runtime/System構成、app-layerデプロイ、ハードウェア統合、
+検証については[開発者向けガイド](docs/developer/README.ja.md)を参照してください。
 
-Pixel2の単一USB portはWi-Fi優先のdual-role OTGとして扱います。USB Wi-Fi dongleの
-接続中だけhost roleを使用し、抜去後はstock OTGへ戻して起動中のUSB充電を許可します。
-plumOS Pixel2はADBを搭載せず、Wi-Fi接続後のSSH/SFTPを保守経路にします。
+日英の全体索引は[`docs/`](docs/README.ja.md)にあります。
+`docs/validation/`の日付付き文書は、旧方式を含む開発上の根拠資料であり、
+利用者向けの操作手順ではありません。
 
-`release-image`は実装監査のrelease blockerが0になるまで失敗します。開発中の
-実機試験には`sd-image`を使い、書き込みにはstock SDとは別のカードを使用します。
+## プロジェクト状況
 
-## Validation
-
-```sh
-./tests/test-app-layer-scripts.sh
-./tests/test-system-rootfs-scripts.sh
-./tests/test-sd-image-scripts.sh
-./scripts/verify-app-layer.sh output/app-layer/pixel2/plumos
-./scripts/audit-pixel2-implementation.py --release-gate
-```
-
-host上のbuild/checksum成功だけでは、Pixel2のLCD回転、入力、音声、frame pacing、
-終了、save、power動作を保証しません。実機証跡は`docs/validation/`へ記録します。
-
-開発者向けの入口は[Developer Guide](docs/developer/README.md)です。
+Pixel2版はリリース候補の実機検証中です。ホスト上のビルドやchecksum成功だけでは、
+実機の画面方向、入力、音声、スリープ、充電、ストレージ、エミュレータ動作を保証しません。
+現在の実装とrelease blockerは[TODO](TODO.md)および
+[実装一覧](docs/developer/implementation-status.md)で管理します。

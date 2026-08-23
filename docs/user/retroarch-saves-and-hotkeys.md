@@ -1,5 +1,7 @@
 # RetroArch Saves and Hotkeys
 
+[日本語](retroarch-saves-and-hotkeys.ja.md)
+
 ## Hotkeys
 
 Gameplay hotkeys use SELECT as the modifier unless noted otherwise.

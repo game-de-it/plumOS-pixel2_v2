@@ -3,6 +3,7 @@
 This guide is the technical entry point for building, modifying, deploying, and
 validating plumOS Pixel2. MF and V90S are references for plumOS contracts, but
 Pixel2 uses its own stock RK3326 boot substrate and hardware runtime.
+For normal installation and operation, see the [User Guide](../user/README.md).
 
 ## Start Here
 
@@ -21,6 +22,7 @@ Pixel2 uses its own stock RK3326 boot substrate and hardware runtime.
 artifacts/                 untracked stock SD captures and research inputs
 docs/decisions/            accepted architecture decisions
 docs/developer/            current developer-facing technical contract
+docs/user/                 end-user operating manual
 docs/validation/           dated host and physical-device evidence
 docker/                    container build inputs
 package/                   Pixel2 app-layer, frontend, RetroArch, and defaults
@@ -65,3 +67,7 @@ Resolve conflicts in this order:
 4. this developer guide;
 5. dated validation records;
 6. MF/V90S documentation and history.
+
+## Japanese
+
+- [日本語の開発者向けガイド](README.ja.md)

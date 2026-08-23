@@ -1,81 +1,56 @@
 # plumOS Pixel2
 
-[日本語](README.ja.md)
+[日本語](README.ja.md) | [User Guide](docs/user/README.md) | [Developer Guide](docs/developer/README.md)
 
-plumOS Pixel2 is a reproducible Linux build for the RK3326S-based GKD Pixel2,
-assembled from auditable components and checksum metadata.
+plumOS Pixel2 is a Linux distribution for the RK3326S-based GKD Pixel2. It
+keeps the hardware-compatible stock boot substrate and starts a plumOS-owned
+system, frontend, services, and emulator environment after the stock initramfs
+hands off to `SYSTEM`.
 
-The accepted boot boundary keeps the stock Pixel2 Rockchip prefix, kernel
-5.10.198, embedded initramfs, and checksum-registered runtime DTB byte-for-byte
-as the boot substrate. After the stock
-initramfs hands off to `/boot/SYSTEM`, plumOS owns `/sbin/init`, the runtime,
-frontend, services, settings, and emulator launch paths. The normal stock
-userspace and frontend are not used.
+## Main features
 
-## Current implementation
+- six-tile game frontend with text, graphic, and gallery views;
+- RetroArch, PicoArch, standalone emulators, PICO-8, Pyxel, and PortMaster;
+- FAT32 `PLUMOS_USER` volume for ROMs, BIOS files, images, saves, and updates;
+- global volume, brightness, power menu, sleep, restart, and shutdown controls;
+- supported USB Wi-Fi adapters with SSH, SFTP, FTP, and Samba services;
+- signed Runtime updates and A/B System updates with rollback checks.
 
-- plumOS `SYSTEM` SquashFS, init, USB Wi-Fi, SSH, and persistent logs;
-- Pixel2 frontend, START menu, ROM scanner, and physical input contract;
-- RetroArch with 112 Pixel2-supported libretro cores and PicoArch;
-- OpenBOR, DraStic, and PPSSPP standalone runtimes;
-- bundled Python 3.11, Pyxel, and pygame runtime;
-- plumOS audio routing for RK817/USB plus global volume and brightness;
-- component manifests/checksums, strict app-layer assembly, and a 4 GiB SD
-  image builder.
+ROMs and user-supplied BIOS files are not included. Use only content that you
+are legally entitled to use.
 
-A built component is not automatically hardware-proven. User-visible backend
-gaps, pending Apps and standalones, updates, and full-system device validation
-are tracked in the [Pixel2 Implementation Inventory](docs/developer/implementation-status.md)
-and [TODO](TODO.md).
+## Important Pixel2 limitations
 
-## Build
+- This image is for the GKD Pixel2 only.
+- Use a separate SD card of at least 16 GB. Do not overwrite the original
+  stockOS card.
+- First boot expands the System partition, creates `PLUMOS_USER`, and may
+  restart once automatically. Do not remove power during setup.
+- Pixel2 has one USB port. A Wi-Fi adapter and a charger cannot be connected at
+  the same time without external hardware. Removing Wi-Fi releases the port so
+  the running device can charge.
+- ADB is not included. Remote maintenance uses Wi-Fi and SSH/SFTP.
+- Always use the POWER menu to shut down before removing the SD card.
 
-Docker Desktop or a compatible Docker engine is required, together with boot
-artifacts captured read-only from a stock Pixel2. Private stock captures are
-not committed to Git.
+## Documentation
 
-```sh
-./scripts/docker-build.sh frontend
-./scripts/docker-build.sh retroarch
-./scripts/docker-build.sh core-catalog --filter all --concurrency 4
-./scripts/docker-build.sh picoarch
-./scripts/docker-build.sh standalone
-./scripts/docker-build.sh pyxel-runtime
-./scripts/docker-build.sh app-layer --strict
-./scripts/docker-build.sh audit
-./scripts/docker-build.sh system-rootfs
-./scripts/docker-build.sh sd-image
-```
+For installation, controls, storage, networking, emulators, updates, and
+troubleshooting, start with the [User Guide](docs/user/README.md).
 
-Generated artifacts live below `output/`. The SD image is an approximately
-2.5 GiB compact seed containing the stock-compatible boot prefix, a 512 MiB
-`PLUMOS_BOOT`, and a 2048 MiB ext4 `PLUMOS_SYS`. On the first boot from a card
-of at least 16 GB, plumOS grows `PLUMOS_SYS` to 8192 MiB and creates FAT32
-`PLUMOS_USER` through the remaining card. Setup automatically resumes through
-one early reboot when the mounted partition geometry cannot be refreshed
-online. Boot the card once before copying ROMs or BIOS files from a host.
+For builds, boot ownership, Runtime and System layout, app-layer deployment,
+hardware integration, and validation, use the
+[Developer Guide](docs/developer/README.md).
 
-Pixel2's single USB port uses Wi-Fi-preferred dual-role OTG policy. Host mode
-is held only while a USB Wi-Fi dongle is attached; removing it releases the
-stock OTG path so the running device can charge over USB. ADB is not part of
-plumOS Pixel2; remote maintenance uses SSH/SFTP after Wi-Fi association.
+The complete bilingual documentation index is under
+[`docs/`](docs/README.md). Date-stamped files under `docs/validation/` are
+engineering evidence and may describe superseded experiments; they are not
+end-user instructions.
 
-`release-image` fails until the implementation audit reports zero release
-blockers. Use `sd-image` for development hardware testing, and always flash a
-card separate from the original stock SD.
+## Project status
 
-## Validation
-
-```sh
-./tests/test-app-layer-scripts.sh
-./tests/test-system-rootfs-scripts.sh
-./tests/test-sd-image-scripts.sh
-./scripts/verify-app-layer.sh output/app-layer/pixel2/plumos
-./scripts/audit-pixel2-implementation.py --release-gate
-```
-
-A successful host build or checksum does not prove Pixel2 LCD orientation,
-controls, audio, frame pacing, exit, saves, or power behavior. Physical-device
-evidence belongs under `docs/validation/`.
-
-Start with the [Developer Guide](docs/developer/README.md).
+The Pixel2 port is undergoing release-candidate validation. A successful host
+build or checksum does not by itself prove display orientation, controls,
+audio, sleep, charging, storage, or emulator behavior on physical hardware.
+Current implementation and release blockers are tracked in
+[TODO](TODO.md) and the
+[implementation inventory](docs/developer/implementation-status.md).
