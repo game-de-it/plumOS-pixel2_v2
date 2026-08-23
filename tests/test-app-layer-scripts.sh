@@ -693,6 +693,10 @@ grep -q 'process_is_live' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-hardware-keys-service"
 grep -q 'plumos-frontend-stop" stop' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown"
+grep -q 'if (is_start_menu_return_screen(ui->screen))' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
+grep -q 'screen == SCREEN_TOP || screen == SCREEN_ROMS' \
+    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 "$ROOT_DIR/tests/test-pixel2-power-menu-sleep.sh"
 grep -q 'renderer->var.xres = renderer->physical_yres' \
     "$ROOT_DIR/docker/pixel2-tools/patches/music-player-pixel2.patch"

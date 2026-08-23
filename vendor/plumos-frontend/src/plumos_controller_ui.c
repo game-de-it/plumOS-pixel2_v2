@@ -10760,8 +10760,21 @@ static void shutdown_ui_renderer_for_launch(struct ui_state *ui) {
   shutdown_ui_renderer(ui);
 }
 
+static int is_start_menu_return_screen(enum ui_screen screen) {
+  return screen == SCREEN_TOP || screen == SCREEN_ROMS ||
+         screen == SCREEN_FAVORITES || screen == SCREEN_RECENT ||
+         screen == SCREEN_GALLERY;
+}
+
 static void open_start_menu(struct ui_state *ui) {
-  ui->back_screen = ui->screen;
+  /*
+   * START is also available from settings, help, and Apps descendants. Do not
+   * replace the original library screen with one of those nested screens or B
+   * will alternate forever between START and the nested page.
+   */
+  if (is_start_menu_return_screen(ui->screen)) {
+    ui->back_screen = ui->screen;
+  }
   ui->screen = SCREEN_START_MENU;
   trigger_sdcard_cleanup_from_start_menu(ui);
   if (!load_start_menu_entries(ui)) {
