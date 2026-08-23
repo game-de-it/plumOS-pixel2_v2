@@ -47,4 +47,4 @@ ROMおよび利用者が用意するBIOSファイルは同梱されません。�
 Pixel2版はリリース候補の実機検証中です。ホスト上のビルドやchecksum成功だけでは、
 実機の画面方向、入力、音声、スリープ、充電、ストレージ、エミュレータ動作を保証しません。
 現在の実装とrelease blockerは[TODO](TODO.md)および
-[実装一覧](docs/developer/implementation-status.md)で管理します。
+[実装一覧](docs/developer/implementation-status.ja.md)で管理します。

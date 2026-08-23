@@ -459,6 +459,7 @@
     LCD表示、scheme再変更時のin-place再起動、通常終了後のFE復帰を最終確認する。
 - [ ] GitHub release readinessを実装する
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
+  - [x] user/developer文書を分離し、主要取扱説明書と技術ガイドを英語・日本語の対にする
   - [ ] top-level project licenseを決定・追加する
   - [ ] third-party noticeとDraStic redistribution条件をrelease payload単位で監査する
   - [ ] CIへhost tests、identity/content gate、implementation audit、checksum検証を追加する

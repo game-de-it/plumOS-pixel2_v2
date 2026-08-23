@@ -1,5 +1,7 @@
 # Build Guide
 
+[日本語](build.ja.md)
+
 ## Requirements
 
 - Git

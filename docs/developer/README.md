@@ -13,8 +13,15 @@ For normal installation and operation, see the [User Guide](../user/README.md).
 4. [Storage and updates](storage-and-updates.md)
 5. [Frontend and emulator integration](frontend-emulators.md)
 6. [Hardware services](hardware-services.md)
-7. [Validation and evidence](validation.md)
-8. [Implementation inventory and release blockers](implementation-status.md)
+7. [Audio routing](audio-routing.md)
+8. [Validation and evidence](validation.md)
+9. [Implementation inventory and release blockers](implementation-status.md)
+
+All nine guides have matching Japanese pages. Dated validation records,
+accepted decisions, and implementation inventories are retained as engineering
+evidence and may be English-only.
+
+Compatibility reference: [USB Wi-Fi and network services](../configuration/connectivity.md).
 
 ## Repository Map
 

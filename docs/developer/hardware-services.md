@@ -1,5 +1,7 @@
 # Hardware Services
 
+[日本語](hardware-services.ja.md)
+
 ## Input
 
 The Pixel2 joypad event is `pixel2_joypad`. The shared input-map contract lives

@@ -7,18 +7,21 @@ boot substrateと固有hardware runtimeを使用します。通常の導入・�
 
 ## 最初に読む文書
 
-1. [アーキテクチャと所有範囲](architecture.md)
-2. [ビルドガイド](build.md)
-3. [ブートとランタイムサービス](runtime.md)
-4. [ストレージとアップデート](storage-and-updates.md)
-5. [フロントエンドとエミュレータ統合](frontend-emulators.md)
-6. [ハードウェアサービス](hardware-services.md)
-7. [検証・根拠資料](validation.md)
-8. [実装一覧とrelease blocker](implementation-status.md)
+1. [アーキテクチャと所有範囲](architecture.ja.md)
+2. [ビルドガイド](build.ja.md)
+3. [ブートとランタイムサービス](runtime.ja.md)
+4. [ストレージとアップデート](storage-and-updates.ja.md)
+5. [フロントエンドとエミュレータ統合](frontend-emulators.ja.md)
+6. [ハードウェアサービス](hardware-services.ja.md)
+7. [オーディオルーティング](audio-routing.ja.md)
+8. [検証・根拠資料](validation.ja.md)
+9. [実装一覧とrelease blocker](implementation-status.ja.md)
 
-主要な技術ガイドの日本語版は順次`.ja.md`として併記します。日付付きの
-`docs/validation/`は成功・失敗・旧方式を残す技術根拠であり、現在の利用者向け
-操作説明ではありません。
+9文書すべてで英語版と日本語版を対にしています。日付付き`docs/validation/`、
+採用済みdecision、実装inventoryは成功・失敗・旧方式を残す技術根拠であり、
+英語のみの場合があります。現在の利用者向け操作説明ではありません。
+
+互換性資料: [USB Wi-Fiとネットワークサービス](../configuration/connectivity.ja.md)
 
 ## リポジトリ構成
 

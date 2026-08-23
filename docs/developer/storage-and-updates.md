@@ -1,5 +1,7 @@
 # Storage and Updates
 
+[日本語](storage-and-updates.ja.md)
+
 ## Current Partition Contract
 
 Pixel2 currently uses the stock-compatible Rockchip prefix plus:
@@ -79,6 +81,8 @@ under `/mnt/plumos/update-state` before safe reboot.
 
 The host fixtures cover signature rejection, compatibility gates, interrupted
 Runtime recovery, inactive-slot readback, and rollback state transitions. The
-successful signed Runtime and System paths have also been validated on a
-physical Pixel2. Remaining release acceptance is the FE menu interaction and
-deliberate failure injection on a physical device.
+signed Runtime and System paths, including FE update interaction and
+post-update health promotion, have been validated on a physical Pixel2.
+Deliberate physical failure injection remains a separate destructive test when
+explicitly scheduled; host fixtures continue to gate the rollback state
+machine on every build.

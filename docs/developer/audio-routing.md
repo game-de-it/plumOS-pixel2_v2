@@ -1,5 +1,7 @@
 # Pixel2 Audio Routing
 
+[日本語](audio-routing.ja.md)
+
 Pixel2 routes emulator and app audio through the plumOS ALSA logical PCM:
 
 ```text

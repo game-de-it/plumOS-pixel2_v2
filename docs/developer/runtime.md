@@ -1,5 +1,7 @@
 # Boot and Runtime Services
 
+[日本語](runtime.ja.md)
+
 ## Boot Flow
 
 1. Stock RK3326 boot chain loads the stock kernel, DTB, and initramfs.

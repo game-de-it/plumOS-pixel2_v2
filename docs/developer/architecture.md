@@ -1,5 +1,7 @@
 # Architecture and Ownership
 
+[日本語](architecture.ja.md)
+
 ## Layer Model
 
 ```text
@@ -43,7 +45,7 @@ themes, factory defaults, notices, manifests, checksums, and `SYSTEM`.
 
 Device-owned mutable files include active settings, ROMs, BIOS files, artwork,
 saves, states, logs, Wi-Fi credentials, SSH state, Pyxel project state, and
-future app state such as PortMaster. Updates and live deploys must preserve
+PortMaster-installed game state. Updates and live deploys must preserve
 these paths.
 
 ## Current Implementation Boundary
@@ -52,14 +54,16 @@ Implemented:
 
 - stock boot substrate plus plumOS-owned `SYSTEM`;
 - app-layer frontend, text UI, scanner, RetroArch, full libretro catalog,
-  PicoArch, OpenBOR, DraStic, PPSSPP, Pyxel runtime, manifests, and strict
-  checksum gate;
-- USB Wi-Fi maintenance path with SSH/SFTP;
+  PicoArch, OpenBOR, DraStic, PPSSPP, PICO-8, Pyxel, PortMaster, File Manager,
+  Music Player, manifests, and strict checksum gate;
+- USB Wi-Fi maintenance path with SSH, SFTP, FTP, and Samba;
 - Pixel2 input map contract and global hardware-key daemon;
-- FE reboot path, RK817 shutdown helper, and RK817-aware audio routing.
+- global power menu, sleep, FE reboot, charge-mode/RK817 shutdown, and
+  RK817-aware audio routing;
+- signed Runtime transactions and A/B System update/rollback.
 
 Not yet complete:
 
-- final System A/B and transactional updater;
-- PortMaster, File Manager, and Music Player;
-- final transactional update/rollback path.
+- repository license and complete release-payload third-party notice audit;
+- CI/publication gates, remaining BIOS inventory, remaining Wi-Fi adapter
+  matrix entries, and final release-candidate physical acceptance.

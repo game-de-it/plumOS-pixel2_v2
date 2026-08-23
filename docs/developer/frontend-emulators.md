@@ -1,5 +1,7 @@
 # Frontend and Emulator Integration
 
+[日本語](frontend-emulators.ja.md)
+
 ## Frontend Data Model
 
 The Pixel2 frontend reads:
@@ -202,10 +204,11 @@ contract. The launcher seeds `~/.pcsx/pcsx.cfg`, preserves user changes and
 save data, and imports user-provided `scph*.bin` files from the Pixel2 BIOS
 directories without packaging BIOS content.
 
-The host build and dependency gates are complete. Physical Pixel2 launch,
-rotation/aspect, D-pad/ABXY/START/SELECT/shoulders/FUNCTION, sound, save, menu
-exit, and frontend reacquisition remain required before this alternate profile
-is release-proven.
+The host build and dependency gates are complete. Physical Pixel2 testing has
+accepted launch, rotation/aspect, D-pad and face-button input, Function-menu
+navigation, sound, menu exit, and frontend reacquisition. Save persistence and
+BIOS provenance remain part of the general release validation contract rather
+than PCSX-specific implementation gaps.
 
 ## Function menu contract
 
@@ -243,6 +246,8 @@ The FE route is `pyxel:pixel2` and must resolve to
 requirements from `/roms/pyxel/requirements.txt` into mutable app-layer state;
 it must not overwrite packaged runtime files.
 
-PortMaster, File Manager, and Music Player are not yet Pixel2 runtime
-guarantees. Add them only when each component is built, routed, checksummed, and
-physically validated on Pixel2.
+PortMaster, File Manager, and Music Player are packaged Pixel2 components with
+managed manifests and checksums. Their foreground ownership, display rotation,
+input, audio where applicable, exit, and FE reacquisition paths have been
+physically exercised. PortMaster-installed games remain mutable user data and
+are never replaced by app-layer assembly or updates.

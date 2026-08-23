@@ -1,23 +1,29 @@
-# Pixel2 connectivity
+# Pixel2 Connectivity
 
-Pixel2には内蔵Wi-Fiがないため、USB Wi-FiとSSH/SFTPを保守経路にする。ADB、
-FunctionFS、USB Mode、FAT recovery markerは配布しない。USB Wi-Fi dongleは任意で、
-認証情報がない場合はnetworkを起動しない。
+[日本語](connectivity.ja.md) | [User network guide](../user/network.md)
 
-単一USB portはWi-Fi優先のdual-role OTGである。cold boot時はstock OTGのまま
-upstream VBUSを確認し、充電器がなければbounded host probeを行う。dongleを抜くと
-kernel uevent経路が`otg_mode=otg`へ戻し、起動したまま充電器へ差し替えられる。
-USB Wi-FiとUSB充電は同じ物理portを使うため同時利用できない。
+This is a developer compatibility reference. End users should follow the user
+network guide instead.
+
+Pixel2 has no built-in Wi-Fi. USB Wi-Fi plus SSH/SFTP is the maintenance path.
+Release images do not ship ADB, FunctionFS, a USB Mode selector, or FAT recovery
+markers. If no Wi-Fi credentials exist, the network remains inactive.
+
+The single port is a Wi-Fi-priority dual-role OTG port. On cold boot the System
+keeps stock OTG long enough to detect upstream VBUS. With no charger present it
+runs one bounded host probe. Removing a dongle returns the controller to OTG so
+a charger can be attached while the OS is running. USB Wi-Fi and USB charging
+cannot be used simultaneously.
 
 ## USB Wi-Fi
 
-state partitionの次のpathへ通常の`wpa_supplicant.conf`を置く。
+The normal `wpa_supplicant.conf` is stored on the state volume:
 
 ```text
 /plumos/config/wpa_supplicant.conf
 ```
 
-例:
+Example:
 
 ```conf
 ctrl_interface=/run/wpa_supplicant
@@ -30,68 +36,61 @@ network={
 }
 ```
 
-boot時にUSB WLAN interfaceを検出し、`wpa_supplicant`とBusyBox `udhcpc`を
-起動する。認証情報はimageやGitへ入れない。
+Credentials must never be committed to Git or included in an image. At boot,
+the runtime detects a USB WLAN interface and starts `wpa_supplicant` and
+BusyBox `udhcpc`.
 
-Wi-Fiが保存設定でONの場合は`plumos-wifi-recovery`がBusyBoxのkernel uevent
-monitorを1つ起動する。USB Wi-Fiの抜き差しで`wlan*`が再生成されたとき、または
-RTL8821CUが`0bda:1a2b`、`0bda:c811`、`0bda:c820`として追加されたときだけ、3秒の
-settle後に既存のbounded `plumos-network-control --wifi on`を1回実行し、driver load、
-association、DHCP、network serviceを復元する。同時に届くUSB/net eventはlockで1回へ
-まとめ、先行eventですでにIPv4接続済みならキューに残った後続eventを処理しない。
-Wi-FiがOFFの場合はPIDとcmdlineを照合してmonitorを停止する。dongle未接続時の定期pollingや
-無限retryは行わない。
+When saved Wi-Fi is enabled, `plumos-wifi-recovery` runs one BusyBox kernel
+uevent monitor. It schedules a single bounded
+`plumos-network-control --wifi on` after a three-second settle only when a
+`wlan*` interface appears or a supported RTL8821CU USB identity is added.
+Locks coalesce duplicate USB/net events. There is no periodic polling and no
+unbounded retry. Disabling Wi-Fi validates and stops the monitor PID.
 
-stock kernel 5.10.198から採取した`r8188eu`に加え、V90Sで実機実績のある
-RTL8811CU/RTL8821CU向け`8821cu.ko`を、Pixel2のstock kernel ABIに対して
-再現可能にbuildしてSystemへ収録する。V90Sのkernel 4.9用module binaryは流用しない。
+The System contains the stock `r8188eu` path plus a reproducibly built
+`8821cu.ko` for RTL8811CU/RTL8821CU. The latter uses the stock Pixel2 5.10.198
+ABI; the V90S 4.9 module binary is never reused.
 
-保存済みSSIDだけでは恒久的なUSB host所有権を与えない。起動時に`usb/online=1`、または
-stock OTG中のRockchip USB2 PHY BVALIDがactiveならupstreamを優先する。それ以外では
-hostへ切り替えてDWC2を再列挙するが、downstream deviceが現れなければ必ずOTGへ戻す。
-Pixel2実機ではWi-Fi動作中もextconの`USB-HOST`が0だったため、extconは物理接続判定に
-使わない。dongle removeは即時にOTGを解放するが、RTL8821CUの`0bda:1a2b` storage
-identityだけは意図したeject/re-enumerationを壊さないよう、V90Sと同じ5秒の
-mode-switch待ちを越える8秒後にdownstream不在を再確認してから解放する。常時pollingは
-行わない。
+Saved credentials do not grant permanent host ownership. Upstream VBUS wins.
+Otherwise the service switches to host mode and waits for a downstream device,
+then always returns to OTG if none appears. The Pixel2 extcon `USB-HOST` value
+was not a reliable physical-presence signal, so it is not used as one.
 
-OTGへ解放した後は、電源を供給しないUSB Wi-Fi dongleの再挿入をhardware eventだけでは
-検出できない。FEのWi-Fi ON、SSID scan、接続操作は、adapter不在時に1回だけbounded host
-probeを要求する。probeでadapterが見つからなければOTGへ戻るため、充電待受を壊さない。
-boot worker、FE scan、recoveryからのprobeは単一lockで直列化する。hostへ切り替えた直後は
-自然列挙を先に待ち、既に現れたdongleをDWC2 resetで切断しない。必要なreset中はtransition
-markerを設定し、そのremove ueventを物理抜去として処理しない。
+Dongle removal releases OTG immediately, except while an RTL8821CU
+`0bda:1a2b` storage identity is intentionally switching modes. That path gets a
+five-second mode-switch interval followed by an eight-second downstream
+absence check. Transition markers prevent a deliberate DWC2 reset from being
+misclassified as physical removal.
 
-UGREEN AC650は接続直後に`0bda:1a2b Realtek DISK`として現れる場合がある。
-Wi-Fi ON処理はこのIDに限って配下の`/dev/sr*`をSystem同梱の`/usr/bin/eject -s`で
-bounded ejectし、
-`0bda:c811`への再列挙を待って`8821cu`をloadする。直接`0bda:c811`または
-`0bda:c820`で現れるadapterもmodule aliasから検出する。driver buildはUSB
-autosuspendを無効、driver標準power savingを有効にしたV90Sと同じfeature
-contractである。転送性能に応じたpower parameter変更は、実機A/B測定なしに
-factory設定へ追加しない。
+After OTG release, an unpowered reinserted dongle cannot generate an event.
+FE Wi-Fi ON, scan, and connect therefore request one bounded host probe when no
+adapter is visible. Boot, FE, and recovery probes share one lock. A failed
+probe returns to OTG and does not break charging standby.
 
-## SSH
+UGREEN AC650 may first enumerate as `0bda:1a2b Realtek DISK`. Only for that ID,
+the Wi-Fi path runs bounded `eject -s` on the associated `/dev/sr*`, waits for
+`0bda:c811`, and loads `8821cu`. Adapters appearing directly as `0bda:c811` or
+`0bda:c820` are also supported through module aliases. The driver build keeps
+the V90S-proven feature contract: USB autosuspend disabled and driver power
+saving enabled. Do not change power parameters without physical A/B throughput
+measurements.
 
-V90S/MFと同じNW Service契約に従い、SSHはfresh imageで既定ON、dropbearを
-port 22で起動する。初期accountは次の通り。
+## Network Services
+
+The service contract follows V90S/MF. SSH is enabled on fresh images and runs
+Dropbear on TCP port 22:
 
 ```text
 user: root
 password: plumos
 ```
 
-初期passwordは公開情報なので、信頼できるLANだけで使い、不要ならFEからSSHを
-OFFにする。`plumos-ssh-password set`で変更でき、salt付きSHA-512 hashだけを
-`/mnt/plumos/config/ssh/shadow`へ端末ローカル保存する。既存passwordはOS更新や
-service再起動で上書きしない。SFTPも同じaccountとport 22を使う。
+The factory password is public. Use it only on a trusted LAN and change it with
+`plumos-ssh-password set` or disable SSH in Network Services. Only the salted
+SHA-512 hash is kept at `/mnt/plumos/config/ssh/shadow`; updates do not replace
+an existing password. SFTP uses the same account and port.
 
-公開鍵認証も併用できる。鍵は永続root homeの次のfileへ置く。
-
-```text
-/root/.ssh/authorized_keys
-```
-
-host keyは初回起動時に`/mnt/plumos/config/ssh`へ生成する。FTPはanonymous、
-Sambaは`plumos / plumos`で`SDCARD` shareへ接続する。全serviceのON/OFFは
-`/mnt/plumos/config/network/services.conf`へ保存し、次回bootでも復元する。
+Public keys can be placed in `/root/.ssh/authorized_keys`. Host keys are
+generated under `/mnt/plumos/config/ssh` on first boot. FTP is anonymous;
+Samba exposes `SDCARD` with `plumos / plumos`. Service choices persist in
+`/mnt/plumos/config/network/services.conf` and are restored on later boots.
