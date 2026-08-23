@@ -62,7 +62,20 @@ case "$*" in
         fi
         ;;
     *' status')
-        printf 'wpa_state=%s\n' "${FAKE_WPA_STATE:-COMPLETED}"
+        state="${FAKE_WPA_STATE:-COMPLETED}"
+        if [ -n "${FAKE_WPA_COMPLETED_AFTER:-}" ]; then
+            status_count=0
+            [ ! -r "$TEST_WPA_STATUS_COUNT_FILE" ] || \
+                status_count="$(cat "$TEST_WPA_STATUS_COUNT_FILE")"
+            status_count=$((status_count + 1))
+            printf '%s\n' "$status_count" >"$TEST_WPA_STATUS_COUNT_FILE"
+            if [ "$status_count" -lt "$FAKE_WPA_COMPLETED_AFTER" ]; then
+                state=SCANNING
+            else
+                state=COMPLETED
+            fi
+        fi
+        printf 'wpa_state=%s\n' "$state"
         ;;
     *' signal_poll')
         printf 'RSSI=-42\nLINKSPEED=72\nFREQUENCY=2412\n'
@@ -110,6 +123,7 @@ export TEST_IP_FILE="$tmp/ip"
 export TEST_COMMAND_LOG="$tmp/commands.log"
 export TEST_WPA_PING_COUNT_FILE="$tmp/wpa-ping-count"
 export TEST_WPA_CLI_LOG="$tmp/wpa-cli.log"
+export TEST_WPA_STATUS_COUNT_FILE="$tmp/wpa-status-count"
 export TEST_USB_PRODUCT_FILE="$usb/1-1/idProduct"
 
 run_control() {
@@ -126,6 +140,7 @@ run_control() {
         PLUMOS_WPA_CTRL_DIR="$run/wpa_supplicant" \
         PLUMOS_WIFI_IFACE_WAIT_SECONDS=1 \
         PLUMOS_WPA_WAIT_SECONDS=1 \
+        PLUMOS_WIFI_CONNECT_WPA_WAIT_SECONDS=2 \
         PLUMOS_DHCP_WAIT_SECONDS=1 \
         PLUMOS_WIFI_SCAN_WAIT_SECONDS=1 \
         PLUMOS_USB_MODE_SWITCH_WAIT_ATTEMPTS=1 \
@@ -145,12 +160,30 @@ rm -f "$TEST_WPA_PING_COUNT_FILE"
 
 connect_file="$tmp/connect"
 printf 'Cafe "Five"\ncorrect horse battery staple\n' >"$connect_file"
-connect_output="$(run_control --connect-file "$connect_file")"
+
+# A fresh-card failure must stop the uncommitted candidate even though there
+# is no previous saved config to restart.
+rm -f "$TEST_WPA_STATUS_COUNT_FILE"
+if FAKE_WPA_STATE=SCANNING run_control --connect-file "$connect_file" \
+    >"$tmp/fresh-failed-connect.out" 2>&1; then
+    printf 'error: fresh incomplete association unexpectedly succeeded\n' >&2
+    exit 1
+fi
+[ ! -e "$run/network-control/wpa_supplicant.pid" ]
+grep -Fxq 'stage=wpa_completed' "$tmp/fresh-failed-connect.out"
+grep -Fxq 'wpa_state=DISCONNECTED' "$run/network-control/wpa_status.txt"
+
+# Explicit FE connect gets a longer bound than boot recovery. The fake link
+# completes on its second status sample, so it would fail under the one-sample
+# PLUMOS_WPA_WAIT_SECONDS fixture but must pass with the manual bound.
+rm -f "$TEST_WPA_STATUS_COUNT_FILE"
+connect_output="$(FAKE_WPA_COMPLETED_AFTER=2 run_control --connect-file "$connect_file")"
 grep -Fxq 'result=connected' <<<"$connect_output"
 grep -Fxq 'ip=192.0.2.20' <<<"$connect_output"
 grep -Fq 'ssid="Cafe \"Five\""' "$plumos/config/wpa_supplicant.conf"
 grep -Fq 'psk="correct horse battery staple"' "$plumos/config/wpa_supplicant.conf"
 grep -Fxq 'wpa_state=COMPLETED' "$run/network-control/wpa_status.txt"
+grep -Fq 'wpa_wait=2s' "$plumos/logs/network-control.log"
 
 cp "$plumos/config/wpa_supplicant.conf" "$tmp/known-good.conf"
 if FAKE_WPA_STATE=SCANNING run_control --connect-file "$connect_file" \

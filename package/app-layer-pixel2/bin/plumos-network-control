@@ -19,6 +19,11 @@ WPA_CTRL_DIR="${PLUMOS_WPA_CTRL_DIR:-/run/wpa_supplicant}"
 WIFI_IFACE="${PLUMOS_WIFI_INTERFACE:-auto}"
 WIFI_IFACE_WAIT_SECONDS="${PLUMOS_WIFI_IFACE_WAIT_SECONDS:-5}"
 WPA_WAIT_SECONDS="${PLUMOS_WPA_WAIT_SECONDS:-15}"
+# A first FE connection starts from a cold Realtek scan/BSS cache and has
+# repeatedly crossed the 15-second boot-recovery bound by a fraction of a
+# second. Keep ordinary boot bounded at 15 seconds, but give an explicit user
+# connection enough time to complete without requiring a second submission.
+CONNECT_WPA_WAIT_SECONDS="${PLUMOS_WIFI_CONNECT_WPA_WAIT_SECONDS:-30}"
 DHCP_WAIT_SECONDS="${PLUMOS_DHCP_WAIT_SECONDS:-10}"
 SCAN_WAIT_SECONDS="${PLUMOS_WIFI_SCAN_WAIT_SECONDS:-8}"
 WPA_CONTROL_WAIT_SECONDS="${PLUMOS_WPA_CONTROL_WAIT_SECONDS:-5}"
@@ -1082,10 +1087,16 @@ commit_wpa_config() {
 restart_previous_config_best_effort() {
   iface="$1"
   conf="$(active_wpa_config 2>/dev/null || true)"
-  [ -n "$conf" ] || return 0
+  # Always stop the failed candidate. On a fresh card there is no previous
+  # config to restart; leaving that candidate alive lets it associate after
+  # the UI has reported failure, but no DHCP request is ever issued.
   stop_wifi_processes "$iface"
   iface_clear_ip "$iface"
   iface_up "$iface"
+  if [ -z "$conf" ]; then
+    write_runtime_status_values DISCONNECTED "" "" "" ""
+    return 0
+  fi
   start_wpa_supplicant "$iface" "$conf" || return 0
   wait_for_wpa_completed "$iface" 8 >/dev/null 2>&1 || true
   request_dhcp "$iface" || true
@@ -1112,7 +1123,7 @@ connect_wifi_from_file() {
     return 1
   fi
 
-  log "connect begin iface=${iface}"
+  log "connect begin iface=${iface} wpa_wait=${CONNECT_WPA_WAIT_SECONDS}s"
   stop_wifi_processes "$iface"
   iface_clear_ip "$iface"
   iface_up "$iface"
@@ -1125,8 +1136,8 @@ connect_wifi_from_file() {
     echo "stage=wpa_supplicant_start"
     return 1
   fi
-  if ! wait_for_wpa_completed "$iface" "$WPA_WAIT_SECONDS"; then
-    log "connect failed stage=wpa_completed"
+  if ! wait_for_wpa_completed "$iface" "$CONNECT_WPA_WAIT_SECONDS"; then
+    log "connect failed stage=wpa_completed wait=${CONNECT_WPA_WAIT_SECONDS}s"
     rm -f "$candidate" 2>/dev/null || true
     write_runtime_status_current "$iface"
     restart_previous_config_best_effort "$iface"
