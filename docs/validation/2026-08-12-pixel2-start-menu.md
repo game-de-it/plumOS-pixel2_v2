@@ -233,5 +233,23 @@ executing or preselecting a terminal action. The legacy `system:reboot` and
 `system:shutdown` handlers remain for compatibility with an older catalog,
 but neither action nor entry is present in the generated standard menu. The
 feature contract and host fixture require the exact six-entry catalog and the
-new handler. Signed Runtime deployment and physical START -> POWER -> Cancel
-acceptance remain open.
+new handler.
+
+The signed Runtime package was then deployed to the cold-booted UGREEN AC650
+unit over RTL8821CU Wi-Fi at `192.168.10.107`:
+
+```text
+previous Runtime: 0.1.0-dev-875227e
+installed Runtime: 0.1.0-dev-e3b44c5
+package sha256: f6ca135d80a7ad42193fb65270613678829907156b0879b87c1c2357c3b52404
+update result: runtime_healthy
+Frontend component checksum: OK
+Runtime checksum: runtime_verify=result-ok
+```
+
+The installed `menus.json` and `plumos-text-ui menu start` both reported the
+same six-entry catalog. The installed production frontend was also exercised
+in its non-rendering text-script path using
+`start,down,down,down,down,down,a,q`. It selected entry 6, opened the shared
+POWER screen, exposed Sleep/Reboot/Shutdown/Cancel, and left Cancel selected by
+default. No terminal power action was executed during this route test.
