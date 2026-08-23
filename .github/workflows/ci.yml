@@ -1,0 +1,41 @@
+name: Pixel2 source gates
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gate dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq shellcheck xz-utils
+      - name: Run source, identity, implementation, and release-script gates
+        run: ./scripts/run-pixel2-source-gates.sh
+
+  shellcheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      - name: Check release orchestration
+        run: |
+          shellcheck \
+            scripts/run-pixel2-source-gates.sh \
+            scripts/run-pixel2-strict-release-gate.sh \
+            scripts/prepare-pixel2-release.sh \
+            scripts/audit-pixel2-license-bundle.sh
