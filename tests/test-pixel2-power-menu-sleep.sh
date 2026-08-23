@@ -127,6 +127,69 @@ grep -q 'sleep=software-wake reason=timeout seconds=1' \
 grep -q 'sleep=result-returned backend=mem kernel_sleep=0' \
     "$TEST_ROOT/logs/power.log"
 
+# A charger inserted after kernel sleep is a charging event, not a user wake.
+# Keep the display blank by handing the resumed kernel path to software standby;
+# the physical Power path clears that marker on production hardware.
+printf 'Full\n' >"$TEST_ROOT/battery-status"
+printf '0\n' >"$TEST_ROOT/battery-current"
+printf '0\n' >"$TEST_ROOT/usb-online"
+printf '0\n' >"$TEST_ROOT/ac-online"
+printf 'otg\n' >"$TEST_ROOT/otg-mode"
+mkdir -p "$TEST_ROOT/usb-devices"
+: >"$TEST_ROOT/devmem-count"
+cat >"$TEST_ROOT/devmem-sleep" <<'EOF'
+#!/bin/sh
+count=$(wc -l <"$PLUMOS_TEST_DEVMEM_COUNT")
+printf 'probe\n' >>"$PLUMOS_TEST_DEVMEM_COUNT"
+if [ "$count" -eq 0 ]; then
+    printf '0x00000000\n'
+else
+    printf '0x00000200\n'
+fi
+EOF
+chmod 0755 "$TEST_ROOT/devmem-sleep"
+printf '42\n' >"$TEST_ROOT/backlight"
+printf '0\n' >"$TEST_ROOT/backlight-power"
+printf '0\n' >"$TEST_ROOT/fb-blank"
+: >"$TEST_ROOT/calls"
+PLUMOS_ROOT="$TEST_ROOT/plumos" \
+PLUMOS_RUNTIME_ROOT="$TEST_ROOT/run" \
+PLUMOS_BUSYBOX="$TEST_ROOT/busybox" \
+PLUMOS_POWER_LOG_DIR="$TEST_ROOT/logs" \
+PLUMOS_POWER_LOCK_DIR="$TEST_ROOT/run/power.lock" \
+PLUMOS_POWER_STATE="$TEST_ROOT/power-state" \
+PLUMOS_RTC_WAKEALARM="$TEST_ROOT/wakealarm" \
+PLUMOS_DISPLAY_CONTROL="$TEST_ROOT/display" \
+PLUMOS_VOLUME_CONTROL="$TEST_ROOT/volume" \
+PLUMOS_RK817_RESUME_HELPER="$TEST_ROOT/rk817" \
+PLUMOS_PIXEL2_BACKLIGHT="$TEST_ROOT/backlight" \
+PLUMOS_PIXEL2_BACKLIGHT_POWER="$TEST_ROOT/backlight-power" \
+PLUMOS_PIXEL2_FB_BLANK="$TEST_ROOT/fb-blank" \
+PLUMOS_BATTERY_STATUS="$TEST_ROOT/battery-status" \
+PLUMOS_BATTERY_CURRENT="$TEST_ROOT/battery-current" \
+PLUMOS_USB_ONLINE="$TEST_ROOT/usb-online" \
+PLUMOS_AC_ONLINE="$TEST_ROOT/ac-online" \
+PLUMOS_USB_DEVICES_ROOT="$TEST_ROOT/usb-devices" \
+PLUMOS_OTG_MODE="$TEST_ROOT/otg-mode" \
+PLUMOS_DEVMEM="$TEST_ROOT/devmem-sleep" \
+PLUMOS_SLEEP_SETTLE_SEC=0 \
+PLUMOS_TEST_DEVMEM_COUNT="$TEST_ROOT/devmem-count" \
+PLUMOS_TEST_CALLS="$TEST_ROOT/calls" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-safe-shutdown" \
+        --sleep --sleep-backend mem --wakeup-sec 1 --wait-sec 0
+[ "$(cat "$TEST_ROOT/backlight")" = 42 ]
+[ "$(cat "$TEST_ROOT/backlight-power")" = 0 ]
+[ "$(cat "$TEST_ROOT/fb-blank")" = 0 ]
+[ "$(wc -l <"$TEST_ROOT/devmem-count")" -eq 2 ]
+grep -q 'sleep=resume-deferred reason=charger-connected fallback=software' \
+    "$TEST_ROOT/logs/power.log"
+grep -q 'sleep=software-enter reason=kernel-unavailable wakeup_sec=1' \
+    "$TEST_ROOT/logs/power.log"
+grep -q 'sleep=resume-deferred-complete reason=software-standby-release' \
+    "$TEST_ROOT/logs/power.log"
+grep -q 'sleep=result-returned backend=mem kernel_sleep=1' \
+    "$TEST_ROOT/logs/power.log"
+
 printf 'Charging\n' >"$TEST_ROOT/battery-status"
 printf '1248000\n' >"$TEST_ROOT/battery-current"
 printf '0\n' >"$TEST_ROOT/usb-online"

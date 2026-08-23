@@ -401,6 +401,10 @@ sleep_action() {
         return 0
     fi
     kernel_sleep=0
+    charger_before_sleep=0
+    if charger_present; then
+        charger_before_sleep=1
+    fi
     set_wakealarm
     arm_sleep_usb_guard
     blank_display_for_sleep
@@ -409,6 +413,12 @@ sleep_action() {
         if printf '%s\n' "$sleep_backend" >"$power_state"; then
             kernel_sleep=1
             log "sleep=resume backend=$sleep_backend"
+            if [ "$charger_before_sleep" -eq 0 ] && charger_present; then
+                log 'sleep=resume-deferred reason=charger-connected fallback=software'
+                [ "$wakeup_sec" -eq 0 ] || printf '0\n' >"$rtc_wakealarm" 2>/dev/null || true
+                software_sleep_action
+                log 'sleep=resume-deferred-complete reason=software-standby-release'
+            fi
         else
             log "sleep=kernel-entry-failed backend=$sleep_backend fallback=software"
         fi
