@@ -93,3 +93,89 @@ gate is a fresh-card boot, not an update of the development card:
 5. provision test ROM/BIOS content on `PLUMOS_USER` and smoke the representative
    RA, PicoArch, standalone, Apps, Pyxel, PICO-8, and PortMaster paths.
 
+## RC1 physical readback
+
+The candidate was written to a 64 GB SD and booted on Pixel2. The running
+app-layer reported exactly the embedded release identity:
+
+```text
+VERSION=0.1.0-rc1-28aaf65
+source_ref=28aaf65
+kernel=5.10.198
+```
+
+First-boot provisioning completed in one session. Its durable log records the
+partition-table write, online ext4 resize, user-directory seed, and final
+`layout=pixel2-compact-seed-v1` result. Readback after the operation was:
+
+```text
+p1 PLUMOS_BOOT  start=32768    sectors=1048576   size=512 MiB
+p2 PLUMOS_SYS   start=1081344  sectors=16777216  size=8192 MiB
+p3 PLUMOS_USER  start=17858560 sectors=104280064 size=49.7 GiB
+PLUMOS_SYS UUID=504c554d-5354-4154-4500-000000000002
+```
+
+`ext4-resized`, `userdata-seeded`, and `complete` markers were present. The
+card still contained a correctly labelled FAT32 signature and about 4.5 GiB of
+content beyond the compact image boundary, so the non-destructive provisioner
+reused it instead of formatting p3. This physically proves the geometry,
+resize, seed, and preservation paths. The blank-p3 formatting path remains
+covered by the 16 GB host fixture rather than this reused card.
+
+Runtime and boot readback passed:
+
+```text
+verify-runtime: result-ok
+System A squashfs: 3bf414867e55a9e346b5471b4e24cb1688d664e79e6a413246856237a16977c6 match=yes
+System B squashfs: 3bf414867e55a9e346b5471b4e24cb1688d664e79e6a413246856237a16977c6 match=yes
+system-active=a
+system-booted=a
+health=system_baseline_healthy
+```
+
+The scripted frontend path showed six START entries, one consolidated `POWER`
+entry, and the four-item Sleep/Reboot/Shutdown/Cancel power menu with Cancel as
+the safe default. A normal safe reboot then disconnected the old session,
+produced `/tmp/plumos-fe-ready` at about 20 seconds of boot, acquired the saved
+UGREEN AC650 address at about 31 seconds, and restored SSH at
+`192.168.10.107` at about 39 seconds.
+
+The first manual Wi-Fi connect attempt stopped before WPA reached COMPLETED;
+DHCP was never started. The second attempt reached WPA COMPLETED and obtained
+the `.107` lease immediately. This log is consistent with the reported first
+password-entry mistake or a transient authentication failure; it contains no
+evidence of a DHCP fault. The active adapter readback was `0bda:c811`, driver
+`rtl8821cu`, RSSI -46, and 434 Mbps link speed.
+
+## RC1 media smoke
+
+Existing user content preserved on this SD allowed a release-image smoke test.
+The checks prove process startup, a non-black panel-sized capture where the
+renderer exposes one, and an advancing ALSA playback pointer. They do not prove
+controls, orientation, exact aspect ratio, or audible quality.
+
+| route | startup | screen capture | ALSA |
+|---|---:|---:|---:|
+| RetroArch QuickNES | pass | pass | pass |
+| RetroArch FCEUmm | pass | pass | pass |
+| RetroArch Nestopia | pass | pass | pass |
+| PicoArch QuickNES | pass | pass | pass |
+| PicoArch FCEUmm | pass | pass | pass |
+| PicoArch Nestopia | pass | pass | pass |
+| PPSSPP | pass | pass | pass |
+| PICO-8 standalone | pass | pass | pass |
+| OpenBOR | pass | manual | pass |
+| Pyxel | pass | manual | pass |
+
+OpenBOR and Pyxel remained alive with advancing audio, but both the DRM plane
+and `/dev/fb0` readback were black on their legacy scanout path. Their physical
+LCD output therefore remains an operator check. Drastic was not rerun because
+this reused card's current frontend cache contains no NDS content. The
+validator returned the device to a healthy FE after every route.
+
+The mounted `PLUMOS_USER` read-only fsck reported only the expected live-mount
+dirty bit and left the filesystem unchanged. An offline clean-bit assertion is
+not inferred from that mounted check.
+
+The remaining release acceptance is the operator-visible LCD/input/audible
+audio check and the RC1-card sleep, shutdown, charging, and power-on sequence.

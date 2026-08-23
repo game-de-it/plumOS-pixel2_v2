@@ -677,13 +677,17 @@
   - 2026-08-13: `tests/test-pixel2-update.sh`とARM64 System chroot検証は合格。公開鍵だけをSystemへ同梱し秘密鍵混入gateを追加。ADBからrequestしたsigned Runtime/Systemの実機成功経路は合格。FEからのrequest、進捗/失敗表示、実機failure rollbackはacceptanceとして継続する。
   - 2026-08-14: updater側のframebuffer書込みは存在したが、Pixel2 Systemがprogress rawを未収録だった。`89fa6a4`でverify/runtime/system/finalize/rollback/errorの6画面を生成・収録し、欠落をSystem verifierで失敗させる。修正版SystemでのLCD目視は継続。
   - 2026-08-15: wildcard-source旧packageのmtime自動選択を禁止し、明示update chainだけを自動対象にした。署名metadata先読みで約900 MiBの旧payload全走査も廃止し、実機no-candidateは30秒超から3秒へ短縮。System `6a9fdfe`をA/B適用しslot Aでhealth昇格。
-- [ ] compact seed imageとfirst-boot後partitionをhost/実機検証する
+- [x] compact seed imageとfirst-boot後partitionをhost/実機検証する
   - 2026-08-14: 現行64 GB実機SDで最終境界（p2=8192 MiB、p3=残り49.7 GiB）、既存user data復元、cold boot mountには合格。この時点ではrelease seed側が未実装だったため項目を継続した。
   - 2026-08-14: release seed provisionerを実装し、16 GB sparse-cardで最終MBR、ext4 8 GiB、残容量FAT32、directory seed、中断resume、idempotency、既存p3保護までhost合格。新規compact imageからの物理Pixel2初回bootのみ継続。
   - 2026-08-14: `e1b05ed` compact imageを64 GB実機SDで初回bootし、約1秒でp2=8 GiB、p3=49.7 GiB、complete/userdata markerまで完了。旧p3 FAT32 signatureをpreserveしてformatを省略したため短時間だった。初回sessionだけprovisioner mountへinitがfallback tmpfsを重ねる不具合を検出し、通常再起動後はp3 49.7 GiB、required directory 10/10、FE/ADB、mount count 1に合格。`cf8e96f`で既存mount採用guardを追加し、修正版imageの初回session確認を継続。
   - 2026-08-23: release candidate `0.1.0-rc1-28aaf65`を全componentから再生成。
     16 GB first-boot fixture、System A/B、Runtime再展開、固定partition geometry、2回の
     image SHA再現性に合格。新規SDでのfirst-bootと最終partition readbackをrelease gateとする。
+  - 2026-08-23: RC1を書いた64 GB実機SDでcompact seedから初回provisioningを実行。
+    p2を8192 MiBへonline resize、p3を残り49.7 GiBで作成し、directory seedと
+    `complete` markerまで同一sessionで完了。既存FAT32 signatureと4.5 GiBのcontentを
+    非破壊再利用したため、blank p3のformat分岐は16 GB host fixtureの証拠を採用する。
 
 ## Boot artifact boundary
 
@@ -692,7 +696,10 @@
 - [x] stock SDのパーティション、kernel、DTB、initramfsを読み取り専用で解析する
 - [x] stock userspaceを廃止し、保持するboot artifactの境界を決定する
 - [x] SD先頭16 MiBのRockchip boot領域を管理者権限で読み取り採取する
-- [ ] ext4 `/storage` のfilesystem label、UUID、初回resize markerを確認する
+- [x] ext4 `/storage` のfilesystem label、UUID、初回resize markerを確認する
+  - 2026-08-23: RC1実機で`LABEL=PLUMOS_SYS`、固定UUID
+    `504c554d-5354-4154-4500-000000000002`、8 GiB geometry、
+    `/mnt/plumos/provision/ext4-resized`と`complete`をreadbackした。
 - [x] boot artifactのprovenance、hash、サイズをmanifest化する
 - [x] stock内蔵initramfsをboot substrateとして許容し、`SYSTEM`内init以降をplumOS所有にする方針を決定する
 - [x] release imageをstock `Image`/stock由来のbounded DTB/stock kernel ABIへ戻す
@@ -790,6 +797,11 @@
     SHA-256 `ca9275c3...f108929`）を生成。release audit blocker 0、109/109 core、
     strict app-layer、System A/B、SD image verifier、host contract suiteに合格。
     この候補imageを書いた別SDでの物理最終確認を継続する。
+  - 2026-08-23: RC1実機の初回boot/partition/readback、START -> POWER導線、
+    Runtime全checksum、System A/B両slot SHA、通常reboot、FE復帰、保存SSIDによる
+    UGREEN `0bda:c811`自動再接続に合格。代表RA/SA/PicoArch/PICO-8/Pyxelの
+    process・DRM/fb0・ALSAを機械確認した。OpenBOR/Pyxelの画面はcapture不能、
+    LCD/input/可聴音/sleep/shutdown/chargingはこのRC1 SDでoperator最終確認を継続する。
 - [x] app-layer manifest/checksumを実機deploy単位で検証する
   - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。
 - [x] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
