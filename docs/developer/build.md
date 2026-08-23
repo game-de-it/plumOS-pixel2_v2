@@ -56,6 +56,10 @@ implemented.
 source. Before accepting the external module it rebuilds stock `r8188eu` and
 requires its `srcversion` and `vermagic` to match the captured stock module.
 `system-rootfs` and `release-image` run the same gate automatically.
+The Linux source is kept in the case-sensitive Docker volume
+`plumos-pixel2-kernel-cache`, because a macOS repository bind mount cannot
+represent its case-distinct UAPI header paths. The volume is generated cache,
+not a release input.
 
 ## Kernel boundary
 

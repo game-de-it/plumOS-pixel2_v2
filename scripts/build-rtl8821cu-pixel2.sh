@@ -9,6 +9,7 @@ if [ "${1:-}" != --inside ]; then
     exec docker run --rm --platform linux/arm64 \
         -e SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-}" \
         -e PLUMOS_BUILD_JOBS="${PLUMOS_BUILD_JOBS:-}" \
+        -v "${PLUMOS_PIXEL2_KERNEL_CACHE_VOLUME:-plumos-pixel2-kernel-cache}:/plumos-kernel-cache" \
         -v "$ROOT_DIR:/work" -w /work "$IMAGE" \
         ./scripts/build-rtl8821cu-pixel2.sh --inside "$@"
 fi
@@ -21,7 +22,9 @@ DRIVER_REPO=https://github.com/morrownr/8821cu-20210916.git
 DRIVER_REF=96c65c58b544241178638e810b333dcc9aa26b91
 EXPECTED_STOCK_SRCVERSION=33E331B2DEB16477EAAB1D6
 EXPECTED_DRIVER_VERSION=v5.12.0.4-1-g9241a6516.20210916_COEX20200730-5151
-CACHE="$ROOT_DIR/.cache/kernel"
+# Linux has case-distinct UAPI paths such as xt_DSCP.h and xt_dscp.h. Keep the
+# source on Docker's case-sensitive volume instead of the macOS bind mount.
+CACHE="${PLUMOS_PIXEL2_KERNEL_CACHE:-/plumos-kernel-cache}"
 KERNEL_SRC="$CACHE/linux-5.10.198-pixel2"
 DRIVER_SRC="$CACHE/rtl8821cu-96c65c5"
 OUT="$ROOT_DIR/output/kernel-modules/pixel2"

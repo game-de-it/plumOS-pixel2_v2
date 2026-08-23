@@ -50,6 +50,9 @@ launch profile、language、theme assetが不足すると失敗します。`rele
 通常targetは登録済みstock Pixel2 5.10.198 boot substrateを使用します。
 Linux 6.12実験は`experiments/linux-6.12/`へ隔離し、通常target・release入力へ
 入りません。`kernel-modules`はstock ABI照合後にPixel2用`8821cu`をbuildします。
+Linux sourceは、大文字小文字を区別するDocker volume
+`plumos-pixel2-kernel-cache`へ保持します。macOS側のrepository内ではcase違いのUAPI
+headerが衝突するためです。このvolumeは生成cacheでありrelease入力ではありません。
 
 ## App layer
 

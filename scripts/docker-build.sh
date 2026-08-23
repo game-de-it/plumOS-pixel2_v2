@@ -87,12 +87,14 @@ docker_env=(
     -e "PLUMOS_PIXEL2_VERSION=${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
     -e "PLUMOS_PIXEL2_BOOT_PREFIX=$container_boot_prefix"
 )
+kernel_cache_volume="${PLUMOS_PIXEL2_KERNEL_CACHE_VOLUME:-plumos-pixel2-kernel-cache}"
 if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
     docker_env+=(-e "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH")
 fi
 container="$(
     docker create --platform linux/arm64 \
     "${docker_env[@]}" \
+    -v "$kernel_cache_volume:/plumos-kernel-cache" \
     -v "$ROOT_DIR:/work" -w /work "$IMAGE" \
     ./scripts/docker-build.sh --inside "$@"
 )"

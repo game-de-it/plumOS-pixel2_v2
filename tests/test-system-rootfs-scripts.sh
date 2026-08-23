@@ -169,6 +169,12 @@ grep -q '^rtlwifi/rtl8188eufw.bin$' \
     "$ROOT_DIR/scripts/install-kernel-runtime.sh"
 grep -q 'build-rtl8821cu-pixel2.sh' \
     "$ROOT_DIR/scripts/build-system-rootfs.sh"
+grep -q 'plumos-pixel2-kernel-cache' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
+grep -q 'plumos-pixel2-kernel-cache' \
+    "$ROOT_DIR/scripts/docker-build.sh"
+! grep -q 'CACHE="\$ROOT_DIR/.cache/kernel"' \
+    "$ROOT_DIR/scripts/build-rtl8821cu-pixel2.sh"
 grep -q -- '--verify-output' "$ROOT_DIR/scripts/build-system-rootfs.sh"
 grep -q 'kernel-modules) exec ./scripts/build-rtl8821cu-pixel2.sh' \
     "$ROOT_DIR/scripts/docker-build.sh"
