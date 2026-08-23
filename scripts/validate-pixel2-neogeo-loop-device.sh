@@ -24,11 +24,13 @@ analyze_capture() {
   prefix="$1"
   /usr/bin/python3 - "$prefix" <<'PY'
 import glob
+import math
 import os
 import sys
 
 best_ratio = 0.0
 best_colors = 0
+best_stddev = 0.0
 visible = False
 for path in glob.glob(sys.argv[1] + "-plane-*.xrgb8888"):
     data = open(path, "rb").read()
@@ -37,6 +39,8 @@ for path in glob.glob(sys.argv[1] + "-plane-*.xrgb8888"):
     pixels = len(data) // 4
     nonblack = 0
     sampled_colors = set()
+    sums = [0, 0, 0]
+    square_sums = [0, 0, 0]
     for offset in range(0, pixels * 4, 4):
         color = bytes(data[offset : offset + 3])
         if color != b"\x00\x00\x00":
@@ -46,17 +50,25 @@ for path in glob.glob(sys.argv[1] + "-plane-*.xrgb8888"):
         # a perfectly valid low-resolution game frame.
         if len(sampled_colors) < 16:
             sampled_colors.add(color)
+        for channel, value in enumerate(color):
+            sums[channel] += value
+            square_sums[channel] += value * value
     ratio = nonblack / pixels
     colors = len(sampled_colors)
-    plane_visible = ratio >= 0.01 and colors >= 3
+    stddev = max(
+        math.sqrt(max(0.0, square_sums[channel] / pixels - (sums[channel] / pixels) ** 2))
+        for channel in range(3)
+    )
+    plane_visible = ratio >= 0.01 and stddev >= 2.0
     if plane_visible:
         visible = True
-    if (plane_visible and best_colors < 3) or (
-        plane_visible == (best_colors >= 3) and ratio > best_ratio
+    if (plane_visible and best_stddev < 2.0) or (
+        plane_visible == (best_stddev >= 2.0) and ratio > best_ratio
     ):
         best_ratio = ratio
         best_colors = colors
-print(f"{int(visible)} {best_ratio:.6f} {best_colors}")
+        best_stddev = stddev
+print(f"{int(visible)} {best_ratio:.6f} {best_colors} {best_stddev:.3f}")
 PY
 }
 
@@ -79,15 +91,27 @@ while [ "$cycle" -lt "$CYCLES" ]; do
     startup=0
   fi
 
-  if command -v timeout >/dev/null 2>&1; then
-    timeout 8 "$CAPTURE_TOOL" /dev/dri/card0 "$prefix" >"${prefix}.capture.log" 2>&1 || true
-  else
-    "$CAPTURE_TOOL" /dev/dri/card0 "$prefix" >"${prefix}.capture.log" 2>&1 || true
-  fi
-  capture_result="$(analyze_capture "$prefix" 2>/dev/null || echo '0 0.000000 0')"
-  display="$(printf '%s\n' "$capture_result" | awk '{print $1}')"
-  display_ratio="$(printf '%s\n' "$capture_result" | awk '{print $2}')"
-  display_colors="$(printf '%s\n' "$capture_result" | awk '{print $3}')"
+  capture_attempt=0
+  display=0
+  display_ratio=0.000000
+  display_colors=0
+  display_stddev=0.000
+  while [ "$capture_attempt" -lt 3 ]; do
+    capture_attempt=$((capture_attempt + 1))
+    rm -f "${prefix}"-plane-*.xrgb8888 2>/dev/null || true
+    if command -v timeout >/dev/null 2>&1; then
+      timeout 8 "$CAPTURE_TOOL" /dev/dri/card0 "$prefix" >"${prefix}.capture.log" 2>&1 || true
+    else
+      "$CAPTURE_TOOL" /dev/dri/card0 "$prefix" >"${prefix}.capture.log" 2>&1 || true
+    fi
+    capture_result="$(analyze_capture "$prefix" 2>/dev/null || echo '0 0.000000 0 0.000')"
+    display="$(printf '%s\n' "$capture_result" | awk '{print $1}')"
+    display_ratio="$(printf '%s\n' "$capture_result" | awk '{print $2}')"
+    display_colors="$(printf '%s\n' "$capture_result" | awk '{print $3}')"
+    display_stddev="$(printf '%s\n' "$capture_result" | awk '{print $4}')"
+    [ "$display" -eq 1 ] && break
+    sleep 2
+  done
 
   audio_state_1="$(awk '/^state:/ {print $2}' /proc/asound/card0/pcm0p/sub0/status 2>/dev/null || true)"
   audio_ptr_1="$(awk '/^hw_ptr/ {print $3}' /proc/asound/card0/pcm0p/sub0/status 2>/dev/null || true)"
@@ -136,9 +160,9 @@ while [ "$cycle" -lt "$CYCLES" ]; do
     FAILURES=$((FAILURES + 1))
   fi
 
-  printf 'cycle=%s result=%s startup=%s display=%s display_ratio=%s colors=%s audio=%s frontend=%s emulator=%s storage_errors=%s rom_sha256=%s runtime_read=%s\n' \
+  printf 'cycle=%s result=%s startup=%s display=%s display_ratio=%s colors=%s display_stddev=%s capture_attempts=%s audio=%s frontend=%s emulator=%s storage_errors=%s rom_sha256=%s runtime_read=%s\n' \
     "$number" "$result" "$startup" "$display" "$display_ratio" "$display_colors" \
-    "$audio" "$frontend_count" "$emulator_count" "$storage_errors" \
+    "$display_stddev" "$capture_attempt" "$audio" "$frontend_count" "$emulator_count" "$storage_errors" \
     "$rom_sha256" "$runtime_read"
   cycle=$((cycle + 1))
 done
