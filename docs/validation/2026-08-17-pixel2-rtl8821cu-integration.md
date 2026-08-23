@@ -422,3 +422,22 @@ a warning, waits for the authoritative `c811` USB ID, and proceeds immediately
 when that device appears. A host fixture covers the non-zero-eject/successful-
 reenumeration case. Live verification of that latency correction, 5 GHz,
 physical reinsertion, and true cold boot remain open.
+
+The next ordinary reboot isolated a second UGREEN timing boundary. System
+enumerated `1a2b` at uptime 5.84, completed the `c811` switch at 10.34, loaded
+`8821cu` at 11.02, and started wpa_supplicant at 21.18 seconds. The initial
+recovery nevertheless reached its 15-second association bound and returned
+`stage=wpa_completed`. All USB/net add events had already coalesced into that
+one operation, so no later action requested DHCP. The LED kept blinking but
+the device had no IPv4 until physical reinsertion at uptime 879.60; that new
+event repeated the same `1a2b -> c811` route and restored `192.168.10.107`.
+
+Pixel2 now retains the V90S event-driven monitor and adds one strictly bounded
+boot/sync follow-up: if the initial recovery fails, it waits five seconds and
+runs recovery once more. If wpa_supplicant associated after the first bound,
+the follow-up takes the existing associated-without-IPv4 path and requests
+DHCP; otherwise it performs one fresh bounded attempt. Hotplug recovery does
+not gain a timer, and there is no recurring polling loop. The host fixture
+forces the first recovery to fail, proves the second succeeds, and proves
+there are exactly two calls. Signed Runtime deployment and ordinary-reboot
+acceptance for this follow-up remain open.

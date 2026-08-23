@@ -19,6 +19,10 @@ BUSYBOX="${PLUMOS_BUSYBOX:-${PLUMOS_ROOT}/network/bin/busybox}"
 UEVENT_HELPER="${PLUMOS_ROOT}/bin/plumos-wifi-uevent"
 NETWORK_CONTROL="${PLUMOS_ROOT}/bin/plumos-network-control"
 SETTLE_SECONDS="${PLUMOS_WIFI_RECOVERY_SETTLE_SECONDS:-3}"
+INITIAL_RETRY_SECONDS="${PLUMOS_WIFI_RECOVERY_INITIAL_RETRY_SECONDS:-5}"
+case "$INITIAL_RETRY_SECONDS" in
+  ''|*[!0-9]*) INITIAL_RETRY_SECONDS=5 ;;
+esac
 
 mkdir -p "$RUN_DIR" "$LOG_DIR" 2>/dev/null || true
 
@@ -168,6 +172,16 @@ schedule_initial_recovery() {
     cd /
     close_inherited_display_fds
     export PLUMOS_ROOT PLUMOS_SDCARD_ROOT PLUMOS_RUNTIME_ROOT
+    if /bin/sh "$0" recover >> "$LOG_FILE" 2>&1 < /dev/null; then
+      exit 0
+    fi
+    # UGREEN's 1a2b -> c811 transition can expose wlan0 before the first
+    # association has settled. USB/net add events have already coalesced by
+    # then, so without one bounded follow-up the adapter can remain associated
+    # without DHCP until it is physically reinserted. This is a boot/sync retry,
+    # not a recurring monitor or polling loop.
+    log "initial_recovery_retry_scheduled delay=${INITIAL_RETRY_SECONDS}"
+    sleep "$INITIAL_RETRY_SECONDS"
     exec /bin/sh "$0" recover >> "$LOG_FILE" 2>&1 < /dev/null
   ) &
   pid="$!"

@@ -478,6 +478,9 @@
       `192.168.10.107`、gateway 20/20 ping、24,337,159-byte SFTP往復SHA一致を確認した。
       RX/TX errorは0。eject後のUSB disconnectによりutil-linuxが非0を返しても、実際の
       `c811`を成功判定にする修正を追加。5 GHz・物理再挿入・cold bootは継続する。
+      通常rebootでは11秒で`wlan0`まで到達したが、初回associationが15秒上限を超え、
+      全add eventがcoalesce済みのためDHCPなしで停止することを確認。物理再挿入だけに
+      依存しないよう、boot/sync失敗時だけ5秒後に1回再試行するbounded recoveryを追加した。
     - [x] `0bda:c820`実adapterを`rtl8821cu`へ直接bindし、2.4 GHz接続、DHCP
       `192.168.10.120`、gateway 20/20 ping、SSH/SFTP SHA一致、5 GHz scanを確認した
     - [x] 5 GHzへassociationし、434 Mbit/s link、DHCP/gateway、SSH 2.11 MiB/s、
