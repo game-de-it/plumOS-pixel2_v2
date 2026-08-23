@@ -34,6 +34,11 @@ PLUMOS_PIXEL2_VERSION="$VERSION" \
     "$ROOT_DIR/scripts/run-pixel2-strict-release-gate.sh" --version "$VERSION"
 
 IMAGE="$ROOT_DIR/output/image/pixel2/plumOS-Pixel2-$VERSION.img"
+# The release-image target also produces the component tree. Establish the
+# reproducibility baseline only after that tree and the strict gate are fully
+# complete, then compare two consecutive SD-only assemblies.
+PLUMOS_PIXEL2_VERSION="$VERSION" \
+    "$ROOT_DIR/scripts/docker-build.sh" sd-image
 FIRST_SHA="$(shasum -a 256 "$IMAGE" | awk '{print $1}')"
 PLUMOS_PIXEL2_VERSION="$VERSION" \
     "$ROOT_DIR/scripts/docker-build.sh" sd-image
@@ -44,6 +49,11 @@ SECOND_SHA="$(shasum -a 256 "$IMAGE" | awk '{print $1}')"
     exit 1
 }
 printf 'release_image_reproducibility=result-ok sha256=%s\n' "$SECOND_SHA"
+
+# Validate the exact second image that is passed to the bundle builder.
+PLUMOS_PIXEL2_VERSION="$VERSION" \
+    "$ROOT_DIR/scripts/run-pixel2-strict-release-gate.sh" \
+        --version "$VERSION" --image "$IMAGE"
 
 python3 "$ROOT_DIR/scripts/build-pixel2-release-bundle.py" --version "$VERSION"
 

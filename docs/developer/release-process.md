@@ -33,7 +33,9 @@ This command performs the following without publishing anything:
 3. runs source contracts, identity/content checks, implementation audit,
    license audit, app/System/image checksum verification, and first-boot image
    tests;
-4. creates the SD image a second time and requires an identical SHA-256;
+4. assembles the SD image twice from the quiescent component tree after the
+   strict gate, requires identical SHA-256 values, and validates the exact
+   second image again before bundling;
 5. compresses the image, archives the exact Git `HEAD`, writes release notes,
    provenance metadata, and `SHA256SUMS`; and
 6. decompresses the `.img.xz` and verifies that its size and SHA-256 match the

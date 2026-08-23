@@ -38,4 +38,9 @@ if python3 "$ROOT_DIR/scripts/verify-pixel2-release-bundle.py" \
 fi
 grep -q 'release checksum mismatch: RELEASE_NOTES.md' "$work/reject.log"
 
+prepare="$ROOT_DIR/scripts/prepare-pixel2-release.sh"
+test "$(grep -c 'docker-build.sh.*sd-image' "$prepare")" -eq 2
+test "$(grep -c 'run-pixel2-strict-release-gate.sh' "$prepare")" -eq 2
+grep -q 'Validate the exact second image' "$prepare"
+
 printf 'pixel2_release_bundle_test=result-ok\n'

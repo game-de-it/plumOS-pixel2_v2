@@ -29,7 +29,8 @@ repository rootで完全準備コマンドを実行します。
 2. strict app layer、stock kernel SYSTEM、compact SD imageを生成
 3. source契約、identity/content、implementation、license、app/System/image checksum、
    first-boot image testを実行
-4. SD imageを同条件でもう一度生成し、SHA-256完全一致を要求
+4. strict gate完了後の固定済みcomponent treeからSD imageを2回連続生成し、
+   SHA-256完全一致を要求。bundleへ渡す2回目のimageをもう一度strict gateで検証
 5. image圧縮、Git `HEAD`のsource archive、release notes、provenance、`SHA256SUMS`を生成
 6. `.img.xz`を展開し、元imageとsize・SHA-256が一致することを検証
 
