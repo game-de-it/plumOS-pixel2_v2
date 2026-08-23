@@ -37,6 +37,10 @@ host契約検査:
 ./scripts/audit-pixel2-implementation.py --release-gate
 ```
 
+公開直前のlocal candidate一式は[リリース手順](release-process.ja.md)に従います。
+strict content/license gate、image再現性、圧縮round-trip、version付きGitHub用bundleを
+公開せずに生成します。
+
 通常の`audit`は開発用report、`--release-gate`は利用者に見える項目のbackend、App、
 launch profile、language、theme assetが不足すると失敗します。`release-image`は同gateを
 自動実行し、既知作業中は`sd-image`で実機試験できます。

@@ -16,8 +16,9 @@ For normal installation and operation, see the [User Guide](../user/README.md).
 7. [Audio routing](audio-routing.md)
 8. [Validation and evidence](validation.md)
 9. [Implementation inventory and release blockers](implementation-status.md)
+10. [Release process](release-process.md)
 
-All nine guides have matching Japanese pages. Dated validation records,
+All ten guides have matching Japanese pages. Dated validation records,
 accepted decisions, and implementation inventories are retained as engineering
 evidence and may be English-only.
 

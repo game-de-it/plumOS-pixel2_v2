@@ -16,8 +16,9 @@ boot substrateと固有hardware runtimeを使用します。通常の導入・�
 7. [オーディオルーティング](audio-routing.ja.md)
 8. [検証・根拠資料](validation.ja.md)
 9. [実装一覧とrelease blocker](implementation-status.ja.md)
+10. [リリース手順](release-process.ja.md)
 
-9文書すべてで英語版と日本語版を対にしています。日付付き`docs/validation/`、
+10文書すべてで英語版と日本語版を対にしています。日付付き`docs/validation/`、
 採用済みdecision、実装inventoryは成功・失敗・旧方式を残す技術根拠であり、
 英語のみの場合があります。現在の利用者向け操作説明ではありません。
 

@@ -40,6 +40,11 @@ Host contract checks:
   --json output/validation/pixel2-implementation-audit.json
 ```
 
+For a complete local publication candidate, follow the
+[release process](release-process.md). It adds strict content/license gates,
+image reproducibility, compression round-trip verification, and a versioned
+GitHub-ready bundle without publishing it.
+
 `audit` is informational during normal port development. Its
 `--release-gate` form fails while any user-visible Pixel2 setting, Apps entry,
 launch profile, selectable language, or enabled-system theme asset lacks its
