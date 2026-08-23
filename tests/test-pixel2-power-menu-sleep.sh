@@ -79,7 +79,9 @@ grep -q "^rk817_alsa $TEST_ROOT/plumos/config/alsa/alsa.conf$" \
     "$TEST_ROOT/calls"
 grep -q '^volume apply$' "$TEST_ROOT/calls"
 grep -q '^display apply$' "$TEST_ROOT/calls"
-for _ in 1 2 3 4 5; do
+# The recovery is intentionally asynchronous. A full release build can leave
+# Docker and the host under enough I/O load that 500 ms is not a reliable gate.
+for _ in $(seq 1 30); do
     grep -q '^wifi-recovery recover marker=present$' "$TEST_ROOT/calls" && break
     sleep 0.1
 done
