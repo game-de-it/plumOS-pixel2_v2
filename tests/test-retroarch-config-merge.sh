@@ -108,11 +108,15 @@ grep -q "^video_font_path = \"/mnt/plumos/fonts/default.otf\"$" \
 grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 
 # The validated live-default generation accidentally saved black as its OSD
-# message colour. Replace an active cfg only when it is byte-identical to that
-# exact factory generation.
+# message colour. Recreate that exact generation by also undoing the later
+# graphical-menu scale defaults, then replace an active cfg only when it is
+# byte-identical to the known factory generation.
 cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
 sed -i \
     -e "s|assets_directory = \"/mnt/plumos/retroarch/assets\"|assets_directory = \"/mnt/plumos/config/retroarch/assets\"|" \
+    -e "s/menu_scale_factor = \"1.500000\"/menu_scale_factor = \"1.000000\"/" \
+    -e "s/ozone_font_scale = \"1\"/ozone_font_scale = \"0\"/" \
+    -e "s/ozone_font_scale_factor_global = \"1.350000\"/ozone_font_scale_factor_global = \"1.000000\"/" \
     -e "s/video_message_color = \"ffff00\"/video_message_color = \"0\"/" \
     "$active/retroarch.cfg"
 test "$(sha256sum "$active/retroarch.cfg" | cut -d " " -f 1)" = \
@@ -132,6 +136,9 @@ grep -q "^video_message_color = \"ffff00\"$" "$active/retroarch.cfg"
 cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
 sed -i \
     -e "s|assets_directory = \"/mnt/plumos/retroarch/assets\"|assets_directory = \"/mnt/plumos/config/retroarch/assets\"|" \
+    -e "s/menu_scale_factor = \"1.500000\"/menu_scale_factor = \"1.000000\"/" \
+    -e "s/ozone_font_scale = \"1\"/ozone_font_scale = \"0\"/" \
+    -e "s/ozone_font_scale_factor_global = \"1.350000\"/ozone_font_scale_factor_global = \"1.000000\"/" \
     -e "s/video_message_color = \"ffff00\"/video_message_color = \"0\"/" \
     -e "s/input_save_state_btn = \"5\"/input_save_state_btn = \"42\"/" \
     "$active/retroarch.cfg"
