@@ -461,9 +461,16 @@
   - [x] top-level English READMEを追加し、日本語READMEを現行boot/image構成へ同期する
   - [x] user/developer文書を分離し、主要取扱説明書と技術ガイドを英語・日本語の対にする
   - [x] top-level project licenseを他plumOSシリーズと同じMITとして追加する
-  - [ ] third-party noticeとDraStic redistribution条件をrelease payload単位で監査する
-  - [ ] CIへhost tests、identity/content gate、implementation audit、checksum検証を追加する
-  - [ ] versioned artifact、SHA256SUMS、archive検査、GitHub再download検証を実装する
+  - [x] third-party noticeとDraStic redistribution条件をrelease payload単位で監査する
+  - [x] CIへhost tests、identity/content gate、implementation audit、checksum検証を追加する
+  - [x] versioned artifact、SHA256SUMS、archive検査、GitHub再download検証を実装する
+    - `prepare-pixel2-release.sh`はclean commitから全component、strict app/System/image、
+      同条件image再生成、`.img.xz` round-trip、source archive、manifest、checksumsを生成し、
+      Git tag・GitHub Release・uploadは行わない。
+    - `verify-pixel2-release-bundle.py --download-base`は公開後の全asset再downloadと
+      checksum・展開image・source archive検証を行う。
+  - [ ] exact release bundleを別SDへ書き込み、cold boot・初回setup・実機最終確認後に
+    GitHubへ公開し、公開assetの再download検証を完了する
 
 ## Build system and app layer
 
