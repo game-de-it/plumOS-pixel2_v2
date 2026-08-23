@@ -723,6 +723,11 @@
 - [x] FE全機能を共有plumOS contractと照合し、欠落をrelease blockerにする
   - 2026-08-14: MFと同じ89 setting ID、START 7項目、Apps 12定義/7 visible、NW Service 5項目を機械監査。欠落AppsをP1扱いしていた監査と、Pixel2だけserviceを隠す分岐を廃止した。詳細は`docs/developer/frontend-feature-audit.md`。
   - 2026-08-15: [実機functional audit](docs/validation/2026-08-15-pixel2-frontend-functional-audit.md)で主要backendを再検証。Runtime `9da9bc7`、System `6a9fdfe`、FE/ADB、Runtime/System health、Network service stop後のcleanupに合格。物理menu acceptanceは継続。
+- [ ] START menuのReboot/Shutdown重複導線をPOWER 1項目へ統合する
+  - 2026-08-23: 標準menu/feature contractを6項目へ変更し、`system:power`から
+    Sleep/Reboot/Shutdown/Cancel共通menuを開くhandlerと、旧2項目が残らない
+    catalog fixtureを追加。旧actionは既存設定との互換用に残す。署名Runtime実機適用と
+    START -> POWER -> Cancelの物理導線確認を継続する。
 - [x] Pixel2 framebufferとgpio-key inputを自動選択してboot時にfrontendを起動する
 - [x] frontendとADBの診断logをSTATE partitionへ保存する
 - [x] 実機LCDでfrontend描画と90度回転を確認する

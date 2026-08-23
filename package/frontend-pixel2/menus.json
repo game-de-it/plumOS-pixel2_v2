@@ -37,18 +37,10 @@
           "action": "internal:help"
         },
         {
-          "id": "reboot",
-          "display_name": "Reboot",
+          "id": "power",
+          "display_name": "POWER",
           "kind": "system",
-          "action": "system:reboot",
-          "confirm": true
-        },
-        {
-          "id": "shutdown",
-          "display_name": "Shutdown",
-          "kind": "system",
-          "action": "system:shutdown",
-          "confirm": true
+          "action": "system:power"
         }
       ]
     }

@@ -25,7 +25,9 @@ backendへ置き換える。一方、共有Appsやfile transfer daemonが未実�
 
 機械可読な正本は`package/frontend-pixel2/feature-contract.json`である。
 
-- START: UI Settings、System Settings、Network Settings、Apps、HELP、Reboot、Shutdown
+- START: UI Settings、System Settings、Network Settings、Apps、HELP、POWER
+- POWER: 共通のSleep、Reboot、Shutdown、Cancel menuを開く。STARTには個別の
+  Reboot/Shutdownを重複表示しない。
 - Apps: Scraping、File Manager、Music Player、RetroArch、Pyxel Setup、PortMaster、
   Update PortMaster
 - Ports system: `roms/ports/*.sh`からPixel2 PortMaster launcherへ接続

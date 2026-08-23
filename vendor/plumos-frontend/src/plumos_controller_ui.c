@@ -14372,6 +14372,8 @@ static void handle_action(struct ui_state *ui, enum ui_action action) {
         open_thumbnail_results_screen(ui);
       } else if (strcmp(entry->action, "system:sleep") == 0) {
         run_power_action(ui, "sleep", 0);
+      } else if (strcmp(entry->action, "system:power") == 0) {
+        open_power_menu(ui);
       } else if (strcmp(entry->action, "system:reboot") == 0) {
         if (entry->confirm) {
           open_power_menu_for_action(ui, "reboot");

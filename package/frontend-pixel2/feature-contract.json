@@ -8,8 +8,7 @@
     "network-settings",
     "apps",
     "help",
-    "reboot",
-    "shutdown"
+    "power"
   ],
   "app_ids": [
     "scraping",

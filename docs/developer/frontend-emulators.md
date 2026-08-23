@@ -18,8 +18,10 @@ The START menu follows the shared plumOS handheld top-level contract:
 3. Network Settings
 4. Apps
 5. HELP
-6. Reboot
-7. Shutdown
+6. POWER
+
+`POWER` opens the shared Sleep/Reboot/Shutdown/Cancel menu. Reboot and
+Shutdown are not duplicated as START entries.
 
 Apps only exposes tools whose app-layer component is present. The current
 Pixel2 app list includes `Pyxel Setup`; do not expose launchers that are not

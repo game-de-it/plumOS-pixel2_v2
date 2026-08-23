@@ -212,3 +212,26 @@ power=result-requested device=pixel2 action=shutdown dry_run=1
 Actual FE-menu shutdown remains a physical-device terminal test because it
 powers off the unit and drops ADB. The underlying RK817 shutdown path was
 validated separately in the Pixel2 power-management record.
+
+## 2026-08-23 POWER entry consolidation
+
+The original START catalog duplicated Reboot and Shutdown even though both
+entries only opened the same four-choice power menu with a different initial
+cursor. The standard Pixel2 START surface now contains six entries:
+
+```text
+1. UI Settings       internal   internal:ui-settings
+2. System Settings   internal   internal:system-settings
+3. Network Settings  internal   internal:network-settings
+4. Apps              submenu    menu:apps
+5. HELP              internal   internal:help
+6. POWER             system     system:power
+```
+
+`system:power` opens the existing Sleep/Reboot/Shutdown/Cancel menu without
+executing or preselecting a terminal action. The legacy `system:reboot` and
+`system:shutdown` handlers remain for compatibility with an older catalog,
+but neither action nor entry is present in the generated standard menu. The
+feature contract and host fixture require the exact six-entry catalog and the
+new handler. Signed Runtime deployment and physical START -> POWER -> Cancel
+acceptance remain open.

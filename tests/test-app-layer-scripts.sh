@@ -139,6 +139,26 @@ grep -q 'internal:network-settings' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
 grep -q 'menu:apps' \
     "$ROOT_DIR/package/frontend-pixel2/menus.json"
+python3 - "$ROOT_DIR/package/frontend-pixel2/menus.json" \
+    "$ROOT_DIR/package/frontend-pixel2/feature-contract.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+menus = json.loads(Path(sys.argv[1]).read_text())
+contract = json.loads(Path(sys.argv[2]).read_text())
+start = next(menu for menu in menus["menus"] if menu["id"] == "start")
+entries = start["entries"]
+ids = [entry["id"] for entry in entries]
+actions = [entry["action"] for entry in entries]
+assert ids == [
+    "ui-settings", "system-settings", "network-settings", "apps", "help", "power"
+]
+assert actions[-1] == "system:power"
+assert "reboot" not in ids and "shutdown" not in ids
+assert "system:reboot" not in actions and "system:shutdown" not in actions
+assert contract["start_menu_ids"] == ids
+PY
 grep -q '"id": "pyxel_setup"' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q '"id": "scraping"' "$ROOT_DIR/package/frontend-pixel2/apps.json"
 grep -q 'video_rotation = "3"' \
@@ -427,9 +447,7 @@ grep -q 'case BTN_TRIGGER_HAPPY1:' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'value=%d action=%s' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
-grep -q 'open_power_menu_for_action(ui, "reboot")' \
-    "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
-grep -q 'open_power_menu_for_action(ui, "shutdown")' \
+grep -q 'strcmp(entry->action, "system:power") == 0' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
 grep -q 'wifi_back_to_network_settings(ui, connected_status)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_controller_ui.c"
