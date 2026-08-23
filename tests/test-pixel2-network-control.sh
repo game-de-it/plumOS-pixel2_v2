@@ -34,6 +34,7 @@ cat >"$plumos/bin/eject" <<'EOF'
 #!/bin/sh
 printf 'eject %s\n' "$*" >>"$TEST_COMMAND_LOG"
 printf 'c811\n' >"$TEST_USB_PRODUCT_FILE"
+exit "${FAKE_EJECT_RC:-0}"
 EOF
 cat >"$plumos/bin/wpa_supplicant" <<'EOF'
 #!/bin/sh
@@ -128,6 +129,7 @@ run_control() {
         PLUMOS_DHCP_WAIT_SECONDS=1 \
         PLUMOS_WIFI_SCAN_WAIT_SECONDS=1 \
         PLUMOS_USB_MODE_SWITCH_WAIT_ATTEMPTS=1 \
+        PLUMOS_EJECT_BIN="$plumos/bin/eject" \
         PLUMOS_PIXEL2_USB_HOST_CONTROL="$tmp/usb-host-control" \
         PLUMOS_UDHCPC_SCRIPT="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-udhcpc-script" \
         "$CONTROL" "$@"
@@ -178,6 +180,19 @@ grep -Fxq c811 "$usb/1-1/idProduct"
 grep -Fq 'usb wifi mode-switch complete id=0bda:c811' \
     "$plumos/logs/network-control.log"
 grep -Fq 'PLUMOS_EJECT_BIN:-/usr/bin/eject' "$CONTROL"
+
+# The physical UGREEN adapter disconnects its driver disk during the SCSI
+# request. util-linux eject can therefore return non-zero even though c811 has
+# already appeared. The observed USB ID is authoritative and scan must proceed.
+rm -rf "$net/wlan0"
+rm -f "$TEST_COMMAND_LOG" "$TEST_WPA_PING_COUNT_FILE"
+printf '1a2b\n' >"$usb/1-1/idProduct"
+mode_switch_nonzero_scan="$(FAKE_EJECT_RC=1 run_control --scan)"
+grep -Fq $'network\tsecured\t-42\tPixel2 Test' <<<"$mode_switch_nonzero_scan"
+grep -Fq 'usb wifi mode-switch warning reason=eject_nonzero rc=1' \
+    "$plumos/logs/network-control.log"
+grep -Fq 'usb wifi mode-switch complete id=0bda:c811' \
+    "$plumos/logs/network-control.log"
 
 # Once dongle removal has returned the shared connector to OTG/sink mode,
 # an explicit FE scan must request one bounded host probe before declaring the

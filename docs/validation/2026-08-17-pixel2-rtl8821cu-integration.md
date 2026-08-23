@@ -396,3 +396,29 @@ the frontend after both update reboots. This proves that the release
 candidate preserves the already-accepted direct-adapter path. Physical UGREEN
 acceptance remains open until the actual adapter proves `1a2b -> c811`,
 association, DHCP, unplug/replug, transfer, and cold-boot restoration.
+
+The first physical UGREEN insertion then proved the exact driver-disk route.
+At uptime 1896.58 the stock kernel enumerated `0bda:1a2b`, attached
+`usb-storage`, and created the matching Realtek Driver Storage `/dev/sr0`.
+The controller issued the bounded SCSI eject at uptime 1900.18; the adapter
+re-enumerated as `0bda:c811` at 1901.43, `8821cu` exposed `wlan0`, and DHCP
+assigned `192.168.10.107`. The link associated to 2.4 GHz `k-home-2` at
+2447 MHz and 72.2 Mbit/s with -39 dBm signal. Twenty gateway probes had zero
+loss and RX/TX error counters remained zero.
+
+An SFTP round trip used the 24,337,159-byte signed System package. Upload took
+16.26 seconds, download took 5.39 seconds, and source, device, and returned
+SHA-256 were all
+`7d8f079876e9c7d4eed0dc4b269532529251f9ea626b92ebce67f8119e5e1bc6`.
+Both temporary transfer files were removed afterward.
+
+The physical log also exposed why DHCP initially took about 30 seconds.
+Realtek disconnected the virtual CD-ROM while the command was in flight, so
+util-linux reported `eject: unable to eject` even though the adapter had
+accepted the SCSI request and appeared as `c811` 0.57 seconds later. The
+controller had treated that process status as a hard failure and depended on
+subsequent uevents to retry association. It now records the non-zero status as
+a warning, waits for the authoritative `c811` USB ID, and proceeds immediately
+when that device appears. A host fixture covers the non-zero-eject/successful-
+reenumeration case. Live verification of that latency correction, 5 GHz,
+physical reinsertion, and true cold boot remain open.

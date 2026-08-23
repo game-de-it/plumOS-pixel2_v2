@@ -473,6 +473,11 @@
   - [x] stock moduleの`__this_module` size/exit relocationをbuild gate化し、実機5.10.198でSHA一致moduleの`insmod`/`rmmod`を確認する
   - [x] signed inactive-slot System `0.1.0-dev-13ad915`を適用し、slot B readback、health promotion、収録module checksum、`modprobe`/`rmmod`、FE/ADB復帰を確認する
   - [ ] 実adapterで1a2b->c811、2.4/5 GHz、DHCP、SSH/SFTP速度、抜き差し、cold boot復元を確認する
+    - [x] UGREEN AC650実adapterで`0bda:1a2b`、`sr0`、SCSI eject要求、
+      `0bda:c811`再列挙、`8821cu`、2.4 GHz `k-home-2`、DHCP
+      `192.168.10.107`、gateway 20/20 ping、24,337,159-byte SFTP往復SHA一致を確認した。
+      RX/TX errorは0。eject後のUSB disconnectによりutil-linuxが非0を返しても、実際の
+      `c811`を成功判定にする修正を追加。5 GHz・物理再挿入・cold bootは継続する。
     - [x] `0bda:c820`実adapterを`rtl8821cu`へ直接bindし、2.4 GHz接続、DHCP
       `192.168.10.120`、gateway 20/20 ping、SSH/SFTP SHA一致、5 GHz scanを確認した
     - [x] 5 GHzへassociationし、434 Mbit/s link、DHCP/gateway、SSH 2.11 MiB/s、

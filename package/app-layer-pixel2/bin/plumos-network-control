@@ -237,9 +237,14 @@ switch_known_usb_wifi_mode() {
   fi
 
   log "usb wifi mode-switch eject begin block=${block}"
-  if ! run_limited 5 "$EJECT_BIN" -s "${DEV_ROOT}/${block}" >> "$LOG_FILE" 2>&1; then
-    log "usb wifi mode-switch failed reason=eject_nonzero block=${block}"
-    return 1
+  # Realtek's driver disk can disconnect while the SCSI command is still in
+  # flight. util-linux eject then reports a non-zero status even though the
+  # adapter has accepted the request and is already re-enumerating. Treat the
+  # resulting c811 device as the authoritative outcome, not eject's exit code.
+  eject_rc=0
+  run_limited 5 "$EJECT_BIN" -s "${DEV_ROOT}/${block}" >> "$LOG_FILE" 2>&1 || eject_rc=$?
+  if [ "$eject_rc" -ne 0 ]; then
+    log "usb wifi mode-switch warning reason=eject_nonzero rc=${eject_rc} block=${block} continuing=c811_wait"
   fi
 
   attempt=0
@@ -252,7 +257,7 @@ switch_known_usb_wifi_mode() {
     sleep 1
     attempt=$((attempt + 1))
   done
-  log "usb wifi mode-switch failed reason=c811_timeout"
+  log "usb wifi mode-switch failed reason=c811_timeout eject_rc=${eject_rc}"
   return 1
 }
 
