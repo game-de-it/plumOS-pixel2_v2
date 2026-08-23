@@ -481,6 +481,10 @@
       通常rebootでは11秒で`wlan0`まで到達したが、初回associationが15秒上限を超え、
       全add eventがcoalesce済みのためDHCPなしで停止することを確認。物理再挿入だけに
       依存しないよう、boot/sync失敗時だけ5秒後に1回再試行するbounded recoveryを追加した。
+      Runtime `875227e`適用・全11,267管理fileのchecksum合格後、UGREENを挿したままの
+      通常rebootでuptime 10.44秒に`c811`、11.09秒にdriver、31.39秒に`.107`を自動取得。
+      host SSHは再起動要求から37秒で復帰し、gateway 10/10、FE、RX/TX error 0を確認した。
+      物理再挿入復旧も`.107`再取得まで合格。5 GHzとtrue cold bootは継続する。
     - [x] `0bda:c820`実adapterを`rtl8821cu`へ直接bindし、2.4 GHz接続、DHCP
       `192.168.10.120`、gateway 20/20 ping、SSH/SFTP SHA一致、5 GHz scanを確認した
     - [x] 5 GHzへassociationし、434 Mbit/s link、DHCP/gateway、SSH 2.11 MiB/s、

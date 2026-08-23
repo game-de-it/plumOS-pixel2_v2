@@ -441,3 +441,20 @@ not gain a timer, and there is no recurring polling loop. The host fixture
 forces the first recovery to fail, proves the second succeeds, and proves
 there are exactly two calls. Signed Runtime deployment and ordinary-reboot
 acceptance for this follow-up remain open.
+
+The follow-up shipped as signed Runtime `0.1.0-dev-875227e`, package SHA-256
+`87ee7623270c4a6146953541c7f8e286be43d582f12c30cbf472343621c2b272`.
+The updater accepted its `0.1.0-dev-f634919` source contract, and both the
+pre-update and post-update 11,267-file app-layer checks returned
+`runtime_verify=result-ok`.
+
+An update-free ordinary reboot with UGREEN left attached then passed without
+physical intervention. The kernel enumerated `1a2b` at uptime 5.94, the
+controller accepted `c811` at 10.44, and `8821cu` loaded at 11.09 seconds.
+wpa_supplicant started at 16.89 and DHCP restored `192.168.10.107` at 31.39
+seconds; host SSH returned 37 seconds after the safe-reboot request. The FE
+was running, ten gateway probes had zero loss, and RX/TX errors were zero.
+The earlier physical reinsertion also completed a fresh `1a2b -> c811` switch
+and restored `.107`. This closes UGREEN recognition, driver-disk switching,
+2.4 GHz DHCP, SFTP integrity, physical reinsertion, and ordinary-reboot gates.
+UGREEN-specific 5 GHz association and a true power-off cold boot remain open.
