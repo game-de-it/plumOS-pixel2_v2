@@ -74,15 +74,16 @@ class Device:
             "StrictHostKeyChecking=no",
             "-o",
             "ConnectTimeout=8",
+            # Evidence collection makes many short requests.  Reuse one SSH
+            # transport so the low-power USB Wi-Fi path and Dropbear do not
+            # have to repeat key exchange for every small capture file.
+            "-o",
+            "ControlMaster=auto",
+            "-o",
+            "ControlPersist=60",
+            "-o",
+            "ControlPath=/tmp/plumos-pixel2-media-%C",
             self.destination,
-        ]
-        self.scp_base = command_prefix(password) + [
-            "scp",
-            "-q",
-            "-o",
-            "StrictHostKeyChecking=no",
-            "-o",
-            "ConnectTimeout=8",
         ]
 
     def run(
@@ -109,18 +110,36 @@ class Device:
         return result
 
     def copy_to(self, local: Path, remote: str) -> None:
-        subprocess.run(
-            self.scp_base + [str(local), f"{self.destination}:{remote}"],
-            check=True,
+        # Factory defaults enable the SSH shell but leave the optional SFTP
+        # service disabled, and the minimal device rootfs has no scp helper.
+        # Stream files through that already-proven shell instead of requiring
+        # either optional transfer subsystem.
+        result = subprocess.run(
+            self.ssh_base + [f"cat >{shlex.quote(remote)}"],
+            input=local.read_bytes(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             timeout=30,
         )
+        if result.returncode:
+            raise RuntimeError(
+                f"remote upload failed ({result.returncode}): {remote}\n"
+                f"stderr:\n{result.stderr.decode(errors='replace')}"
+            )
 
     def copy_from(self, remote: str, local: Path) -> None:
-        subprocess.run(
-            self.scp_base + [f"{self.destination}:{remote}", str(local)],
-            check=True,
+        result = subprocess.run(
+            self.ssh_base + [f"cat {shlex.quote(remote)}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             timeout=30,
         )
+        if result.returncode:
+            raise RuntimeError(
+                f"remote download failed ({result.returncode}): {remote}\n"
+                f"stderr:\n{result.stderr.decode(errors='replace')}"
+            )
+        local.write_bytes(result.stdout)
 
 
 def select_rom(roms: list[str], match: str = "") -> str | None:
@@ -245,6 +264,31 @@ def analyze_capture(directory: Path, base: str) -> dict[str, Any]:
     }
 
 
+def analyze_fbdev(directory: Path, base: str) -> dict[str, Any]:
+    raw_path = directory / f"{base}.fbdev.xrgb8888"
+    expected_size = 480 * 640 * 4
+    if not raw_path.is_file() or raw_path.stat().st_size < expected_size:
+        return {"machine_visible": False, "error": "fbdev capture missing or short"}
+    image = Image.frombytes(
+        "RGB", (480, 640), raw_path.read_bytes()[:expected_size], "raw", "BGRX", 1920, 1
+    )
+    physical = directory / f"{base}-fbdev-physical.png"
+    logical = directory / f"{base}-fbdev-logical-cw.png"
+    image.save(physical)
+    image.rotate(-90, expand=True).save(logical)
+    metrics = image_metrics(image)
+    visible = (
+        metrics["nonblack_ratio"] >= 0.01
+        and max(metrics["stddev"]) >= 2
+    )
+    return {
+        "physical_png": physical.name,
+        "logical_png": logical.name,
+        "metrics": metrics,
+        "machine_visible": visible,
+    }
+
+
 def safe_slug(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_.-]+", "-", value).strip("-")[:80]
 
@@ -319,6 +363,7 @@ def launch_one(
         f"pid=$(cat {prefix}.pid 2>/dev/null || true); "
         f"ps -eo pid,ppid,pgid,stat,comm,args >{prefix}.ps; "
         f"/tmp/drm-scanout-capture /dev/dri/card0 {prefix} 2>{prefix}.capture.log || true; "
+        f"dd if=/dev/fb0 of={prefix}.fbdev.xrgb8888 bs=1228800 count=1 2>/dev/null || true; "
         f"cat /proc/asound/card0/pcm0p/sub0/status >{prefix}.audio1 2>&1 || true; "
         "sleep 1; "
         f"cat /proc/asound/card0/pcm0p/sub0/status >{prefix}.audio2 2>&1 || true; "
@@ -372,6 +417,7 @@ def launch_one(
         encoding="utf-8", errors="replace"
     )
     capture = analyze_capture(output_dir, base)
+    capture["fbdev"] = analyze_fbdev(output_dir, base)
     audio1 = parse_audio(
         (output_dir / f"{base}.audio1").read_text(encoding="utf-8", errors="replace")
     )
@@ -387,7 +433,7 @@ def launch_one(
     )
     launch_failed = "execute: failed" in launch_log or "launch command failed" in launch_log
     startup = "pass" if live_processes and not launch_failed else "fail"
-    if capture["machine_visible"]:
+    if capture["machine_visible"] or capture["fbdev"]["machine_visible"]:
         screen = "pass"
     elif startup == "fail":
         screen = "fail"
