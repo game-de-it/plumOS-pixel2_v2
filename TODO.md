@@ -801,7 +801,9 @@
     Runtime全checksum、System A/B両slot SHA、通常reboot、FE復帰、保存SSIDによる
     UGREEN `0bda:c811`自動再接続に合格。代表RA/SA/PicoArch/PICO-8/Pyxelの
     process・DRM/fb0・ALSAを機械確認した。OpenBOR/Pyxelの画面はcapture不能、
-    LCD/input/可聴音/sleep/shutdown/chargingはこのRC1 SDでoperator最終確認を継続する。
+    FE idleからkernel `mem` sleep、RTC復帰、表示/audio route再arm、Wi-Fi/FE/input
+    service復帰にも合格。LCD/input/可聴音、実電源ボタンsleep、shutdown/chargingは
+    このRC1 SDでoperator最終確認を継続する。
 - [x] app-layer manifest/checksumを実機deploy単位で検証する
   - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。
 - [x] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する

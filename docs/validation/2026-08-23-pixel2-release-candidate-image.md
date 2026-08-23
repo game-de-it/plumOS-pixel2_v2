@@ -177,5 +177,12 @@ The mounted `PLUMOS_USER` read-only fsck reported only the expected live-mount
 dirty bit and left the filesystem unchanged. An offline clean-bit assertion is
 not inferred from that mounted check.
 
+An FE-idle sleep used kernel `mem` with a five-second RTC wake. The original SSH
+session timed out while suspended, as expected, but the durable log recorded
+kernel resume, display unblank, RK817 speaker/headphone route re-arm, and Wi-Fi
+recovery. After resume, ping had zero loss and SSH, FE, and the hardware-key
+service were all running.
+
 The remaining release acceptance is the operator-visible LCD/input/audible
-audio check and the RC1-card sleep, shutdown, charging, and power-on sequence.
+audio check, a physical-power-button sleep check, and the RC1-card shutdown,
+charging, and power-on sequence.
