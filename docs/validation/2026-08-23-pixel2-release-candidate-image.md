@@ -186,3 +186,17 @@ service were all running.
 The remaining release acceptance is the operator-visible LCD/input/audible
 audio check, a physical-power-button sleep check, and the RC1-card shutdown,
 charging, and power-on sequence.
+
+## Media dropout after the initial RC1 checks
+
+The first physical card was later excluded from release acceptance. It became
+partly unreadable after a Neo Geo session, showed `NO SD` on the next power-on,
+and recovered only after physical reseating. The following boot logged an
+initial `All phases bad` / SD tuning error before succeeding on retry, and the
+card identifies only as generic `USD` with zero manufacturer/OEM fields.
+
+The recovered card passed the complete Runtime, both System slots, boot FAT,
+and Neo Geo ROM readback, so no persistent image corruption was found. This is
+treated as a marginal card/contact incident, not an RC1 software pass. Final
+acceptance must use a known-good branded SD. See
+[Pixel2 RC1 SD dropout investigation](2026-08-23-pixel2-rc1-sd-dropout.md).

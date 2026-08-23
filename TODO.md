@@ -804,6 +804,11 @@
     FE idleからkernel `mem` sleep、RTC復帰、表示/audio route再arm、Wi-Fi/FE/input
     service復帰にも合格。LCD/input/可聴音、実電源ボタンsleep、shutdown/chargingは
     このRC1 SDでoperator最終確認を継続する。
+  - 2026-08-23: 上記SDはNEOGEO終了後にSD-backed機能が一斉停止し、次回電源ONで
+    `NO SD`、再挿入後bootで`All phases bad` / tuning `-5`を記録した。generic `USD`、
+    manufacturer/OEMとも0の媒体であり、再挿入後のRuntime/System A/B/ROM readbackは
+    全合格。媒体または接点不良としてこのSDをrelease acceptanceから除外し、
+    known-good branded SDで同じRC1の最終確認を継続する。
 - [x] app-layer manifest/checksumを実機deploy単位で検証する
   - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。
 - [x] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
