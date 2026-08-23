@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-root_dir="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+root_dir="$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)"
 scope=full
 if [ "${1:-}" = --app-only ]; then
     scope=app
