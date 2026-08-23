@@ -22,7 +22,14 @@ PROHIBITED_NAMES = {
     "wpa_supplicant.conf",
 }
 MUTABLE_TOP_LEVEL = {"logs", "saves", "states", "state", "updates"}
-PRIVATE_KEY_RE = re.compile(br"BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY")
+PRIVATE_KEY_RE = re.compile(
+    br"-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----"
+)
+
+
+def contains_private_key_text(data: bytes) -> bool:
+    """Match PEM credentials, but not parser literals embedded in ELF files."""
+    return b"\0" not in data[:8192] and PRIVATE_KEY_RE.search(data) is not None
 
 
 def sha256(path: Path) -> str:
@@ -56,7 +63,7 @@ def tracked_content_findings() -> list[str]:
                 data = full.read_bytes()
             except OSError:
                 continue
-            if PRIVATE_KEY_RE.search(data):
+            if contains_private_key_text(data):
                 findings.append(f"tracked private key material: {path}")
     return findings
 
@@ -85,7 +92,7 @@ def app_findings(app_root: Path) -> list[str]:
                 data = path.read_bytes()
             except OSError:
                 continue
-            if PRIVATE_KEY_RE.search(data):
+            if contains_private_key_text(data):
                 findings.append(f"private key material in app layer: {rel}")
 
     manifest = app_root / "manifest.json"
