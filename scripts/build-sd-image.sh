@@ -98,7 +98,11 @@ normalize_ext4_timestamps() {
         done
     done < <(find "$source_root" -mindepth 1 -print0 | sort -z)
     fake_time=$(date -u -d "@$epoch" '+%Y-%m-%d %H:%M:%S')
-    faketime "$fake_time" debugfs -w -f "$commands" "$image" >/dev/null 2>&1
+    # Freeze, rather than merely offset, the clock. debugfs updates the ext4
+    # superblock write time when it closes; a running fake clock made that byte
+    # depend on whether normalization crossed the next second.
+    faketime -f "@$fake_time x0" debugfs -w -f "$commands" "$image" \
+        >/dev/null 2>&1
 }
 
 # Compact first-boot seed layout, in 512-byte sectors.  The image deliberately

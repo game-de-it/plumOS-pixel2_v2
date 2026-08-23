@@ -19,6 +19,7 @@ grep -q 'plumos-user-absent' "$ROOT_DIR/scripts/build-sd-image.sh"
 grep -q 'test-pixel2-first-boot-provision.sh' "$ROOT_DIR/scripts/verify-sd-image.sh"
 grep -q 'set_inode_field' "$ROOT_DIR/scripts/build-sd-image.sh"
 grep -q 'faketime.*debugfs' "$ROOT_DIR/scripts/build-sd-image.sh"
+grep -q 'faketime -f.*x0.*debugfs' "$ROOT_DIR/scripts/build-sd-image.sh"
 grep -q 'verify-app-layer.sh' "$ROOT_DIR/scripts/verify-sd-image.sh"
 grep -q 'artifacts/vendor/pixel2-stock/boot/Image' \
     "$ROOT_DIR/scripts/verify-sd-image.sh"
