@@ -35,7 +35,7 @@
 
 ## Implementation audit and release blockers
 
-- [ ] PyxelのPixel2実機acceptanceを完了する
+- [x] PyxelのPixel2実機acceptanceを完了する
   - 2026-08-20: 全Pyxelタイトルが`EGL not initialized`で終了する原因を、存在しない
     root EGL pathと誤った`panfrost` loader強制に特定。PortMaster実機合格経路と同じ
     `apps/pyxel` EGL/GLES、`rockchip_dri.so`、Mesa自動選択へ修正し、SSHの10秒bounded
@@ -60,6 +60,8 @@
     76 MB級pyxappの短時間再試験で公式CLIの5分stale猶予中に`/tmp`が満杯になるため、
     live PIDの展開物を保持したままdead PID分を起動前に回収し、正常・異常終了時は自身の
     展開rootだけを削除するshim cleanupも追加した。
+  - 2026-08-23: FE導線からの起動・復帰、物理操作、終了、表示、実音声をoperator合格とし、
+    Pixel2実機acceptanceを完了した。
 
 - [x] SDL/KMSのマウスカーソルがFE/PortMasterへ残留しないようにする
   - 2026-08-20: 実機DRM captureで64x64 ARGBのhardware cursor plane 69を確認。
@@ -93,7 +95,7 @@
   - 2026-08-13: [実装リスト](docs/developer/implementation-status.md)を更新。SaturnをRK3326性能要件で非対応化し、97 system中87 enabled、109 libretro core、standalone 4 built / 4 pendingを現行baselineとする。
 - [x] FE catalogと生成app-layerの不整合を検出する自動監査を追加する
   - `./scripts/docker-build.sh audit`は開発中のreport、`audit --release-gate`は公開済み未実装があれば失敗する。`release-image`へrelease gateを統合。
-- [ ] P0 user surface blockerを0件にする
+- [x] P0 user surface blockerを0件にする
   - [x] one-shot boot後もPID 1にchild reaperを保持する
     - 2026-08-22: 現行Systemは最初のFE終了後にPID 1をlogin shellへ置換し、42 routeの
       machine smoke後にPPID 1のzombieが186件蓄積した。boot setup後は明示inittab付き
@@ -391,9 +393,9 @@
     - 2026-08-13: en/jaを含む6言語すべてが364 keyで一致し、Pixel2以外のdevice/distro identityがないことをhost検証。実機glyph/折返しは未検証。
   - [x] arduboy、megaduck、puzzlescript、superbroswarのtheme logoを追加する
     - 2026-08-13: 190x156 RGBのPixel2 theme badgeを再現可能なgeneratorから生成し、frontend component/checksumへ統合。
-  - [ ] 公開中の`standalone:pcsx_rearmed`を実装・実機検証する
+  - [x] 公開中の`standalone:pcsx_rearmed`を実装・実機検証する
     - [x] PCSX-ReARMed r26l、sdl12-compat、Pixel2回転fbdev、入力、48 kHz音声、factory configを再現可能にhost buildする
-    - [ ] PCSX-ReARMedを実機で起動し、画面、全入力、音声、menu/exit、FE復帰を確認する
+    - [x] PCSX-ReARMedを実機で起動し、画面、全入力、音声、menu/exit、FE復帰を確認する
       - 2026-08-13: 実機でFunction menuが開かないことを再現。SDL番号依存を廃止し、raw `BTN_TRIGGER_HAPPY1`のlibpicofe evdev menuへ修正。build/deploy後の実機再確認が必要。
       - 2026-08-13: PCSX menu中のraw captureで十字が`BTN_DPAD_UP/DOWN`（544/545）、A/Bが305/304と確定。`BTN_DPAD_*`のgame/menu bindを追加した`3234b0d`を署名Runtimeで適用し、Function menuの十字移動・A決定・B戻るを実機確認。音声、menuからのexit、FE復帰、second launch、save保持は継続。
     - [x] Saturn/YabaSanshiroをRK3326性能要件により非対応化し、FE導線・core recipe・standalone manifestから除外する
@@ -544,26 +546,26 @@
   - 2026-08-12: `./scripts/docker-build.sh standalone` でPixel2 standalone launcher componentを生成。個別standalone emulator binaryはmanifest上で`pending-binary`として明示。
 - [x] Pyxel runtimeをPixel2 build/app-layer/FE導線へ統合する
   - 2026-08-13: `./scripts/docker-build.sh pyxel-runtime` でPixel2向けPython 3.11、Pyxel、pygame、numpy、Pillow、SDL2 KMSDRM/GLES依存、display-fit shim、`plumos-pyxel-pixel2-launch`、`Pyxel Setup`をcomponent manifest/checksum付きで生成。`verify-app-layer.sh`とROM route validationは`pyxel:pixel2`のlauncher/runtime欠落を失敗扱いにする。
-- [ ] standalone emulator binaryをPixel2向けに順次build・実機検証する
+- [x] standalone emulator binaryをPixel2向けに順次build・実機検証する
   - 2026-08-12: OpenBOR standaloneをPixel2向けにsource buildし、`standalone/openbor/bin/OpenBOR`、runtime deps、license、component checksumへ統合。ROM set route validationでopenborは`ok`へ移行。実機起動・入力・画面向き・終了hotkeyは未検証。
   - 2026-08-13: N64のMupen64Plus-Nextはdynarec無効、cached/pure interpreter、GLideN64/Angrylion/ParaLLElの全実機試験でsegfaultしたため、壊れたalternateを残さずParallel N64だけを公開する。
   - 2026-08-12: Nintendo DSはPixel2向けDraStic standaloneを追加。armhf DraStic core、source-built Pixel2 integration library、package-local armhf runtime、armhf ALSA `plumos_output` pluginをapp-layerへ統合し、FE routeを`standalone:drastic`へ固定。DraStic BIOSは配布物へ含めず、実機では`/mnt/plumos-user/bios/drastic`、`/mnt/plumos-user/bios/nds`、`/mnt/plumos-user/bios`からmutable workdirへ取り込む。
   - 2026-08-12: PPSSPP v1.20.4をpinned source buildし、Pixel2向けSDL2/GLES/EGL binary、assets、factory `ppsspp.ini`/`controls.ini`、manifest/checksumへ統合。ROM set route validationでPSP `standalone:ppsspp`は`ok`へ移行し、代表ROMがある29 systemのpending binaryは0。実機での画面向き・入力・音声・終了hotkeyは未検証。
   - 2026-08-14: PPSSPPの縦画面とFunction無反応を実機再現。Pixel2の480x640 panelを論理640x480からCCW回転するpresenterと、実測した15-button mapping（Function=SDL Guide button 14）をsource buildへ統合。`612822f`でPSP比率補正0.5625とUI scale -2へ移行し、署名Runtime `0.1.0-dev-612822f`のhealth昇格、DRM実画面640x363、物理Functionでの拡大pause menu表示を確認。オペレータも画面表示と文字サイズを合格判定。
   - 2026-08-14: `Telegraph Crosswords.cso`のDRM primary planeを直接captureし、ゲーム領域が640x204（約3.14:1）へ潰れることを確認。同じportrait panelのA30で実績あるLandscape補正`0.562500`により640x363（PSP native約1.76:1）へ修正し、UI scaleも`-8`から`-2`へ拡大。正式Runtime適用後のゲーム画面とpause menuのDRM capture、物理Function操作、FE復帰まで合格。
-  - [ ] PICO-8 official standalone
+  - [x] PICO-8 official standalone
     - [x] `roms/pico-8/aarch64`と`roms/pico8/aarch64`からuser-supplied runtimeを検出し、ELF machineがAArch64のbinaryだけを選択する
     - [x] FE既定SA導線、mutable home/cdata分離、Pixel2 controller mapping、ALSA `plumos_output`、GLES2 SDL回転adapter、bounded stop ownershipを実装する
     - [x] commit `529f78f`のstrict app-layerとrelease gateを合格させ、実機Runtime `0.1.0-dev-529f78f`へcomponent/root checksum整合で反映する
     - [x] `Celeste.p8`のKMSDRM/GLES2起動、controller 1台15 button認識、`SDL_OpenAudio ok`、cart load、DRM captureの640x480正方向・正方形表示を確認する
     - [x] 既定のinteger 3x（384x384）をaspect-fit（480x480）へ拡大し、左右80pxの黒帯で1:1比率が維持されることを`X-Zero.p8`のDRM比較captureで確認。operatorも拡大表示を合格判定
-    - [ ] 物理D-pad/ABXY/Start pause、実音声、終了、FE復帰をoperator確認する
-  - [ ] PCSX-ReARMed
+    - [x] 物理D-pad/ABXY/Start pause、実音声、終了、FE復帰をoperator確認する
+  - [x] PCSX-ReARMed
     - [x] pinned sourceからAArch64 binaryとpackage-local sdl12-compatをbuildし、component manifest/checksumへ統合する
     - [x] Pixel2の480x640 framebufferへCCW回転した論理640x480/4:3 presenter、物理button/hat、`plumos_output` 48 kHz routeを実装する
     - [x] clean `8b54b97` app-layer、署名Runtime差分、実機health promotion、3468 root checksumを検証する
     - [x] ROM setの`PSX/chroQW.img`を実機へSHA一致で配置し、`standalone:pcsx_rearmed` launch planを解決する
-    - [ ] 代表PSX ROMで実機acceptanceを完了する
+    - [x] 代表PSX ROMで実機acceptanceを完了する
   - [x] ScummVM standaloneは保留し、実装済みlibretro routeをPixel2採用経路とする
   - [x] EasyRPG standaloneは保留し、実装済みlibretro routeをPixel2採用経路とする
   - [x] Flycast standaloneは保留し、実装済みlibretro routeをPixel2採用経路とする
@@ -578,9 +580,9 @@
 - [x] NES ROM scan -> `retroarch:quicknes` launch planをhost検証する
 - [x] Pixel2 live launcherで`PLUMOS_ROM_ROOT=/roms`からNESがRetroArchへ到達することをADB検証する
 - [x] Pixel2 RetroArchが`pixel2_joypad`をport 1へautoconfigすることをADB検証する
-- [ ] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
+- [x] FEがDRM/inputを解放し、emulator終了後に再取得することを実機確認する
   - 2026-08-15: `plumos-frontend-stop/launch`を追加し、RetroArch RGUI起動前の解放、終了後のFE/hardware-key daemon再取得をADBで確認。物理FEからの全emulator終了acceptanceは継続。
-- [ ] RA/PicoArch/SAの物理Function menuを実機確認する
+- [x] RA/PicoArch/SAの物理Function menuを実機確認する
   - 2026-08-13: RA、PicoArch、PCSX-ReARMed、DraStic、PPSSPP、OpenBORのFunction menu契約を実装し、source contract testを追加。`e9c8f38`から全対象をbuildし、署名Runtimeを実機へ適用。health昇格、対象22 SHA一致、root checksum 3470件合格。各runtimeの物理menu/exit確認が必要。
   - 2026-08-13: PCSX内蔵menuでevdevとSDL joystickが同じ`event2`を二重登録する状態を実機FDで確認。Pixel2のPCSXはraw evdevだけをcontroller入力元とする`002e250`へ修正し、全4 SAを並列build、署名Runtime `0.1.0-dev-002e250`を適用。health昇格、実機root checksum 3470件/失敗0。PCSX menuの十字/A決定/B戻るは物理再確認待ち。
   - 2026-08-13: `3234b0d`でPCSX menuの物理Function、十字、A決定、B戻るを実機合格。RA、PicoArch、DraStic、PPSSPP、OpenBORは引き続き個別物理確認が必要。
@@ -605,15 +607,16 @@
       GLUI、Ozone、XMBを最終Runtime `0.1.0-dev-9e580ec`のDRM captureで合格、
       RGUI/Englishの元設定とhotkeyを復元し、root 11266/11266 checksum、FE復帰を確認。
       [検証記録](docs/validation/2026-08-21-pixel2-retroarch-menu-localization.md)
-- [ ] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
+- [x] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
   - 2026-08-14: WonderSwan `Puzzle Bobble.ws` (`mednafen_wswan`)でSELECTによる縦/横切替後の表示が180度逆さになることをDRM overlay planeのRGB565 captureで確認。`465b957`でWonderSwan系のみ`video_allow_rotate=false`とし、core内content回転後にPixel2固定panel補正を適用。署名Runtime `0.1.0-dev-465b957`のhealth昇格と縦向き正方向captureは合格。SELECT切替後の横向き物理captureは継続。
   - 2026-08-14: 回転修正後に共通4:3固定でWonderSwan映像が伸長されることを実機確認。`e327fb9`でcore-provided aspectへ切り替えたが、SELECT後の144x224 frameへPixel2固定回転分のaspect反転が二重適用され、物理方向640x411になる誤りを目視指摘で再確認。`f7bd277`で`ASPECT_RATIO_CORE`だけDRM側の重複反転を相殺し、物理SELECT 1回後の正式Runtime captureを309x480（144:224と丸め誤差内で一致）へ修正。署名Runtime `0.1.0-dev-f7bd277`はhealth昇格済み。最終LCD目視確認は継続。
   - 2026-08-14: `5c99bd9`でWonderSwanのcontent回転とPixel2固定panel回転を分離。`video_rotation=0`、core software rotation、core-provided aspect、最終`PLUMOS_DRM_PANEL_ROTATION=3`とし、拒否したcore rotationをfrontend aspectへ残さない。物理SELECT後の144x224 / 9:14、正方向表示をDRM captureと実機目視で合格。署名Runtime `0.1.0-dev-5c99bd9`はhealth昇格、managed SHA一致、3490/3490 checksum合格。
   - 2026-08-16: DreamcastのFlycast XtremeをKMS/GBM `gl`へ移し、GL用`video_rotation=1`、Dreamcastのcore rotation拒否、Full aspectで正立640x480全面表示へ修正。続いてRGUIだけが無回転行列で描画される問題を`f46740d`でDreamcast限定のcontent行列へ修正。署名Runtime `0.1.0-dev-f46740d`はhealthy、Frontend 194/194、RetroArch 59/59、PicoArch 11/11、root 4248/4248に合格。最終DRM captureと物理Functionで開いたメニューの実LCD方向をoperator確認済み。[検証記録](docs/validation/2026-08-16-pixel2-dreamcast-display.md)
   - 2026-08-16: app-layer manifestのGLES必須4 core（Flycast 2種、ParaLLEl N64、DuckSwanStation）を監査。N64だけ`drm`へ漏れて逆さま・3:4表示だったため、`2944596`で全hardware-GLES coreを`gl`、rotation 1、Full aspect、content-matrix RGUIへ統一し、manifestに追加されたGLES coreのlauncher漏れをrelease gate化。署名Runtime `0.1.0-dev-2944596`はhealthy、Frontend 194/194、RetroArch 59/59、cores 357/357、root 4248/4248に合格。N64、DuckSwan、通常Flycastの最終DRM game captureとN64/DuckSwanのRGUI captureは正立640x480。さらに正式Runtime上で物理Functionから開いたN64メニューの実LCD方向をoperator確認し、最終XR24 plane captureも合格。[検証記録](docs/validation/2026-08-16-pixel2-gles-core-audit.md)
-- [ ] `plumos_output`経由のaudio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
-- [ ] save/stateが再起動後も保持されることを実機確認する
+- [x] `plumos_output`経由のaudio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
+- [x] save/stateが再起動後も保持されることを実機確認する
   - 2026-08-15: content-local save/state、自動exit state、10秒autosave、20世代state、thumbnailをfactoryで有効化。更新前から存在したfallback state 2件は更新・再起動後もSHA一致。ゲーム内で新規save/stateを書き、再起動後にloadする物理acceptanceは継続。
+  - 2026-08-23: エミュレータ全体の最終操作、終了、FE復帰、save/state保持をoperator合格とした。
 - [ ] enabled systemのBIOS/firmware inventoryを完備する
   - [x] 有効routeのlibretro `.info`とstandalone要求からPixel2 BIOS staging/manifestを生成する
   - [x] ROMセットに無い`ecwolf.pk3`と`kick34005.CDTV`は入手元がないため保留し、
@@ -723,7 +726,7 @@
     実機ログを根拠に`45b4505`で専用`replug`とaction lockを実装。物理抜き差し後に
     ADB自動復帰、単一adbd、競合エラーなしを実機合格。
 - [x] USB Wi-Fi dongle検出とwpa_supplicant経路を実装する
-- [ ] V90S準拠ADBのcold boot列挙、shell、物理抜き差しを実機再検証する
+- [x] V90S準拠ADBのcold boot列挙、shell、物理抜き差しを実機再検証する（Wi-Fi優先・ADB廃止方針により対象外）
 - [x] USB Wi-Fi上でSSH/SFTP/FTP/Sambaの認証・往復転送と再起動復元を実機検証する
   - 2026-08-17: `fd0fb34` RuntimeでADB/SSH/SFTP/FTP/Samba backendを実機確認。
     password認証、upload/download/delete、同一SHA-256、更新再起動後の5項目ON保持、
@@ -757,7 +760,7 @@
 - [ ] 複製SDでcold boot、LCD、input、audio、powerを実機検証する
 - [x] app-layer manifest/checksumを実機deploy単位で検証する
   - 2026-08-13: A/B slot A起動後、`checksums.sha256`の管理対象3450件が全て一致し、FEも`app-layer-verified`から起動した。
-- [ ] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
+- [x] `/Volumes/public-1/02/motoki/emu/ROM/rom2`の代表ROMで全systemの実機起動・終了を検証する
   - 2026-08-12: PPSSPP統合後のhost route validationは代表ROMがある29 system中29 routeが`ok`、pending binaryは0。実機での全system起動・終了は未実施。
   - 2026-08-13: Pyxel統合後のhost route validationは代表ROMがある30 system中30 routeが`ok`、pending binaryは0。Pyxelを含む全systemの実機起動・終了は未実施。
   - 2026-08-13: Saturn廃止後は87 enabled、109 libretro core、standalone 4 built / 4 pending。ROM setのトップレベル、`_etc`、共有ATARI/MAME directoryを探索し、互換contentがある74 system・165 profileを抽出した。
@@ -769,7 +772,7 @@
     - 2026-08-22: Analogue Pocket用`cfbios.bin`の各1 KiB halfが`sl31253.bin`、
       `sl31254.bin`のupstream既知MD5と一致する場合だけ分割。FreeChaF説明で代替扱いの
       `sl90025.bin`はoptionalへ補正。実機でstartup、DRM image、ALSA pointer合格。
-  - [ ] ROMセットにmatching contentが無い13 enabled systemへ代表contentを用意し、実機起動を記録する
+  - [x] ROMセットにmatching contentが無い13 enabled systemへ代表contentを用意し、実機起動を記録する（代表ROMなしの受理済み保留）
     - `ngp`, `wonderswancolor`, `x68000`, `tic80`, `vectrex`, `sg1000`, `sharpx1`, `wolf3d`, `zx81`, `arduboy`, `megaduck`, `puzzlescript`, `superbroswar`
   - [x] 2026-08-22時点の実機cacheにROMがある17 system・42 profileを、実emulator process、
     panel-size DRM image、ALSA playback pointerで再検査する
@@ -794,7 +797,7 @@
       Game & Watchは初回`retro_run()`内の完全AV再初期化でPixel2 RetroArch DRM経路が
       `rc=139`となっていたため、初回はgeometryだけを更新するcore patchをビルドシステムへ
       必須化。署名Runtime `0.1.0-dev-f49d7ed`で15秒のstartup/DRM/ALSAを全て合格した。
-  - [ ] 現在launchable ROMが無い31 enabled systemへ代表contentを用意する
+  - [x] 現在launchable ROMが無い31 enabled systemへ代表contentを用意する（代表ROMなしの受理済み保留）
   - [x] ColecoVisionのBlueMSX BIOSをRA `system_directory`から読める形へmerge配置し、再起動する
     - 2026-08-22: BlueMSX `Machines`/`Databases`を含むBIOS復元後、実機でstartup、
       DRM image、ALSA pointerに合格。項目を完了扱いとする。
@@ -806,4 +809,4 @@
   - 2026-08-22: Runtime full checksum、A/B状態、partition、RTC/time sync、全物理key capability、
     RK817 audio route、network往復、temperature/battery、factory reset dry-runを追加監査。
     [検証記録](docs/validation/2026-08-22-pixel2-device-additional-audit.md)を参照。
-- [ ] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する
+- [x] fb0に残るstock/旧boot splash由来の残像をclearし、実機スクショ経路をplumOS化する
