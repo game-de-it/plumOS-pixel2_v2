@@ -115,7 +115,8 @@ def verify_dir(root: Path, allow_dirty: bool = False) -> None:
 
 
 def download_assets(base_url: str, names: set[str], destination: Path) -> None:
-    destination.mkdir(parents=True)
+    # TemporaryDirectory and caller-provided download roots already exist.
+    destination.mkdir(parents=True, exist_ok=True)
     for name in sorted(names):
         url = urllib.parse.urljoin(base_url.rstrip("/") + "/", name)
         urllib.request.urlretrieve(url, destination / name)
