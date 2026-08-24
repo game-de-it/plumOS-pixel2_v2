@@ -38,14 +38,14 @@ This command performs the following without publishing anything:
    second image again before bundling;
 5. compresses the image, archives the exact Git `HEAD`, writes release notes,
    provenance metadata, and `SHA256SUMS`; and
-6. decompresses the `.img.xz` and verifies that its size and SHA-256 match the
-   original image.
+6. tests the `.7z`, streams its root-level `.img`, and verifies that its size
+   and SHA-256 match the original image.
 
 The output directory is:
 
 ```text
 dist/plumOS-Pixel2-v0.1.0/
-  plumOS-Pixel2-v0.1.0.img.xz
+  plumOS-Pixel2-v0.1.0-sd-image.7z
   plumOS-Pixel2-v0.1.0-source.tar.gz
   RELEASE_NOTES.md
   RELEASE_MANIFEST.json

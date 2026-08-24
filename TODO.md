@@ -473,7 +473,8 @@
   - [x] CIへhost tests、identity/content gate、implementation audit、checksum検証を追加する
   - [x] versioned artifact、SHA256SUMS、archive検査、GitHub再download検証を実装する
     - `prepare-pixel2-release.sh`はclean commitから全component、strict app/System/image、
-      同条件image再生成、`.img.xz` round-trip、source archive、manifest、checksumsを生成し、
+      同条件image再生成、他plumOSシリーズと同じ`.7z`のarchive testと`.img` round-trip、
+      source archive、manifest、checksumsを生成し、
       Git tag・GitHub Release・uploadは行わない。
     - `verify-pixel2-release-bundle.py --download-base`は公開後の全asset再downloadと
       checksum・展開image・source archive検証を行う。

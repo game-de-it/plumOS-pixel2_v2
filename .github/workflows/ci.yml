@@ -19,7 +19,7 @@ jobs:
       - name: Install gate dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y jq shellcheck xz-utils
+          sudo apt-get install -y jq p7zip-full shellcheck xz-utils
       - name: Run source, identity, implementation, and release-script gates
         run: ./scripts/run-pixel2-source-gates.sh
 

@@ -26,6 +26,14 @@ python3 "$ROOT_DIR/scripts/build-pixel2-release-bundle.py" \
     --output-dir "$ROOT_DIR/dist/test-release-parent/bundle" \
     --allow-dirty --skip-image-verifier >"$work/build.log"
 grep -q 'release_bundle=result-ok' "$work/build.log"
+grep -q 'image_7z=plumOS-Pixel2-v0.0.0-test-sd-image.7z' "$work/build.log"
+archive="$ROOT_DIR/dist/test-release-parent/bundle/plumOS-Pixel2-v0.0.0-test-sd-image.7z"
+test -f "$archive"
+if command -v 7zz >/dev/null 2>&1; then
+    7zz t "$archive" >/dev/null
+else
+    7z t "$archive" >/dev/null
+fi
 python3 "$ROOT_DIR/scripts/verify-pixel2-release-bundle.py" \
     "$ROOT_DIR/dist/test-release-parent/bundle" --allow-dirty >"$work/verify.log"
 grep -q 'release_bundle_verify=result-ok' "$work/verify.log"

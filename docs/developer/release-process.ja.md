@@ -32,13 +32,14 @@ repository rootで完全準備コマンドを実行します。
 4. strict gate完了後の固定済みcomponent treeからSD imageを2回連続生成し、
    SHA-256完全一致を要求。bundleへ渡す2回目のimageをもう一度strict gateで検証
 5. image圧縮、Git `HEAD`のsource archive、release notes、provenance、`SHA256SUMS`を生成
-6. `.img.xz`を展開し、元imageとsize・SHA-256が一致することを検証
+6. `.7z`自体を検査し、archive直下の`.img`をstream展開して元imageと
+   size・SHA-256が一致することを検証
 
 生成先は次です。
 
 ```text
 dist/plumOS-Pixel2-v0.1.0/
-  plumOS-Pixel2-v0.1.0.img.xz
+  plumOS-Pixel2-v0.1.0-sd-image.7z
   plumOS-Pixel2-v0.1.0-source.tar.gz
   RELEASE_NOTES.md
   RELEASE_MANIFEST.json

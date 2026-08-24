@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.parse
@@ -33,6 +34,13 @@ def load_checksums(path: Path) -> dict[str, str]:
     return result
 
 
+def seven_zip() -> str:
+    command = shutil.which("7zz") or shutil.which("7z")
+    if command is None:
+        raise SystemExit("7-Zip is required; install 7zz or 7z")
+    return command
+
+
 def verify_dir(root: Path, allow_dirty: bool = False) -> None:
     checksums = load_checksums(root / "SHA256SUMS")
     required = {"RELEASE_NOTES.md", "RELEASE_MANIFEST.json"}
@@ -55,7 +63,7 @@ def verify_dir(root: Path, allow_dirty: bool = False) -> None:
     if not isinstance(source_ref, str) or not re.fullmatch(r"[0-9a-f]{40}", source_ref):
         raise SystemExit("release source_ref is not a full Git commit")
     image = manifest["image"]
-    expected_image = f"plumOS-Pixel2-v{version}.img.xz"
+    expected_image = f"plumOS-Pixel2-v{version}-sd-image.7z"
     if image.get("compressed_file") != expected_image:
         raise SystemExit("release image filename mismatch")
     compressed = root / image["compressed_file"]
@@ -63,8 +71,26 @@ def verify_dir(root: Path, allow_dirty: bool = False) -> None:
         raise SystemExit("compressed image manifest mismatch")
     if compressed.stat().st_size != image["compressed_size"]:
         raise SystemExit("compressed image size mismatch")
+    if image.get("archive_format") != "7z":
+        raise SystemExit("release image archive format mismatch")
+    member = image.get("archive_member")
+    if (
+        not isinstance(member, str)
+        or member != image.get("uncompressed_file")
+        or Path(member).name != member
+    ):
+        raise SystemExit("release image archive member mismatch")
 
-    process = subprocess.Popen(["xz", "-dc", str(compressed)], stdout=subprocess.PIPE)
+    command = seven_zip()
+    subprocess.run(
+        [command, "t", str(compressed)],
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    process = subprocess.Popen(
+        [command, "x", "-so", str(compressed), member],
+        stdout=subprocess.PIPE,
+    )
     assert process.stdout is not None
     digest = hashlib.sha256()
     size = 0
