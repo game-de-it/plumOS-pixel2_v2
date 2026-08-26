@@ -390,6 +390,10 @@ grep -q 'new_aspect = 1.0f / new_aspect' \
     "$ROOT_DIR/patches/retroarch/022-pixel2-drm-core-aspect-rotation.patch"
 grep -q 'Core aspect corrected for Pixel2 rotation' \
     "$ROOT_DIR/patches/retroarch/022-pixel2-drm-core-aspect-rotation.patch"
+grep -q 'surface->aspect, keep_aspect' \
+    "$ROOT_DIR/patches/retroarch/023-pixel2-drm-surface-aspect.patch"
+grep -q 'video_viewport_get_scaled_aspect2' \
+    "$ROOT_DIR/patches/retroarch/023-pixel2-drm-surface-aspect.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \

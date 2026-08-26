@@ -92,6 +92,9 @@ geometry before calling the video driver. Pixel2's DRM backend already performs
 that rotation while composing the scanout buffer, so it cancels this inversion
 only for `Core Provided`. Fixed, custom, and full ratios stay in logical
 landscape coordinates.
+Both game and menu viewports are then sized from the corrected DRM surface
+aspect instead of re-reading RetroArch's uncorrected global aspect. This keeps
+the content and RGUI menu on the same correct geometry.
 
 WonderSwan and WonderSwan Color are the exception to frontend-managed content
 rotation. Beetle WonderSwan disables its internal rotation when

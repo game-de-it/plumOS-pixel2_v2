@@ -71,6 +71,8 @@ factory defaultは4:3（`aspect_ratio_index = "0"`、`video_force_aspect = "true
 RA upstreamは90度frontend回転時にcore geometryを反転しますが、Pixel2 DRM backendも
 scanout生成時に回転するため、そのままでは二重反転になります。`Core Provided`の場合だけ
 DRM側で反転を相殺し、固定・custom・Full比率はlogical landscape値のまま扱います。
+game surfaceとmenu surfaceのviewport計算も、補正前のRA global値ではなくDRM surfaceへ
+確定した比率を使用します。これによりgameとRGUI menuが同じ正しい比率になります。
 WonderSwan/WonderSwan ColorだけはSELECTによるcontent回転とpanel補正を分離します。
 profileは`video_rotation = "0"`、`video_allow_rotate = "false"`、
 `PLUMOS_DRM_PANEL_ROTATION=3`、core-provided aspect `22`を使用し、横224x144と縦144x224の
