@@ -764,6 +764,12 @@
 
 ## Frontend
 
+- [x] RetroArchのCore Provided比率をgame/menu双方でPixel2 DRMへ正しく反映する
+  - 2026-08-27: 通常coreのappend configによる4:3強制、90度scanoutとのcore geometry
+    二重反転、DRM surface viewportによる補正前global aspect再参照の3点を修正。
+    mGBA ModernのgameとRGUI menuはともに物理`427x640`、logical`640x427`となり、
+    Runtime `0.1.0-dev-e4e689b`のhealthy/full checksumと実機目視に合格した。
+    [検証記録](docs/validation/2026-08-27-pixel2-retroarch-core-aspect.md)を参照。
 - [x] Pixel2の標準system pickerをV90S共通の3x2・6アイコンgridに揃える
   - 2026-08-14: 初期移植時の`default-horizontal` / `tile_strip`（2x1）を廃止し、標準`default` themeを`tile_grid`（3x2）、vertical page transitionへ変更。`c808952`の署名Runtime差分を実機適用し、3490 checksum、`runtime_healthy`、設定保持を確認。LCD上の6 tileと物理navigationは目視確認待ち。
 - [x] 参照frontendをPixel2専用としてvendor化し、他機種・旧distribution名称を除去する
