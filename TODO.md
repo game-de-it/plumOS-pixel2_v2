@@ -587,7 +587,8 @@
 - [x] RAのCore Provided aspectを通常coreで選択・保存できるようにする
   - 2026-08-27: RA main cfgには`aspect_ratio_index=22`が保存されていたが、Pixel2 launcherの
     高優先度append cfgが毎回`0`へ戻していた。通常coreではaspectをappendせず、GLESのFullと
-    WonderSwanのCore Providedだけ画面経路契約として限定上書きするよう修正。
+    WonderSwanのCore Providedだけ画面経路契約として限定上書きするよう修正。実機captureで
+    RAとDRMの90度回転によるcore geometry二重反転も検出し、DRM側でCore Providedだけ相殺。
 - [x] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
   - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
 - [x] canonical all-core libretro buildを完走させる

@@ -68,6 +68,9 @@ factory defaultは4:3（`aspect_ratio_index = "0"`、`video_force_aspect = "true
 通常coreのlauncherは高優先度append configへaspect値を再指定しないため、RAの
 `Settings -> Video -> Scaling -> Aspect Ratio`で選んだ値が次回起動にも残り、mGBAなどの
 `Core Provided` geometryも利用できます。未変更時はNESなども従来の4:3で起動します。
+RA upstreamは90度frontend回転時にcore geometryを反転しますが、Pixel2 DRM backendも
+scanout生成時に回転するため、そのままでは二重反転になります。`Core Provided`の場合だけ
+DRM側で反転を相殺し、固定・custom・Full比率はlogical landscape値のまま扱います。
 WonderSwan/WonderSwan ColorだけはSELECTによるcontent回転とpanel補正を分離します。
 profileは`video_rotation = "0"`、`video_allow_rotate = "false"`、
 `PLUMOS_DRM_PANEL_ROTATION=3`、core-provided aspect `22`を使用し、横224x144と縦144x224の

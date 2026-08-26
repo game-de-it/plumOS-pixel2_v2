@@ -1,0 +1,41 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -1215,6 +1215,22 @@ static void *drm_init(const video_info_t *video,
+     * and we don't want the main surface to be setup in set_aspect()
+     * before we get to gfx_frame(). */
+    _drmvars->current_aspect = video_driver_get_aspect_ratio();
++   {
++      settings_t *settings = config_get_ptr();
++      unsigned effective_rotation = (retroarch_get_rotation() +
++            retroarch_get_core_requested_rotation()) & 3;
++
++      /* Core geometry is already inverted by RetroArch for a 90 degree
++       * frontend rotation. Pixel2's DRM backend performs that rotation while
++       * writing the scanout buffer, so undo only this core-provided inversion
++       * here. Fixed and custom ratios are expressed in logical coordinates. */
++      if (settings && settings->uints.video_aspect_ratio_idx == ASPECT_RATIO_CORE &&
++          (effective_rotation & 1) && _drmvars->current_aspect > 0.0f)
++      {
++         _drmvars->current_aspect = 1.0f / _drmvars->current_aspect;
++         RARCH_LOG("[DRM] Core aspect corrected for Pixel2 rotation.\n");
++      }
++   }
+ 
+    /* Initialize the rest of the mutexes and conditions. */
+    _drmvars->vsync_condition  = scond_new();
+@@ -1495,6 +1511,14 @@ static void drm_set_aspect_ratio (void *data, unsigned aspect_ratio_idx)
+    struct drm_video *_drmvars = data;
+    /* Here we obtain the new aspect ratio. */
+    float new_aspect = aspectratio_lut[aspect_ratio_idx].value;
++   unsigned effective_rotation = (retroarch_get_rotation() +
++         retroarch_get_core_requested_rotation()) & 3;
++
++   if (aspect_ratio_idx == ASPECT_RATIO_CORE && (effective_rotation & 1) && new_aspect > 0.0f)
++   {
++      new_aspect = 1.0f / new_aspect;
++      RARCH_LOG("[DRM] Core aspect corrected for Pixel2 rotation.\n");
++   }
+ 
+    if (_drmvars && _drmvars->current_aspect != new_aspect)
+    {

@@ -87,6 +87,11 @@ launcher does not repeat this value in its higher-precedence append config, so
 changes made in `Settings -> Video -> Scaling -> Aspect Ratio` persist and
 `Core Provided` can use geometry reported by mGBA and other cores. NES and
 other 4:3 cores retain the safe factory layout until the user changes it.
+For a 90-degree frontend rotation, upstream RetroArch inverts core-provided
+geometry before calling the video driver. Pixel2's DRM backend already performs
+that rotation while composing the scanout buffer, so it cancels this inversion
+only for `Core Provided`. Fixed, custom, and full ratios stay in logical
+landscape coordinates.
 
 WonderSwan and WonderSwan Color are the exception to frontend-managed content
 rotation. Beetle WonderSwan disables its internal rotation when

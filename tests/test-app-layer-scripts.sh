@@ -382,6 +382,14 @@ grep -q 'core_requested_rotation = 0' \
     "$ROOT_DIR/patches/retroarch/015-pixel2-drm-panel-rotation.patch"
 grep -q 'video_driver_set_aspect_ratio();' \
     "$ROOT_DIR/patches/retroarch/015-pixel2-drm-panel-rotation.patch"
+grep -q 'video_aspect_ratio_idx == ASPECT_RATIO_CORE' \
+    "$ROOT_DIR/patches/retroarch/022-pixel2-drm-core-aspect-rotation.patch"
+grep -q 'retroarch_get_core_requested_rotation' \
+    "$ROOT_DIR/patches/retroarch/022-pixel2-drm-core-aspect-rotation.patch"
+grep -q 'new_aspect = 1.0f / new_aspect' \
+    "$ROOT_DIR/patches/retroarch/022-pixel2-drm-core-aspect-rotation.patch"
+grep -q 'Core aspect corrected for Pixel2 rotation' \
+    "$ROOT_DIR/patches/retroarch/022-pixel2-drm-core-aspect-rotation.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
