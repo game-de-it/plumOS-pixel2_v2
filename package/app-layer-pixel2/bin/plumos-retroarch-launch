@@ -188,8 +188,11 @@ append="$runtime_root/retroarch/append.cfg"
 video_driver=drm
 video_allow_rotate=true
 video_rotation=${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}
-video_aspect_ratio=1.333333
-aspect_ratio_index=0
+# Do not place the normal aspect selection in append.cfg. RetroArch stores the
+# user's choice in the writable main config, and append.cfg has higher
+# precedence. Keep this empty unless a hardware/display route has a mandatory
+# presentation contract below.
+aspect_ratio_index=
 case "${core##*/}" in
     flycast_libretro.so|\
     flycast_xtreme_libretro.so|\
@@ -259,10 +262,8 @@ fi
     printf 'video_allow_rotate = "%s"\n' "$video_allow_rotate"
     printf 'video_refresh_rate = "%s"\n' "${PLUMOS_RETROARCH_VIDEO_REFRESH_RATE:-60.000000}"
     printf 'vrr_runloop_enable = "%s"\n' "${PLUMOS_RETROARCH_VRR_RUNLOOP_ENABLE:-false}"
-    printf 'video_force_aspect = "true"\n'
-    printf 'video_aspect_ratio_auto = "false"\n'
-    printf 'aspect_ratio_index = "%s"\n' "$aspect_ratio_index"
-    printf 'video_aspect_ratio = "%s"\n' "$video_aspect_ratio"
+    [ -z "$aspect_ratio_index" ] ||
+        printf 'aspect_ratio_index = "%s"\n' "$aspect_ratio_index"
     printf 'video_threaded = "true"\n'
     printf 'input_driver = "udev"\n'
     printf 'input_joypad_driver = "udev"\n'

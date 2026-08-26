@@ -584,6 +584,10 @@
     binary option keyをhost確認済み。2026-08-27にRuntime deltaで実機へ導入し、旧coreの
     byte一致維持、新旧manifest登録、全component checksum、更新後health、FE core導線を確認。
     実機での新旧性能比較と画面効果の目視確認は継続する。
+- [x] RAのCore Provided aspectを通常coreで選択・保存できるようにする
+  - 2026-08-27: RA main cfgには`aspect_ratio_index=22`が保存されていたが、Pixel2 launcherの
+    高優先度append cfgが毎回`0`へ戻していた。通常coreではaspectをappendせず、GLESのFullと
+    WonderSwanのCore Providedだけ画面経路契約として限定上書きするよう修正。
 - [x] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
   - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
 - [x] canonical all-core libretro buildを完走させる

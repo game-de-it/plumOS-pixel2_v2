@@ -362,11 +362,17 @@ grep -q 'video_rotation=0' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'aspect_ratio_index=22' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q '^aspect_ratio_index=$' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -F -q '[ -z "$aspect_ratio_index" ] ||' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+if grep -q "printf 'video_aspect_ratio" \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"; then
+    exit 1
+fi
 grep -q 'video_allow_rotate = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'aspect_ratio_index = "%s"' \
-    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
-grep -q 'video_aspect_ratio = "%s"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'PLUMOS_DRM_PANEL_ROTATION' \
     "$ROOT_DIR/patches/retroarch/015-pixel2-drm-panel-rotation.patch"

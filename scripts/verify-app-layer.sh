@@ -180,6 +180,12 @@ grep -q 'flycast_xtreme_libretro.so|' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'video_driver=gl' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'video_rotation=1' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'aspect_ratio_index=24' "$ROOT/bin/plumos-retroarch-launch"
+grep -q '^aspect_ratio_index=$' "$ROOT/bin/plumos-retroarch-launch"
+grep -F -q '[ -z "$aspect_ratio_index" ] ||' "$ROOT/bin/plumos-retroarch-launch"
+if grep -q "printf 'video_aspect_ratio" "$ROOT/bin/plumos-retroarch-launch"; then
+    printf 'app-layer verify: RetroArch launcher overrides user aspect setting\n' >&2
+    exit 1
+fi
 grep -q 'dreamcast)' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'PLUMOS_GL_MENU_ROTATION=content' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'parallel_n64_libretro.so)' "$ROOT/bin/plumos-retroarch-launch"

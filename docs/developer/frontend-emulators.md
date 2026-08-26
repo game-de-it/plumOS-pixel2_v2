@@ -81,10 +81,12 @@ surface. The RetroArch plain DRM backend is patched to implement software
 rotation; Pixel2 defaults to `video_rotation = "3"` (`ccw`) to match the
 frontend's validated panel correction.
 
-Pixel2 also fixes RetroArch to a 4:3 viewport (`aspect_ratio_index = "0"`,
-`video_force_aspect = "true"`) instead of core auto aspect. This keeps NES and
-other 4:3 cores from stretching after the DRM software rotation has converted
-the native portrait panel into the logical `640x480` landscape surface.
+Pixel2's factory RetroArch configuration starts at a 4:3 viewport
+(`aspect_ratio_index = "0"`, `video_force_aspect = "true"`). The runtime
+launcher does not repeat this value in its higher-precedence append config, so
+changes made in `Settings -> Video -> Scaling -> Aspect Ratio` persist and
+`Core Provided` can use geometry reported by mGBA and other cores. NES and
+other 4:3 cores retain the safe factory layout until the user changes it.
 
 WonderSwan and WonderSwan Color are the exception to frontend-managed content
 rotation. Beetle WonderSwan disables its internal rotation when
@@ -98,8 +100,8 @@ Rejected core rotation requests are not retained in RetroArch's frontend
 rotation state; otherwise the already-rotated 144x224 frame is inverted to
 14:9 a second time. This follows the proven plumOS portrait-panel separation
 without importing another device's runtime identity. These two profiles use
-`aspect_ratio_index = "22"` (core provided), instead of the global Pixel2 4:3
-policy, preserving both the initial 224x144 (14:9) layout and the
+`aspect_ratio_index = "22"` (core provided), instead of the Pixel2 factory 4:3
+default, preserving both the initial 224x144 (14:9) layout and the
 SELECT-switched 144x224 (9:14) layout.
 
 RetroArch must use the `udev` joypad driver on Pixel2. The kernel reports the

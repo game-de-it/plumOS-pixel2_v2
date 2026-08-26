@@ -64,7 +64,10 @@ stock kernelはLCDをnative `480x640` DRM modeとして公開しますが、plum
 logical `640x480` landscapeを提供します。RetroArch DRM backendはsoftware rotationを持ち、
 Pixel2 defaultは`video_rotation = "3"`（CCW）です。
 
-通常coreは4:3固定（`aspect_ratio_index = "0"`、`video_force_aspect = "true"`）です。
+factory defaultは4:3（`aspect_ratio_index = "0"`、`video_force_aspect = "true"`）です。
+通常coreのlauncherは高優先度append configへaspect値を再指定しないため、RAの
+`Settings -> Video -> Scaling -> Aspect Ratio`で選んだ値が次回起動にも残り、mGBAなどの
+`Core Provided` geometryも利用できます。未変更時はNESなども従来の4:3で起動します。
 WonderSwan/WonderSwan ColorだけはSELECTによるcontent回転とpanel補正を分離します。
 profileは`video_rotation = "0"`、`video_allow_rotate = "false"`、
 `PLUMOS_DRM_PANEL_ROTATION=3`、core-provided aspect `22`を使用し、横224x144と縦144x224の
