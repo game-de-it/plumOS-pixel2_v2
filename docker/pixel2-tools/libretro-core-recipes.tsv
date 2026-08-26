@@ -16,6 +16,7 @@ nestopia|A|https://github.com/libretro/nestopia.git|a9ee6ca84f04990e209880fe4714
 quicknes|A|https://github.com/libretro/QuickNES_Core.git|058d66516ed3f1260b69e5b71cd454eb7e9234a3||Makefile|platform=unix
 gambatte|A|https://github.com/libretro/gambatte-libretro.git|90701d6e5d68d31ead49f92f222c144c44a2645c||Makefile.libretro|platform=unix
 mgba|A|https://github.com/libretro/mgba.git|4f70b313fcf82b043bee232dd5af231a7755e1d8||CMakeLists.txt|-DBUILD_LIBRETRO=ON -DDISABLE_FRONTENDS=ON -DBUILD_QT=OFF -DBUILD_SDL=OFF -DBUILD_PYTHON=OFF -DBUILD_TEST=OFF -DBUILD_PERF=OFF -DBUILD_SUITE=OFF -DBUILD_CINEMA=OFF -DUSE_FFMPEG=OFF -DUSE_LIBZIP=OFF -DUSE_MINIZIP=OFF -DUSE_PNG=OFF -DUSE_SQLITE3=OFF -DUSE_LUA=OFF target=mgba_libretro
+mgba_modern|A|https://github.com/libretro/mgba.git|e31759b24e7a4e3899285ff720d7b573ac328ae7||CMakeLists.txt|-DBUILD_LIBRETRO=ON -DDISABLE_FRONTENDS=ON -DBUILD_QT=OFF -DBUILD_SDL=OFF -DBUILD_PYTHON=OFF -DBUILD_TEST=OFF -DBUILD_PERF=OFF -DBUILD_SUITE=OFF -DBUILD_CINEMA=OFF -DUSE_FFMPEG=OFF -DUSE_LIBZIP=OFF -DUSE_MINIZIP=OFF -DUSE_PNG=OFF -DUSE_SQLITE3=OFF -DUSE_LUA=OFF target=mgba_libretro
 gpsp|A|https://github.com/libretro/gpsp.git|8da094d7e04a08e5e2b9f916174d962071f91bf0||Makefile|platform=unix
 genesis_plus_gx|A|https://github.com/libretro/Genesis-Plus-GX.git|aea7b9d5475ec02427fbb00a9093cae74b87ff8a||Makefile.libretro|platform=unix
 picodrive|A|https://github.com/libretro/picodrive.git|13ceea4ceb5f1b3a7d56baf67ec55247c1dfd154||Makefile.libretro|platform=unix

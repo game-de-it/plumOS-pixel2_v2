@@ -259,6 +259,7 @@
       "launch_profiles": [
         "retroarch:gambatte",
         "retroarch:mgba",
+        "retroarch:mgba_modern",
         "retroarch:gearboy",
         "retroarch:tgbdual",
         "retroarch:vbam",
@@ -329,6 +330,7 @@
       "launch_profiles": [
         "retroarch:gambatte",
         "retroarch:mgba",
+        "retroarch:mgba_modern",
         "retroarch:gearboy",
         "retroarch:tgbdual",
         "retroarch:vbam",
@@ -393,6 +395,7 @@
       "launch_profiles": [
         "retroarch:gpsp",
         "retroarch:mgba",
+        "retroarch:mgba_modern",
         "retroarch:mednafen_gba",
         "retroarch:meteor",
         "retroarch:vba_next",

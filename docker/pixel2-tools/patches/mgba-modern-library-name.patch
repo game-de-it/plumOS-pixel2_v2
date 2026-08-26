@@ -1,0 +1,6 @@
+diff --git a/src/platform/libretro/libretro.c b/src/platform/libretro/libretro.c
+--- a/src/platform/libretro/libretro.c
++++ b/src/platform/libretro/libretro.c
+@@ -1341 +1341 @@ void retro_get_system_info(struct retro_system_info* info) {
+-	info->library_name = projectName;
++	info->library_name = "mGBA Modern";

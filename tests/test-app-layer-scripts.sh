@@ -79,6 +79,7 @@ PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/plumos-pixel2-test-pycache" \
         "$ROOT_DIR/scripts/validate-romset-routes.py"
 grep -q 'retroarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:gambatte' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+grep -q 'retroarch:mgba_modern' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:pcsx_rearmed' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'picoarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 jq -e '.systems[] | select(.id == "gameandwatch") |
@@ -88,6 +89,12 @@ jq -e '.systems[] | select(.id == "pcfx") |
        .extensions == ["cue", "ccd", "toc", "chd"]' \
     "$ROOT_DIR/package/frontend-pixel2/systems.json" >/dev/null
 grep -q 'retroarch_archive=result-extracted system=gameandwatch format=mgw' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'mgba_modern_libretro.so' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'state_root="$state_root/mgba-modern"' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
+grep -q 'savestates_in_content_dir = "false"' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -q 'strcmp(core_id, "lutro") == 0 && directory_exists(plan->rom_path)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_text_ui.c"
@@ -118,6 +125,12 @@ ids = {line.split("|", 1)[0] for line in recipes if line and not line.startswith
 assert "beetle_saturn" not in ids
 assert "yabasanshiro" not in ids
 assert "mupen64plus_next" not in ids
+assert "mgba" in ids
+assert "mgba_modern" in ids
+for system_id in ("gb", "gbc", "gba"):
+    system = next(item for item in systems if item["id"] == system_id)
+    assert "retroarch:mgba" in system["launch_profiles"]
+    assert "retroarch:mgba_modern" in system["launch_profiles"]
 n64 = next(item for item in systems if item["id"] == "n64")
 assert n64["launch_profiles"] == ["retroarch:parallel_n64"]
 pico8 = next(item for item in systems if item["id"] == "pico8")

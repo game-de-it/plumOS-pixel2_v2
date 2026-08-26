@@ -47,6 +47,13 @@ RetroArchとlibretro coreはAArch64でpackage化します。full catalogは次�
 ./scripts/docker-build.sh core-catalog --filter all --concurrency 4
 ```
 
+標準setは42 core、full catalogは110 coreです。従来mGBAは
+`4f70b313fcf82b043bee232dd5af231a7755e1d8`の`mgba_libretro.so`として維持し、
+新しい固定版`e31759b24e7a4e3899285ff720d7b573ac328ae7`は
+`mgba_modern_libretro.so`として独立package化します。新コアは`mGBA Modern`と表示し、
+system既定値は変更しません。バッテリーセーブは共有し、互換性が保証されない
+ステートセーブだけを専用directoryへ分離するため、同じROMで安全に性能比較できます。
+
 RK3326性能方針によりSaturnは`unsupported_performance_rk3326`としてbuild・表示しません。
 Mupen64Plus-Nextもstock kernel上の各renderer/interpreterでsegfaultしたため採用せず、N64は
 実機確認済み`retroarch:parallel_n64`を使用します。

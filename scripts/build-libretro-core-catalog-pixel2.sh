@@ -122,6 +122,11 @@ fingerprint_for() {
     local patch_inputs=()
     row="$(recipe_row "$id")"
     case "$id" in
+        mgba_modern)
+            patch_inputs+=(
+                "$ROOT_DIR/docker/pixel2-tools/patches/mgba-modern-library-name.patch"
+            )
+            ;;
         gw)
             patch_inputs+=(
                 "$ROOT_DIR/docker/pixel2-tools/patches/gw-libretro-soft-first-frame-geometry.patch"

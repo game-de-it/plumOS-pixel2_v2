@@ -2,7 +2,7 @@
 
 [English](implementation-status.md)
 
-最終更新: 2026-08-23。詳細task ledgerは`TODO.md`、日付付き根拠は
+最終更新: 2026-08-26。詳細task ledgerは`TODO.md`、日付付き根拠は
 `docs/validation/`にあります。この一覧は実装、機械検査、実機acceptance、release準備を
 区別します。
 
@@ -24,7 +24,8 @@
   `PLUMOS_USER`作成;
 - FE、ROM scanner、6項目START menu、global POWER、settings、help、scraping、gallery、
   6-system grid;
-- RetroArch、109 libretro core、PicoArch、PCSX-ReARMed、DraStic、PPSSPP、OpenBOR、
+- RetroArch、従来版・新版mGBAを両立する110 libretro core、PicoArch、PCSX-ReARMed、
+  DraStic、PPSSPP、OpenBOR、
   Pyxel、利用者提供PICO-8 runtime;
 - File Manager、Music Player、RetroArch App、Pyxel Setup、PortMaster、Update PortMaster、
   installed Ports route;

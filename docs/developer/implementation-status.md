@@ -2,7 +2,7 @@
 
 [日本語](implementation-status.ja.md)
 
-Last updated: 2026-08-23. The detailed task ledger is `TODO.md`; dated evidence
+Last updated: 2026-08-26. The detailed task ledger is `TODO.md`; dated evidence
 is under `docs/validation/`. This inventory distinguishes implementation,
 machine checks, physical acceptance, and release readiness.
 
@@ -24,7 +24,8 @@ machine checks, physical acceptance, and release readiness.
   host-readable `PLUMOS_USER` without reformatting an existing third partition;
 - frontend, ROM scanner, six-item START menu, global POWER overlay, settings,
   help, scraping, thumbnail gallery, and six-system grid;
-- RetroArch, 109 libretro cores, PicoArch, PCSX-ReARMed, DraStic, PPSSPP,
+- RetroArch, 110 libretro cores including coexisting legacy and modern mGBA,
+  PicoArch, PCSX-ReARMed, DraStic, PPSSPP,
   OpenBOR, Pyxel, and user-supplied PICO-8 runtime routes;
 - File Manager, Music Player, RetroArch App, Pyxel Setup, PortMaster, Update
   PortMaster, and installed Ports launch routing;

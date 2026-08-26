@@ -48,14 +48,22 @@ device launch-plan verifier.
 
 RetroArch and the Pixel2 libretro sets are packaged for AArch64.
 `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1`
-builds 41 catalog cores and emits the `libretro-cores` component manifest and
+builds 42 catalog cores and emits the `libretro-cores` component manifest and
 checksums. `./scripts/docker-build.sh cores --filter all --jobs 4
---fail-on-error 1` builds the full 109-core catalog used for full-system route
+--fail-on-error 1` builds the full 110-core catalog used for full-system route
 coverage. `./scripts/docker-build.sh core-catalog --filter all --concurrency 4`
 is the preferred full rebuild path because it runs independent per-core workers
 and then aggregates the canonical Pixel2 component. The FE system catalog is
 generated around those managed launch profiles rather than a single
 QuickNES-only route.
+
+The legacy mGBA route remains pinned at `4f70b313fcf82b043bee232dd5af231a7755e1d8`
+as `mgba_libretro.so`. The independently pinned modern route at
+`e31759b24e7a4e3899285ff720d7b573ac328ae7` is staged as
+`mgba_modern_libretro.so`, reports `mGBA Modern`, and is selectable without
+changing any system default. Its savestate directory is isolated while battery
+saves remain shared, allowing direct performance comparisons without
+cross-version state corruption.
 
 Saturn is disabled on Pixel2 with `unsupported_performance_rk3326`; its two
 libretro cores and YabaSanshiro route are not built or exposed. Mupen64Plus-Next

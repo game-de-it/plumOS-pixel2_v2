@@ -29,6 +29,13 @@ Highlight a system or game and press SELECT to open Core Settings. LEFT and
 RIGHT change the profile, and B returns. Leave the default unless a game needs
 a different compatibility or performance profile.
 
+GB, GBC, and GBA expose both `RA: mgba` and `RA: mgba_modern`. The first is
+the release-proven legacy build; the second is the newer pinned build with
+Color Correction and Interframe Blending options. Defaults remain unchanged so
+the newer core cannot silently change performance. Battery saves are shared,
+but mGBA Modern keeps savestates separate because states are not guaranteed to
+be compatible between core versions.
+
 FUNCTION opens an emulator menu where that runtime supports it. RetroArch uses
 START + SELECT for its normal exit path. Save and hotkey details are in
 [Save data, states, and screenshots](save-data.md).

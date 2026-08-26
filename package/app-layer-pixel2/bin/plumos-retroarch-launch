@@ -78,13 +78,21 @@ done
 config="$root/config/retroarch/retroarch.cfg"
 factory="$root/factory-defaults/retroarch/retroarch.cfg"
 core_options="$root/config/retroarch/retroarch-core-options.cfg"
+state_root="$root/states/$system_id"
+case "${core##*/}" in
+    mgba_modern_libretro.so)
+        # mGBA savestates are not guaranteed to be compatible across the
+        # legacy and modern builds. Battery saves remain shared by system.
+        state_root="$state_root/mgba-modern"
+        ;;
+esac
 alsa_config="$root/config/alsa/alsa.conf"
 alsa_factory="$root/factory-defaults/alsa/alsa.conf"
 $bb mkdir -p "$root/config/retroarch/config" "$root/config/retroarch/remaps" \
     "$root/config/retroarch/playlists/builtin" "$root/config/retroarch/filters/audio" \
     "$root/config/retroarch/filters/video" "$root/config/retroarch/overlays/keyboards" \
     "$root/config/retroarch/records_config" "$root/config/alsa" \
-    "$root/saves/$system_id" "$root/states/$system_id" "$root/logs/retroarch/runtime" \
+    "$root/saves/$system_id" "$state_root" "$root/logs/retroarch/runtime" \
     "$root/state/retroarch/home" "$root/state/retroarch/cache" \
     "$runtime_root/retroarch" "$runtime_root/cache/retroarch" \
     "$sdcard_root/Screenshots" "$sdcard_root/Recordings" "$sdcard_root/Images/retroarch"
@@ -274,7 +282,12 @@ fi
     printf 'input_player1_analog_dpad_mode = "0"\n'
     printf 'input_menu_toggle_btn = "%s"\n' "${PLUMOS_INPUT_FUNCTION_UDEV_BTN:-14}"
     printf 'savefile_directory = "%s"\n' "$root/saves/$system_id"
-    printf 'savestate_directory = "%s"\n' "$root/states/$system_id"
+    printf 'savestate_directory = "%s"\n' "$state_root"
+    case "${core##*/}" in
+        mgba_modern_libretro.so)
+            printf 'savestates_in_content_dir = "false"\n'
+            ;;
+    esac
     printf 'system_directory = "%s"\n' "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}"
     printf 'core_options_path = "%s"\n' "$core_options"
 } >"$append"

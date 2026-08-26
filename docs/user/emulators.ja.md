@@ -28,6 +28,12 @@ Saturnは、RK3326の性能では必要な体験を満たせないためPixel2�
 LEFT・RIGHTでprofileを変更し、Bで戻ります。互換性や性能上の理由がない場合は
 defaultのまま使用してください。
 
+GB・GBC・GBAでは`RA: mgba`と`RA: mgba_modern`を選択できます。前者は実績のある
+従来版、後者はColor CorrectionとInterframe Blendingを備えた新しい固定版です。
+新コアが性能を暗黙に変えないよう、既定コアは変更していません。通常のバッテリー
+セーブは共有しますが、コア間の互換性が保証されないステートセーブはmGBA Modern
+専用領域へ分離します。
+
 対応runtimeではFUNCTIONでエミュレータメニューを開きます。RetroArchは
 START + SELECTが通常の終了操作です。セーブとhotkeyは
 [セーブ・ステート・スクリーンショット](save-data.ja.md)を参照してください。

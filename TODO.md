@@ -576,6 +576,12 @@
 - [x] strict app-layer assemblerとmanaged/mutable path gateを実装する
 - [x] app-layerをseedしたext4 filesystemをSD image buildへ統合する
 - [x] canonical libretro core recipe catalogとfilter buildを実装する
+- [x] 従来mGBAと新しいmGBA Modernを上書きせず両立する
+  - 2026-08-26: 従来版`4f70b313`の`mgba_libretro.so`と既定profileを維持し、
+    新版`e31759b2`を`mgba_modern_libretro.so`、内部名`mGBA Modern`として追加。
+    GB/GBC/GBAのRA core選択へ追加し、通常saveは共有、savestateは新版専用領域へ分離した。
+    AArch64 target build、component manifest/checksum、Color CorrectionとInterframe Blendingの
+    binary option keyをhost確認済み。実機での新旧性能比較と画面効果の目視確認は継続する。
 - [x] baseline core（NES/GB/GBC/SFC/MD/GBA/PCE）をbuild・route化する
   - 2026-08-12: `./scripts/docker-build.sh cores --filter plumos --jobs 4 --fail-on-error 1` で41 coreがbuild成功、component manifest/checksumを生成。
 - [x] canonical all-core libretro buildを完走させる

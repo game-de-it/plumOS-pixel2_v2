@@ -208,6 +208,9 @@ core_output_aliases() {
 
 core_stage_base() {
   case "$1:$2" in
+    mgba_modern:mgba_libretro.so)
+      printf '%s\n' mgba_modern_libretro.so
+      ;;
     flycast_xtreme:flycast_libretro.so)
       printf '%s\n' flycast_xtreme_libretro.so
       ;;
@@ -493,7 +496,7 @@ patch_core_source() {
   fi
 
   case "$id" in
-    mgba)
+    mgba|mgba_modern)
       if [ -f "$src/src/core/CMakeLists.txt" ]; then
         sed -i -E '/^[[:space:]]+scripting\.c$/d' "$src/src/core/CMakeLists.txt"
         printf '\n[plumOS] patched mgba minimal libretro build to omit core scripting.c\n' >> "$log"
@@ -503,6 +506,20 @@ patch_core_source() {
           -e 's|add_library\(\$\{BINARY_NAME\}_libretro SHARED \$\{CORE_SRC\} \$\{RETRO_SRC\} \$\{CORE_VFS_SRC\}\)|add_library(${BINARY_NAME}_libretro SHARED ${CORE_SRC} ${RETRO_SRC} ${CORE_VFS_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/util/vfs/vfs-fd.c)|' \
           "$src/CMakeLists.txt"
         printf '[plumOS] patched mgba libretro CMake source list for duplicate/missing VFS symbols\n' >> "$log"
+      fi
+      if [ "$id" = "mgba_modern" ]; then
+        local modern_name_patch="$patch_dir/mgba-modern-library-name.patch"
+
+        if [ ! -f "$modern_name_patch" ]; then
+          printf '\n[plumOS] missing required mGBA Modern library-name patch\n' >> "$log"
+          return 1
+        fi
+        if ! patch --dry-run -d "$src" -p1 < "$modern_name_patch" >/dev/null 2>> "$log"; then
+          printf '\n[plumOS] required mGBA Modern library-name patch does not apply\n' >> "$log"
+          return 1
+        fi
+        patch -d "$src" -p1 < "$modern_name_patch" >> "$log" 2>&1
+        printf '[plumOS] distinguished the modern mGBA core from the legacy core\n' >> "$log"
       fi
       ;;
     quasi88)
@@ -803,7 +820,7 @@ build_special_core() {
   local tic80_src
 
   case "$id" in
-    mgba)
+    mgba|mgba_modern)
       run_with_job_retry "$id" "$log" cmake_build_command "$src" "$src/build-libretro" mgba_libretro Release "$log" \
         -DBUILD_LIBRETRO=ON \
         -DBUILD_SDL=OFF \
@@ -890,7 +907,10 @@ copy_core_info() {
   local src="$2"
   local info=""
 
-  if [ "$base" = "flycast_xtreme_libretro" ] &&
+  if [ "$base" = "mgba_modern_libretro" ] &&
+     [ -f "$SRC_ROOT/core-info/mgba_libretro.info" ]; then
+    info="$SRC_ROOT/core-info/mgba_libretro.info"
+  elif [ "$base" = "flycast_xtreme_libretro" ] &&
      [ -f "$SRC_ROOT/core-info/flycast_libretro.info" ]; then
     info="$SRC_ROOT/core-info/flycast_libretro.info"
   elif [ -f "$SRC_ROOT/core-info/$base.info" ]; then
@@ -904,6 +924,12 @@ copy_core_info() {
       sed -i \
         -e 's/^display_name = .*/display_name = "Sega - Dreamcast\/NAOMI (Flycast Xtreme)"/' \
         -e 's/^corename = .*/corename = "Flycast Xtreme"/' \
+        "$OUT_DIR/info/$base.info"
+    elif [ "$base" = "mgba_modern_libretro" ]; then
+      sed -i \
+        -e 's/^display_name = .*/display_name = "Nintendo - Game Boy Advance (mGBA Modern)"/' \
+        -e 's/^corename = .*/corename = "mGBA Modern"/' \
+        -e 's/^display_version = .*/display_version = "0.11-dev e31759b"/' \
         "$OUT_DIR/info/$base.info"
     fi
   fi
