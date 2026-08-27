@@ -424,8 +424,12 @@
       library path、SDL/OpenGL補正、session identityを再合成する
     - [x] 異常終了、background化、二重forkを含むprocess treeを回収し、gptokeyb、
       session mount、audio/DRM ownershipを解放してFEを一つだけ復帰する
-    - [ ] Moonlight NewとRockboxを、network/video系と独自preload/scaler系の
-      representative acceptanceとしてhost gate・実機試験へ追加する
+    - [x] Moonlight Newをnetwork/video系representativeとしてhost gate・実機試験へ
+      追加し、正立表示、監査0件、終了回収、FE復帰を確認する
+    - [ ] Rockboxを独自preload/scaler系representativeとして実機合格させる
+      - adapter 48でELF/SONAME、起動、GPTokeYB2、終了回収、FE復帰は合格。
+        DRM scanoutは1色の全黒。private scaler有無、preload順序、SDL回転有無、
+        backlight復帰、入力刺激では変化せず、Rockbox runtime側の描画開始を継続調査する。
     - [x] 起動時間を増やさず、build/CI、PortMaster更新後、初回port起動時だけ監査し、
       package hashが同じportの結果を再利用する
     - 2026-08-27: adapter 48でpure-Python ELF audit、SONAME単位のAvahi/nghttp2投影、
@@ -433,8 +437,9 @@
       共通化。runtime SONAME symlinkを実機監査対象に含め、license本文はcommand監査から
       除外。cleanup helperへ別session IDを与え、PPid鎖とKILL後の収束待ちで自己・
       終了途中PIDの誤検出を防止。Moonlight型と
-      Rockbox型のhost fixtureは合格。strict build、実機deploy、
-      画面・入力・音・終了後FE復帰を残す。
+      Rockbox型のhost fixtureは合格。adapter 48をstrict buildし、署名Runtime
+      `0.1.2-dev-b0706c8`として実機deploy、完全checksum合格。Moonlightは合格。
+      Rockboxは画面・入力・音を残す。
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
   - 2026-08-15: 実機backend監査でScraping plan、File Manager、Music Player、RetroArch RGUI、Pyxel Setup、PortMasterを合格。RetroArch Appのudev準備漏れ、FE stop/launch helper欠落、zombie誤認を`85fffad`で修正。Update PortMasterのnetwork installと7 AppsのFE物理選択は継続。
   - 2026-08-15: File ManagerのMF button order誤流用と、回転rendererが論理640幅を物理480幅でclipする不具合を`9b4070d`、`0106a75`で修正。署名Runtime、全幅DRM capture、event2経由のD-pad/A/B/FUNCTION/Quit、FE再取得に合格。実物buttonのoperator目視は継続。

@@ -74,10 +74,46 @@ Moonlight型のAvahi/nghttp2依存と、Rockbox型の独自`LD_PRELOAD`置換を
 検証しています。独自scalerを先頭に残しながらPixel2必須chainが戻ること、session IDが
 完全一致するprocessだけを停止することを確認しました。
 
-## 残る実機確認
+## 実機deploy
 
-- adapter 48とstrict app layerのbuild
-- component metadata/checksumを含む実機deploy
-- FEからMoonlight NewとRockboxを起動
-- 画面向き、入力、音、終了、FE一つ、GPTokeYB/session process不在、mount不在
-- 実機のaudit reportを検証根拠として保存
+source `b0706c8`からadapter 48をstrict app layerへ組み込みました。署名差分をhidden
+temporary fileとしてPixel2へ転送し、atomic rename前後のSHA-256、実機updater inspect、
+safe reboot applyを確認しました。
+
+```text
+runtime=0.1.2-dev-b0706c8
+adapter_version=48
+package_sha256=cace82b43a12347bd6675d7340c573f840c4d7df238b4d699c6e3a8b598b39bf
+payload_files=12
+deleted_files=0
+update_result=runtime_healthy
+runtime_verify=result-ok
+app_layer_verify=result-ok strict=1
+```
+
+install済みport、PortMaster設定、save、ROM、credentialはtransaction対象外です。
+
+## 実機結果
+
+Moonlight Newは最終管理launcherの起動・停止経路に合格しました。cache済みauditは
+AArch64 ELF 18件、error 0、warning 0です。LÖVE GUIはPixel2 GL回転経路を初期化し、
+終了は`result=clean`、FE復帰、GPTokeYB残留0、compatibility mount残留0でした。同じ
+実装系列で取得した正立640x480 GUI captureは次のSHA-256です。
+
+```text
+c0ae5693601b924a31ebd716fd319dbab5532a04bec2dbb1dcb744902d4fcdaa  moonlight-logical.png
+```
+
+Rockboxはstatic closureとprocess所有に合格しています。AArch64 ELF 203件、error 0、
+private `LD_PRELOAD`の想定warning 1、Rockbox/GPTokeYB2起動、session clean終了、mount
+残留0、FE一つへの復帰を確認しました。一方、adapter 48のDRM scanoutは黒1色で、表示
+合格ではありません。
+
+```text
+724319c36b0ea551aa309b59afed2e46bb1255b254b235f4dcfc77d96f1c6931  rockbox-logical.png
+```
+
+Pixel2 SDL回転無効、private scaler除外、preload両順序、panel unblank、input注入でも
+黒のままでした。残件をgeneric ELF closure、環境修復、preload chain、session cleanup
+から切り離し、Rockbox runtimeの描画開始として継続します。その後に物理入力・音を確認
+します。generic audit合格だけで任意の第三者portを物理合格とは扱いません。

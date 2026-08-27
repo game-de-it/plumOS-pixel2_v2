@@ -91,11 +91,54 @@ scaler remains first while the required Pixel2 guard and renderer libraries are
 restored. The session fixture proves that only processes with the exact session
 identity are signalled.
 
-## Remaining Device Acceptance
+## Device Deployment
 
-- build adapter 48 and the strict app layer;
-- deploy it with matching component metadata and checksums;
-- run the installed Moonlight New and Rockbox routes from the frontend;
-- verify orientation, input, audio, exit, one restored frontend, no GPTokeYB or
-  session processes, and no session mounts;
-- retain the generated audit reports as device evidence.
+Adapter 48 was assembled into the strict app layer from source `b0706c8`. The
+signed delta was copied to the Pixel2 through a hidden temporary file, verified
+before and after its atomic rename, inspected by the device updater, and
+applied through the safe reboot path.
+
+```text
+runtime=0.1.2-dev-b0706c8
+adapter_version=48
+package_sha256=cace82b43a12347bd6675d7340c573f840c4d7df238b4d699c6e3a8b598b39bf
+payload_files=12
+deleted_files=0
+update_result=runtime_healthy
+runtime_verify=result-ok
+app_layer_verify=result-ok strict=1
+```
+
+Installed ports, PortMaster settings, saves, ROMs, and credentials were outside
+the transaction.
+
+## Device Evidence
+
+Moonlight New passed the final managed launch and stop route. Its cached audit
+contains 18 AArch64 ELF files, zero errors, and zero warnings. The LÖVE GUI
+initialized the Pixel2 GL rotation path, the frontend was restored, the session
+ended with `result=clean`, and no GPTokeYB process or compatibility mount
+remained. The upright 640x480 GUI capture from the same implementation family
+has SHA-256:
+
+```text
+c0ae5693601b924a31ebd716fd319dbab5532a04bec2dbb1dcb744902d4fcdaa  moonlight-logical.png
+```
+
+Rockbox passes static closure and process ownership: 203 AArch64 ELF files,
+zero errors, one expected warning for its private `LD_PRELOAD`, a live Rockbox
+process and GPTokeYB2, clean session teardown, no remaining mount, and one
+restored frontend. It does not yet pass visual acceptance. The exact adapter 48
+DRM scanout contains one black colour:
+
+```text
+724319c36b0ea551aa309b59afed2e46bb1255b254b235f4dcfc77d96f1c6931  rockbox-logical.png
+```
+
+The same black result remained with Pixel2 SDL rotation disabled, with the
+private scaler removed, with both preload orders, after unblanking the panel,
+and after an injected input event. This isolates the remaining failure from
+the generic ELF closure, environment repair, display-preload chaining, and
+session cleanup. Rockbox runtime drawing, followed by physical input/audio,
+remains open; arbitrary third-party ports are not claimed as physically
+accepted solely because the generic audit passes.
