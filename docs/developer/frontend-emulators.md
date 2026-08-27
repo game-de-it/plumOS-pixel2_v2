@@ -143,8 +143,11 @@ Pixel2 builds all four upstream menu drivers: RGUI, GLUI (MaterialUI), Ozone,
 and XMB. RGUI remains the factory default. The native RetroArch settings under
 `Settings -> Drivers -> Menu` and `Settings -> User -> Language` are the
 authoritative selectors; a normal RetroArch exit persists them and the new
-choice is used on the next start. The app launcher must not place
-`menu_driver` or `user_language` in its append config, because append values
+choice is used on the next start. Both the contentless app launcher and the
+game launcher read this persistent choice. RGUI keeps the low-overhead plain
+DRM route; GLUI, Ozone, and XMB select the GLES route with Pixel2's display
+rotation. The launchers must not place
+`menu_driver` or `user_language` in their append config, because append values
 would silently override the mutable user config on every launch.
 
 Graphical menu media is app-layer-owned at
@@ -160,7 +163,10 @@ Pixel2 uses a native 480x640 DRM scanout but presents graphical RetroArch menus
 as a logical 640x480 surface. The GL menu contract therefore applies the same
 logical dimensions to the menu layout callback, viewport rectangles, and font
 coordinates. Fixing only the final rotation leaves XMB icons and labels laid
-out by different dimensions and makes them overlap. The factory menu scale is
+out by different dimensions and makes them overlap. Ozone, XMB, and MaterialUI
+also create private matrices for textured cursors and icons, so the GL viewport
+must include the fixed panel rotation before those matrices are copied. The
+factory menu scale is
 1.5, with Ozone global font scaling enabled at 1.35; migration changes only the
 three exact values from the first small-menu factory and preserves the selected
 driver, language, hotkeys, saves, and states.

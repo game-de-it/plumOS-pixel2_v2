@@ -691,6 +691,12 @@
       GLUI、Ozone、XMBを最終Runtime `0.1.0-dev-9e580ec`のDRM captureで合格、
       RGUI/Englishの元設定とhotkeyを復元し、root 11266/11266 checksum、FE復帰を確認。
       [検証記録](docs/validation/2026-08-21-pixel2-retroarch-menu-localization.md)
+    - 2026-08-28: game launcherが保存済み`menu_driver`を見ず、software coreをplain DRMへ
+      固定していたため、AppsではOzone/XMB/GLUIを選べてもgame中はRGUIへ戻る経路差を修正。
+      graphical menu選択時だけGLESへ切り替え、private cursor/icon行列にもPixel2固定回転を
+      反映した。Ozone/XMB/GLUIのDRM capture、通常NES起動、署名Runtime
+      `0.1.2-dev-6581c54`のhealth昇格と再起動後検証に合格。
+      [検証記録](docs/validation/2026-08-28-pixel2-retroarch-menu-selection.ja.md)
 - [x] Pixel2 RetroArch video rotation/scalingとframe pacingを実機確認する
   - 2026-08-14: WonderSwan `Puzzle Bobble.ws` (`mednafen_wswan`)でSELECTによる縦/横切替後の表示が180度逆さになることをDRM overlay planeのRGB565 captureで確認。`465b957`でWonderSwan系のみ`video_allow_rotate=false`とし、core内content回転後にPixel2固定panel補正を適用。署名Runtime `0.1.0-dev-465b957`のhealth昇格と縦向き正方向captureは合格。SELECT切替後の横向き物理captureは継続。
   - 2026-08-14: 回転修正後に共通4:3固定でWonderSwan映像が伸長されることを実機確認。`e327fb9`でcore-provided aspectへ切り替えたが、SELECT後の144x224 frameへPixel2固定回転分のaspect反転が二重適用され、物理方向640x411になる誤りを目視指摘で再確認。`f7bd277`で`ASPECT_RATIO_CORE`だけDRM側の重複反転を相殺し、物理SELECT 1回後の正式Runtime captureを309x480（144:224と丸め誤差内で一致）へ修正。署名Runtime `0.1.0-dev-f7bd277`はhealth昇格済み。最終LCD目視確認は継続。

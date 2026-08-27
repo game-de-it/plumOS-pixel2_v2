@@ -36,6 +36,12 @@ an incomplete backup.
 Frontend and emulator screenshots are stored under `Screenshots/` or the
 runtime's content-local screenshot folder.
 
+RetroArch's screenshot action captures the core video surface, not necessarily
+the fully composed menu scanout. A screenshot taken from the contentless
+RetroArch app can therefore be black even while Ozone, XMB, or MaterialUI is
+visible on the LCD. This does not indicate a display failure; take screenshots
+while content is running when the game image is required.
+
 ## Back up and restore
 
 1. Shut down Pixel2 from the POWER menu.

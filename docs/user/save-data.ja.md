@@ -35,6 +35,11 @@ RetroArchは通常、使用中ROMの近くへROMフォルダとcore別にセー�
 フロントエンドとエミュレータの画面画像は`Screenshots/`またはruntime固有の
 content-local screenshotフォルダへ保存されます。
 
+RetroArchのscreenshot機能が取得するのは、常に最終合成後のmenu scanoutではなくcore映像面です。
+このためcontentなしのRetroArch AppでOzone、XMB、MaterialUIがLCDに表示されていても、保存画像が
+真っ暗になる場合があります。表示故障ではありません。game映像が必要な場合はcontent実行中に
+screenshotを取得してください。
+
 ## バックアップと復元
 
 1. POWERメニューからPixel2をシャットダウンします。

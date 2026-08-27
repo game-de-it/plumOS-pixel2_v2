@@ -107,10 +107,13 @@ factory contractは`retroarch.cfg`だけでなく、次のbundleです。
 
 RGUI、GLUI/MaterialUI、Ozone、XMBをbuildします。defaultはRGUIです。選択はRA自身の
 `Settings -> Drivers -> Menu`と`Settings -> User -> Language`が正で、launcherのappend
-configから強制しません。graphical assetは`/mnt/plumos/retroarch/assets`に置き、CJKを
+configから強制しません。Appsとgame launcherの両方が保存済み選択を読み、RGUIは軽量な
+plain DRM、GLUI/Ozone/XMBはPixel2固定回転を持つGLES経路を使用します。graphical assetは
+`/mnt/plumos/retroarch/assets`に置き、CJKを
 含むupstream fallback fontを収録します。logical 640x480にlayout、viewport、font座標を
-揃え、XMB icon/labelの重なりを防ぎます。factory menu scaleは1.5、Ozone font scaleは
-1.35です。
+揃え、XMB icon/labelの重なりを防ぎます。Ozone、XMB、MaterialUIがcursor/icon用に複製する
+独自行列にも、その複製前に固定panel回転を反映します。factory menu scaleは1.5、Ozone
+font scaleは1.35です。
 
 save/stateはROM filesystemを優先し、content folder/coreで整理します。content-localを
 無効にした場合は`/mnt/plumos/saves/<system>`と`/mnt/plumos/states/<system>`をfallbackに
