@@ -283,3 +283,11 @@ managed manifests and checksums. Their foreground ownership, display rotation,
 input, audio where applicable, exit, and FE reacquisition paths have been
 physically exercised. PortMaster-installed games remain mutable user data and
 are never replaced by app-layer assembly or updates.
+
+Installed ports are audited on their first launch after a content change, not
+at OS boot. The audit checks referenced AArch64 ELF dependency closure and
+host-environment assumptions. A common exec guard retains port-provided
+libraries while restoring the Pixel2 library, display, and session contracts
+for every child process. Session cleanup uses that identity to collect escaped
+background helpers before the frontend is reacquired. See
+[PortMaster Generic Compatibility Layer](../validation/2026-08-27-pixel2-portmaster-compatibility.md).

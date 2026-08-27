@@ -25,6 +25,7 @@ process identity、mount所有、checksum、framebuffer/input owner、Wi-Fi/SSH�
 - [Implementation audit](../validation/2026-08-13-pixel2-implementation-audit.md)
 - [User BIOS staging](../validation/2026-08-13-pixel2-user-bios.md)
 - [PortMaster and Ports](../validation/2026-08-17-pixel2-portmaster-ports.md)
+- [PortMaster共通互換レイヤー](../validation/2026-08-27-pixel2-portmaster-compatibility.ja.md)
 - [Release candidate image](../validation/2026-08-23-pixel2-release-candidate-image.md)
 - [First Wi-Fi connection](../validation/2026-08-23-pixel2-first-wifi-connect.md)
 - [Neo Geo repeated launch/exit](../validation/2026-08-23-pixel2-neogeo-loop.md)

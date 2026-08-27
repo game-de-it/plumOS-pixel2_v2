@@ -7,7 +7,8 @@ work="$(mktemp -d /tmp/plumos-portmaster-audit-test.XXXXXX)"
 trap 'rm -rf "$work"' EXIT
 
 python3 -m py_compile "$AUDIT"
-mkdir -p "$work/port" "$work/libs" "$work/cache"
+mkdir -p "$work/port" "$work/libs" "$work/cache" \
+  "$work/moonlightnew/moonlight" "$work/moon-libs" "$work/rockbox/lib"
 cat > "$work/port/Test.sh" <<'EOF'
 #!/bin/bash
 GAMEDIR=/$directory/ports/port
@@ -15,7 +16,13 @@ export LD_PRELOAD=/opt/vendor/libscale.so
 ./fixture
 EOF
 
-python3 - "$work/port/fixture" "$work/libs/libmissing.so.9" <<'PY'
+python3 - \
+  "$work/port/fixture" \
+  "$work/libs/libmissing.so.9" \
+  "$work/moonlightnew/moonlight/moonlight" \
+  "$work/moon-libs/libavahi-common.so.3" \
+  "$work/moon-libs/libavahi-client.so.3" \
+  "$work/moon-libs/libnghttp2.so.14" <<'PY'
 import struct
 import sys
 from pathlib import Path
@@ -63,8 +70,31 @@ def elf(path: str, needed=(), soname=None, machine=183, interp=True):
 
 elf(sys.argv[1], needed=("libmissing.so.9",))
 elf(sys.argv[2], soname="libmissing.so.9", interp=False)
+elf(
+    sys.argv[3],
+    needed=("libavahi-common.so.3", "libavahi-client.so.3", "libnghttp2.so.14"),
+)
+elf(sys.argv[4], soname="libavahi-common.so.3", interp=False)
+elf(sys.argv[5], soname="libavahi-client.so.3", interp=False)
+elf(sys.argv[6], soname="libnghttp2.so.14", interp=False)
 PY
-chmod 0755 "$work/port/Test.sh" "$work/port/fixture"
+chmod 0755 "$work/port/Test.sh" "$work/port/fixture" \
+  "$work/moonlightnew/moonlight/moonlight"
+cat > "$work/Moonlight New.sh" <<'EOF'
+#!/bin/bash
+GAMEDIR=/$directory/ports/moonlightnew
+export LD_LIBRARY_PATH="$GAMEDIR/moonlight/libs:$LD_LIBRARY_PATH"
+./moonlight/moonlight
+EOF
+cat > "$work/Rockbox.sh" <<'EOF'
+#!/bin/bash
+GAMEDIR=/$directory/ports/rockbox
+export LD_PRELOAD="$GAMEDIR/lib/libsdl2_scaler.so"
+./rockbox
+EOF
+cp "$work/port/fixture" "$work/rockbox/rockbox"
+cp "$work/libs/libmissing.so.9" "$work/rockbox/lib/libmissing.so.9"
+chmod 0755 "$work/Moonlight New.sh" "$work/Rockbox.sh" "$work/rockbox/rockbox"
 
 python3 "$AUDIT" \
   --script "$work/port/Test.sh" \
@@ -101,5 +131,29 @@ python3 "$AUDIT" \
   --cache-dir "$work/cache" \
   --output "$work/cached.json"
 jq -e '.cache == "hit"' "$work/cached.json" >/dev/null
+
+# Moonlight represents network/video ports whose compatibility closure spans
+# common PortMaster and separately owned plumOS network components.
+python3 "$AUDIT" \
+  --script "$work/Moonlight New.sh" \
+  --ports-root "$work" \
+  --library-dir "$work/moon-libs" \
+  --no-cache \
+  --output "$work/moonlight.json"
+jq -e '.status == "compatible" and .errors == 0 and .warnings == 0' \
+  "$work/moonlight.json" >/dev/null
+
+# Rockbox represents ports that replace LD_PRELOAD with a private scaler. The
+# audit records the replacement, while the execution guard test proves that
+# Pixel2's required preload chain is restored at the ELF boundary.
+python3 "$AUDIT" \
+  --script "$work/Rockbox.sh" \
+  --ports-root "$work" \
+  --library-dir "$work/rockbox/lib" \
+  --no-cache \
+  --output "$work/rockbox.json"
+jq -e '.status == "warning" and .errors == 0' "$work/rockbox.json" >/dev/null
+jq -e '.findings[] | select(.code == "environment_replaced" and (.detail | contains("LD_PRELOAD")))' \
+  "$work/rockbox.json" >/dev/null
 
 printf 'portmaster_pixel2_audit=result-ok\n'

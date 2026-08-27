@@ -177,3 +177,10 @@ PortMaster、File Manager、Music Playerはmanifest/checksum管理されたPixel
 foreground所有、回転表示、入力、必要な音声、終了、FE再取得を実機確認済みです。
 PortMasterでinstallしたgameは利用者所有のmutable dataとして保持し、assembly/updateで
 置換しません。
+
+install後または内容変更後の初回起動時だけ、AArch64 ELF依存closureとhost環境依存を
+監査します。OS boot時には実行しません。共通exec guardはport固有libraryを保持しながら、
+すべての子processへPixel2のlibrary、表示、session契約を復元します。終了時は同じsession
+identityでbackground helperを回収してからFEを再取得します。詳細は
+[PortMaster共通互換レイヤー](../validation/2026-08-27-pixel2-portmaster-compatibility.ja.md)を
+参照してください。

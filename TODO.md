@@ -418,16 +418,20 @@
   - [x] Ports systemからPortMaster install済みscriptを起動する導線
   - [x] Wi-Fi経由の公式catalog更新、Ready-to-Run portのinstall・起動・音声・入力handoff・表示・FE復帰を実機検証する
   - [ ] PortMaster共通互換レイヤーで未知のAArch64 portを事前監査・安全実行する
-    - [ ] install済みlauncherとELFを静的監査し、不足SONAME、ARMHF、危険な
+    - [x] install済みlauncherとELFを静的監査し、不足SONAME、ARMHF、危険な
       `LD_LIBRARY_PATH` / `LD_PRELOAD`置換、未対応host commandを機械判定する
-    - [ ] port scriptが環境変数を上書きしても、子ELFの実行境界でPixel2必須の
+    - [x] port scriptが環境変数を上書きしても、子ELFの実行境界でPixel2必須の
       library path、SDL/OpenGL補正、session identityを再合成する
-    - [ ] 異常終了、background化、二重forkを含むprocess treeを回収し、gptokeyb、
+    - [x] 異常終了、background化、二重forkを含むprocess treeを回収し、gptokeyb、
       session mount、audio/DRM ownershipを解放してFEを一つだけ復帰する
     - [ ] Moonlight NewとRockboxを、network/video系と独自preload/scaler系の
       representative acceptanceとしてhost gate・実機試験へ追加する
-    - [ ] 起動時間を増やさず、build/CI、PortMaster更新後、初回port起動時だけ監査し、
+    - [x] 起動時間を増やさず、build/CI、PortMaster更新後、初回port起動時だけ監査し、
       package hashが同じportの結果を再利用する
+    - 2026-08-27: adapter 41でpure-Python ELF audit、SONAME単位のAvahi/nghttp2投影、
+      `execve`/`posix_spawn`境界の環境guard、session identityによる孤児process回収を
+      共通化。Moonlight型とRockbox型のhost fixtureは合格。strict build、実機deploy、
+      画面・入力・音・終了後FE復帰を残す。
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
   - 2026-08-15: 実機backend監査でScraping plan、File Manager、Music Player、RetroArch RGUI、Pyxel Setup、PortMasterを合格。RetroArch Appのudev準備漏れ、FE stop/launch helper欠落、zombie誤認を`85fffad`で修正。Update PortMasterのnetwork installと7 AppsのFE物理選択は継続。
   - 2026-08-15: File ManagerのMF button order誤流用と、回転rendererが論理640幅を物理480幅でclipする不具合を`9b4070d`、`0106a75`で修正。署名Runtime、全幅DRM capture、event2経由のD-pad/A/B/FUNCTION/Quit、FE再取得に合格。実物buttonのoperator目視は継続。
