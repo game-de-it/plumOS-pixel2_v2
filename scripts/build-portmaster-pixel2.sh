@@ -56,7 +56,7 @@ PIXMAN_RUNTIME_VERSION="0.42.2-1"
 SQUASHFS_TOOLS_VERSION="1:4.5.1-1"
 ZIP_VERSION="3.0-13"
 BASH_RUNTIME_VERSION="5.2.15-2+b13"
-ADAPTER_VERSION="48"
+ADAPTER_VERSION="49"
 
 usage() {
     cat <<EOF
@@ -711,6 +711,10 @@ cc -O2 -fPIC -Wall -Wextra -Werror -shared \
     -Wl,-z,defs -Wl,-soname,libplumos-portmaster-exec-guard.so \
     -o "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/libplumos-portmaster-exec-guard.so" \
     "$PACKAGE_DIR/src/plumos_portmaster_exec_guard.c" -ldl
+cc -O2 -fPIC -Wall -Wextra -Werror -shared -I/usr/include/SDL2 \
+    -Wl,-z,defs -Wl,-soname,libplumos-portmaster-rockbox.so \
+    -o "$stage_dir/plumos/apps/portmaster/adapter/lib/aarch64/libplumos-portmaster-rockbox.so" \
+    "$PACKAGE_DIR/src/plumos_portmaster_rockbox.c" -ldl
 install -m 0755 /usr/bin/unsquashfs \
     "$stage_dir/plumos/apps/portmaster/adapter/bin/aarch64/unsquashfs"
 install -m 0755 /usr/bin/zip \
