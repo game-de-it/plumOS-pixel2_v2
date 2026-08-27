@@ -6,6 +6,14 @@ runtime_root="${PLUMOS_RUNTIME_ROOT:-/run/plumos}"
 stop_helper="$root/bin/plumos-frontend-stop"
 init_script="${PLUMOS_FRONTEND_INIT:-/usr/lib/plumos/init.d/40-frontend}"
 
+# Frontends can be restored by emulator and PortMaster launchers after those
+# launchers have exported renderer-specific preload libraries.  Never let that
+# private process environment become the parent environment of the new FE: a
+# later game would inherit both its own display shim and the previous app's
+# shims.  This was observed as Pyxel audio continuing behind an all-black DRM
+# plane after leaving Rockbox.
+unset LD_PRELOAD LD_LIBRARY_PATH
+
 if [ -x "$stop_helper" ] &&
         PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
         "$stop_helper" status 2>/dev/null | grep -q 'pid='; then
@@ -18,7 +26,10 @@ rm -f "$runtime_root/frontend.pid"
     printf 'plumos-frontend-launch: init script missing: %s\n' "$init_script" >&2
     exit 1
 }
-PLUMOS_ROOT="$root" PLUMOS_RUNTIME_ROOT="$runtime_root" \
+/bin/busybox env -i \
+    PATH=/sbin:/usr/sbin:/bin:/usr/bin \
+    PLUMOS_ROOT="$root" \
+    PLUMOS_RUNTIME_ROOT="$runtime_root" \
     /bin/busybox sh "$init_script" start
 
 if [ -x "$stop_helper" ] &&

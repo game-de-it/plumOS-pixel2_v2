@@ -725,6 +725,8 @@ grep -q '/proc/\$pid/stat' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-frontend-stop"
 grep -q '40-frontend' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-frontend-launch"
+test -x "$ROOT_DIR/tests/test-pixel2-frontend-clean-environment.sh"
+"$ROOT_DIR/tests/test-pixel2-frontend-clean-environment.sh"
 grep -q 'process_is_live' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-hardware-keys-service"
 grep -q 'plumos-frontend-stop" stop' \
