@@ -6,6 +6,7 @@ proc_root="${PLUMOS_PORTMASTER_PROC_ROOT:-/proc}"
 kill_bin="${PLUMOS_PORTMASTER_KILL_BIN:-kill}"
 sleep_bin="${PLUMOS_PORTMASTER_SLEEP_BIN:-sleep}"
 log_file="${PLUMOS_PORTMASTER_SESSION_LOG:-}"
+cleanup_pid="${PLUMOS_PORTMASTER_CLEANUP_PID:-$$}"
 
 [ -n "$session_id" ] || exit 0
 
@@ -22,9 +23,30 @@ log_event() {
     "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$session_id" "$*" >> "$log_file"
 }
 
+pid_is_cleanup_descendant() {
+  current=$1
+  depth=0
+  while [ "$depth" -lt 32 ]; do
+    [ "$current" = "$cleanup_pid" ] && return 0
+    [ -r "$proc_root/$current/status" ] || return 1
+    parent=""
+    while IFS=: read -r key value; do
+      [ "$key" = PPid ] || continue
+      set -- $value
+      parent=${1:-}
+      break
+    done < "$proc_root/$current/status"
+    case "$parent" in ''|0|*[!0-9]*) return 1 ;; esac
+    current=$parent
+    depth=$((depth + 1))
+  done
+  return 1
+}
+
 pid_has_session() {
   pid=$1
   [ "$pid" != "$$" ] || return 1
+  pid_is_cleanup_descendant "$pid" && return 1
   [ -r "$proc_root/$pid/environ" ] || return 1
   tr '\000' '\n' < "$proc_root/$pid/environ" 2>/dev/null |
     grep -Fqx "PLUMOS_PORTMASTER_SESSION_ID=$session_id"
