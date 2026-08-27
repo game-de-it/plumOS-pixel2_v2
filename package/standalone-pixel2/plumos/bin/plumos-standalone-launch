@@ -139,6 +139,35 @@ case "$id" in
 
     workdir=$pico8_runtime
     mkdir -p "$HOME/desktop" "$HOME/carts"
+    pico8_wget="${EMU_ROOT}/pico8/bin/wget"
+    [ -x "$pico8_wget" ] ||
+      fail "PICO-8 HTTPS download adapter is missing: $pico8_wget" 127
+    export PATH="${EMU_ROOT}/pico8/bin:${PATH}"
+    pico8_config="$HOME/config.txt"
+    pico8_config_tmp="${pico8_config}.tmp.$$"
+    if [ -f "$pico8_config" ]; then
+      awk '
+        BEGIN { wrote_use_wget=0 }
+        /^[ \t]*use_wget[ \t]+/ {
+          if (!wrote_use_wget) {
+            print "use_wget 1"
+            wrote_use_wget=1
+          }
+          next
+        }
+        { print }
+        END {
+          if (!wrote_use_wget)
+            print "use_wget 1"
+        }
+      ' "$pico8_config" >"$pico8_config_tmp" ||
+        fail "failed to prepare PICO-8 HTTPS download setting" 78
+    else
+      printf 'use_wget 1\n' >"$pico8_config_tmp" ||
+        fail "failed to create PICO-8 HTTPS download setting" 78
+    fi
+    mv -f "$pico8_config_tmp" "$pico8_config" ||
+      fail "failed to install PICO-8 HTTPS download setting" 78
     pico8_rotation="${EMU_ROOT}/pico8/lib/libplumos-pico8-sdl-rotate.so"
     [ -f "$pico8_rotation" ] ||
       fail "PICO-8 Pixel2 display adapter is missing: $pico8_rotation" 127
@@ -582,6 +611,12 @@ rm -f "$pid_file" "$exe_file"
 cleanup() {
   rc=$?
   [ -n "${openbor_workdir:-}" ] && rm -rf "$openbor_workdir"
+  cleanup_pid="$(cat "$pid_file" 2>/dev/null || true)"
+  cleanup_exe="$(cat "$exe_file" 2>/dev/null || true)"
+  if [ "${cleanup_pid:-}" = "${pid:-}" ] &&
+     [ "${cleanup_exe:-}" = "${exe:-}" ]; then
+    rm -f "$pid_file" "$exe_file"
+  fi
   exit "$rc"
 }
 trap cleanup EXIT INT TERM HUP

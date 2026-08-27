@@ -14,6 +14,7 @@ OPENBOR_PATCH="$ROOT_DIR/patches/openbor/openbor-v6391-pixel2-sdl.patch"
 SA_BUILD="$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 SA_LAUNCHER="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 SA_STOP="$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-stop"
+PICO8_WGET="$ROOT_DIR/package/standalone-pixel2/plumos/standalone/pico8/bin/wget"
 DRASTIC_RUNNER_PATCH="$ROOT_DIR/patches/drastic/steward-fu-nds-pixel2-runner-readiness.patch"
 DRASTIC_ROTATION_PATCH="$ROOT_DIR/patches/drastic/steward-fu-nds-pixel2-runner-rotation.patch"
 PPSSPP_CONTROLS="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/ppsspp/PSP/SYSTEM/controls.ini"
@@ -178,10 +179,23 @@ for contract in \
     'dpup:b10,dpdown:b11,dpleft:b12,dpright:b13' \
     '-root_path "$pico8_system_root"' \
     '-pixel_perfect "$pico8_pixel_perfect"' \
+    'PICO-8 HTTPS download adapter is missing' \
+    'use_wget 1' \
+    'export PATH="${EMU_ROOT}/pico8/bin:${PATH}"' \
     '-run "$rom"'; do
     grep -Fq -- "$contract" "$SA_LAUNCHER" ||
         fail "PICO-8 Pixel2 launch contract missing: $contract"
 done
+for contract in \
+    '${PLUMOS_ROOT}/bin/curl' \
+    '--fail --location --silent --show-error' \
+    '--data-binary "@$post_file"' \
+    'mv -f "$output_tmp" "$output"'; do
+    grep -Fq -- "$contract" "$PICO8_WGET" ||
+        fail "PICO-8 HTTPS download wrapper missing contract: $contract"
+done
+grep -Fq 'cleanup_pid="$(cat "$pid_file"' "$SA_LAUNCHER" ||
+    fail 'standalone natural exit does not clean matching PID ownership files'
 for contract in \
     'PICO8_SDL_ROTATE_SOURCE' \
     'PLUMOS_SDL_ROTATION_ENV=' \

@@ -765,6 +765,7 @@ mkdir -p "$PLUMOS_DIR" "$COMPONENT_DIR" "$PLUMOS_DIR/licenses" \
 rsync -a "$PACKAGE_ROOT/" "$PLUMOS_DIR/"
 chmod 0755 "$PLUMOS_DIR/bin/plumos-standalone-launch" \
   "$PLUMOS_DIR/bin/plumos-standalone-stop"
+chmod 0755 "$PLUMOS_DIR/standalone/pico8/bin/wget"
 : >"$PLUMOS_DIR/config/standalone/soname-links.tsv"
 
 OPENBOR_STATUS=pending-binary

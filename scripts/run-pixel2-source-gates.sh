@@ -13,6 +13,7 @@ shell_tests=(
     tests/test-stock-capture-scripts.sh
     tests/test-implementation-audit.sh
     tests/test-pixel2-emulator-menu-contract.sh
+    tests/test-pixel2-pico8-wget.sh
     tests/test-pixel2-gw-core-geometry.sh
     tests/test-pixel2-license-bundle.sh
     tests/test-pixel2-release-content.sh

@@ -41,6 +41,7 @@ test -x "$ROOT_DIR/tests/test-pixel2-wifi-recovery.sh"
 "$ROOT_DIR/tests/test-pixel2-wifi-recovery.sh"
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-stop"
+sh -n "$ROOT_DIR/package/standalone-pixel2/plumos/standalone/pico8/bin/wget"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-launch"
 sh -n "$ROOT_DIR/package/picoarch-pixel2/plumos/bin/plumos-picoarch-stop"
 grep -q 'root/lib/libretro:\$root/emulator/lib:\$root/frontend/lib:\$root/lib' \

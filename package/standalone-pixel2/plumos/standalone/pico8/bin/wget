@@ -1,0 +1,64 @@
+#!/bin/sh
+set -u
+
+# PICO-8 0.2.6b can delegate BBS transfers to wget, but the stock Pixel2
+# BusyBox wget cannot complete the HTTPS redirect used by cart downloads.
+# Translate only PICO-8's documented wget argument subset to plumOS curl so
+# the managed TLS libraries and CA bundle are used without changing the
+# system-wide wget implementation.
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+CURL="${PLUMOS_PICO8_CURL:-${PLUMOS_ROOT}/bin/curl}"
+
+output=""
+post_file=""
+url=""
+
+fail() {
+  printf 'pico8-wget: %s\n' "$*" >&2
+  exit 2
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -q) ;;
+    -O)
+      shift
+      [ "$#" -gt 0 ] || fail 'missing path after -O'
+      output=$1
+      ;;
+    --post-file)
+      shift
+      [ "$#" -gt 0 ] || fail 'missing path after --post-file'
+      post_file=$1
+      ;;
+    --post-file=*) post_file=${1#--post-file=} ;;
+    http://*|https://*)
+      [ -z "$url" ] || fail 'multiple URLs are not supported'
+      url=$1
+      ;;
+    *) fail "unsupported argument: $1" ;;
+  esac
+  shift
+done
+
+[ -x "$CURL" ] || fail "plumOS curl is unavailable: $CURL"
+[ -n "$url" ] || fail 'missing URL'
+[ -n "$output" ] || fail 'missing output path'
+[ -z "$post_file" ] || [ -f "$post_file" ] || fail "missing POST file: $post_file"
+
+output_tmp="${output}.tmp.$$"
+trap 'rm -f "$output_tmp"' EXIT INT TERM HUP
+rm -f "$output_tmp"
+
+if [ -n "$post_file" ]; then
+  "$CURL" --fail --location --silent --show-error \
+    --connect-timeout 15 --max-time 120 --retry 2 --retry-delay 1 \
+    --data-binary "@$post_file" --output "$output_tmp" "$url" || exit $?
+else
+  "$CURL" --fail --location --silent --show-error \
+    --connect-timeout 15 --max-time 120 --retry 2 --retry-delay 1 \
+    --output "$output_tmp" "$url" || exit $?
+fi
+
+mv -f "$output_tmp" "$output"
+trap - EXIT INT TERM HUP
