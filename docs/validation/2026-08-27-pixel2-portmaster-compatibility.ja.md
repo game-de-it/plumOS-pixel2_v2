@@ -51,8 +51,9 @@ cacheします。OS boot時には走らず、install後・内容変更後の初�
 - execution guardとSDL/OpenGL表示補正のpreload chain
 - 変更不可のPortMaster session identity
 
-port固有のpathとpreloadは指定順の先頭に残し、不足しているPixel2要素だけを末尾へ追加
-します。独自scalerとPixel2補正をchainでき、install済みlauncherは書き換えません。
+port固有のlibrary pathは指定順を維持します。表示・sessionのhardware境界を所有する
+Pixel2 preloadを先頭にし、port固有scalerを後ろへchainします。必須要素が不足する子環境
+だけを補正し、install済みlauncherは書き換えません。
 
 ## 失敗sessionの回収
 
@@ -76,7 +77,7 @@ Moonlight型のAvahi/nghttp2依存と、Rockbox型の独自`LD_PRELOAD`置換を
 
 ## 残る実機確認
 
-- adapter 46とstrict app layerのbuild
+- adapter 47とstrict app layerのbuild
 - component metadata/checksumを含む実機deploy
 - FEからMoonlight NewとRockboxを起動
 - 画面向き、入力、音、終了、FE一つ、GPTokeYB/session process不在、mount不在

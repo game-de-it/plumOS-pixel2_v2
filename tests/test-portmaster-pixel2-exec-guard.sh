@@ -22,7 +22,7 @@ run_test() {
         >"$output" 2>"$work/loader.log"
 
     grep -q '^LD_LIBRARY_PATH=/port/libs:/required/common:/required/video$' "$output"
-    grep -q "^LD_PRELOAD=/port/scaler.so:$guard:/required/rotate.so$" "$output"
+    grep -q "^LD_PRELOAD=$guard:/required/rotate.so:/port/scaler.so$" "$output"
     grep -q '^PLUMOS_PORTMASTER_SESSION_ID=pixel2-test-session$' "$output"
 }
 
