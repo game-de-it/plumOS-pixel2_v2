@@ -35,7 +35,7 @@ DT_RUNPATH = 29
 DEFAULT_MACHINE = 183  # EM_AARCH64
 MAX_FILES = 20000
 MAX_TEXT_BYTES = 2 * 1024 * 1024
-AUDIT_POLICY_VERSION = 1
+AUDIT_POLICY_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -171,7 +171,7 @@ def parse_elf(path: Path) -> ElfInfo:
     )
 
 
-def iter_files(root: Path) -> Iterable[Path]:
+def iter_files(root: Path, *, include_file_symlinks: bool = False) -> Iterable[Path]:
     count = 0
     for directory, dirnames, filenames in os.walk(root):
         dirnames.sort()
@@ -181,7 +181,9 @@ def iter_files(root: Path) -> Iterable[Path]:
             if count > MAX_FILES:
                 raise RuntimeError(f"port contains more than {MAX_FILES} files")
             path = Path(directory, name)
-            if path.is_symlink() or not path.is_file():
+            if not path.is_file():
+                continue
+            if path.is_symlink() and not include_file_symlinks:
                 continue
             yield path
 
@@ -294,7 +296,11 @@ def compatibility_audit(
     for directory in library_dirs:
         if not directory.is_dir():
             continue
-        for path in iter_files(directory):
+        # Runtime SONAME directories intentionally consist mostly of links to
+        # component-owned libraries.  Index the link name as well as the
+        # target ELF's DT_SONAME, but keep port-content links excluded so an
+        # installed port cannot make the audit escape its own tree.
+        for path in iter_files(directory, include_file_symlinks=True):
             try:
                 with path.open("rb") as stream:
                     if stream.read(4) != ELF_MAGIC:

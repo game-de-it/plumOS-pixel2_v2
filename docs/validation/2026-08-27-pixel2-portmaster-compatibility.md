@@ -93,10 +93,9 @@ identity are signalled.
 
 ## Remaining Device Acceptance
 
-- build adapter 41 and the strict app layer;
+- build adapter 42 and the strict app layer;
 - deploy it with matching component metadata and checksums;
 - run the installed Moonlight New and Rockbox routes from the frontend;
 - verify orientation, input, audio, exit, one restored frontend, no GPTokeYB or
   session processes, and no session mounts;
 - retain the generated audit reports as device evidence.
-

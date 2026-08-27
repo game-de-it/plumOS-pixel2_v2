@@ -8,7 +8,8 @@ trap 'rm -rf "$work"' EXIT
 
 python3 -m py_compile "$AUDIT"
 mkdir -p "$work/port" "$work/libs" "$work/cache" \
-  "$work/moonlightnew/moonlight" "$work/moon-libs" "$work/rockbox/lib"
+  "$work/moonlightnew/moonlight" "$work/moon-libs" "$work/moon-runtime" \
+  "$work/rockbox/lib"
 cat > "$work/port/Test.sh" <<'EOF'
 #!/bin/bash
 GAMEDIR=/$directory/ports/port
@@ -80,6 +81,12 @@ elf(sys.argv[6], soname="libnghttp2.so.14", interp=False)
 PY
 chmod 0755 "$work/port/Test.sh" "$work/port/fixture" \
   "$work/moonlightnew/moonlight/moonlight"
+ln -s "$work/moon-libs/libavahi-common.so.3" \
+  "$work/moon-runtime/libavahi-common.so.3"
+ln -s "$work/moon-libs/libavahi-client.so.3" \
+  "$work/moon-runtime/libavahi-client.so.3"
+ln -s "$work/moon-libs/libnghttp2.so.14" \
+  "$work/moon-runtime/libnghttp2.so.14"
 cat > "$work/Moonlight New.sh" <<'EOF'
 #!/bin/bash
 GAMEDIR=/$directory/ports/moonlightnew
@@ -137,7 +144,7 @@ jq -e '.cache == "hit"' "$work/cached.json" >/dev/null
 python3 "$AUDIT" \
   --script "$work/Moonlight New.sh" \
   --ports-root "$work" \
-  --library-dir "$work/moon-libs" \
+  --library-dir "$work/moon-runtime" \
   --no-cache \
   --output "$work/moonlight.json"
 jq -e '.status == "compatible" and .errors == 0 and .warnings == 0' \
