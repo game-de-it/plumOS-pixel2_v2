@@ -60,11 +60,10 @@ before each child image is started, it restores:
 - the execution guard and SDL/OpenGL presentation preload chain;
 - the immutable PortMaster session identity.
 
-Port-provided library paths retain their requested order. Required Pixel2
-display/session preloads remain first because they own the hardware boundary;
-port-private scalers are chained afterward. The guard changes the child
-environment only when required entries are missing, and does not modify an
-installed launcher.
+Port-provided paths and preload libraries remain first in their requested
+order. The required Pixel2 entries are appended only when missing, so private
+scalers and compatibility libraries can chain rather than overwrite each
+other. Installed launchers are not modified.
 
 ## Failed-session Containment
 
@@ -94,7 +93,7 @@ identity are signalled.
 
 ## Remaining Device Acceptance
 
-- build adapter 47 and the strict app layer;
+- build adapter 48 and the strict app layer;
 - deploy it with matching component metadata and checksums;
 - run the installed Moonlight New and Rockbox routes from the frontend;
 - verify orientation, input, audio, exit, one restored frontend, no GPTokeYB or

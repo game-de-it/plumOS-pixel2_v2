@@ -428,12 +428,11 @@
       representative acceptanceとしてhost gate・実機試験へ追加する
     - [x] 起動時間を増やさず、build/CI、PortMaster更新後、初回port起動時だけ監査し、
       package hashが同じportの結果を再利用する
-    - 2026-08-27: adapter 47でpure-Python ELF audit、SONAME単位のAvahi/nghttp2投影、
+    - 2026-08-27: adapter 48でpure-Python ELF audit、SONAME単位のAvahi/nghttp2投影、
       `execve`/`posix_spawn`境界の環境guard、session identityによる孤児process回収を
       共通化。runtime SONAME symlinkを実機監査対象に含め、license本文はcommand監査から
       除外。cleanup helperへ別session IDを与え、PPid鎖とKILL後の収束待ちで自己・
-      終了途中PIDの誤検出を防止。Pixel2表示補正をport固有scalerより先にchain。
-      Moonlight型と
+      終了途中PIDの誤検出を防止。Moonlight型と
       Rockbox型のhost fixtureは合格。strict build、実機deploy、
       画面・入力・音・終了後FE復帰を残す。
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。

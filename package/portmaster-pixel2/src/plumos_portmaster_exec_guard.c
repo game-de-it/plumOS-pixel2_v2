@@ -156,10 +156,7 @@ static int build_guarded_environment(char *const source_envp[],
             goto allocation_failed;
     }
     if (replace_preload) {
-        /* Pixel2's display/session interposers own the hardware boundary and
-         * must see calls before a port-private scaler.  The private preload
-         * remains chained after the required interposers. */
-        guarded->preload = join_assignment("LD_PRELOAD", required_preload, current_preload);
+        guarded->preload = join_assignment("LD_PRELOAD", current_preload, required_preload);
         if (!guarded->preload)
             goto allocation_failed;
     }
