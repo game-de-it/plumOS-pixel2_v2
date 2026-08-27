@@ -62,6 +62,13 @@
     展開rootだけを削除するshim cleanupも追加した。
   - 2026-08-23: FE導線からの起動・復帰、物理操作、終了、表示、実音声をoperator合格とし、
     Pixel2実機acceptanceを完了した。
+  - 2026-08-28: Rockbox終了後に復帰したFEがPortMasterの`LD_PRELOAD`を継承し、
+    次に起動したPFSへRockbox/PortMaster/Pyxelの描画shimが同時注入されるため、音声だけ
+    再生してDRM面が黒1色になる順序依存不具合を特定。`plumos-frontend-launch`はFEを
+    `env -i`の最小環境から起動するよう変更し、host回帰試験、strict app-layer、署名
+    Runtime `0.1.2-dev-508b567`、実機full runtime verifierに合格した。修正後PFSは
+    Pyxel専用shim 2件だけを読み込み、非黒画面、ALSA pointer進行、operatorの表示確認に
+    合格。PortMasterや他appから復帰したFEを次のゲームの環境正本にしない契約を追加した。
 
 - [x] SDL/KMSのマウスカーソルがFE/PortMasterへ残留しないようにする
   - 2026-08-20: 実機DRM captureで64x64 ARGBのhardware cursor plane 69を確認。
@@ -417,7 +424,7 @@
   - [x] Update PortMaster
   - [x] Ports systemからPortMaster install済みscriptを起動する導線
   - [x] Wi-Fi経由の公式catalog更新、Ready-to-Run portのinstall・起動・音声・入力handoff・表示・FE復帰を実機検証する
-  - [ ] PortMaster共通互換レイヤーで未知のAArch64 portを事前監査・安全実行する
+  - [x] PortMaster共通互換レイヤーで未知のAArch64 portを事前監査・安全実行する
     - [x] install済みlauncherとELFを静的監査し、不足SONAME、ARMHF、危険な
       `LD_LIBRARY_PATH` / `LD_PRELOAD`置換、未対応host commandを機械判定する
     - [x] port scriptが環境変数を上書きしても、子ELFの実行境界でPixel2必須の
@@ -426,10 +433,10 @@
       session mount、audio/DRM ownershipを解放してFEを一つだけ復帰する
     - [x] Moonlight Newをnetwork/video系representativeとしてhost gate・実機試験へ
       追加し、正立表示、監査0件、終了回収、FE復帰を確認する
-    - [ ] Rockboxを独自preload/scaler系representativeとして実機合格させる
-      - adapter 48でELF/SONAME、起動、GPTokeYB2、終了回収、FE復帰は合格。
-        DRM scanoutは1色の全黒。private scaler有無、preload順序、SDL回転有無、
-        backlight復帰、入力刺激では変化せず、Rockbox runtime側の描画開始を継続調査する。
+    - [x] Rockboxを独自preload/scaler系representativeとして実機合格させる
+      - adapter 49でGUI texture生成後にPixel2 panel向けresizeを適用し、正立表示、
+        D-pad/決定/戻る、音楽再生、`START+R2`終了、FE復帰をoperator合格。Rockbox終了後の
+        private表示環境がFEと次のPyxelへ漏れる問題も`508b567`で共通遮断した。
     - [x] 起動時間を増やさず、build/CI、PortMaster更新後、初回port起動時だけ監査し、
       package hashが同じportの結果を再利用する
     - 2026-08-27: adapter 48でpure-Python ELF audit、SONAME単位のAvahi/nghttp2投影、
@@ -439,7 +446,8 @@
       終了途中PIDの誤検出を防止。Moonlight型と
       Rockbox型のhost fixtureは合格。adapter 48をstrict buildし、署名Runtime
       `0.1.2-dev-b0706c8`として実機deploy、完全checksum合格。Moonlightは合格。
-      Rockboxは画面・入力・音を残す。
+      Rockboxはadapter 49と署名Runtime `0.1.2-dev-679e627`で画面・入力・音をoperator
+      合格し、`508b567`で次appへの環境漏洩回帰も解消した。
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
   - 2026-08-15: 実機backend監査でScraping plan、File Manager、Music Player、RetroArch RGUI、Pyxel Setup、PortMasterを合格。RetroArch Appのudev準備漏れ、FE stop/launch helper欠落、zombie誤認を`85fffad`で修正。Update PortMasterのnetwork installと7 AppsのFE物理選択は継続。
   - 2026-08-15: File ManagerのMF button order誤流用と、回転rendererが論理640幅を物理480幅でclipする不具合を`9b4070d`、`0106a75`で修正。署名Runtime、全幅DRM capture、event2経由のD-pad/A/B/FUNCTION/Quit、FE再取得に合格。実物buttonのoperator目視は継続。
