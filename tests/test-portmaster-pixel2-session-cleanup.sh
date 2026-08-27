@@ -31,8 +31,8 @@ PLUMOS_PORTMASTER_SLEEP_BIN=true \
 PLUMOS_PORTMASTER_SESSION_LOG="$work/session.log" \
   /bin/sh "$CLEANUP"
 
-grep -q '^-TERM 101 session=unset$' "$work/kills.log"
-grep -q '^-TERM 102 session=unset$' "$work/kills.log"
+grep -q '^-TERM 101 session=cleanup:test-session$' "$work/kills.log"
+grep -q '^-TERM 102 session=cleanup:test-session$' "$work/kills.log"
 ! grep -q '103' "$work/kills.log"
 test -d "$work/proc/103"
 grep -q 'result=clean' "$work/session.log"

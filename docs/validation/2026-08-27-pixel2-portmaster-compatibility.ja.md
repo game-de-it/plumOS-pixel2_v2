@@ -76,7 +76,7 @@ Moonlight型のAvahi/nghttp2依存と、Rockbox型の独自`LD_PRELOAD`置換を
 
 ## 残る実機確認
 
-- adapter 44とstrict app layerのbuild
+- adapter 45とstrict app layerのbuild
 - component metadata/checksumを含む実機deploy
 - FEからMoonlight NewとRockboxを起動
 - 画面向き、入力、音、終了、FE一つ、GPTokeYB/session process不在、mount不在

@@ -9,11 +9,12 @@ log_file="${PLUMOS_PORTMASTER_SESSION_LOG:-}"
 
 [ -n "$session_id" ] || exit 0
 
-# Keep the captured identity for matching existing port processes, but do not
-# propagate it to tr/grep/date/sleep/kill helpers started by this cleanup.  A
-# helper can otherwise appear in the next /proc pass and be reported as a
+# Keep the captured identity for matching existing port processes, but give
+# tr/grep/date/sleep/kill helpers started by this cleanup a different identity.
+# A helper can otherwise appear in the next /proc pass and be reported as a
 # newly remaining port process.
-unset PLUMOS_PORTMASTER_SESSION_ID
+PLUMOS_PORTMASTER_SESSION_ID="cleanup:${session_id}"
+export PLUMOS_PORTMASTER_SESSION_ID
 
 log_event() {
   [ -n "$log_file" ] || return 0
@@ -59,6 +60,10 @@ for _ in 1 2; do
   "$sleep_bin" 1
 done
 signal_session KILL || true
+for _ in 1 2 3; do
+  [ -z "$(session_pids)" ] && break
+  "$sleep_bin" 1
+done
 remaining="$(session_pids | tr '\n' ' ')"
 if [ -n "$remaining" ]; then
   log_event "result=remaining pids=$remaining"
