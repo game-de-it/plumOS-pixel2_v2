@@ -39,6 +39,9 @@ grep -Fqx -- "$output.tmp.$$" "$args" && {
   exit 1
 } || true
 grep -Fqx 'pico8-cart-fixture' "$output"
+grep -Fq 'PICO-8 wget: request=' "$WRAPPER"
+grep -Fq 'PICO-8 wget: result=ok bytes=' "$WRAPPER"
+grep -Fq 'PICO-8 wget: result=error rc=' "$WRAPPER"
 
 post="$TEST_ROOT/post.txt"
 printf 'rating=1\n' >"$post"

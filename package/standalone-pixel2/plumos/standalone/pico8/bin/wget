@@ -47,18 +47,37 @@ done
 [ -z "$post_file" ] || [ -f "$post_file" ] || fail "missing POST file: $post_file"
 
 output_tmp="${output}.tmp.$$"
+endpoint=${url%%\?*}
+endpoint=${endpoint##*/}
+if [ -n "$post_file" ]; then
+  request_method=post
+else
+  request_method=get
+fi
+printf '[plumOS] PICO-8 wget: request=%s endpoint=%s output=%s\n' \
+  "$request_method" "$endpoint" "$output" >&2
 trap 'rm -f "$output_tmp"' EXIT INT TERM HUP
 rm -f "$output_tmp"
 
 if [ -n "$post_file" ]; then
   "$CURL" --fail --location --silent --show-error \
     --connect-timeout 15 --max-time 120 --retry 2 --retry-delay 1 \
-    --data-binary "@$post_file" --output "$output_tmp" "$url" || exit $?
+    --data-binary "@$post_file" --output "$output_tmp" "$url"
+  curl_rc=$?
 else
   "$CURL" --fail --location --silent --show-error \
     --connect-timeout 15 --max-time 120 --retry 2 --retry-delay 1 \
-    --output "$output_tmp" "$url" || exit $?
+    --output "$output_tmp" "$url"
+  curl_rc=$?
+fi
+if [ "$curl_rc" -ne 0 ]; then
+  printf '[plumOS] PICO-8 wget: result=error rc=%s endpoint=%s\n' \
+    "$curl_rc" "$endpoint" >&2
+  exit "$curl_rc"
 fi
 
 mv -f "$output_tmp" "$output"
+output_size=$(wc -c <"$output" | tr -d '[:space:]')
+printf '[plumOS] PICO-8 wget: result=ok bytes=%s output=%s\n' \
+  "$output_size" "$output" >&2
 trap - EXIT INT TERM HUP
