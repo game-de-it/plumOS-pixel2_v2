@@ -159,6 +159,15 @@ prepare() {
     "${ADAPTER_DIR}/lib/aarch64/libswscale.so.5"
   link_one libevdev.so.2 \
     "${ADAPTER_DIR}/lib/aarch64/libevdev.so.2"
+  # Network/video ports must not inherit the complete Samba or scraper
+  # library directories. Project only the reviewed SONAMEs into the isolated
+  # PortMaster runtime so their remaining closure continues through this map.
+  link_one libavahi-common.so.3 \
+    "${PLUMOS_ROOT}/network/lib/libavahi-common.so.3"
+  link_one libavahi-client.so.3 \
+    "${PLUMOS_ROOT}/network/lib/libavahi-client.so.3"
+  link_one libnghttp2.so.14 \
+    "${PLUMOS_ROOT}/scraper/lib/libnghttp2.so.14"
   link_one libFLAC.so.8 \
     "${ADAPTER_DIR}/lib/aarch64/libFLAC.so.8"
   link_one libjpeg.so.8 \

@@ -29,6 +29,7 @@ DRI_DIR="${RUN_ROOT}/dri"
 PORT_BASH="${APP_ROOT}/adapter/bin/aarch64/bash"
 SDL_ROTATE_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-sdl-rotate.so"
 GL_ROTATE_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-gl-rotate.so"
+EXEC_GUARD_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-exec-guard.so"
 child=""
 restore_frontend=0
 script="${1:-}"
@@ -368,9 +369,16 @@ export MESA_SHADER_CACHE_DISABLE="${MESA_SHADER_CACHE_DISABLE:-true}"
   printf 'PortMaster Pixel2 GL rotation library is missing: %s\n' "$GL_ROTATE_LIB" >&2
   exit 127
 }
+[ -r "$EXEC_GUARD_LIB" ] || {
+  printf 'PortMaster Pixel2 execution guard is missing: %s\n' "$EXEC_GUARD_LIB" >&2
+  exit 127
+}
 export PLUMOS_PORTMASTER_SDL_ROTATION=270
 export PLUMOS_PORTMASTER_GL_ROTATION=270
-export LD_PRELOAD="${SDL_ROTATE_LIB}:${GL_ROTATE_LIB}${LD_PRELOAD:+:${LD_PRELOAD}}"
+export PLUMOS_PORTMASTER_SESSION_ID="${PLUMOS_PORTMASTER_SESSION_ID:-pixel2-$(date +%s)-$$}"
+export PLUMOS_PORTMASTER_REQUIRED_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+export PLUMOS_PORTMASTER_REQUIRED_LD_PRELOAD="${EXEC_GUARD_LIB}:${SDL_ROTATE_LIB}:${GL_ROTATE_LIB}"
+export LD_PRELOAD="${PLUMOS_PORTMASTER_REQUIRED_LD_PRELOAD}${LD_PRELOAD:+:${LD_PRELOAD}}"
 mkdir -p "$XDG_CACHE_HOME" "$HM_PORTS_DIR"
 
 if ! frontend_is_ancestor && frontend_running; then
