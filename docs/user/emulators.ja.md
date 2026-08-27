@@ -38,6 +38,25 @@ GB・GBC・GBAでは`RA: mgba`と`RA: mgba_modern`を選択できます。前者
 START + SELECTが通常の終了操作です。セーブとhotkeyは
 [セーブ・ステート・スクリーンショット](save-data.ja.md)を参照してください。
 
+## PICO-8
+
+PICO-8本体は有償のため、plumOSには同梱されません。正規に入手したRaspberry Pi版の
+ARM64実行ファイル`pico8_64`と`pico8.dat`を、次のディレクトリへ配置してください。
+
+```text
+PLUMOS_USER/roms/pico-8/aarch64/
+```
+
+ファイル名だけではCPU種別を判定しません。launcherはELFを検査し、AArch64版だけを
+起動します。現行Sploreのcartridgeを利用する場合はPICO-8 0.2.7以降を推奨します。
+古い0.2.6bでは一覧を表示できても、新しいcartridgeをfuture versionとして拒否する
+場合があります。
+
+v0.1.2以降は、SploreのHTTPからHTTPSへの遷移をplumOS管理下のcurl・CA証明書へ渡す
+Pixel2専用adapterを使用します。取得したcartridge、設定、cdataはmutable user stateへ
+保存され、Runtime updateで削除されません。Fake-08とRetro8もalternate coreとして
+選択できます。
+
 ## BIOSとコンテンツ
 
 システムによっては`PLUMOS_USER/bios`にBIOSやfirmwareが必要です。plumOSは

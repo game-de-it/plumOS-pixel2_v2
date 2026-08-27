@@ -40,6 +40,26 @@ FUNCTION opens an emulator menu where that runtime supports it. RetroArch uses
 START + SELECT for its normal exit path. Save and hotkey details are in
 [Save data, states, and screenshots](save-data.md).
 
+## PICO-8
+
+PICO-8 is commercial software and is not bundled with plumOS. Copy the
+`pico8_64` executable and `pico8.dat` from a legitimately obtained Raspberry
+Pi package to:
+
+```text
+PLUMOS_USER/roms/pico-8/aarch64/
+```
+
+The launcher validates the ELF machine type instead of trusting the filename
+and starts only an AArch64 executable. PICO-8 0.2.7 or later is recommended for
+current Splore cartridges. Older 0.2.6b builds may display the catalog but
+reject newer cartridges as a future version.
+
+Starting with v0.1.2, a Pixel2-specific adapter routes Splore's HTTP-to-HTTPS
+downloads through plumOS-managed curl and CA certificates. Downloaded carts,
+settings, and cdata remain mutable user state and are not removed by Runtime
+updates. Fake-08 and Retro8 remain available as alternate cores.
+
 ## BIOS and content
 
 Some systems require BIOS or firmware in `PLUMOS_USER/bios`. plumOS does not

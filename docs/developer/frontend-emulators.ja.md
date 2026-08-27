@@ -161,7 +161,17 @@ PyxelはPython 3.11、固定wheel、SDL2 KMSDRM/GLES、display-fit shim、`plumo
 Pixel2 componentです。FEは`pyxel:pixel2`から`bin/plumos-pyxel-pixel2-launch`を解決します。
 Pyxel Setupは`/roms/pyxel/requirements.txt`の任意dependencyをmutable stateへinstallし、
 package runtimeを上書きしません。PICO-8は利用者が用意したruntimeを所定content pathから
-起動し、releaseへproprietary binaryを含めません。
+起動し、releaseへproprietary binaryを含めません。launcherはELF magicと
+`e_machine=0x00b7`を検査してAArch64 binaryだけを選びます。
+
+PICO-8の`use_wget 1`はpackage-local adapterへ接続します。stock BusyBox ashはPATHより
+builtin wget appletを優先するため、PICO-8 processだけへpreloadする`system()` shimが
+先頭の`wget `を絶対pathへ置換します。adapterはPICO-8が使用する`URL`、`-q`、`-O`、
+`--post-file`だけを受け、plumOS管理下のcurl/CA、redirect、timeout、retryを使用して
+一時fileから原子的に確定します。system-wide wgetや他processには影響しません。
+query文字列はlogへ出さず、method、endpoint、出力先、結果、byte数だけを記録します。
+runtime、cartridge、config、cdataはuser-ownedのままで、app-layer checksum対象へ
+取り込みません。
 
 PortMaster、File Manager、Music Playerはmanifest/checksum管理されたPixel2 componentです。
 foreground所有、回転表示、入力、必要な音声、終了、FE再取得を実機確認済みです。

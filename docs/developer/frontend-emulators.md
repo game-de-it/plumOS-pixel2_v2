@@ -264,6 +264,20 @@ The FE route is `pyxel:pixel2` and must resolve to
 requirements from `/roms/pyxel/requirements.txt` into mutable app-layer state;
 it must not overwrite packaged runtime files.
 
+PICO-8 starts a user-supplied runtime from the documented content path; its
+proprietary executable is never part of a release. The launcher checks ELF
+magic and `e_machine=0x00b7` and accepts only an AArch64 executable.
+
+PICO-8 `use_wget 1` is connected to a package-local adapter. Stock BusyBox ash
+resolves its wget applet ahead of PATH, so a `system()` shim preloaded only into
+the PICO-8 process rewrites an exact leading `wget ` to the adapter's absolute
+path. The adapter accepts only the PICO-8 subset (`URL`, `-q`, `-O`, and
+`--post-file`), then uses plumOS-managed curl/CA data with redirect, timeout,
+retry, and temporary-file-to-atomic-rename behavior. It does not change
+system-wide wget or other processes. Logs omit URL queries and record only the
+method, endpoint, destination, result, and byte count. The runtime, cartridges,
+configuration, and cdata remain user-owned and outside app-layer checksums.
+
 PortMaster, File Manager, and Music Player are packaged Pixel2 components with
 managed manifests and checksums. Their foreground ownership, display rotation,
 input, audio where applicable, exit, and FE reacquisition paths have been
