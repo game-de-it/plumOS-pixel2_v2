@@ -49,6 +49,7 @@ PPSSPP_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-no-sdl2-ttf.patch"
 PPSSPP_DISPLAY_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-display-rotation.patch"
 PPSSPP_CONTROLLER_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
 PICO8_SDL_ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_sdl_rotate.c"
+PICO8_DOWNLOAD_SHIM_SOURCE="$ROOT_DIR/package/standalone-pixel2/src/pico8-download-shim.c"
 COMMON_CFLAGS="${PLUMOS_PIXEL2_STANDALONE_CFLAGS:--O2 -pipe -march=armv8-a+crc -mtune=cortex-a35 -fomit-frame-pointer -fcommon}"
 VERSION="${PLUMOS_PIXEL2_VERSION:-0.1.0-dev}"
 PROJECT_SOURCE_REF="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
@@ -183,6 +184,11 @@ build_pico8_adapter() {
       "$PICO8_SDL_ROTATE_SOURCE" >&2
     return 1
   }
+  [ -s "$PICO8_DOWNLOAD_SHIM_SOURCE" ] || {
+    printf 'error: PICO-8 HTTPS command adapter source is missing: %s\n' \
+      "$PICO8_DOWNLOAD_SHIM_SOURCE" >&2
+    return 1
+  }
   pico8_dst="$PLUMOS_DIR/standalone/pico8"
   mkdir -p "$pico8_dst/bin" "$pico8_dst/lib"
   cc -O2 -fPIC -Wall -Wextra -Werror -shared -I/usr/include/SDL2 \
@@ -191,6 +197,10 @@ build_pico8_adapter() {
     -Wl,-z,defs -Wl,-soname,libplumos-pico8-sdl-rotate.so \
     -o "$pico8_dst/lib/libplumos-pico8-sdl-rotate.so" \
     "$PICO8_SDL_ROTATE_SOURCE" -ldl
+  cc -O2 -fPIC -Wall -Wextra -Werror -shared \
+    -Wl,-z,defs -Wl,-soname,libplumos-pico8-download.so \
+    -o "$pico8_dst/lib/libplumos-pico8-download.so" \
+    "$PICO8_DOWNLOAD_SHIM_SOURCE" -ldl
   cat >"$pico8_dst/bin/USER_RUNTIME_REQUIRED.txt" <<'EOF'
 PICO-8 is proprietary and is not distributed by plumOS.
 Install the official AArch64 runtime and pico8.dat under

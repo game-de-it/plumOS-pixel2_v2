@@ -22,6 +22,7 @@ PPSSPP_CONFIG="$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/stand
 PPSSPP_CONTROLLER_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
 PPSSPP_DISPLAY_PATCH="$ROOT_DIR/patches/ppsspp/ppsspp-1.20.4-pixel2-display-rotation.patch"
 PICO8_SDL_ADAPTER="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_sdl_rotate.c"
+PICO8_DOWNLOAD_SHIM="$ROOT_DIR/package/standalone-pixel2/src/pico8-download-shim.c"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -180,11 +181,21 @@ for contract in \
     '-root_path "$pico8_system_root"' \
     '-pixel_perfect "$pico8_pixel_perfect"' \
     'PICO-8 HTTPS download adapter is missing' \
+    'PICO-8 HTTPS command adapter is missing' \
+    'libplumos-pico8-download.so' \
     'use_wget 1' \
     'export PATH="${EMU_ROOT}/pico8/bin:${PATH}"' \
     '-run "$rom"'; do
     grep -Fq -- "$contract" "$SA_LAUNCHER" ||
         fail "PICO-8 Pixel2 launch contract missing: $contract"
+done
+for contract in \
+    'strncmp(command, "wget ", 5)' \
+    '/standalone/pico8/bin/wget%s' \
+    'dlsym(RTLD_NEXT, "system")' \
+    'PICO-8 download: using managed HTTPS adapter'; do
+    grep -Fq -- "$contract" "$PICO8_DOWNLOAD_SHIM" ||
+        fail "PICO-8 system command shim missing contract: $contract"
 done
 for contract in \
     '${PLUMOS_ROOT}/bin/curl' \
@@ -198,6 +209,7 @@ grep -Fq 'cleanup_pid="$(cat "$pid_file"' "$SA_LAUNCHER" ||
     fail 'standalone natural exit does not clean matching PID ownership files'
 for contract in \
     'PICO8_SDL_ROTATE_SOURCE' \
+    'PICO8_DOWNLOAD_SHIM_SOURCE' \
     'PLUMOS_SDL_ROTATION_ENV=' \
     'libplumos-pico8-sdl-rotate.so' \
     'binary_policy' \
