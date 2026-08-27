@@ -10,6 +10,7 @@ python3 -m py_compile "$AUDIT"
 mkdir -p "$work/port" "$work/libs" "$work/cache"
 cat > "$work/port/Test.sh" <<'EOF'
 #!/bin/bash
+GAMEDIR=/$directory/ports/port
 export LD_PRELOAD=/opt/vendor/libscale.so
 ./fixture
 EOF
@@ -67,7 +68,7 @@ chmod 0755 "$work/port/Test.sh" "$work/port/fixture"
 
 python3 "$AUDIT" \
   --script "$work/port/Test.sh" \
-  --port-root "$work/port" \
+  --ports-root "$work" \
   --cache-dir "$work/cache" \
   --output "$work/missing.json"
 jq -e '.status == "blocked" and .errors == 1 and .cache == "miss"' \
@@ -78,7 +79,7 @@ jq -e '.findings[] | select(.code == "environment_replaced" and (.detail | conta
   "$work/missing.json" >/dev/null
 if python3 "$AUDIT" \
   --script "$work/port/Test.sh" \
-  --port-root "$work/port" \
+  --ports-root "$work" \
   --cache-dir "$work/cache" \
   --enforce >/dev/null; then
   echo 'PortMaster audit enforcement accepted a missing referenced SONAME' >&2
@@ -87,7 +88,7 @@ fi
 
 python3 "$AUDIT" \
   --script "$work/port/Test.sh" \
-  --port-root "$work/port" \
+  --ports-root "$work" \
   --library-dir "$work/libs" \
   --no-cache \
   --output "$work/resolved.json"
@@ -96,7 +97,7 @@ jq -e '.status == "warning" and .errors == 0 and .warnings == 1' \
 
 python3 "$AUDIT" \
   --script "$work/port/Test.sh" \
-  --port-root "$work/port" \
+  --ports-root "$work" \
   --cache-dir "$work/cache" \
   --output "$work/cached.json"
 jq -e '.cache == "hit"' "$work/cached.json" >/dev/null

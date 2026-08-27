@@ -30,6 +30,8 @@ PORT_BASH="${APP_ROOT}/adapter/bin/aarch64/bash"
 SDL_ROTATE_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-sdl-rotate.so"
 GL_ROTATE_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-gl-rotate.so"
 EXEC_GUARD_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-exec-guard.so"
+AUDIT_TOOL="${APP_ROOT}/adapter/plumos_portmaster_audit.py"
+SESSION_CLEANUP="${PLUMOS_ROOT}/bin/plumos-portmaster-session-cleanup"
 child=""
 restore_frontend=0
 script="${1:-}"
@@ -134,6 +136,10 @@ cleanup() {
       done
       kill -KILL "-$child" 2>/dev/null || true
     fi
+  fi
+  if [ -x "$SESSION_CLEANUP" ]; then
+    PLUMOS_PORTMASTER_SESSION_LOG="$LOG_FILE" \
+      "$BB" sh "$SESSION_CLEANUP" >> "$LOG_FILE" 2>&1 || true
   fi
   "$BB" sh "${PLUMOS_ROOT}/bin/plumos-portmaster-gptokeyb-stop" stop 2>/dev/null || true
   if [ -f "$MOUNTS_FILE" ]; then
@@ -264,6 +270,33 @@ patch_known_port_runtime_path() {
   sync "$gui_file" 2>/dev/null || sync
 }
 
+audit_installed_port() {
+  [ -f "$AUDIT_TOOL" ] || {
+    printf 'PortMaster compatibility audit is missing: %s\n' "$AUDIT_TOOL" >&2
+    return 1
+  }
+  audit_cache="${STATE_ROOT}/audit/cache"
+  audit_reports="${PLUMOS_ROOT}/logs/apps/portmaster-audits"
+  safe_name="$(basename "$script" | tr -c 'A-Za-z0-9._-' '_')"
+  mkdir -p "$audit_cache" "$audit_reports"
+  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-python-pixel2" \
+    "$AUDIT_TOOL" \
+    --script "$script" \
+    --ports-root "$PORTS_ROOT" \
+    --library-dir "$RUN_ROOT/lib" \
+    --library-dir "${PLUMOS_ROOT}/apps/pyxel/lib" \
+    --library-dir "${PLUMOS_ROOT}/apps/python/lib" \
+    --library-dir "${PLUMOS_ROOT}/lib" \
+    --library-dir "${PLUMOS_ROOT}/apps/nextcommander/lib" \
+    --library-dir "${PLUMOS_ROOT}/emulator/lib" \
+    --library-dir "${PLUMOS_ROOT}/apps/pyxel/site/pygame.libs" \
+    --library-dir /lib \
+    --library-dir /usr/lib \
+    --cache-dir "$audit_cache" \
+    --output "${audit_reports}/${safe_name}.json" \
+    --enforce >> "$LOG_FILE" 2>&1
+}
+
 port_requires_armhf() {
   grep -Eq "^[[:space:]]*(export[[:space:]]+)?PORT_32BIT[[:space:]]*=[[:space:]]*['\"]?[Yy]" "$script"
 }
@@ -285,8 +318,12 @@ fi
 if [ -f "$PID_FILE" ]; then
   old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
   if [ -d "/proc/${old_pid}" ]; then
-    printf 'PortMaster port is already running: pid=%s\n' "$old_pid" >&2
-    exit 75
+    old_start="$(cat "$START_FILE" 2>/dev/null || true)"
+    current_start="$(sed 's/.*) //' "/proc/${old_pid}/stat" 2>/dev/null | awk '{print $20}' || true)"
+    if [ -n "$old_start" ] && [ "$current_start" = "$old_start" ]; then
+      printf 'PortMaster port is already running: pid=%s\n' "$old_pid" >&2
+      exit 75
+    fi
   fi
   rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE"
 fi
@@ -380,6 +417,11 @@ export PLUMOS_PORTMASTER_REQUIRED_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 export PLUMOS_PORTMASTER_REQUIRED_LD_PRELOAD="${EXEC_GUARD_LIB}:${SDL_ROTATE_LIB}:${GL_ROTATE_LIB}"
 export LD_PRELOAD="${PLUMOS_PORTMASTER_REQUIRED_LD_PRELOAD}${LD_PRELOAD:+:${LD_PRELOAD}}"
 mkdir -p "$XDG_CACHE_HOME" "$HM_PORTS_DIR"
+
+audit_installed_port || {
+  printf 'PortMaster compatibility audit blocked this port: %s\n' "$script" >&2
+  exit 78
+}
 
 if ! frontend_is_ancestor && frontend_running; then
   "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-stop" stop >> "$LOG_FILE" 2>&1

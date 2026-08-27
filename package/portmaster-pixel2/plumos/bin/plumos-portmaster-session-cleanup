@@ -1,0 +1,61 @@
+#!/bin/sh
+set -u
+
+session_id="${PLUMOS_PORTMASTER_SESSION_ID:-}"
+proc_root="${PLUMOS_PORTMASTER_PROC_ROOT:-/proc}"
+kill_bin="${PLUMOS_PORTMASTER_KILL_BIN:-kill}"
+sleep_bin="${PLUMOS_PORTMASTER_SLEEP_BIN:-sleep}"
+log_file="${PLUMOS_PORTMASTER_SESSION_LOG:-}"
+
+[ -n "$session_id" ] || exit 0
+
+log_event() {
+  [ -n "$log_file" ] || return 0
+  printf '[%s] session-cleanup id=%s %s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$session_id" "$*" >> "$log_file"
+}
+
+pid_has_session() {
+  pid=$1
+  [ "$pid" != "$$" ] || return 1
+  [ -r "$proc_root/$pid/environ" ] || return 1
+  tr '\000' '\n' < "$proc_root/$pid/environ" 2>/dev/null |
+    grep -Fqx "PLUMOS_PORTMASTER_SESSION_ID=$session_id"
+}
+
+session_pids() {
+  for status in "$proc_root"/[0-9]*/status; do
+    [ -f "$status" ] || continue
+    pid=${status%/status}
+    pid=${pid##*/}
+    case "$pid" in ''|*[!0-9]*) continue ;; esac
+    pid_has_session "$pid" && printf '%s\n' "$pid"
+  done
+}
+
+signal_session() {
+  signal=$1
+  found=0
+  session_pids | while IFS= read -r pid; do
+    [ -n "$pid" ] || continue
+    # Recheck immediately before signalling to avoid a PID reuse race.
+    pid_has_session "$pid" || continue
+    "$kill_bin" "-$signal" "$pid" 2>/dev/null || true
+    log_event "signal=$signal pid=$pid"
+    found=1
+  done
+  return "$found"
+}
+
+signal_session TERM || true
+for _ in 1 2; do
+  [ -z "$(session_pids)" ] && break
+  "$sleep_bin" 1
+done
+signal_session KILL || true
+remaining="$(session_pids | tr '\n' ' ')"
+if [ -n "$remaining" ]; then
+  log_event "result=remaining pids=$remaining"
+  exit 1
+fi
+log_event "result=clean"

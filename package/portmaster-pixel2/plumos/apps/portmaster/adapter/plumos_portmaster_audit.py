@@ -35,6 +35,7 @@ DT_RUNPATH = 29
 DEFAULT_MACHINE = 183  # EM_AARCH64
 MAX_FILES = 20000
 MAX_TEXT_BYTES = 2 * 1024 * 1024
+AUDIT_POLICY_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -274,9 +275,16 @@ def compatibility_audit(
             continue
         port_elfs.append(info)
         if info.machine != allowed_machine:
+            name = Path(info.path).name
+            referenced = info.has_interp and bool(
+                re.search(
+                    rf"(?<![A-Za-z0-9_.-]){re.escape(name)}(?![A-Za-z0-9_.-])",
+                    corpus,
+                )
+            )
             findings.append(
                 Finding(
-                    "error",
+                    "error" if referenced else "warning",
                     "unsupported_machine",
                     str(path),
                     f"ELF machine {info.machine}, expected {allowed_machine}",
@@ -296,10 +304,10 @@ def compatibility_audit(
                 continue
 
     index = index_libraries([*port_elfs, *library_elfs])
-    checked: set[str] = set()
+    checked: set[tuple[str, bool]] = set()
 
     def check_closure(info: ElfInfo, referenced: bool) -> None:
-        key = info.path
+        key = (info.path, referenced)
         if key in checked:
             return
         checked.add(key)
@@ -345,6 +353,7 @@ def compatibility_audit(
 
 def audit_key(script: Path, port_root: Path) -> str:
     digest = hashlib.sha256()
+    digest.update(f"policy={AUDIT_POLICY_VERSION}\0".encode())
     for path in sorted({script, *iter_files(port_root)}, key=lambda item: str(item)):
         relative = str(path.relative_to(port_root)) if path.is_relative_to(port_root) else str(path)
         digest.update(relative.encode("utf-8", "surrogateescape"))
@@ -367,10 +376,24 @@ def write_atomic(path: Path, payload: str) -> None:
     os.replace(temporary, path)
 
 
+def discover_port_root(script: Path, ports_root: Path) -> Path | None:
+    try:
+        text = script.read_text("utf-8", "replace")
+    except OSError:
+        return None
+    for name in re.findall(r"/ports/([^/\"'\s;$]+)", text, flags=re.IGNORECASE):
+        candidate = ports_root / name
+        if candidate.is_dir():
+            return candidate.resolve()
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--script", required=True, type=Path)
-    parser.add_argument("--port-root", required=True, type=Path)
+    root_group = parser.add_mutually_exclusive_group(required=True)
+    root_group.add_argument("--port-root", type=Path)
+    root_group.add_argument("--ports-root", type=Path)
     parser.add_argument("--library-dir", action="append", default=[], type=Path)
     parser.add_argument("--allowed-machine", type=int, default=DEFAULT_MACHINE)
     parser.add_argument("--cache-dir", type=Path)
@@ -380,7 +403,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     script = args.script.resolve()
-    port_root = args.port_root.resolve()
+    if args.port_root:
+        port_root = args.port_root.resolve()
+    else:
+        ports_root = args.ports_root.resolve()
+        port_root = discover_port_root(script, ports_root)
+        if port_root is None:
+            parser.error(f"cannot discover port root from launcher: {script}")
     if not script.is_file() or not port_root.is_dir():
         parser.error("script and port root must exist")
     key = audit_key(script, port_root)

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+CLEANUP="$ROOT_DIR/package/portmaster-pixel2/plumos/bin/plumos-portmaster-session-cleanup"
+work="$(mktemp -d /tmp/plumos-portmaster-session-test.XXXXXX)"
+trap 'rm -rf "$work"' EXIT
+
+mkdir -p "$work/proc/101" "$work/proc/102" "$work/proc/103"
+printf 'Name:\tport-a\n' > "$work/proc/101/status"
+printf 'Name:\tport-b\n' > "$work/proc/102/status"
+printf 'Name:\tother\n' > "$work/proc/103/status"
+printf 'PATH=/bin\0PLUMOS_PORTMASTER_SESSION_ID=test-session\0' > "$work/proc/101/environ"
+printf 'PLUMOS_PORTMASTER_SESSION_ID=test-session\0' > "$work/proc/102/environ"
+printf 'PLUMOS_PORTMASTER_SESSION_ID=other-session\0' > "$work/proc/103/environ"
+
+cat > "$work/kill" <<'EOF'
+#!/bin/sh
+printf '%s %s\n' "$1" "$2" >> "$FAKE_KILL_LOG"
+rm -rf "$FAKE_PROC_ROOT/$2"
+EOF
+chmod 0755 "$work/kill"
+
+FAKE_PROC_ROOT="$work/proc" \
+FAKE_KILL_LOG="$work/kills.log" \
+PLUMOS_PORTMASTER_SESSION_ID=test-session \
+PLUMOS_PORTMASTER_PROC_ROOT="$work/proc" \
+PLUMOS_PORTMASTER_KILL_BIN="$work/kill" \
+PLUMOS_PORTMASTER_SLEEP_BIN=true \
+PLUMOS_PORTMASTER_SESSION_LOG="$work/session.log" \
+  /bin/sh "$CLEANUP"
+
+grep -q '^-TERM 101$' "$work/kills.log"
+grep -q '^-TERM 102$' "$work/kills.log"
+! grep -q '103' "$work/kills.log"
+test -d "$work/proc/103"
+grep -q 'result=clean' "$work/session.log"
+
+printf 'portmaster_pixel2_session_cleanup=result-ok\n'

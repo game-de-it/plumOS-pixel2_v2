@@ -56,7 +56,7 @@ PIXMAN_RUNTIME_VERSION="0.42.2-1"
 SQUASHFS_TOOLS_VERSION="1:4.5.1-1"
 ZIP_VERSION="3.0-13"
 BASH_RUNTIME_VERSION="5.2.15-2+b13"
-ADAPTER_VERSION="40"
+ADAPTER_VERSION="41"
 
 usage() {
     cat <<EOF
@@ -692,6 +692,7 @@ chmod 0755 \
     "$stage_dir/plumos/apps/portmaster/adapter/control.txt" \
     "$stage_dir/plumos/apps/portmaster/adapter/mod_plumOS.txt" \
     "$stage_dir/plumos/apps/portmaster/adapter/plumos_portmaster_bootstrap.py" \
+    "$stage_dir/plumos/apps/portmaster/adapter/plumos_portmaster_audit.py" \
     "$stage_dir/plumos/apps/portmaster/adapter/plumos_portmaster_update.py"
 mkdir -p \
     "$stage_dir/plumos/apps/portmaster/adapter/bin/aarch64" \
