@@ -1,0 +1,16 @@
+diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -1350,6 +1350,12 @@ static void gl2_set_viewport(gl2_t *gl,
+       bool force_full, bool allow_rotate,
+       bool video_scale_integer)
+ {
++   /* Ozone, XMB and MaterialUI create private draw matrices immediately
++    * after requesting a non-rotating menu viewport. Pixel2 still needs the
++    * panel rotation in those matrices; otherwise textured cursors and icons
++    * remain in portrait coordinates while text is rotated to landscape. */
++   if (gl2_menu_display_rotation())
++      allow_rotate = true;
+    float device_aspect      = (float)vp_width / (float)vp_height;
+ 
+    if (gl->ctx_driver->translate_aspect)

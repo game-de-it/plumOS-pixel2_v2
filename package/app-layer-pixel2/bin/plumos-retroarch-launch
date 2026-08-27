@@ -17,6 +17,8 @@ audio_output="$root/bin/plumos-audio-output"
 fast_forward_state=
 archive_content=
 archive_content_dir=
+menu_driver=rgui
+graphical_menu=0
 
 export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-$root/emulator/dri}"
 export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-$root/emulator/egl_vendor.d/50_mesa.json}"
@@ -109,6 +111,15 @@ if [ ! -s "$alsa_config" ] && [ -s "$alsa_factory" ]; then
     $bb mv "$alsa_config.next" "$alsa_config"
 fi
 
+menu_driver=$(
+    $bb sed -n 's/^[[:space:]]*menu_driver[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
+        "$config" | $bb sed -n '1p'
+)
+case "$menu_driver" in
+    glui|ozone|xmb) graphical_menu=1 ;;
+    *) graphical_menu=0 ;;
+esac
+
 if [ -x "$root/bin/plumos-ensure-udev-input-db" ]; then
     "$root/bin/plumos-ensure-udev-input-db" >>"$root/logs/retroarch-launch.log" 2>&1 || true
 fi
@@ -193,6 +204,16 @@ video_rotation=${PLUMOS_RETROARCH_VIDEO_ROTATION:-3}
 # precedence. Keep this empty unless a hardware/display route has a mandatory
 # presentation contract below.
 aspect_ratio_index=
+if [ "$graphical_menu" = 1 ]; then
+    # RGUI can be drawn by the low-overhead plain-DRM path. Graphical menu
+    # drivers require GLES, so follow the user's persistent menu_driver choice
+    # for game launches as well as the contentless RetroArch app. This keeps
+    # RGUI as the fast factory default while making Ozone/XMB/GLUI an explicit
+    # user-selected presentation policy.
+    video_driver=gl
+    video_rotation=1
+    export PLUMOS_GL_MENU_ROTATION=display
+fi
 case "${core##*/}" in
     flycast_libretro.so|\
     flycast_xtreme_libretro.so|\
@@ -205,7 +226,11 @@ case "${core##*/}" in
         video_driver=gl
         video_rotation=1
         aspect_ratio_index=24
-        export PLUMOS_GL_MENU_ROTATION=content
+        if [ "$graphical_menu" = 1 ]; then
+            export PLUMOS_GL_MENU_ROTATION=display
+        else
+            export PLUMOS_GL_MENU_ROTATION=content
+        fi
         ;;
 esac
 case "$system_id" in
@@ -226,9 +251,16 @@ case "$system_id" in
         # unrotated logical viewport, Beetle WonderSwan performs its own
         # SELECT-controlled content rotation, and DRM applies only the fixed
         # Pixel2 panel correction at final presentation.
-        video_allow_rotate=false
-        video_rotation=0
-        export PLUMOS_DRM_PANEL_ROTATION=3
+        if [ "$graphical_menu" = 1 ]; then
+            # The GL driver owns the fixed Pixel2 panel rotation. Allow the
+            # core's SELECT-controlled rotation to be composed on top of it.
+            video_allow_rotate=true
+            video_rotation=1
+        else
+            video_allow_rotate=false
+            video_rotation=0
+            export PLUMOS_DRM_PANEL_ROTATION=3
+        fi
         # WonderSwan uses a 224x144 (14:9) display and changes geometry when
         # SELECT switches orientation. The global Pixel2 4:3 policy would
         # distort both layouts, so use RetroArch's core-provided aspect entry.

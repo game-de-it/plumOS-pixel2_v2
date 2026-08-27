@@ -5,11 +5,13 @@ ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 BUILD="$ROOT_DIR/scripts/build-retroarch.sh"
 CFG="$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 MENU_LAUNCHER="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"
+GAME_LAUNCHER="$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 APP_LAYER_VERIFY="$ROOT_DIR/scripts/verify-app-layer.sh"
 GL_MENU_PATCH="$ROOT_DIR/patches/retroarch/018-pixel2-gl-graphical-menu-rotation.patch"
 GL_FONT_PATCH="$ROOT_DIR/patches/retroarch/019-pixel2-gl-menu-font-coordinates.patch"
 GL_LAYOUT_PATCH="$ROOT_DIR/patches/retroarch/020-pixel2-gl-menu-logical-layout.patch"
 GL_FONT_POSITION_PATCH="$ROOT_DIR/patches/retroarch/021-pixel2-gl-menu-font-position.patch"
+GL_CUSTOM_MATRIX_PATCH="$ROOT_DIR/patches/retroarch/024-pixel2-gl-menu-custom-matrix-rotation.patch"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -51,12 +53,30 @@ if grep -Eq '^[[:space:]]*(menu_driver|user_language)[[:space:]]*=[[:space:]]*"'
         "$MENU_LAUNCHER"; then
     fail 'RetroArch menu launcher overrides persistent menu or language choice'
 fi
+if grep -Eq 'printf .*menu_driver[[:space:]]*=' "$GAME_LAUNCHER"; then
+    fail 'RetroArch game launcher overrides the persistent menu choice'
+fi
+for contract in \
+    'menu_driver=$(' \
+    'glui|ozone|xmb) graphical_menu=1' \
+    'if [ "$graphical_menu" = 1 ]' \
+    'PLUMOS_GL_MENU_ROTATION=display'; do
+    grep -Fq "$contract" "$GAME_LAUNCHER" ||
+        fail "RetroArch game menu selection contract is missing: $contract"
+done
 for contract in \
     'glui|ozone|xmb)' \
     'video_driver=gl' \
     'PLUMOS_GL_MENU_ROTATION=display'; do
     grep -Fq "$contract" "$MENU_LAUNCHER" ||
         fail "Graphical RetroArch menu launch contract is missing: $contract"
+done
+for contract in \
+    'Ozone, XMB and MaterialUI create private draw matrices' \
+    'if (gl2_menu_display_rotation())' \
+    'allow_rotate = true'; do
+    grep -Fq "$contract" "$GL_CUSTOM_MATRIX_PATCH" ||
+        fail "Graphical RetroArch custom-matrix rotation is missing: $contract"
 done
 for contract in \
     'gl2_menu_display_rotation' \

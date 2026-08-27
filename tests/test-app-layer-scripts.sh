@@ -32,6 +32,8 @@ for script in \
     bash -n "$ROOT_DIR/$script"
 done
 test -x "$ROOT_DIR/tests/test-retroarch-config-merge.sh"
+test -x "$ROOT_DIR/tests/test-pixel2-retroarch-game-menu-selection.sh"
+"$ROOT_DIR/tests/test-pixel2-retroarch-game-menu-selection.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-power-menu-sleep.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-volume-control.sh"
 "$ROOT_DIR/tests/test-pixel2-volume-control.sh"
