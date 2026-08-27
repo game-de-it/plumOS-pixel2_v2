@@ -16,7 +16,8 @@ printf 'PLUMOS_PORTMASTER_SESSION_ID=other-session\0' > "$work/proc/103/environ"
 
 cat > "$work/kill" <<'EOF'
 #!/bin/sh
-printf '%s %s\n' "$1" "$2" >> "$FAKE_KILL_LOG"
+printf '%s %s session=%s\n' "$1" "$2" "${PLUMOS_PORTMASTER_SESSION_ID-unset}" \
+  >> "$FAKE_KILL_LOG"
 rm -rf "$FAKE_PROC_ROOT/$2"
 EOF
 chmod 0755 "$work/kill"
@@ -30,8 +31,8 @@ PLUMOS_PORTMASTER_SLEEP_BIN=true \
 PLUMOS_PORTMASTER_SESSION_LOG="$work/session.log" \
   /bin/sh "$CLEANUP"
 
-grep -q '^-TERM 101$' "$work/kills.log"
-grep -q '^-TERM 102$' "$work/kills.log"
+grep -q '^-TERM 101 session=unset$' "$work/kills.log"
+grep -q '^-TERM 102 session=unset$' "$work/kills.log"
 ! grep -q '103' "$work/kills.log"
 test -d "$work/proc/103"
 grep -q 'result=clean' "$work/session.log"

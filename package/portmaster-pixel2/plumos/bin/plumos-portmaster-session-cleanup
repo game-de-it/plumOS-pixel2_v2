@@ -9,6 +9,12 @@ log_file="${PLUMOS_PORTMASTER_SESSION_LOG:-}"
 
 [ -n "$session_id" ] || exit 0
 
+# Keep the captured identity for matching existing port processes, but do not
+# propagate it to tr/grep/date/sleep/kill helpers started by this cleanup.  A
+# helper can otherwise appear in the next /proc pass and be reported as a
+# newly remaining port process.
+unset PLUMOS_PORTMASTER_SESSION_ID
+
 log_event() {
   [ -n "$log_file" ] || return 0
   printf '[%s] session-cleanup id=%s %s\n' \

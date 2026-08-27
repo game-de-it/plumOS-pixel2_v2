@@ -428,10 +428,11 @@
       representative acceptanceとしてhost gate・実機試験へ追加する
     - [x] 起動時間を増やさず、build/CI、PortMaster更新後、初回port起動時だけ監査し、
       package hashが同じportの結果を再利用する
-    - 2026-08-27: adapter 43でpure-Python ELF audit、SONAME単位のAvahi/nghttp2投影、
+    - 2026-08-27: adapter 44でpure-Python ELF audit、SONAME単位のAvahi/nghttp2投影、
       `execve`/`posix_spawn`境界の環境guard、session identityによる孤児process回収を
       共通化。runtime SONAME symlinkを実機監査対象に含め、license本文はcommand監査から
-      除外。Moonlight型とRockbox型のhost fixtureは合格。strict build、実機deploy、
+      除外。cleanup helperへsession IDを継承せず自己誤検出を防止。Moonlight型と
+      Rockbox型のhost fixtureは合格。strict build、実機deploy、
       画面・入力・音・終了後FE復帰を残す。
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
   - 2026-08-15: 実機backend監査でScraping plan、File Manager、Music Player、RetroArch RGUI、Pyxel Setup、PortMasterを合格。RetroArch Appのudev準備漏れ、FE stop/launch helper欠落、zombie誤認を`85fffad`で修正。Update PortMasterのnetwork installと7 AppsのFE物理選択は継続。
