@@ -35,7 +35,7 @@ DT_RUNPATH = 29
 DEFAULT_MACHINE = 183  # EM_AARCH64
 MAX_FILES = 20000
 MAX_TEXT_BYTES = 2 * 1024 * 1024
-AUDIT_POLICY_VERSION = 2
+AUDIT_POLICY_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -192,6 +192,10 @@ def collect_text(paths: Iterable[Path]) -> tuple[str, dict[str, str]]:
     corpus: list[str] = []
     texts: dict[str, str] = {}
     for path in paths:
+        lower_parts = {part.lower() for part in path.parts}
+        lower_name = path.name.lower()
+        if "licenses" in lower_parts or lower_name.startswith(("license", "copying")):
+            continue
         if path.suffix.lower() not in {".sh", ".txt", ".lua", ".py", ".json"}:
             continue
         try:

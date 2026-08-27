@@ -9,7 +9,7 @@ trap 'rm -rf "$work"' EXIT
 python3 -m py_compile "$AUDIT"
 mkdir -p "$work/port" "$work/libs" "$work/cache" \
   "$work/moonlightnew/moonlight" "$work/moon-libs" "$work/moon-runtime" \
-  "$work/rockbox/lib"
+  "$work/rockbox/lib" "$work/moonlightnew/licenses"
 cat > "$work/port/Test.sh" <<'EOF'
 #!/bin/bash
 GAMEDIR=/$directory/ports/port
@@ -102,6 +102,8 @@ EOF
 cp "$work/port/fixture" "$work/rockbox/rockbox"
 cp "$work/libs/libmissing.so.9" "$work/rockbox/lib/libmissing.so.9"
 chmod 0755 "$work/Moonlight New.sh" "$work/Rockbox.sh" "$work/rockbox/rockbox"
+printf 'This license describes a system service.\n' \
+  > "$work/moonlightnew/licenses/LICENSE.fixture.txt"
 
 python3 "$AUDIT" \
   --script "$work/port/Test.sh" \
