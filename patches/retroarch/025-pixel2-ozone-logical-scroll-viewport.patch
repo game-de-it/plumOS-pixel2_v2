@@ -1,0 +1,102 @@
+diff --git a/menu/drivers/ozone.c b/menu/drivers/ozone.c
+--- a/menu/drivers/ozone.c
++++ b/menu/drivers/ozone.c
+@@ -4569,6 +4569,35 @@ static void ozone_list_deep_copy(const file_list_t *src,
+    dst->size = j;
+ }
+ 
++static void ozone_get_layout_size(unsigned *width, unsigned *height)
++{
++   unsigned layout_width  = 0;
++   unsigned layout_height = 0;
++   const char *rotation   = getenv("PLUMOS_GL_MENU_ROTATION");
++
++   video_driver_get_size(&layout_width, &layout_height);
++
++   /* Pixel2's GL driver scans out to a native portrait surface, while Ozone
++    * is rendered as logical landscape. The frame callback already receives
++    * the swapped dimensions, but navigation and clipping query the video
++    * driver directly. Keep those off-frame calculations in the same logical
++    * coordinate system so scrolling never moves the selected row outside the
++    * visible menu viewport. */
++   if (   rotation
++       && string_is_equal(rotation, "display")
++       && (layout_height > layout_width))
++   {
++      unsigned tmp  = layout_width;
++      layout_width  = layout_height;
++      layout_height = tmp;
++   }
++
++   if (width)
++      *width = layout_width;
++   if (height)
++      *height = layout_height;
++}
++
+ static void ozone_list_cache(void *data,
+       enum menu_list_type type, unsigned action)
+ {
+@@ -4599,7 +4628,7 @@ static void ozone_list_cache(void *data,
+       ozone->flags           &= ~OZONE_FLAG_IS_PLAYLIST_OLD;
+ 
+    /* Deep copy visible elements */
+-   video_driver_get_size(NULL, &video_info_height);
++   ozone_get_layout_size(NULL, &video_info_height);
+    y                          = ozone->dimensions.header_height + ozone->dimensions.entry_padding_vertical;
+    entries_end                = MENU_LIST_GET_SELECTION(menu_list, 0)->size;
+    selection_buf              = MENU_LIST_GET_SELECTION(menu_list, 0);
+@@ -4714,7 +4743,7 @@ static void ozone_sidebar_goto(ozone_handle_t *ozone, size_t new_selection)
+    struct menu_state *menu_st = menu_state_get_ptr();
+    menu_input_t *menu_input   = &menu_st->input_state;
+ 
+-   video_driver_get_size(NULL, &video_info_height);
++   ozone_get_layout_size(NULL, &video_info_height);
+ 
+    if (ozone->categories_selection_ptr != new_selection)
+    {
+@@ -5475,7 +5504,7 @@ static void ozone_update_scroll(ozone_handle_t *ozone,
+    file_list_t *selection_buf = MENU_LIST_GET_SELECTION(menu_list, 0);
+    uintptr_t tag              = (uintptr_t)selection_buf;
+ 
+-   video_driver_get_size(NULL, &video_info_height);
++   ozone_get_layout_size(NULL, &video_info_height);
+ 
+    if (!node)
+       return;
+@@ -5589,7 +5618,7 @@ static void ozone_compute_entries_position(ozone_handle_t *ozone,
+    if (!selection_buf->size)
+       return;
+ 
+-   video_driver_get_size(&video_info_width, &video_info_height);
++   ozone_get_layout_size(&video_info_width, &video_info_height);
+ 
+    if (menu_show_sublabels)
+       sublabel_max_width         = ozone_get_sublabel_max_width(ozone, video_info_width, entry_padding);
+@@ -5716,7 +5745,7 @@ static void ozone_draw_entries(
+    float invert                      = (ozone->flags & OZONE_FLAG_FADE_DIRECTION) ? -1 : 1;
+    float alpha_anim                  = old_list ? alpha : 1.0f - alpha;
+ 
+-   video_driver_get_size(&video_info_width, &video_info_height);
++   ozone_get_layout_size(&video_info_width, &video_info_height);
+ 
+    bottom_boundary                   = video_info_height
+          - ozone->dimensions.header_height
+@@ -9099,7 +9128,7 @@ static void *ozone_init(void **userdata, bool video_is_threaded)
+    for (i = 0; i < 15; i++)
+       ozone->pure_white[i]                      = 1.00f;
+ 
+-   video_driver_get_size(&width, &height);
++   ozone_get_layout_size(&width, &height);
+ 
+    ozone->last_width                            = width;
+    ozone->last_height                           = height;
+@@ -13115,7 +13144,7 @@ static int ozone_pointer_up(void *userdata,
+       return 0;
+    }
+ 
+-   video_driver_get_size(&width, &height);
++   ozone_get_layout_size(&width, &height);
+ 
+    switch (gesture)
+    {

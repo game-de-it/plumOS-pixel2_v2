@@ -12,6 +12,7 @@ GL_FONT_PATCH="$ROOT_DIR/patches/retroarch/019-pixel2-gl-menu-font-coordinates.p
 GL_LAYOUT_PATCH="$ROOT_DIR/patches/retroarch/020-pixel2-gl-menu-logical-layout.patch"
 GL_FONT_POSITION_PATCH="$ROOT_DIR/patches/retroarch/021-pixel2-gl-menu-font-position.patch"
 GL_CUSTOM_MATRIX_PATCH="$ROOT_DIR/patches/retroarch/024-pixel2-gl-menu-custom-matrix-rotation.patch"
+OZONE_SCROLL_PATCH="$ROOT_DIR/patches/retroarch/025-pixel2-ozone-logical-scroll-viewport.patch"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -78,6 +79,17 @@ for contract in \
     grep -Fq "$contract" "$GL_CUSTOM_MATRIX_PATCH" ||
         fail "Graphical RetroArch custom-matrix rotation is missing: $contract"
 done
+for contract in \
+    'static void ozone_get_layout_size' \
+    'navigation and clipping query the video' \
+    'ozone_get_layout_size(NULL, &video_info_height)' \
+    'ozone_get_layout_size(&video_info_width, &video_info_height)' \
+    'ozone_get_layout_size(&width, &height)'; do
+    grep -Fq "$contract" "$OZONE_SCROLL_PATCH" ||
+        fail "Ozone logical scroll viewport is missing: $contract"
+done
+[ "$(grep -c '^+.*ozone_get_layout_size(' "$OZONE_SCROLL_PATCH")" -eq 8 ] ||
+    fail 'Ozone logical size helper is not used by all seven off-frame paths'
 for contract in \
     'gl2_menu_display_rotation' \
     'gl2_rotate_menu_rect' \
