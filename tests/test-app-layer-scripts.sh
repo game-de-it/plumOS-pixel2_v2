@@ -599,6 +599,8 @@ grep -q 'PLUMOS_GL_LOGICAL_SIZE_ENV' \
     "$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 grep -q 'PLUMOS_GL_ROTATION_ENV' \
     "$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
+grep -q 'LOAD_NEXT(sdl_gl_get_proc_address, "SDL_GL_GetProcAddress")' \
+    "$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 grep -q '^Gpu3 = builtin_gpu$' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/factory-defaults/standalone/pcsx_rearmed/pcsx.cfg"
 grep -q 'logical=640x480 ccw' \

@@ -96,6 +96,15 @@ grep -q 'PLUMOS_PORTMASTER_SESSION_ID' "$PORT_LAUNCH"
 grep -q 'current_start=.*proc.*stat' "$PORT_LAUNCH"
 grep -q 'SDL_GL_GetDrawableSize' "$GL_ROTATE_SOURCE"
 grep -q 'SDL_GL_SwapWindow' "$GL_ROTATE_SOURCE"
+python3 - "$GL_ROTATE_SOURCE" <<'PY'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1]).read_text()
+load_gl = source.split("static int load_gl(void) {", 1)[1].split("\n}", 1)[0]
+assert load_gl.index('LOAD_NEXT(sdl_gl_get_proc_address, "SDL_GL_GetProcAddress")') \
+    < load_gl.index('LOAD_GL(gl_bind_framebuffer, "glBindFramebuffer")')
+PY
 grep -q 'glBindFramebuffer' "$GL_ROTATE_SOURCE"
 grep -q 'GL_DEPTH24_STENCIL8' "$GL_ROTATE_SOURCE"
 grep -q 'GL_STENCIL_ATTACHMENT' "$GL_ROTATE_SOURCE"

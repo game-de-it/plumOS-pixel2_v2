@@ -204,6 +204,13 @@ static void reset_context_state(SDL_GLContext context) {
 }
 
 static int load_gl(void) {
+    /*
+     * Some SDL/OpenGL clients resolve their GL entry points without calling
+     * our SDL_GL_GetProcAddress wrapper first. Resolve the real SDL helper
+     * here as well so the first framebuffer bind/swap can initialise the
+     * presenter regardless of the client's symbol lookup order.
+     */
+    LOAD_NEXT(sdl_gl_get_proc_address, "SDL_GL_GetProcAddress");
     LOAD_GL(gl_bind_framebuffer, "glBindFramebuffer");
     LOAD_GL(gl_get_integerv, "glGetIntegerv");
     LOAD_GL(gl_get_floatv, "glGetFloatv");
