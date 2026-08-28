@@ -81,7 +81,39 @@ ALSA playbackは進行し、`pixel2_joypad` profile選択とFUNCTION helperに�
 `ec89fe5ab5760b94b822b41dc2889afc280a138fe1cb43811e1346b539850be9`を保持し、
 最後のRuntime全検証にも合格しました。
 
-## 残るoperator acceptance
+## SRAM永続化の実機修正
 
-物理十字キー・各button、実際の音質、FUNCTION終了、FE導線からの2回目起動はoperator
-確認として残します。N64既定profileは引き続き`retroarch:parallel_n64`です。
+風来のシレン2（ROM ID `NSI`、SRAM 32 KiB）で、ゲーム内セーブ後にFUNCTIONから
+正常終了して再起動すると「セーブデータは消えてしまいました」と表示される問題を
+実機再現しました。save path、終了signal、save typeの誤りではなく、Mupen64Plus 2.6.0
+coreがlittle-endian上でSRAM byteへ`^ 3`を適用する一方、部分書き込み時には元の
+unaligned範囲だけをfileへ保存していたことが原因です。DMAが4 byte境界をまたぐと、
+更新された直前・直後のbyteが永続化範囲から漏れ、ゲーム側checksumが不正になって
+いました。
+
+`eb5499a`でSRAMのfile保存範囲を実際に変更される4 byte word境界まで拡張し、
+`0.1.2-dev-eb5499a`の署名Runtime差分を標準updaterで実機へ適用しました。
+package SHA-256は
+`3196473a3d22426ef44739c15c8733ca4701d36944b25d7103fa9c285490a7cf`、
+適用後core SHA-256は
+`54c80de1d8da42a3719bb3454726a5cd0755d23f52771b9b7b262ef455367d6b`です。
+
+破損済みSRAMは削除せずdiagnostics配下へ退避し、空のSRAMから次の手順を実施しました。
+
+1. operatorがゲーム内で新規セーブする。
+2. SRAMをhostへ回収し、SHA-256
+   `e45c0c9003e1a32696cffb70a99a590e03c1b3ca62053362958b5013dde341dd`を記録する。
+3. FUNCTION helperと同じSIGTERMで正常終了する。
+4. 終了後と再起動後のSRAMが同一SHA-256であることを確認する。
+5. operatorがセーブデータを読み込み、続きから開始できることを確認する。
+
+再開後の正常終了では進行に伴ってSRAMが更新され、SHA-256は
+`9539838739d1df43b135968c148105232f1fb171ee82036ff1c3915dee4a4598`となりました。
+これは消去ではなく、読み込んだセーブでプレイを継続した後の正規更新です。終了後は
+FEへ復帰しました。
+
+## 最終operator acceptance
+
+物理操作、正方向・4:3表示、FUNCTION終了、FE復帰、2回目起動、ゲーム内SRAMの
+保存・読込・続きからの開始を実機で確認しました。音声経路はALSA playback進行を
+機械確認済みです。N64既定profileは引き続き`retroarch:parallel_n64`です。
