@@ -26,7 +26,7 @@ initramfs、選択module・firmwareはhardware互換substrateです。vendor由�
 | RetroArch | <https://github.com/libretro/RetroArch> | source treeの`COPYING`、component manifest |
 | libretro core | `docker/pixel2-tools/libretro-core-recipes.tsv`の固定repo/ref | upstream license-bearing file、core manifest |
 | PicoArch・SDL互換layer | <https://github.com/shauninman/picoarch>とSDL互換project | PicoArch・SDL license text |
-| SA | PCSX-ReARMed、steward-fu/nds + DraStic、PPSSPP、OpenBOR | upstream notice/license、固定ref/hash、SA manifest |
+| SA | PCSX-ReARMed、steward-fu/nds + DraStic、PPSSPP、OpenBOR、Mupen64Plus | upstream notice/license、固定ref/hash、SA manifest |
 | PICO-8 | 利用者提供proprietary runtime | PICO-8 binaryとgame dataはreleaseへ含めない |
 | Pyxel/Python | CPython、Pyxel、pygame、NumPy、Pillowなど | Python license、package metadata内license |
 | PortMaster | <https://github.com/PortsMaster/PortMaster-GUI>と互換library | upstream `PortMaster/licenses`、個別notice |

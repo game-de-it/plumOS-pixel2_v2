@@ -48,6 +48,20 @@ PPSSPP_COMMIT="${PLUMOS_PIXEL2_PPSSPP_COMMIT:-fa50bb1976065c4f8b1b47af227d367fe9
 PPSSPP_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-no-sdl2-ttf.patch"
 PPSSPP_DISPLAY_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-display-rotation.patch"
 PPSSPP_CONTROLLER_PATCH="$PATCH_DIR/ppsspp/ppsspp-1.20.4-pixel2-controller.patch"
+MUPEN64PLUS_UI_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_UI_REPO:-https://github.com/mupen64plus/mupen64plus-ui-console.git}"
+MUPEN64PLUS_UI_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_UI_REF:-1a68327fddda71f1acbad8a63ef04288b1887d19}"
+MUPEN64PLUS_CORE_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_CORE_REPO:-https://github.com/mupen64plus/mupen64plus-core.git}"
+MUPEN64PLUS_CORE_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_CORE_REF:-b0d68c20f49b8f833afa21450e0e8874c87c13c4}"
+MUPEN64PLUS_AUDIO_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_AUDIO_REPO:-https://github.com/mupen64plus/mupen64plus-audio-sdl.git}"
+MUPEN64PLUS_AUDIO_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_AUDIO_REF:-6c2c3f8ae10b7f0f6dfe06f45ca7ca598a6b659a}"
+MUPEN64PLUS_INPUT_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_INPUT_REPO:-https://github.com/mupen64plus/mupen64plus-input-sdl.git}"
+MUPEN64PLUS_INPUT_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_INPUT_REF:-f2ca3839415d45a547f79d21177dfe15a0ce6d8c}"
+MUPEN64PLUS_RSP_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_RSP_REPO:-https://github.com/mupen64plus/mupen64plus-rsp-hle.git}"
+MUPEN64PLUS_RSP_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_RSP_REF:-2798e65d6fc89d89aace0b0d779af6406809b940}"
+MUPEN64PLUS_VIDEO_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_VIDEO_REPO:-https://github.com/mupen64plus/mupen64plus-video-rice.git}"
+MUPEN64PLUS_VIDEO_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_VIDEO_REF:-fcf00779f08a9503ef30d26422f6b0350684820d}"
+MUPEN64PLUS_HOTKEY_SOURCE="$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
+MUPEN64PLUS_GL_ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 PICO8_SDL_ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_sdl_rotate.c"
 PICO8_DOWNLOAD_SHIM_SOURCE="$ROOT_DIR/package/standalone-pixel2/src/pico8-download-shim.c"
 COMMON_CFLAGS="${PLUMOS_PIXEL2_STANDALONE_CFLAGS:--O2 -pipe -march=armv8-a+crc -mtune=cortex-a35 -fomit-frame-pointer -fcommon}"
@@ -768,6 +782,193 @@ build_ppsspp() {
 EOF
 }
 
+build_mupen64plus() {
+  selected mupen64plus || return 0
+  for command in cc file git make readelf sha256sum; do
+    require_command "$command"
+  done
+  for input in "$MUPEN64PLUS_HOTKEY_SOURCE" "$MUPEN64PLUS_GL_ROTATE_SOURCE"; do
+    [ -s "$input" ] || {
+      printf 'error: Mupen64Plus Pixel2 integration source is missing: %s\n' \
+        "$input" >&2
+      return 1
+    }
+  done
+
+  M64_LOG="$LOG_DIR/mupen64plus.log"
+  M64_DST="$PLUMOS_DIR/standalone/mupen64plus"
+  M64_STAGE="$BUILD_ROOT/mupen64plus-stage"
+  M64_PREFIX=/mnt/plumos/standalone/mupen64plus
+  mkdir -p "$LOG_DIR" "$PLUMOS_DIR/licenses"
+  : >"$M64_LOG"
+
+  M64_UI_SRC=$(clone_checkout mupen64plus-ui-console \
+    "$MUPEN64PLUS_UI_REPO" "$MUPEN64PLUS_UI_REF") || return 1
+  M64_CORE_SRC=$(clone_checkout mupen64plus-core \
+    "$MUPEN64PLUS_CORE_REPO" "$MUPEN64PLUS_CORE_REF") || return 1
+  M64_AUDIO_SRC=$(clone_checkout mupen64plus-audio-sdl \
+    "$MUPEN64PLUS_AUDIO_REPO" "$MUPEN64PLUS_AUDIO_REF") || return 1
+  M64_INPUT_SRC=$(clone_checkout mupen64plus-input-sdl \
+    "$MUPEN64PLUS_INPUT_REPO" "$MUPEN64PLUS_INPUT_REF") || return 1
+  M64_RSP_SRC=$(clone_checkout mupen64plus-rsp-hle \
+    "$MUPEN64PLUS_RSP_REPO" "$MUPEN64PLUS_RSP_REF") || return 1
+  M64_VIDEO_SRC=$(clone_checkout mupen64plus-video-rice \
+    "$MUPEN64PLUS_VIDEO_REPO" "$MUPEN64PLUS_VIDEO_REF") || return 1
+  M64_API="$M64_CORE_SRC/src/api"
+
+  rm -rf "$M64_STAGE" "$M64_DST"
+  mkdir -p "$M64_STAGE" "$M64_DST"
+  make -C "$M64_CORE_SRC/projects/unix" clean >/dev/null 2>&1 || true
+  env CFLAGS="$COMMON_CFLAGS" CXXFLAGS="$COMMON_CFLAGS" \
+    make -C "$M64_CORE_SRC/projects/unix" -j"$JOBS" \
+      HOST_CPU=aarch64 PIC=1 USE_GLES=1 VULKAN=0 \
+      PREFIX="$M64_PREFIX" >>"$M64_LOG" 2>&1 || return 1
+  make -C "$M64_CORE_SRC/projects/unix" install \
+    HOST_CPU=aarch64 PIC=1 USE_GLES=1 VULKAN=0 \
+    PREFIX="$M64_PREFIX" DESTDIR="$M64_STAGE" \
+    >>"$M64_LOG" 2>&1 || return 1
+
+  # The four plugins are independent after the core API has been built. Build
+  # them concurrently, then install serially into the shared staging prefix.
+  M64_PLUGIN_PIDS=""
+  for component in audio input rsp video; do
+    eval "component_src=\$M64_${component^^}_SRC"
+    component_log="$LOG_DIR/mupen64plus-${component}.log"
+    : >"$component_log"
+    (
+      make -C "$component_src/projects/unix" clean >/dev/null 2>&1 || true
+      env CFLAGS="$COMMON_CFLAGS" CXXFLAGS="$COMMON_CFLAGS" \
+        make -C "$component_src/projects/unix" -j"$JOBS" \
+          HOST_CPU=aarch64 PIC=1 USE_GLES=1 APIDIR="$M64_API" \
+          PREFIX="$M64_PREFIX"
+    ) >>"$component_log" 2>&1 &
+    M64_PLUGIN_PIDS="$M64_PLUGIN_PIDS $!"
+  done
+  for plugin_pid in $M64_PLUGIN_PIDS; do
+    wait "$plugin_pid" || return 1
+  done
+  for component in audio input rsp video; do
+    eval "component_src=\$M64_${component^^}_SRC"
+    make -C "$component_src/projects/unix" install \
+      HOST_CPU=aarch64 PIC=1 USE_GLES=1 APIDIR="$M64_API" \
+      PREFIX="$M64_PREFIX" DESTDIR="$M64_STAGE" \
+      >>"$M64_LOG" 2>&1 || return 1
+  done
+
+  make -C "$M64_UI_SRC/projects/unix" clean >/dev/null 2>&1 || true
+  env CFLAGS="$COMMON_CFLAGS" CXXFLAGS="$COMMON_CFLAGS" \
+    make -C "$M64_UI_SRC/projects/unix" -j"$JOBS" \
+      HOST_CPU=aarch64 PIC=1 APIDIR="$M64_API" PREFIX="$M64_PREFIX" \
+      COREDIR="$M64_PREFIX/lib/" \
+      PLUGINDIR="$M64_PREFIX/lib/mupen64plus" \
+      SHAREDIR="$M64_PREFIX/share/mupen64plus" \
+      >>"$M64_LOG" 2>&1 || return 1
+  make -C "$M64_UI_SRC/projects/unix" install \
+    HOST_CPU=aarch64 PIC=1 APIDIR="$M64_API" PREFIX="$M64_PREFIX" \
+    COREDIR="$M64_PREFIX/lib/" \
+    PLUGINDIR="$M64_PREFIX/lib/mupen64plus" \
+    SHAREDIR="$M64_PREFIX/share/mupen64plus" DESTDIR="$M64_STAGE" \
+    >>"$M64_LOG" 2>&1 || return 1
+
+  rsync -a "$M64_STAGE$M64_PREFIX/" "$M64_DST/"
+  cc -O2 -pipe -Wall -Wextra -Werror "$MUPEN64PLUS_HOTKEY_SOURCE" \
+    -o "$M64_DST/bin/plumos-mupen64plus-hotkey"
+  cc -O2 -fPIC -Wall -Wextra -Werror -shared -I/usr/include/SDL2 \
+    -DPLUMOS_GL_ROTATION_ENV='"PLUMOS_MUPEN64PLUS_GL_ROTATION"' \
+    -DPLUMOS_GL_ROTATION_LABEL='"Mupen64Plus"' \
+    -DPLUMOS_GL_LOGICAL_SIZE_ENV='"PLUMOS_MUPEN64PLUS_LOGICAL_SIZE"' \
+    -Wl,-z,defs -Wl,-soname,libplumos-mupen64plus-gl-rotate.so \
+    -o "$M64_DST/lib/libplumos-mupen64plus-gl-rotate.so" \
+    "$MUPEN64PLUS_GL_ROTATE_SOURCE" -ldl
+
+  M64_INPUT_CFG="$M64_DST/share/mupen64plus/InputAutoCfg.ini"
+  grep -Fqx '[pixel2_joypad]' "$M64_INPUT_CFG" || cat >>"$M64_INPUT_CFG" <<'EOF'
+
+; plumOS Pixel2 built-in controls
+[pixel2_joypad]
+plugged = True
+mouse = False
+AnalogDeadzone = 0,0
+AnalogPeak = 32768,32768
+DPad R = button(13)
+DPad L = button(12)
+DPad D = button(11)
+DPad U = button(10)
+Start = button(9)
+Z Trig = button(8)
+B Button = button(0)
+A Button = button(1)
+C Button R = button(7)
+C Button L = button(6)
+C Button D = button(2)
+C Button U = button(3)
+R Trig = button(5)
+L Trig = button(4)
+Mempak switch =
+Rumblepak switch =
+X Axis = axis(0-,0+)
+Y Axis = axis(1-,1+)
+EOF
+
+  # Mupen installs ABI symlinks. App-layer payloads must not retain absolute
+  # links into the build prefix, so materialize each link before checksumming.
+  while IFS= read -r link; do
+    target=$(readlink -f "$link") || return 1
+    temporary="${link}.real.$$"
+    cp -a "$target" "$temporary"
+    rm -f "$link"
+    mv "$temporary" "$link"
+  done < <(find "$M64_DST" -type l)
+
+  for pair in \
+    "ui-console:$M64_UI_SRC" \
+    "core:$M64_CORE_SRC" \
+    "audio-sdl:$M64_AUDIO_SRC" \
+    "input-sdl:$M64_INPUT_SRC" \
+    "rsp-hle:$M64_RSP_SRC" \
+    "video-rice:$M64_VIDEO_SRC"; do
+    license_id=${pair%%:*}
+    license_src=${pair#*:}
+    install -m 0644 "$license_src/LICENSES" \
+      "$PLUMOS_DIR/licenses/mupen64plus-${license_id}-LICENSES.txt"
+  done
+  while IFS= read -r elf; do
+    file "$elf" | grep -q 'ELF 64-bit.*ARM aarch64' || continue
+    "$STRIP" "$elf" >/dev/null 2>&1 || true
+    copy_runtime_deps "$elf"
+  done < <(find "$M64_DST" -type f \
+    \( -perm -111 -o -name '*.so' -o -name '*.so.*' \))
+
+  M64_BINARY="$M64_DST/bin/mupen64plus"
+  [ -x "$M64_BINARY" ] || return 1
+  file "$M64_BINARY" | grep -q 'ELF 64-bit.*ARM aarch64' || return 1
+  for plugin in audio-sdl input-sdl rsp-hle video-rice; do
+    test -f "$M64_DST/lib/mupen64plus/mupen64plus-${plugin}.so" || return 1
+  done
+  cat >"$M64_DST/build-manifest.json" <<EOF
+{
+  "device": "pixel2",
+  "version": "$VERSION",
+  "project_source_ref": "$PROJECT_SOURCE_REF",
+  "source_date_epoch": $SOURCE_EPOCH,
+  "upstream_version": "2.6.0",
+  "commits": {
+    "ui_console": "$MUPEN64PLUS_UI_REF",
+    "core": "$MUPEN64PLUS_CORE_REF",
+    "audio_sdl": "$MUPEN64PLUS_AUDIO_REF",
+    "input_sdl": "$MUPEN64PLUS_INPUT_REF",
+    "rsp_hle": "$MUPEN64PLUS_RSP_REF",
+    "video_rice": "$MUPEN64PLUS_VIDEO_REF"
+  },
+  "binary_sha256": "$(sha256_file "$M64_BINARY")",
+  "renderer": "rice-gles2-pixel2-final-present-ccw",
+  "display": "640x480-logical-on-480x640-physical",
+  "audio": "sdl2-alsa-plumos-output",
+  "input": "pixel2_joypad-sdl2-function-exit"
+}
+EOF
+}
+
 rm -rf "$OUT_ROOT"
 mkdir -p "$PLUMOS_DIR" "$COMPONENT_DIR" "$PLUMOS_DIR/licenses" \
   "$PLUMOS_DIR/config/standalone" "$PLUMOS_DIR/standalone" \
@@ -783,6 +984,7 @@ PCSX_STATUS=pending-binary
 DRASTIC_STATUS=pending-binary
 PPSSPP_STATUS=pending-binary
 PICO8_STATUS=pending-adapter
+MUPEN64PLUS_STATUS=pending-binary
 if selected openbor; then
   build_openbor
   OPENBOR_STATUS=built
@@ -802,6 +1004,10 @@ fi
 if selected pico8; then
   build_pico8_adapter
   PICO8_STATUS=built
+fi
+if selected mupen64plus; then
+  build_mupen64plus
+  MUPEN64PLUS_STATUS=built
 fi
 
 cat > "$COMPONENT_DIR/manifest.json" <<EOF
@@ -831,6 +1037,9 @@ cat >> "$COMPONENT_DIR/manifest.json" <<EOF
 EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<EOF
     {"id": "pico8", "status": "$PICO8_STATUS", "runtime": "user:roms/pico-8/aarch64", "binary_policy": "external-proprietary"},
+EOF
+cat >> "$COMPONENT_DIR/manifest.json" <<EOF
+    {"id": "mupen64plus", "status": "$MUPEN64PLUS_STATUS"},
 EOF
 cat >> "$COMPONENT_DIR/manifest.json" <<'EOF'
     {"id": "scummvm", "status": "libretro-route", "standalone_policy": "deferred"},

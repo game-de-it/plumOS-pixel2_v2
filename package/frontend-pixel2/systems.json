@@ -1081,7 +1081,8 @@
         ]
       },
       "launch_profiles": [
-        "retroarch:parallel_n64"
+        "retroarch:parallel_n64",
+        "standalone:mupen64plus"
       ],
       "default_launch_profile": "retroarch:parallel_n64",
       "default_cpu_policy": "ondemand",

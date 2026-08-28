@@ -135,15 +135,21 @@ for system_id in ("gb", "gbc", "gba"):
     assert "retroarch:mgba" in system["launch_profiles"]
     assert "retroarch:mgba_modern" in system["launch_profiles"]
 n64 = next(item for item in systems if item["id"] == "n64")
-assert n64["launch_profiles"] == ["retroarch:parallel_n64"]
+assert n64["launch_profiles"] == [
+    "retroarch:parallel_n64",
+    "standalone:mupen64plus",
+]
+assert n64["default_launch_profile"] == "retroarch:parallel_n64"
 pico8 = next(item for item in systems if item["id"] == "pico8")
 assert pico8["launch_profiles"][0] == "standalone:pico8"
 assert pico8["default_launch_profile"] == "standalone:pico8"
 assert "pico8" in {entry["name"] for entry in pico8["directory_aliases"]}
 standalone_build = (root / "scripts/build-standalone-pixel2.sh").read_text()
 standalone_launch = (root / "package/standalone-pixel2/plumos/bin/plumos-standalone-launch").read_text()
-assert '"id": "mupen64plus"' not in standalone_build
-assert "mupen64plus)" not in standalone_launch
+assert '"id": "mupen64plus"' in standalone_build
+assert "mupen64plus)" in standalone_launch
+assert "PLUMOS_MUPEN64PLUS_GL_ROTATION=270" in standalone_launch
+assert "mupen64plus-video-rice.so" in standalone_launch
 PY
 grep -q 'strcmp(core_id, "easyrpg") == 0 && directory_exists(plan->rom_path)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_text_ui.c"
@@ -557,6 +563,18 @@ grep -q 'PLUMOS_PICO8_PIXEL_PERFECT:-0' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 grep -q 'binary_policy.*external-proprietary' \
     "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
+grep -q 'MUPEN64PLUS_UI_REF=.*1a68327fddda71f1acbad8a63ef04288b1887d19' \
+    "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
+grep -q 'MUPEN64PLUS_CORE_REF=.*b0d68c20f49b8f833afa21450e0e8874c87c13c4' \
+    "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
+grep -q 'MUPEN64PLUS_VIDEO_REF=.*fcf00779f08a9503ef30d26422f6b0350684820d' \
+    "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
+grep -q 'pixel2_joypad' \
+    "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
+grep -q 'BTN_TRIGGER_HAPPY1' \
+    "$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
+grep -q 'PLUMOS_MUPEN64PLUS_LOGICAL_SIZE=640x480' \
+    "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"
 grep -q 'PLUMOS_PIXEL2_PYTHON_EXTRA_LIBRARY_PATH' \
     "$ROOT_DIR/package/pyxel-pixel2/plumos/bin/plumos-pyxel-pixel2-launch"
 grep -q 'PLUMOS_PYXEL_GL_ROTATION.*270' \

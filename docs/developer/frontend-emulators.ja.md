@@ -55,8 +55,11 @@ system既定値は変更しません。バッテリーセーブは共有し、�
 ステートセーブだけを専用directoryへ分離するため、同じROMで安全に性能比較できます。
 
 RK3326性能方針によりSaturnは`unsupported_performance_rk3326`としてbuild・表示しません。
-Mupen64Plus-Nextもstock kernel上の各renderer/interpreterでsegfaultしたため採用せず、N64は
-実機確認済み`retroarch:parallel_n64`を使用します。
+Mupen64Plus-Nextもstock kernel上の各renderer/interpreterでsegfaultしたためlibretro版には
+採用しません。N64の既定は実機確認済み`retroarch:parallel_n64`のまま維持し、追加選択肢として
+`standalone:mupen64plus`を提供します。standalone版はupstream 2.6.0の6 componentを固定し、
+Rice GLES2、`pixel2_joypad`、logical 640x480からnative 480x640への最終回転、FUNCTION終了を
+Pixel2契約として実装します。
 
 ### 画面とaspect
 

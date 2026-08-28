@@ -52,6 +52,12 @@ for path in \
     licenses/drastic-upstream-release-readme.txt \
     licenses/ppsspp-LICENSE.txt \
     licenses/openbor-LICENSE.txt \
+    licenses/mupen64plus-ui-console-LICENSES.txt \
+    licenses/mupen64plus-core-LICENSES.txt \
+    licenses/mupen64plus-audio-sdl-LICENSES.txt \
+    licenses/mupen64plus-input-sdl-LICENSES.txt \
+    licenses/mupen64plus-rsp-hle-LICENSES.txt \
+    licenses/mupen64plus-video-rice-LICENSES.txt \
     licenses/plumos-audio-router-MIT.txt; do
     require_file "$app_layer" "$path"
 done

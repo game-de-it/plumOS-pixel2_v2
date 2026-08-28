@@ -14,6 +14,7 @@ depends on the folders and compatible content present under `roms/`.
 | DraStic | Nintendo DS standalone emulator |
 | PPSSPP | PSP standalone emulator |
 | PCSX-ReARMed | PlayStation standalone option |
+| Mupen64Plus | Nintendo 64 standalone option |
 | OpenBOR | OpenBOR game packages |
 | PICO-8 | User-supplied official ARM64 runtime and cartridges |
 | Pyxel | `.pyxapp` games and the bundled Pyxel environment |
@@ -35,6 +36,11 @@ Color Correction and Interframe Blending options. Defaults remain unchanged so
 the newer core cannot silently change performance. Battery saves are shared,
 but mGBA Modern keeps savestates separate because states are not guaranteed to
 be compatible between core versions.
+
+Nintendo 64 keeps `RA: parallel_n64` as the release-proven default. Select
+`SA: mupen64plus` in Core Settings to try the standalone Rice GLES2 route for
+a game that benefits from different compatibility. FUNCTION exits this
+standalone runtime and returns to the frontend.
 
 FUNCTION opens an emulator menu where that runtime supports it. RetroArch uses
 START + SELECT for its normal exit path. Save and hotkey details are in

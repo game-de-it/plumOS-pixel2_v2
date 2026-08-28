@@ -277,6 +277,29 @@ if jq -e '.emulators[] | select(.id == "pcsx_rearmed" and .status == "built")' \
     grep -q '"renderer": "builtin-neon-threaded-pixel2-fbdev-ccw"' \
         "$ROOT/standalone/pcsx_rearmed/build-manifest.json"
 fi
+if jq -e '.emulators[] | select(.id == "mupen64plus" and .status == "built")' \
+    "$ROOT/components/standalone/manifest.json" >/dev/null; then
+    for path in \
+        standalone/mupen64plus/bin/mupen64plus \
+        standalone/mupen64plus/bin/plumos-mupen64plus-hotkey \
+        standalone/mupen64plus/lib/libmupen64plus.so.2 \
+        standalone/mupen64plus/lib/libplumos-mupen64plus-gl-rotate.so \
+        standalone/mupen64plus/lib/mupen64plus/mupen64plus-audio-sdl.so \
+        standalone/mupen64plus/lib/mupen64plus/mupen64plus-input-sdl.so \
+        standalone/mupen64plus/lib/mupen64plus/mupen64plus-rsp-hle.so \
+        standalone/mupen64plus/lib/mupen64plus/mupen64plus-video-rice.so \
+        standalone/mupen64plus/share/mupen64plus/InputAutoCfg.ini \
+        standalone/mupen64plus/build-manifest.json; do
+        [ -f "$ROOT/$path" ] || {
+            printf 'error: built Mupen64Plus file missing: %s\n' "$path" >&2
+            exit 1
+        }
+    done
+    grep -Fq '[pixel2_joypad]' \
+        "$ROOT/standalone/mupen64plus/share/mupen64plus/InputAutoCfg.ini"
+    grep -q 'rice-gles2-pixel2-final-present-ccw' \
+        "$ROOT/standalone/mupen64plus/build-manifest.json"
+fi
 python3 - "$ROOT/config/frontend/systems.json" <<'PY'
 import json
 import sys

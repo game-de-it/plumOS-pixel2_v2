@@ -29,7 +29,7 @@ and includes `pixel2-stock-vendor-runtime-NOTICE.txt`.
 | RetroArch | <https://github.com/libretro/RetroArch> | Exact source-tree `COPYING` and component manifest |
 | libretro cores | Immutable repositories/refs in `docker/pixel2-tools/libretro-core-recipes.tsv` | Collected upstream license-bearing files and core manifest |
 | PicoArch and SDL compatibility | <https://github.com/shauninman/picoarch> and SDL compatibility projects | PicoArch and SDL license texts |
-| Standalone emulators | PCSX-ReARMed, steward-fu/nds with DraStic, PPSSPP, and OpenBOR | Upstream license/notice files, pinned refs, hashes, standalone manifest |
+| Standalone emulators | PCSX-ReARMed, steward-fu/nds with DraStic, PPSSPP, OpenBOR, and Mupen64Plus | Upstream license/notice files, pinned refs, hashes, standalone manifest |
 | PICO-8 | User-supplied proprietary runtime | No PICO-8 binary or game data is included in a plumOS release |
 | Pyxel/Python | CPython, Pyxel, pygame, NumPy, Pillow, and packaged modules | Python license and package-provided license metadata retained in the runtime |
 | PortMaster | <https://github.com/PortsMaster/PortMaster-GUI> and compatibility libraries | Upstream `PortMaster/licenses` plus compatibility-library notices |

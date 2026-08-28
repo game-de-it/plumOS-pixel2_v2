@@ -67,10 +67,13 @@ cross-version state corruption.
 
 Saturn is disabled on Pixel2 with `unsupported_performance_rk3326`; its two
 libretro cores and YabaSanshiro route are not built or exposed. Mupen64Plus-Next
-is also not part of the Pixel2 catalog: the pinned AArch64 core segfaulted on
+is also not part of the Pixel2 libretro catalog: the pinned AArch64 core segfaulted on
 the stock kernel with dynarec disabled and with cached/pure interpreters across
-GLideN64, Angrylion, and ParaLLEl RDP paths. Nintendo 64 remains enabled through
-the device-verified `retroarch:parallel_n64` route.
+GLideN64, Angrylion, and ParaLLEl RDP paths. Nintendo 64 keeps the
+device-verified `retroarch:parallel_n64` route as its default and additionally
+offers `standalone:mupen64plus`. The standalone route pins the six upstream
+2.6.0 components, uses Rice GLES2, maps `pixel2_joypad`, presents a logical
+640x480 surface on the native 480x640 panel, and exits through FUNCTION.
 
 Factory defaults include the Pixel2 joypad autoconfig and the current
 display/aspect contract.
