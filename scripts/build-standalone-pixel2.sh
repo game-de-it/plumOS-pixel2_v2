@@ -60,6 +60,7 @@ MUPEN64PLUS_RSP_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_RSP_REPO:-https://github.com/m
 MUPEN64PLUS_RSP_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_RSP_REF:-2798e65d6fc89d89aace0b0d779af6406809b940}"
 MUPEN64PLUS_VIDEO_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_VIDEO_REPO:-https://github.com/mupen64plus/mupen64plus-video-rice.git}"
 MUPEN64PLUS_VIDEO_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_VIDEO_REF:-fcf00779f08a9503ef30d26422f6b0350684820d}"
+MUPEN64PLUS_SRAM_PATCH="$PATCH_DIR/mupen64plus/mupen64plus-core-2.6.0-sram-save-range.patch"
 MUPEN64PLUS_HOTKEY_SOURCE="$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
 MUPEN64PLUS_GL_ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 PICO8_SDL_ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_sdl_rotate.c"
@@ -787,7 +788,8 @@ build_mupen64plus() {
   for command in cc file git make readelf sha256sum; do
     require_command "$command"
   done
-  for input in "$MUPEN64PLUS_HOTKEY_SOURCE" "$MUPEN64PLUS_GL_ROTATE_SOURCE"; do
+  for input in "$MUPEN64PLUS_HOTKEY_SOURCE" "$MUPEN64PLUS_GL_ROTATE_SOURCE" \
+    "$MUPEN64PLUS_SRAM_PATCH"; do
     [ -s "$input" ] || {
       printf 'error: Mupen64Plus Pixel2 integration source is missing: %s\n' \
         "$input" >&2
@@ -815,6 +817,11 @@ build_mupen64plus() {
   M64_VIDEO_SRC=$(clone_checkout mupen64plus-video-rice \
     "$MUPEN64PLUS_VIDEO_REPO" "$MUPEN64PLUS_VIDEO_REF") || return 1
   M64_API="$M64_CORE_SRC/src/api"
+
+  git -C "$M64_CORE_SRC" apply --check "$MUPEN64PLUS_SRAM_PATCH" \
+    >>"$M64_LOG" 2>&1 || return 1
+  git -C "$M64_CORE_SRC" apply "$MUPEN64PLUS_SRAM_PATCH" \
+    >>"$M64_LOG" 2>&1 || return 1
 
   rm -rf "$M64_STAGE" "$M64_DST"
   mkdir -p "$M64_STAGE" "$M64_DST"
@@ -959,6 +966,9 @@ EOF
     "input_sdl": "$MUPEN64PLUS_INPUT_REF",
     "rsp_hle": "$MUPEN64PLUS_RSP_REF",
     "video_rice": "$MUPEN64PLUS_VIDEO_REF"
+  },
+  "patches": {
+    "mupen64plus-core-2.6.0-sram-save-range": "$(sha256_file "$MUPEN64PLUS_SRAM_PATCH")"
   },
   "binary_sha256": "$(sha256_file "$M64_BINARY")",
   "renderer": "rice-gles2-pixel2-final-present-ccw",

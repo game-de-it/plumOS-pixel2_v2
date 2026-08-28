@@ -1,0 +1,31 @@
+diff --git a/src/device/cart/sram.c b/src/device/cart/sram.c
+index 508447f..f367d53 100644
+--- a/src/device/cart/sram.c
++++ b/src/device/cart/sram.c
+@@ -43,6 +43,8 @@ unsigned int sram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_add
+ {
+     size_t i;
+     struct sram* sram = (struct sram*)opaque;
++    size_t save_start;
++    size_t save_end;
+     uint8_t* mem = sram->istorage->data(sram->storage);
+ 
+     cart_addr &= SRAM_ADDR_MASK;
+@@ -51,7 +53,16 @@ unsigned int sram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_add
+         mem[(cart_addr+i)^S8] = dram[(dram_addr+i)^S8];
+     }
+ 
+-    sram->istorage->save(sram->storage, cart_addr, length);
++    /* The in-memory N64 byte layout swaps each 32-bit word on little-endian
++     * hosts. An unaligned DMA can therefore modify bytes immediately before
++     * or after the nominal cart range. Persist complete affected words so a
++     * later process does not reload a mixture of old and new SRAM bytes. */
++    save_start = cart_addr & ~(size_t)3;
++    save_end = ((size_t)cart_addr + length + 3) & ~(size_t)3;
++    if (save_end > SRAM_SIZE) {
++        save_end = SRAM_SIZE;
++    }
++    sram->istorage->save(sram->storage, save_start, save_end - save_start);
+ 
+     return /* length / 8 */0x1000;
+ }

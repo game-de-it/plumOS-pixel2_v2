@@ -146,8 +146,14 @@ assert pico8["default_launch_profile"] == "standalone:pico8"
 assert "pico8" in {entry["name"] for entry in pico8["directory_aliases"]}
 standalone_build = (root / "scripts/build-standalone-pixel2.sh").read_text()
 standalone_launch = (root / "package/standalone-pixel2/plumos/bin/plumos-standalone-launch").read_text()
+standalone_mupen_sram_patch = (
+    root / "patches/mupen64plus/mupen64plus-core-2.6.0-sram-save-range.patch"
+).read_text()
 assert '"id": "mupen64plus"' in standalone_build
 assert "mupen64plus)" in standalone_launch
+assert "MUPEN64PLUS_SRAM_PATCH" in standalone_build
+assert "save_start = cart_addr & ~(size_t)3" in standalone_mupen_sram_patch
+assert "save_end - save_start" in standalone_mupen_sram_patch
 assert "PLUMOS_MUPEN64PLUS_GL_ROTATION=270" in standalone_launch
 assert "mupen64plus-video-rice.so" in standalone_launch
 assert 'mupen_data_dir="${XDG_CACHE_HOME}/data.$$"' in standalone_launch
