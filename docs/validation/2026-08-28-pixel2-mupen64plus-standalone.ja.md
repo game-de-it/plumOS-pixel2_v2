@@ -11,8 +11,10 @@ Mupen64Plus-Next libretro coreを復活させる変更ではありません。
 standalone版はupstream 2.6.0のconsole UI、core、SDL audio、SDL input、HLE RSP、
 Rice videoの6 componentをfull commitで固定します。Pixel2側ではnative 480x640
 panel向けRice GLES2最終回転、`pixel2_joypad` mapping、process所有権を検証する
-FUNCTION終了、plumOS ALSA経路、mutable設定・screenshotの分離、component metadata、
-checksum、licenseを統合しました。
+FUNCTION終了、plumOS ALSA経路、mutable設定・runtime data・screenshotの分離、
+component metadata、checksum、licenseを統合しました。Riceが書き換えるROM別設定DBは
+起動ごとに`/run`へ作業コピーを作り、package済みdata directoryを可変状態として
+pluginへ渡しません。
 
 ## host検証
 
@@ -41,13 +43,45 @@ license監査は168 fileを検証しています。AArch64 container上ではcon
 `mupen64plus --help`も成功しました。
 
 ```text
-standalone checksums: 9906b53fb48d0ccbfb93694f2773e0aab261ef451b95c83678ec5d3f0387523b
-root checksums:       9ea508d63560f8c11418e8fbb62bba694fb70bc73663df1fcfab9063e9818e20
+standalone checksums: 6862960baacaf2e8a9b839e481c3b62cd00ff88714ecf89fde486c72cf9a6457
+root checksums:       ab1280690eca94707080cf82e84765a6adc5ad66aec9cebc8bc291b64826932c
 ```
 
-## 実機acceptance境界
+## 実機deployと機械acceptance
 
-今回の確認中は既知のPixel2 IPへSSH接続できなかったため、実機deployとN64の起動、
-画面向き・aspect、十字キー・各button、音、FUNCTION終了、FE復帰、user設定を保持した
-2回目起動は未確認です。
+`0.1.2-dev-198acfa`から`0.1.2-dev-d4ab428`への署名Runtime差分を通常updaterで
+実機へdeployしました。package SHA-256は
+`9beceea8c4dbffb79eccd678ff082afb7c1dfda92c44a4b9841e3c33424d6df2`です。
+実機は署名とexact source versionを受理して再起動し、request・pending stateを回収、
+target versionとsource refへ移行しました。起動試験の前後でinstalled Runtime全検証に
+合格しています。
 
+最初の実機試験ではhostだけでは検出できなかった次の2件を発見しました。
+
+- Rice側のGL symbol取得順ではadapterがreal `SDL_GL_GetProcAddress`を解決できず、
+  libraryはload済みでも最終回転が初期化されずcaptureが横倒しだった。
+- 終了時にRiceがpackage済み`RiceVideoLinux.ini`を書き換え、11,328件のRuntime
+  checksum中1件が不一致になった。
+
+`9495fa5`でclientのsymbol取得順に依存せずSDL helperを解決し、`d4ab428`で5本の
+Mupen64Plus shared dataをlaunch-private cacheへ配置して終了時に回収します。適用後logは
+次の初期化を記録しました。
+
+```text
+[plumOS] Mupen64Plus GL rotation context: OpenGL ES 3.1 Mesa 22.3.6
+[plumOS] Mupen64Plus GL rotation: logical=640x480 present=480x640+0+0 scanout=480x640 @ 270
+```
+
+実機media validatorは`N64/SUPERMARIO64.Z64`を`standalone:mupen64plus`で起動し、
+84% batteryで`startup=pass`、`screen=pass`、`audio=pass`となりました。capture目視で
+論理画面は正しい横向き640x480・4:3、物理scanoutはpanelに必要な480x640回転を確認。
+ALSA playbackは進行し、`pixel2_joypad` profile選択とFUNCTION helperによる
+`BTN_TRIGGER_HAPPY1`監視も確認しました。試験終了後はFEへ復帰し、一時data directoryは
+0件、package済み`RiceVideoLinux.ini`はSHA-256
+`ec89fe5ab5760b94b822b41dc2889afc280a138fe1cb43811e1346b539850be9`を保持し、
+最後のRuntime全検証にも合格しました。
+
+## 残るoperator acceptance
+
+物理十字キー・各button、実際の音質、FUNCTION終了、FE導線からの2回目起動はoperator
+確認として残します。N64既定profileは引き続き`retroarch:parallel_n64`です。
