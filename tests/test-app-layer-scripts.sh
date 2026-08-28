@@ -150,6 +150,10 @@ assert '"id": "mupen64plus"' in standalone_build
 assert "mupen64plus)" in standalone_launch
 assert "PLUMOS_MUPEN64PLUS_GL_ROTATION=270" in standalone_launch
 assert "mupen64plus-video-rice.so" in standalone_launch
+assert 'mupen_data_dir="${XDG_CACHE_HOME}/data.$$"' in standalone_launch
+assert '--datadir "$mupen_data_dir"' in standalone_launch
+assert '--datadir "${workdir}/share/mupen64plus"' not in standalone_launch
+assert 'rm -rf "$mupen_data_dir"' in standalone_launch
 PY
 grep -q 'strcmp(core_id, "easyrpg") == 0 && directory_exists(plan->rom_path)' \
     "$ROOT_DIR/vendor/plumos-frontend/src/plumos_text_ui.c"
