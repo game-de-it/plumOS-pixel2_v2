@@ -158,6 +158,9 @@ assert "MUPEN64PLUS_SRAM_PATCH" in standalone_build
 assert "save_start = cart_addr & ~(size_t)3" in standalone_mupen_sram_patch
 assert "save_end - save_start" in standalone_mupen_sram_patch
 assert "pixel2_dpad_mode" in standalone_mupen_input_patch
+assert "pixel2_toggle_pending" in standalone_mupen_input_patch
+assert "pixel2_function_released_at" in standalone_mupen_input_patch
+assert ">= 200" in standalone_mupen_input_patch
 assert 'controller[Control].joystick, 14);' in standalone_mupen_input_patch
 assert 'MUPEN64PLUS_INPUT_PATCH' in standalone_build
 assert "DPad R =\n" in standalone_build
@@ -593,6 +596,8 @@ grep -q 'pixel2_joypad' \
 grep -q 'BTN_TRIGGER_HAPPY1' \
     "$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
 grep -q 'FUNCTION_EXIT_HOLD_MS 1500L' \
+    "$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
+grep -q 'FUNCTION_RELEASE_SETTLE_MS 200L' \
     "$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
 grep -q 'Function held; stopping' \
     "$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"

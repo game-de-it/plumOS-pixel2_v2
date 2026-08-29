@@ -1,13 +1,16 @@
 diff --git a/src/plugin.c b/src/plugin.c
-index 974b1db..4c23352 100644
+index 974b1db..cad1fa2 100644
 --- a/src/plugin.c
 +++ b/src/plugin.c
-@@ -88,6 +88,17 @@ static int l_PluginInit = 0;
+@@ -88,6 +88,20 @@ static int l_PluginInit = 0;
  static int l_joyWasInit = 0;
  static int l_hapticWasInit = 0;
  
 +#if SDL_VERSION_ATLEAST(2,0,0)
-+static int pixel2_function_down[4] = {0, 0, 0, 0};
++static int pixel2_function_raw_down[4] = {0, 0, 0, 0};
++static int pixel2_function_gesture[4] = {0, 0, 0, 0};
++static int pixel2_toggle_pending[4] = {0, 0, 0, 0};
++static Uint32 pixel2_function_released_at[4] = {0, 0, 0, 0};
 +static int pixel2_dpad_mode[4] = {0, 0, 0, 0};
 +
 +static int is_pixel2_joypad(SDL_Joystick *joystick)
@@ -20,7 +23,7 @@ index 974b1db..4c23352 100644
  static unsigned short button_bits[] = {
      0x0001,  // R_DPAD
      0x0002,  // L_DPAD
-@@ -612,6 +623,42 @@ EXPORT void CALL GetKeys( int Control, BUTTONS *Keys )
+@@ -612,6 +626,58 @@ EXPORT void CALL GetKeys( int Control, BUTTONS *Keys )
          if (iY >  80) iY =  80;
          controller[Control].buttons.X_AXIS = iX;
          controller[Control].buttons.Y_AXIS = iY;
@@ -36,14 +39,30 @@ index 974b1db..4c23352 100644
 +        {
 +            int function_down = SDL_JoystickGetButton(
 +                controller[Control].joystick, 14);
-+            if (!function_down && pixel2_function_down[Control])
++            Uint32 now = SDL_GetTicks();
++
++            if (function_down)
 +            {
++                pixel2_function_gesture[Control] = 1;
++                pixel2_toggle_pending[Control] = 0;
++            }
++            else if (pixel2_function_raw_down[Control] &&
++                     pixel2_function_gesture[Control])
++            {
++                pixel2_toggle_pending[Control] = 1;
++                pixel2_function_released_at[Control] = now;
++            }
++            if (!function_down && pixel2_toggle_pending[Control] &&
++                now - pixel2_function_released_at[Control] >= 200)
++            {
++                pixel2_toggle_pending[Control] = 0;
++                pixel2_function_gesture[Control] = 0;
 +                pixel2_dpad_mode[Control] = !pixel2_dpad_mode[Control];
-+                DebugMessage(M64MSG_STATUS,
++                DebugMessage(M64MSG_INFO,
 +                    "Pixel2 D-pad mode: %s",
 +                    pixel2_dpad_mode[Control] ? "N64 D-pad" : "analog stick");
 +            }
-+            pixel2_function_down[Control] = function_down;
++            pixel2_function_raw_down[Control] = function_down;
 +
 +            if (pixel2_dpad_mode[Control])
 +            {

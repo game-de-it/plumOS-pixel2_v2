@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #define FUNCTION_EXIT_HOLD_MS 1500L
+#define FUNCTION_RELEASE_SETTLE_MS 200L
 
 static volatile sig_atomic_t stop_requested;
 
@@ -100,7 +101,9 @@ int main(int argc, char **argv) {
   const char *expected_exe;
   struct pollfd input_poll;
   struct timespec function_pressed_at = {0, 0};
-  int function_down = 0;
+  struct timespec function_released_at = {0, 0};
+  int function_gesture = 0;
+  int release_pending = 0;
   int input_fd;
 
   if (argc != 3) {
@@ -141,7 +144,7 @@ int main(int argc, char **argv) {
     int poll_result;
 
     input_poll.revents = 0;
-    poll_result = poll(&input_poll, 1, 250);
+    poll_result = poll(&input_poll, 1, 50);
     if (poll_result < 0) {
       if (errno == EINTR) {
         continue;
@@ -159,35 +162,51 @@ int main(int argc, char **argv) {
       event_count = (size_t)bytes_read / sizeof(events[0]);
       for (index = 0; index < event_count; index++) {
         if (events[index].type == EV_KEY &&
-            events[index].code == BTN_TRIGGER_HAPPY1) {
+          events[index].code == BTN_TRIGGER_HAPPY1) {
           if (events[index].value == 1) {
-            function_down = 1;
-            if (clock_gettime(CLOCK_MONOTONIC, &function_pressed_at) != 0) {
-              perror("mupen64plus-hotkey: clock_gettime");
-              close(input_fd);
-              return 5;
+            if (!function_gesture) {
+              function_gesture = 1;
+              if (clock_gettime(CLOCK_MONOTONIC, &function_pressed_at) != 0) {
+                perror("mupen64plus-hotkey: clock_gettime");
+                close(input_fd);
+                return 5;
+              }
+              fprintf(stderr,
+                      "mupen64plus-hotkey: Function pressed; hold %ld ms to exit\n",
+                      FUNCTION_EXIT_HOLD_MS);
             }
-            fprintf(stderr,
-                    "mupen64plus-hotkey: Function pressed; hold %ld ms to exit\n",
-                    FUNCTION_EXIT_HOLD_MS);
+            release_pending = 0;
           } else if (events[index].value == 0) {
-            function_down = 0;
-            fprintf(stderr,
-                    "mupen64plus-hotkey: Function released; game continues\n");
+            if (function_gesture) {
+              release_pending = 1;
+              if (clock_gettime(CLOCK_MONOTONIC, &function_released_at) != 0) {
+                perror("mupen64plus-hotkey: clock_gettime");
+                close(input_fd);
+                return 5;
+              }
+            }
           }
         }
       }
     }
 
-    if (function_down) {
+    if (function_gesture) {
       struct timespec now;
       if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
         perror("mupen64plus-hotkey: clock_gettime");
         close(input_fd);
         return 5;
       }
-      if (elapsed_milliseconds(&function_pressed_at, &now) >=
-          FUNCTION_EXIT_HOLD_MS) {
+      if (release_pending &&
+          elapsed_milliseconds(&function_released_at, &now) >=
+              FUNCTION_RELEASE_SETTLE_MS) {
+        function_gesture = 0;
+        release_pending = 0;
+        fprintf(stderr,
+                "mupen64plus-hotkey: Function short press; game continues\n");
+      } else if (!release_pending &&
+                 elapsed_milliseconds(&function_pressed_at, &now) >=
+                     FUNCTION_EXIT_HOLD_MS) {
         if (!target_matches(target_pid, expected_exe)) {
           close(input_fd);
           return 0;
