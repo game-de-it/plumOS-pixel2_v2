@@ -10,7 +10,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
+
+#define FUNCTION_EXIT_HOLD_MS 1500L
 
 static volatile sig_atomic_t stop_requested;
 
@@ -46,6 +49,12 @@ static int wait_for_target(pid_t pid, const char *expected_exe) {
     usleep(50000);
   }
   return 0;
+}
+
+static long elapsed_milliseconds(const struct timespec *start,
+                                 const struct timespec *end) {
+  return (end->tv_sec - start->tv_sec) * 1000L +
+         (end->tv_nsec - start->tv_nsec) / 1000000L;
 }
 
 static int open_pixel2_joypad(char *device_path, size_t device_path_size) {
@@ -90,6 +99,8 @@ int main(int argc, char **argv) {
   pid_t target_pid;
   const char *expected_exe;
   struct pollfd input_poll;
+  struct timespec function_pressed_at = {0, 0};
+  int function_down = 0;
   int input_fd;
 
   if (argc != 3) {
@@ -137,27 +148,52 @@ int main(int argc, char **argv) {
       }
       break;
     }
-    if (poll_result == 0 || !(input_poll.revents & POLLIN)) {
-      continue;
-    }
-    bytes_read = read(input_fd, events, sizeof(events));
-    if (bytes_read < 0) {
-      if (errno == EINTR || errno == EAGAIN) {
-        continue;
+    if (poll_result > 0 && (input_poll.revents & POLLIN)) {
+      bytes_read = read(input_fd, events, sizeof(events));
+      if (bytes_read < 0) {
+        if (errno == EINTR || errno == EAGAIN) {
+          continue;
+        }
+        break;
       }
-      break;
+      event_count = (size_t)bytes_read / sizeof(events[0]);
+      for (index = 0; index < event_count; index++) {
+        if (events[index].type == EV_KEY &&
+            events[index].code == BTN_TRIGGER_HAPPY1) {
+          if (events[index].value == 1) {
+            function_down = 1;
+            if (clock_gettime(CLOCK_MONOTONIC, &function_pressed_at) != 0) {
+              perror("mupen64plus-hotkey: clock_gettime");
+              close(input_fd);
+              return 5;
+            }
+            fprintf(stderr,
+                    "mupen64plus-hotkey: Function pressed; hold %ld ms to exit\n",
+                    FUNCTION_EXIT_HOLD_MS);
+          } else if (events[index].value == 0) {
+            function_down = 0;
+            fprintf(stderr,
+                    "mupen64plus-hotkey: Function released; game continues\n");
+          }
+        }
+      }
     }
-    event_count = (size_t)bytes_read / sizeof(events[0]);
-    for (index = 0; index < event_count; index++) {
-      if (events[index].type == EV_KEY &&
-          events[index].code == BTN_TRIGGER_HAPPY1 &&
-          events[index].value == 1) {
+
+    if (function_down) {
+      struct timespec now;
+      if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+        perror("mupen64plus-hotkey: clock_gettime");
+        close(input_fd);
+        return 5;
+      }
+      if (elapsed_milliseconds(&function_pressed_at, &now) >=
+          FUNCTION_EXIT_HOLD_MS) {
         if (!target_matches(target_pid, expected_exe)) {
           close(input_fd);
           return 0;
         }
         fprintf(stderr,
-                "mupen64plus-hotkey: Function pressed; stopping pid=%ld\n",
+                "mupen64plus-hotkey: Function held; stopping pid=%ld\n",
                 (long)target_pid);
         if (kill(target_pid, SIGTERM) != 0 && errno != ESRCH) {
           perror("mupen64plus-hotkey: kill");

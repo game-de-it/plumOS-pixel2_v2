@@ -149,11 +149,20 @@ standalone_launch = (root / "package/standalone-pixel2/plumos/bin/plumos-standal
 standalone_mupen_sram_patch = (
     root / "patches/mupen64plus/mupen64plus-core-2.6.0-sram-save-range.patch"
 ).read_text()
+standalone_mupen_input_patch = (
+    root / "patches/mupen64plus/mupen64plus-input-sdl-2.6.0-pixel2-dpad-mode.patch"
+).read_text()
 assert '"id": "mupen64plus"' in standalone_build
 assert "mupen64plus)" in standalone_launch
 assert "MUPEN64PLUS_SRAM_PATCH" in standalone_build
 assert "save_start = cart_addr & ~(size_t)3" in standalone_mupen_sram_patch
 assert "save_end - save_start" in standalone_mupen_sram_patch
+assert "pixel2_dpad_mode" in standalone_mupen_input_patch
+assert 'controller[Control].joystick, 14);' in standalone_mupen_input_patch
+assert 'MUPEN64PLUS_INPUT_PATCH' in standalone_build
+assert "DPad R =\n" in standalone_build
+assert "X Axis = button(12,13)" in standalone_build
+assert "Y Axis = button(10,11)" in standalone_build
 assert "PLUMOS_MUPEN64PLUS_GL_ROTATION=270" in standalone_launch
 assert "mupen64plus-video-rice.so" in standalone_launch
 assert 'mupen_data_dir="${XDG_CACHE_HOME}/data.$$"' in standalone_launch
@@ -582,6 +591,10 @@ grep -q 'MUPEN64PLUS_VIDEO_REF=.*fcf00779f08a9503ef30d26422f6b0350684820d' \
 grep -q 'pixel2_joypad' \
     "$ROOT_DIR/scripts/build-standalone-pixel2.sh"
 grep -q 'BTN_TRIGGER_HAPPY1' \
+    "$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
+grep -q 'FUNCTION_EXIT_HOLD_MS 1500L' \
+    "$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
+grep -q 'Function held; stopping' \
     "$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
 grep -q 'PLUMOS_MUPEN64PLUS_LOGICAL_SIZE=640x480' \
     "$ROOT_DIR/package/standalone-pixel2/plumos/bin/plumos-standalone-launch"

@@ -61,6 +61,7 @@ MUPEN64PLUS_RSP_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_RSP_REF:-2798e65d6fc89d89aace0b
 MUPEN64PLUS_VIDEO_REPO="${PLUMOS_PIXEL2_MUPEN64PLUS_VIDEO_REPO:-https://github.com/mupen64plus/mupen64plus-video-rice.git}"
 MUPEN64PLUS_VIDEO_REF="${PLUMOS_PIXEL2_MUPEN64PLUS_VIDEO_REF:-fcf00779f08a9503ef30d26422f6b0350684820d}"
 MUPEN64PLUS_SRAM_PATCH="$PATCH_DIR/mupen64plus/mupen64plus-core-2.6.0-sram-save-range.patch"
+MUPEN64PLUS_INPUT_PATCH="$PATCH_DIR/mupen64plus/mupen64plus-input-sdl-2.6.0-pixel2-dpad-mode.patch"
 MUPEN64PLUS_HOTKEY_SOURCE="$ROOT_DIR/package/standalone-pixel2/src/plumos-mupen64plus-hotkey.c"
 MUPEN64PLUS_GL_ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_gl_rotate.c"
 PICO8_SDL_ROTATE_SOURCE="$ROOT_DIR/package/portmaster-pixel2/src/plumos_portmaster_sdl_rotate.c"
@@ -789,7 +790,7 @@ build_mupen64plus() {
     require_command "$command"
   done
   for input in "$MUPEN64PLUS_HOTKEY_SOURCE" "$MUPEN64PLUS_GL_ROTATE_SOURCE" \
-    "$MUPEN64PLUS_SRAM_PATCH"; do
+    "$MUPEN64PLUS_SRAM_PATCH" "$MUPEN64PLUS_INPUT_PATCH"; do
     [ -s "$input" ] || {
       printf 'error: Mupen64Plus Pixel2 integration source is missing: %s\n' \
         "$input" >&2
@@ -821,6 +822,10 @@ build_mupen64plus() {
   git -C "$M64_CORE_SRC" apply --check "$MUPEN64PLUS_SRAM_PATCH" \
     >>"$M64_LOG" 2>&1 || return 1
   git -C "$M64_CORE_SRC" apply "$MUPEN64PLUS_SRAM_PATCH" \
+    >>"$M64_LOG" 2>&1 || return 1
+  git -C "$M64_INPUT_SRC" apply --check "$MUPEN64PLUS_INPUT_PATCH" \
+    >>"$M64_LOG" 2>&1 || return 1
+  git -C "$M64_INPUT_SRC" apply "$MUPEN64PLUS_INPUT_PATCH" \
     >>"$M64_LOG" 2>&1 || return 1
 
   rm -rf "$M64_STAGE" "$M64_DST"
@@ -897,10 +902,10 @@ plugged = True
 mouse = False
 AnalogDeadzone = 0,0
 AnalogPeak = 32768,32768
-DPad R = button(13)
-DPad L = button(12)
-DPad D = button(11)
-DPad U = button(10)
+DPad R =
+DPad L =
+DPad D =
+DPad U =
 Start = button(9)
 Z Trig = button(8)
 B Button = button(0)
@@ -913,8 +918,8 @@ R Trig = button(5)
 L Trig = button(4)
 Mempak switch =
 Rumblepak switch =
-X Axis = axis(0-,0+)
-Y Axis = axis(1-,1+)
+X Axis = button(12,13)
+Y Axis = button(10,11)
 EOF
 
   # Mupen installs ABI symlinks. App-layer payloads must not retain absolute
@@ -968,7 +973,8 @@ EOF
     "video_rice": "$MUPEN64PLUS_VIDEO_REF"
   },
   "patches": {
-    "mupen64plus-core-2.6.0-sram-save-range": "$(sha256_file "$MUPEN64PLUS_SRAM_PATCH")"
+    "mupen64plus-core-2.6.0-sram-save-range": "$(sha256_file "$MUPEN64PLUS_SRAM_PATCH")",
+    "mupen64plus-input-sdl-2.6.0-pixel2-dpad-mode": "$(sha256_file "$MUPEN64PLUS_INPUT_PATCH")"
   },
   "binary_sha256": "$(sha256_file "$M64_BINARY")",
   "renderer": "rice-gles2-pixel2-final-present-ccw",
