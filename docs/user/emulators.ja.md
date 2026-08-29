@@ -37,7 +37,10 @@ GB・GBC・GBAでは`RA: mgba`と`RA: mgba_modern`を選択できます。前者
 
 Nintendo 64の既定は実績のある`RA: parallel_n64`です。ゲームごとの互換性を比較する場合は
 Core Settingsから`SA: mupen64plus`を選択すると、Rice GLES2を使うstandalone版で起動します。
-このstandalone版はFUNCTIONで終了してFEへ戻ります。
+Pixel2にはアナログスティックがないため、このstandalone版では通常の十字キーをN64の
+アナログスティックとして使用します。FUNCTIONを短く押すとN64十字キーモードへ切り替わり、
+もう一度短く押すとアナログスティックモードへ戻ります。FUNCTIONを1.5秒長押しすると
+正常終了してFEへ戻ります。
 
 対応runtimeではFUNCTIONでエミュレータメニューを開きます。RetroArchは
 START + SELECTが通常の終了操作です。セーブとhotkeyは

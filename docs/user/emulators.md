@@ -39,8 +39,11 @@ be compatible between core versions.
 
 Nintendo 64 keeps `RA: parallel_n64` as the release-proven default. Select
 `SA: mupen64plus` in Core Settings to try the standalone Rice GLES2 route for
-a game that benefits from different compatibility. FUNCTION exits this
-standalone runtime and returns to the frontend.
+a game that benefits from different compatibility. Pixel2 has no analog stick,
+so its physical D-pad normally acts as the N64 analog stick in this standalone
+runtime. Short-press FUNCTION to switch to the N64 D-pad and short-press it
+again to return to analog mode. Hold FUNCTION for 1.5 seconds to exit normally
+and return to the frontend.
 
 FUNCTION opens an emulator menu where that runtime supports it. RetroArch uses
 START + SELECT for its normal exit path. Save and hotkey details are in

@@ -59,7 +59,10 @@ Mupen64Plus-Nextもstock kernel上の各renderer/interpreterでsegfaultしたた
 採用しません。N64の既定は実機確認済み`retroarch:parallel_n64`のまま維持し、追加選択肢として
 `standalone:mupen64plus`を提供します。standalone版はupstream 2.6.0の6 componentを固定し、
 Rice GLES2、`pixel2_joypad`、logical 640x480からnative 480x640への最終回転、FUNCTION終了を
-Pixel2契約として実装します。
+Pixel2契約として実装します。アナログstickを持たないため、通常の物理十字はN64 analogへ
+割り当てます。raw evdev `BTN_TRIGGER_HAPPY1`を200ms安定releaseでdebounceし、短押しは
+プロセス固有の`/run/plumos/mupen64plus-dpad-mode.<pid>`を介してN64十字／analogを切り替え、
+1.5秒長押しだけを正常終了に使います。FunctionはMupen64Plus SDL button番号へ依存しません。
 
 ### 画面とaspect
 

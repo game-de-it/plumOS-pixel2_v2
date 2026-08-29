@@ -74,6 +74,12 @@ device-verified `retroarch:parallel_n64` route as its default and additionally
 offers `standalone:mupen64plus`. The standalone route pins the six upstream
 2.6.0 components, uses Rice GLES2, maps `pixel2_joypad`, presents a logical
 640x480 surface on the native 480x640 panel, and exits through FUNCTION.
+Because Pixel2 has no analog stick, the physical D-pad normally maps to N64
+analog. Raw evdev `BTN_TRIGGER_HAPPY1` is debounced until release remains
+stable for 200 ms. A short press relays N64 D-pad/analog mode through the
+process-specific `/run/plumos/mupen64plus-dpad-mode.<pid>` marker, while a
+1.5-second hold performs the normal exit. This route does not depend on an SDL
+button number for Function.
 
 Factory defaults include the Pixel2 joypad autoconfig and the current
 display/aspect contract.

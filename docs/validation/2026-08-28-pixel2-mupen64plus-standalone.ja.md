@@ -112,8 +112,31 @@ package SHA-256は
 これは消去ではなく、読み込んだセーブでプレイを継続した後の正規更新です。終了後は
 FEへ復帰しました。
 
+## アナログ／N64十字切替の実機修正
+
+Pixel2は物理アナログstickを持たないため、standalone Mupen64Plusでは通常の物理十字を
+N64 analogとして使用します。アナログとN64十字の両方を必要とするゲーム向けに、
+`3aeae5f`でFUNCTION短押しによる可逆切替と1.5秒長押し終了を追加しました。
+
+最初の実機試験では、1回の物理FUNCTION操作が複数のpress/release edgeとして現れるため
+切替回数が不定になりました。`45d65ef`でreleaseが200ms安定するまで1 gestureとして扱う
+debounceを追加しましたが、終了helperにはraw eventが届く一方、Mupen64Plus SDL input
+pluginにはSDL button 14が届かず、切替自体が成立しませんでした。
+
+`96f3af5`ではSDL Function番号への依存を廃止しました。raw evdev
+`BTN_TRIGGER_HAPPY1`を監視するhelperが短押しを確定し、対象Mupen64Plus PID専用の
+`/run/plumos/mupen64plus-dpad-mode.<pid>`を生成・回収します。input pluginはこの状態だけを
+読み、N64十字modeではanalog値を0へ固定して物理十字をN64十字bitへ割り当てます。
+長押し終了時とprocess終了時にはmarkerを回収するため、次回起動は必ずanalog modeです。
+
+署名Runtime `0.1.2-dev-96f3af5`を実機へ適用し、transaction `healthy`、host/deviceの
+helper・input plugin SHA-256一致、standalone component 640/640 checksum合格を確認しました。
+ゼルダの伝説 時のオカリナで通常modeのカーソル移動、FUNCTION短押し後のN64十字mode、
+再度短押しした後のanalog復帰をoperatorが実機合格としました。短押しではゲームを終了せず、
+ログも`mode=N64 D-pad`と`mode=analog stick`をgestureごとに1回記録します。
+
 ## 最終operator acceptance
 
-物理操作、正方向・4:3表示、FUNCTION終了、FE復帰、2回目起動、ゲーム内SRAMの
+物理操作、analog／N64十字切替、正方向・4:3表示、FUNCTION長押し終了、FE復帰、2回目起動、ゲーム内SRAMの
 保存・読込・続きからの開始を実機で確認しました。音声経路はALSA playback進行を
 機械確認済みです。N64既定profileは引き続き`retroarch:parallel_n64`です。

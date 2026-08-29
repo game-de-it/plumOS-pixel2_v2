@@ -98,8 +98,34 @@ frontend. No launch-private data directory remained, packaged
 `ec89fe5ab5760b94b822b41dc2889afc280a138fe1cb43811e1346b539850be9`,
 and the final full Runtime verification passed.
 
-## Remaining operator acceptance
+## Analog and N64 D-pad switching
 
-Physical D-pad/buttons, audible quality, FUNCTION exit, and a second launch
-from the frontend remain operator checks. The profile remains an optional N64
-route; `retroarch:parallel_n64` is still the default.
+Pixel2 has no physical analog stick, so standalone Mupen64Plus normally maps
+the physical D-pad to N64 analog. Commit `3aeae5f` added a reversible Function
+short-press mode switch and reserved a 1.5-second hold for normal exit.
+
+The first device pass exposed multiple press/release edges for one physical
+Function gesture. Commit `45d65ef` debounced the gesture until release remained
+stable for 200 ms, but the Mupen64Plus SDL input plugin still did not receive
+SDL button 14 even though the raw evdev exit helper received the key.
+
+Commit `96f3af5` removes the SDL Function-number dependency. The helper reads
+raw `BTN_TRIGGER_HAPPY1` and publishes the confirmed short-press mode through
+the target PID-specific `/run/plumos/mupen64plus-dpad-mode.<pid>` marker. The
+input plugin reads that state, suppresses analog values in N64 D-pad mode, and
+maps the physical directions to N64 D-pad bits. The marker is removed on long
+exit and process cleanup, so every new launch starts in analog mode.
+
+Signed Runtime `0.1.2-dev-96f3af5` reached transaction state `healthy`. Host
+and device hashes matched for the helper and input plugin, and all 640 managed
+standalone checksums passed. In Ocarina of Time, the operator accepted cursor
+movement in normal analog mode, N64 D-pad mode after one short Function press,
+and analog operation again after a second short press. Short presses kept the
+game running and logged exactly one selected mode per debounced gesture.
+
+## Final operator acceptance
+
+Physical controls, analog/N64-D-pad switching, upright 4:3 output, long-hold
+FUNCTION exit, frontend return, second launch, and in-game SRAM save/load were
+accepted on the device. ALSA playback progression was mechanically verified.
+The profile remains optional; `retroarch:parallel_n64` is still the default.
