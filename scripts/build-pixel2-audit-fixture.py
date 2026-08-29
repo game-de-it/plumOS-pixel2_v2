@@ -66,6 +66,7 @@ def main() -> int:
                 {"id": "drastic", "status": "built"},
                 {"id": "openbor", "status": "built"},
                 {"id": "pico8", "status": "built"},
+                {"id": "mupen64plus", "status": "built"},
                 {"id": "scummvm", "status": "libretro-route"},
                 {"id": "easyrpg", "status": "libretro-route"},
                 {"id": "flycast", "status": "libretro-route"},

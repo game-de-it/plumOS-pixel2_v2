@@ -17,6 +17,7 @@ jq -e '.metrics.systems_enabled > 0' "$work/audit.json" >/dev/null
 jq -e '.metrics.release_blockers == 0' "$work/audit.json" >/dev/null
 jq -e '.metrics.enabled_policy_deferred == 33' "$work/audit.json" >/dev/null
 jq -e '.metrics.enabled_policy_actionable == 0' "$work/audit.json" >/dev/null
+jq -e '.metrics.standalone_built == 6' "$work/audit.json" >/dev/null
 jq -e '.metrics.standalone_deferred == 4' "$work/audit.json" >/dev/null
 jq -e '.metrics.standalone_pending == 0' "$work/audit.json" >/dev/null
 grep -q '^# Pixel2 implementation audit$' "$work/audit.md"
