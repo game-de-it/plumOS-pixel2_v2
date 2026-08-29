@@ -15,6 +15,7 @@
 
 #define FUNCTION_EXIT_HOLD_MS 1500L
 #define FUNCTION_RELEASE_SETTLE_MS 200L
+#define DPAD_MODE_PATH_FORMAT "/run/plumos/mupen64plus-dpad-mode.%ld"
 
 static volatile sig_atomic_t stop_requested;
 
@@ -58,6 +59,29 @@ static long elapsed_milliseconds(const struct timespec *start,
          (end->tv_nsec - start->tv_nsec) / 1000000L;
 }
 
+static int publish_dpad_mode(const char *mode_path, int enabled) {
+  int fd;
+
+  if (!enabled) {
+    if (unlink(mode_path) != 0 && errno != ENOENT) {
+      perror("mupen64plus-hotkey: remove D-pad mode marker");
+      return 0;
+    }
+    return 1;
+  }
+
+  fd = open(mode_path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+  if (fd < 0) {
+    perror("mupen64plus-hotkey: create D-pad mode marker");
+    return 0;
+  }
+  if (close(fd) != 0) {
+    perror("mupen64plus-hotkey: close D-pad mode marker");
+    return 0;
+  }
+  return 1;
+}
+
 static int open_pixel2_joypad(char *device_path, size_t device_path_size) {
   char name_path[128];
   char name[128];
@@ -96,6 +120,7 @@ static int open_pixel2_joypad(char *device_path, size_t device_path_size) {
 int main(int argc, char **argv) {
   char *pid_end = NULL;
   char device_path[64];
+  char dpad_mode_path[96];
   long parsed_pid;
   pid_t target_pid;
   const char *expected_exe;
@@ -103,6 +128,7 @@ int main(int argc, char **argv) {
   struct timespec function_pressed_at = {0, 0};
   struct timespec function_released_at = {0, 0};
   int function_gesture = 0;
+  int dpad_mode = 0;
   int release_pending = 0;
   int input_fd;
 
@@ -121,6 +147,11 @@ int main(int argc, char **argv) {
   if (expected_exe[0] != '/' || !wait_for_target(target_pid, expected_exe)) {
     fprintf(stderr, "mupen64plus-hotkey: target ownership mismatch\n");
     return 3;
+  }
+  snprintf(dpad_mode_path, sizeof(dpad_mode_path), DPAD_MODE_PATH_FORMAT,
+           (long)target_pid);
+  if (!publish_dpad_mode(dpad_mode_path, 0)) {
+    return 5;
   }
 
   input_fd = open_pixel2_joypad(device_path, sizeof(device_path));
@@ -202,8 +233,14 @@ int main(int argc, char **argv) {
               FUNCTION_RELEASE_SETTLE_MS) {
         function_gesture = 0;
         release_pending = 0;
+        dpad_mode = !dpad_mode;
+        if (!publish_dpad_mode(dpad_mode_path, dpad_mode)) {
+          close(input_fd);
+          return 5;
+        }
         fprintf(stderr,
-                "mupen64plus-hotkey: Function short press; game continues\n");
+                "mupen64plus-hotkey: Function short press; mode=%s; game continues\n",
+                dpad_mode ? "N64 D-pad" : "analog stick");
       } else if (!release_pending &&
                  elapsed_milliseconds(&function_pressed_at, &now) >=
                      FUNCTION_EXIT_HOLD_MS) {
@@ -219,12 +256,14 @@ int main(int argc, char **argv) {
           close(input_fd);
           return 5;
         }
+        publish_dpad_mode(dpad_mode_path, 0);
         close(input_fd);
         return 0;
       }
     }
   }
 
+  publish_dpad_mode(dpad_mode_path, 0);
   close(input_fd);
   return 0;
 }

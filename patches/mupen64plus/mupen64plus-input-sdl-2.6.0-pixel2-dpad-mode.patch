@@ -2,28 +2,29 @@ diff --git a/src/plugin.c b/src/plugin.c
 index 974b1db..cad1fa2 100644
 --- a/src/plugin.c
 +++ b/src/plugin.c
-@@ -88,6 +88,20 @@ static int l_PluginInit = 0;
+@@ -88,6 +88,21 @@ static int l_PluginInit = 0;
  static int l_joyWasInit = 0;
  static int l_hapticWasInit = 0;
  
 +#if SDL_VERSION_ATLEAST(2,0,0)
-+static int pixel2_function_raw_down[4] = {0, 0, 0, 0};
-+static int pixel2_function_gesture[4] = {0, 0, 0, 0};
-+static int pixel2_toggle_pending[4] = {0, 0, 0, 0};
-+static Uint32 pixel2_function_released_at[4] = {0, 0, 0, 0};
 +static int pixel2_dpad_mode[4] = {0, 0, 0, 0};
++static char pixel2_dpad_mode_path[64] = "";
 +
-+static int is_pixel2_joypad(SDL_Joystick *joystick)
++static int pixel2_dpad_mode_requested(int Control)
 +{
-+    const char *name = joystick ? SDL_JoystickName(joystick) : NULL;
-+    return name != NULL && strcmp(name, "pixel2_joypad") == 0;
++    if (Control != 0)
++        return 0;
++    if (pixel2_dpad_mode_path[0] == '\0')
++        snprintf(pixel2_dpad_mode_path, sizeof(pixel2_dpad_mode_path),
++            "/run/plumos/mupen64plus-dpad-mode.%ld", (long) getpid());
++    return access(pixel2_dpad_mode_path, F_OK) == 0;
 +}
 +#endif
 +
  static unsigned short button_bits[] = {
      0x0001,  // R_DPAD
      0x0002,  // L_DPAD
-@@ -612,6 +626,58 @@ EXPORT void CALL GetKeys( int Control, BUTTONS *Keys )
+@@ -612,6 +627,42 @@ EXPORT void CALL GetKeys( int Control, BUTTONS *Keys )
          if (iY >  80) iY =  80;
          controller[Control].buttons.X_AXIS = iX;
          controller[Control].buttons.Y_AXIS = iY;
@@ -32,37 +33,21 @@ index 974b1db..cad1fa2 100644
 +        /*
 +         * Pixel2 has a digital D-pad but no analog stick.  The normal mapping
 +         * exposes that D-pad as the N64 analog stick.  A short Function press
-+         * toggles a reversible N64 D-pad layer; the external hotkey helper
-+         * reserves a long Function press for safe exit.
++         * toggles a reversible N64 D-pad layer.  Pixel2's Function event is
++         * not exposed consistently through SDL, so the raw evdev hotkey
++         * helper publishes the debounced mode through a per-process marker.
++         * A long Function press remains reserved for safe exit.
 +         */
-+        if (is_pixel2_joypad(controller[Control].joystick))
++        if (Control == 0 && controller[Control].joystick != NULL)
 +        {
-+            int function_down = SDL_JoystickGetButton(
-+                controller[Control].joystick, 14);
-+            Uint32 now = SDL_GetTicks();
-+
-+            if (function_down)
++            int requested_mode = pixel2_dpad_mode_requested(Control);
++            if (requested_mode != pixel2_dpad_mode[Control])
 +            {
-+                pixel2_function_gesture[Control] = 1;
-+                pixel2_toggle_pending[Control] = 0;
-+            }
-+            else if (pixel2_function_raw_down[Control] &&
-+                     pixel2_function_gesture[Control])
-+            {
-+                pixel2_toggle_pending[Control] = 1;
-+                pixel2_function_released_at[Control] = now;
-+            }
-+            if (!function_down && pixel2_toggle_pending[Control] &&
-+                now - pixel2_function_released_at[Control] >= 200)
-+            {
-+                pixel2_toggle_pending[Control] = 0;
-+                pixel2_function_gesture[Control] = 0;
-+                pixel2_dpad_mode[Control] = !pixel2_dpad_mode[Control];
++                pixel2_dpad_mode[Control] = requested_mode;
 +                DebugMessage(M64MSG_INFO,
 +                    "Pixel2 D-pad mode: %s",
 +                    pixel2_dpad_mode[Control] ? "N64 D-pad" : "analog stick");
 +            }
-+            pixel2_function_raw_down[Control] = function_down;
 +
 +            if (pixel2_dpad_mode[Control])
 +            {
