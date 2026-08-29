@@ -30,6 +30,7 @@ physical controls.
 - [Release-candidate image](../validation/2026-08-23-pixel2-release-candidate-image.md)
 - [First Wi-Fi connection](../validation/2026-08-23-pixel2-first-wifi-connect.md)
 - [Neo Geo repeated launch/exit](../validation/2026-08-23-pixel2-neogeo-loop.md)
+- [v0.1.3 device update](../validation/2026-08-29-pixel2-v0.1.3-device-update.md)
 
 ## Release Gate Direction
 

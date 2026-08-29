@@ -29,6 +29,7 @@ process identity、mount所有、checksum、framebuffer/input owner、Wi-Fi/SSH�
 - [Release candidate image](../validation/2026-08-23-pixel2-release-candidate-image.md)
 - [First Wi-Fi connection](../validation/2026-08-23-pixel2-first-wifi-connect.md)
 - [Neo Geo repeated launch/exit](../validation/2026-08-23-pixel2-neogeo-loop.md)
+- [v0.1.3実機アップデート](../validation/2026-08-29-pixel2-v0.1.3-device-update.ja.md)
 
 日付付き記録には途中の失敗や廃止方式も意図的に残します。現在の契約はsource、test、
 `docs/decisions/`、生成manifest、developer guideの順に確認してください。
