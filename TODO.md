@@ -473,7 +473,7 @@
       `0.1.2-dev-b0706c8`として実機deploy、完全checksum合格。Moonlightは合格。
       Rockboxはadapter 49と署名Runtime `0.1.2-dev-679e627`で画面・入力・音をoperator
       合格し、`508b567`で次appへの環境漏洩回帰も解消した。
-  - [ ] Moonlight Newのペアリング後接続とPixel2可読性を実機再確認する
+  - [x] Moonlight Newのペアリング後接続とPixel2可読性を実機再確認する
     - 2026-08-30: ペアリング自体と同梱key、host `192.168.10.100`への直接`moonlight list`は
       成功する一方、LÖVE GUIが非同期list完了前に`apps.txt`を読み、仮項目
       `Load apps first`をstream対象にして終了する競合を特定。adapter 52はlistだけを完了待ちし、
@@ -488,6 +488,10 @@
       切り替えた比較試験では同一Desktopが正しい色になったことをcaptureとoperatorの双方で
       確認した。他portの既定GLES2経路は変更しないadapter 53として正式化し、終了後FE復帰と
       managed checksumを再確認する。
+    - 2026-08-30: commit `aecb3ec`、adapter 53、Runtime `0.1.4-dev-aecb3ec`を実機へ
+      原子的にdeploy。全11332 managed fileのchecksum、Moonlight限定software renderer、
+      Desktopの正立・正常色、stream音声、停止後の単一FE復帰、session mount 0、
+      `session-cleanup result=clean`を確認して完了。
   - 2026-08-14: 共有7 Appsをcatalog、component manifest/checksum、visible launcher存在gateへ統合。host build済み。各Appsの物理入力・表示・音声・終了後FE復帰は実機acceptanceが必要。
   - 2026-08-15: 実機backend監査でScraping plan、File Manager、Music Player、RetroArch RGUI、Pyxel Setup、PortMasterを合格。RetroArch Appのudev準備漏れ、FE stop/launch helper欠落、zombie誤認を`85fffad`で修正。Update PortMasterのnetwork installと7 AppsのFE物理選択は継続。
   - 2026-08-15: File ManagerのMF button order誤流用と、回転rendererが論理640幅を物理480幅でclipする不具合を`9b4070d`、`0106a75`で修正。署名Runtime、全幅DRM capture、event2経由のD-pad/A/B/FUNCTION/Quit、FE再取得に合格。実物buttonのoperator目視は継続。
