@@ -1,0 +1,23 @@
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -3716,11 +3716,16 @@ static bool gl2_frame(void *data, const void *frame,
+ 
+       if (fixed_menu_rotation)
+       {
++         unsigned menu_width = gl->video_width > gl->video_height
++            ? gl->video_width : gl->video_height;
++         unsigned menu_height = gl->video_width > gl->video_height
++            ? gl->video_height : gl->video_width;
++
+          rotated_menu_video_info              = *video_info;
+-         rotated_menu_video_info.width        = video_info->height;
+-         rotated_menu_video_info.height       = video_info->width;
+-         rotated_menu_video_info.scale_width  = video_info->scale_height;
+-         rotated_menu_video_info.scale_height = video_info->scale_width;
++         rotated_menu_video_info.width        = menu_width;
++         rotated_menu_video_info.height       = menu_height;
++         rotated_menu_video_info.scale_width  = menu_width;
++         rotated_menu_video_info.scale_height = menu_height;
+          menu_video_info                      = &rotated_menu_video_info;
+       }
+       menu_driver_frame(menu_is_alive, menu_video_info);

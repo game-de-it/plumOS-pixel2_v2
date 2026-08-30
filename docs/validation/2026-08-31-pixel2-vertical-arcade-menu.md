@@ -102,3 +102,11 @@ rotation had been changed by the vertical core's `SET_ROTATION` request. Patch
 entire graphical menu frame, including private cursor and icon matrices, then
 restores the content projection. Horizontal content already using 90 degrees is
 left unchanged. Ozone and XMB both require device acceptance after deployment.
+
+Ozone was accepted on `60f256a`. XMB was upright, but its labels and entries
+were clipped at logical x=480 inside the 640x480 scanout. The graphical menu
+frame dimensions had been swapped again after the fixed projection was
+selected, so XMB laid out a 480-pixel-wide UI. Patch 033 derives a stable
+landscape width and height from the GL panel dimensions and passes 640x480 to
+all graphical menus, independent of core geometry. XMB requires another device
+trial; Ozone must be checked for regression afterwards.

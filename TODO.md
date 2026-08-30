@@ -68,6 +68,11 @@
     再現した。縦coreの`SET_ROTATION`が変更したgame用GL rotationをdisplay UIも共有する
     ことが原因。Ozone/XMBのmenu frame中だけPixel2 panel用90度projectionへ固定し、描画後は
     content rotationへ復帰させる。保存済みcfg hashは維持されている。
+  - 2026-08-31: `60f256a`のOzoneは向き・表示をoperator合格。XMBは向きが直った一方、
+    640x480 scanout内で文字と項目がx=480を境にclipされることをcaptureで確認。縦coreで
+    `video_info`を再交換した結果、XMBへ480x640のlayout寸法を渡していた。GLES menuの
+    width/heightを物理panelの長辺・短辺から常に640x480として算出し、core geometryから
+    layoutとclip領域を分離する。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL

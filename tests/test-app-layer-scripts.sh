@@ -510,6 +510,12 @@ grep -F -q 'if (fixed_menu_rotation && gl->rotation != 90)' \
     "$ROOT_DIR/patches/retroarch/032-pixel2-gl-menu-fixed-display-rotation.patch"
 grep -F -q 'gl->rotation = content_rotation' \
     "$ROOT_DIR/patches/retroarch/032-pixel2-gl-menu-fixed-display-rotation.patch"
+grep -F -q 'unsigned menu_width = gl->video_width > gl->video_height' \
+    "$ROOT_DIR/patches/retroarch/033-pixel2-gl-menu-fixed-logical-size.patch"
+grep -F -q 'rotated_menu_video_info.width        = menu_width' \
+    "$ROOT_DIR/patches/retroarch/033-pixel2-gl-menu-fixed-logical-size.patch"
+grep -F -q 'rotated_menu_video_info.height       = menu_height' \
+    "$ROOT_DIR/patches/retroarch/033-pixel2-gl-menu-fixed-logical-size.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
