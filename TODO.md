@@ -44,6 +44,13 @@
     残り、次回以降の全portを`stale ... mount`で拒否する状態も再現した。auditを起動後の
     advisory処理へ移し、mount cleanupを再試行・既知stale mount回収付きにして、Rockboxと
     Blaze of Stormを含むPortMaster全体へ共通対策する。
+  - 2026-08-30: `1d1195e`でadapter 50を実装。同期`--enforce`監査をport終了後の
+    advisory監査へ移し、通常unmount再試行、既知mountの追跡外回収、最終lazy detachを
+    共通launcherへ追加した。署名update `0.1.3-dev-1d1195e`を実機へ適用し、full Runtime
+    verify、1秒以内のRockbox process開始、非black 640x480 DRM capture、終了後のFE復帰、
+    mount残留0、追跡fileなしのstale-mount fixture回収に合格。GameMaker代表のTiny Rallyも
+    同期監査に遮られず`gmloadernext.aarch64`開始、終了後回収に合格したが、検証機に
+    Blaze of Storm本体がないため同titleの画面・操作は利用者再試験待ち。
 
 - [x] PyxelのPixel2実機acceptanceを完了する
   - 2026-08-20: 全Pyxelタイトルが`EGL not initialized`で終了する原因を、存在しない
