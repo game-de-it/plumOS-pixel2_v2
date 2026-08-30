@@ -1,0 +1,116 @@
+#!/bin/sh
+set -u
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+STATE_ROOT="${PLUMOS_ROOT}/state/portmaster"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${STATE_ROOT}/data}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+MOUNTINFO="${PLUMOS_PORTMASTER_MOUNTINFO:-/proc/self/mountinfo}"
+UMOUNT_BIN="${PLUMOS_PORTMASTER_UMOUNT_BIN:-umount}"
+SLEEP_BIN="${PLUMOS_PORTMASTER_SLEEP_BIN:-sleep}"
+RETRIES="${PLUMOS_PORTMASTER_UMOUNT_RETRIES:-5}"
+TRACK_FILE="${1:-}"
+shift 2>/dev/null || true
+
+case "$TRACK_FILE" in
+  ""|"${RUN_ROOT}/port.mounts"|"${RUN_ROOT}/state.mounts") ;;
+  *)
+    printf 'plumos-portmaster-mount-cleanup: invalid tracking file: %s\n' \
+      "$TRACK_FILE" >&2
+    exit 64
+    ;;
+esac
+
+case "$RETRIES" in
+  ''|*[!0-9]*) RETRIES=5 ;;
+esac
+[ "$RETRIES" -gt 0 ] 2>/dev/null || RETRIES=1
+mkdir -p "$RUN_ROOT"
+work_file="${RUN_ROOT}/.mount-cleanup.$$"
+remaining_file="${work_file}.remaining"
+trap 'rm -f "$work_file" "$remaining_file"' EXIT HUP INT TERM
+: > "$work_file"
+
+if [ -n "$TRACK_FILE" ] && [ -f "$TRACK_FILE" ]; then
+  sed '1!G;h;$!d' "$TRACK_FILE" 2>/dev/null >> "$work_file" || true
+fi
+for target in "$@"; do
+  [ -n "$target" ] && printf '%s\n' "$target" >> "$work_file"
+done
+
+allowed_target() {
+  case "$1" in
+    /usr/lib/compat|/tmp/rockbox) return 0 ;;
+    "${PM_DIR}/pugwash.txt"|\
+    "${PM_DIR}/config"|"${PM_DIR}/libs"|"${PM_DIR}/themes"|\
+    "${PM_DIR}/utils/patcher.txt"|\
+    "${PM_DIR}/utils/patcher/main.lua"|\
+    "${PM_DIR}/utils/patcher/talkies.lua") return 0 ;;
+    "${STATE_ROOT}/home/"*) return 0 ;;
+  esac
+  return 1
+}
+
+is_mounted() {
+  awk -v path="$1" \
+    '$5 == path { found=1 } END { exit !found }' "$MOUNTINFO" 2>/dev/null
+}
+
+attempt_pass() {
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    allowed_target "$target" || {
+      printf 'plumos-portmaster-mount-cleanup: ignored unmanaged target: %s\n' \
+        "$target" >&2
+      continue
+    }
+    is_mounted "$target" || continue
+    "$UMOUNT_BIN" "$target" 2>/dev/null || true
+  done < "$work_file"
+}
+
+pass=0
+while [ "$pass" -lt "$RETRIES" ]; do
+  attempt_pass
+  : > "$remaining_file"
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    allowed_target "$target" || continue
+    if is_mounted "$target"; then
+      grep -Fqx "$target" "$remaining_file" 2>/dev/null || \
+        printf '%s\n' "$target" >> "$remaining_file"
+    fi
+  done < "$work_file"
+  [ ! -s "$remaining_file" ] && break
+  pass=$((pass + 1))
+  [ "$pass" -lt "$RETRIES" ] && "$SLEEP_BIN" 1
+done
+
+if [ -s "$remaining_file" ]; then
+  # The port process group has already been terminated by the caller. Lazy
+  # detach is safe for these private compatibility bind mounts and prevents a
+  # dead mount from blocking every later PortMaster title.
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    "$UMOUNT_BIN" -l "$target" 2>/dev/null || true
+  done < "$remaining_file"
+fi
+
+: > "$remaining_file"
+while IFS= read -r target; do
+  [ -n "$target" ] || continue
+  allowed_target "$target" || continue
+  if is_mounted "$target"; then
+    grep -Fqx "$target" "$remaining_file" 2>/dev/null || \
+      printf '%s\n' "$target" >> "$remaining_file"
+  fi
+done < "$work_file"
+
+if [ -s "$remaining_file" ]; then
+  [ -n "$TRACK_FILE" ] && cp "$remaining_file" "$TRACK_FILE"
+  printf 'plumos-portmaster-mount-cleanup: mounts remain active\n' >&2
+  return 1 2>/dev/null || exit 1
+fi
+[ -n "$TRACK_FILE" ] && rm -f "$TRACK_FILE"
+exit 0

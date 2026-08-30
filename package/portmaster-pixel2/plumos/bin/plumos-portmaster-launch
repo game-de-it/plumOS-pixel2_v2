@@ -23,9 +23,11 @@ RESTART_FILE="${PM_DIR}/.pugwash-reboot"
 LOG_FILE="${PLUMOS_ROOT}/logs/apps/portmaster.log"
 PID_FILE="${RUN_ROOT}/portmaster.pid"
 MOUNTS_FILE="${RUN_ROOT}/state.mounts"
+MOUNT_CLEANUP="${PLUMOS_ROOT}/bin/plumos-portmaster-mount-cleanup"
 DRI_DIR="${RUN_ROOT}/dri"
 child_pid=""
 restore_frontend=0
+cleanup_done=0
 [ -x "$BB" ] || BB=/bin/busybox
 
 frontend_is_ancestor() {
@@ -54,12 +56,13 @@ is_mounted() {
 }
 
 cleanup() {
-  if [ -f "$MOUNTS_FILE" ]; then
-    sed '1!G;h;$!d' "$MOUNTS_FILE" 2>/dev/null | while IFS= read -r target; do
-      [ -n "$target" ] || continue
-      is_mounted "$target" && umount "$target" 2>/dev/null || true
-    done
-    rm -f "$MOUNTS_FILE"
+  [ "$cleanup_done" -eq 0 ] || return 0
+  cleanup_done=1
+  if [ -x "$MOUNT_CLEANUP" ]; then
+    "$BB" sh "$MOUNT_CLEANUP" "$MOUNTS_FILE" \
+      "${PM_DIR}/pugwash.txt" \
+      "${PM_DIR}/config" "${PM_DIR}/libs" "${PM_DIR}/themes" \
+      >> "$LOG_FILE" 2>&1 || true
   fi
   recorded="$(cat "$PID_FILE" 2>/dev/null || true)"
   if [ -n "$child_pid" ] && [ "$recorded" = "$child_pid" ]; then
@@ -108,6 +111,16 @@ if [ -f "$PID_FILE" ]; then
   esac
   rm -f "$PID_FILE"
 fi
+
+[ -x "$MOUNT_CLEANUP" ] || {
+  printf 'plumos-portmaster-launch: mount cleanup helper is missing: %s\n' \
+    "$MOUNT_CLEANUP" >&2
+  exit 127
+}
+"$BB" sh "$MOUNT_CLEANUP" "$MOUNTS_FILE" \
+  "${PM_DIR}/pugwash.txt" \
+  "${PM_DIR}/config" "${PM_DIR}/libs" "${PM_DIR}/themes" \
+  >> "$LOG_FILE" 2>&1 || exit 1
 
 "$BB" sh "${PLUMOS_ROOT}/bin/plumos-portmaster-runtime" prepare >/dev/null || exit 1
 

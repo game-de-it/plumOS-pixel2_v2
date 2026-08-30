@@ -31,10 +31,13 @@ SDL_ROTATE_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-sdl-rotate.
 GL_ROTATE_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-gl-rotate.so"
 EXEC_GUARD_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-exec-guard.so"
 ROCKBOX_COMPAT_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-rockbox.so"
-AUDIT_TOOL="${APP_ROOT}/adapter/plumos_portmaster_audit.py"
 SESSION_CLEANUP="${PLUMOS_ROOT}/bin/plumos-portmaster-session-cleanup"
+MOUNT_CLEANUP="${PLUMOS_ROOT}/bin/plumos-portmaster-mount-cleanup"
+AUDIT_HELPER="${PLUMOS_ROOT}/bin/plumos-portmaster-audit-port"
 child=""
 restore_frontend=0
+deferred_audit=0
+cleanup_done=0
 script="${1:-}"
 [ -n "$script" ] || { printf 'usage: plumOS-portmaster-port-launch SCRIPT [ARGS...]\n' >&2; exit 64; }
 shift
@@ -127,6 +130,8 @@ is_mounted() {
 }
 
 cleanup() {
+  [ "$cleanup_done" -eq 0 ] || return 0
+  cleanup_done=1
   if [ -n "$child" ]; then
     recorded="$(cat "$PID_FILE" 2>/dev/null || true)"
     if [ "$recorded" = "$child" ]; then
@@ -143,16 +148,27 @@ cleanup() {
       "$BB" sh "$SESSION_CLEANUP" >> "$LOG_FILE" 2>&1 || true
   fi
   "$BB" sh "${PLUMOS_ROOT}/bin/plumos-portmaster-gptokeyb-stop" stop 2>/dev/null || true
-  if [ -f "$MOUNTS_FILE" ]; then
-    sed '1!G;h;$!d' "$MOUNTS_FILE" 2>/dev/null | while IFS= read -r target; do
-      [ -n "$target" ] || continue
-      is_mounted "$target" && umount "$target" 2>/dev/null || true
-    done
+  if [ -x "$MOUNT_CLEANUP" ]; then
+    "$BB" sh "$MOUNT_CLEANUP" "$MOUNTS_FILE" \
+      /usr/lib/compat \
+      "${PM_DIR}/utils/patcher.txt" \
+      "${PM_DIR}/utils/patcher/main.lua" \
+      "${PM_DIR}/utils/patcher/talkies.lua" \
+      "${PM_DIR}/config" "${PM_DIR}/libs" "${PM_DIR}/themes" \
+      ${script:+/tmp/rockbox} >> "$LOG_FILE" 2>&1 || true
   fi
-  rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE" "$MOUNTS_FILE"
+  rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE"
   if [ "$restore_frontend" -eq 1 ] && ! frontend_running; then
     "$BB" setsid "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-launch" \
       >/dev/null 2>&1 </dev/null &
+  fi
+  if [ "$deferred_audit" -eq 1 ] && [ -x "$AUDIT_HELPER" ]; then
+    (
+      unset LD_PRELOAD LD_LIBRARY_PATH PLUMOS_PORTMASTER_REQUIRED_LD_PRELOAD \
+        PLUMOS_PORTMASTER_REQUIRED_LD_LIBRARY_PATH PLUMOS_PORTMASTER_SESSION_ID
+      "$BB" setsid "$BB" sh "$AUDIT_HELPER" "$script" \
+        >> "$LOG_FILE" 2>&1 </dev/null &
+    )
   fi
 }
 
@@ -271,33 +287,6 @@ patch_known_port_runtime_path() {
   sync "$gui_file" 2>/dev/null || sync
 }
 
-audit_installed_port() {
-  [ -f "$AUDIT_TOOL" ] || {
-    printf 'PortMaster compatibility audit is missing: %s\n' "$AUDIT_TOOL" >&2
-    return 1
-  }
-  audit_cache="${STATE_ROOT}/audit/cache"
-  audit_reports="${PLUMOS_ROOT}/logs/apps/portmaster-audits"
-  safe_name="$(basename "$script" | tr -c 'A-Za-z0-9._-' '_')"
-  mkdir -p "$audit_cache" "$audit_reports"
-  "$BB" sh "${PLUMOS_ROOT}/bin/plumos-python-pixel2" \
-    "$AUDIT_TOOL" \
-    --script "$script" \
-    --ports-root "$PORTS_ROOT" \
-    --library-dir "$RUN_ROOT/lib" \
-    --library-dir "${PLUMOS_ROOT}/apps/pyxel/lib" \
-    --library-dir "${PLUMOS_ROOT}/apps/python/lib" \
-    --library-dir "${PLUMOS_ROOT}/lib" \
-    --library-dir "${PLUMOS_ROOT}/apps/nextcommander/lib" \
-    --library-dir "${PLUMOS_ROOT}/emulator/lib" \
-    --library-dir "${PLUMOS_ROOT}/apps/pyxel/site/pygame.libs" \
-    --library-dir /lib \
-    --library-dir /usr/lib \
-    --cache-dir "$audit_cache" \
-    --output "${audit_reports}/${safe_name}.json" \
-    --enforce >> "$LOG_FILE" 2>&1
-}
-
 port_requires_armhf() {
   grep -Eq "^[[:space:]]*(export[[:space:]]+)?PORT_32BIT[[:space:]]*=[[:space:]]*['\"]?[Yy]" "$script"
 }
@@ -328,6 +317,22 @@ if [ -f "$PID_FILE" ]; then
   fi
   rm -f "$PID_FILE" "$START_FILE" "$SCRIPT_FILE"
 fi
+
+[ -x "$MOUNT_CLEANUP" ] || {
+  printf 'PortMaster mount cleanup helper is missing: %s\n' "$MOUNT_CLEANUP" >&2
+  exit 127
+}
+rockbox_mount=""
+case "$(basename "$script" | tr '[:upper:]' '[:lower:]')" in
+  rockbox.sh) rockbox_mount=/tmp/rockbox ;;
+esac
+"$BB" sh "$MOUNT_CLEANUP" "$MOUNTS_FILE" \
+  /usr/lib/compat \
+  "${PM_DIR}/utils/patcher.txt" \
+  "${PM_DIR}/utils/patcher/main.lua" \
+  "${PM_DIR}/utils/patcher/talkies.lua" \
+  "${PM_DIR}/config" "${PM_DIR}/libs" "${PM_DIR}/themes" \
+  ${rockbox_mount:+"$rockbox_mount"} >> "$LOG_FILE" 2>&1 || exit 1
 
 "$BB" sh "${PLUMOS_ROOT}/bin/plumos-portmaster-runtime" prepare >/dev/null || exit 1
 mkdir -p "$RUN_ROOT" "$DRI_DIR" "$(dirname "$LOG_FILE")" "$STATE_ROOT/home"
@@ -429,11 +434,6 @@ esac
 export LD_PRELOAD="${PLUMOS_PORTMASTER_REQUIRED_LD_PRELOAD}${LD_PRELOAD:+:${LD_PRELOAD}}"
 mkdir -p "$XDG_CACHE_HOME" "$HM_PORTS_DIR"
 
-audit_installed_port || {
-  printf 'PortMaster compatibility audit blocked this port: %s\n' "$script" >&2
-  exit 78
-}
-
 if ! frontend_is_ancestor && frontend_running; then
   "$BB" sh "${PLUMOS_ROOT}/bin/plumos-frontend-stop" stop >> "$LOG_FILE" 2>&1
   restore_frontend=1
@@ -443,6 +443,7 @@ printf '\n[%s] script=%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$script" \
   "$(printf '%s' "$audio_status" | tr '\n' ' ')" >> "$LOG_FILE"
 setsid "$PORT_BASH" "$script" "$@" >> "$LOG_FILE" 2>&1 &
 child=$!
+deferred_audit=1
 printf '%s\n' "$child" > "$PID_FILE"
 sed 's/.*) //' "/proc/${child}/stat" | awk '{print $20}' > "$START_FILE"
 printf '%s\n' "$script" > "$SCRIPT_FILE"

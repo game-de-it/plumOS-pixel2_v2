@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+PLUMOS_SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
+PLUMOS_ROM_ROOT="${PLUMOS_ROM_ROOT:-${PLUMOS_SDCARD_ROOT}/roms}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
+STATE_ROOT="${PLUMOS_ROOT}/state/portmaster"
+AUDIT_TOOL="${APP_ROOT}/adapter/plumos_portmaster_audit.py"
+script="${1:-}"
+
+[ -n "$script" ] || {
+  printf 'usage: plumOS-portmaster-audit-port SCRIPT\n' >&2
+  exit 64
+}
+[ -f "$script" ] || exit 0
+[ -f "$AUDIT_TOOL" ] || exit 0
+
+ports_root="${script%/*}"
+case "$(basename "$ports_root" | tr '[:upper:]' '[:lower:]')" in
+  ports) ;;
+  *) printf 'plumos-portmaster-audit-port: invalid ports root: %s\n' "$ports_root" >&2; exit 64 ;;
+esac
+
+safe_name="$(basename "$script" | tr -c 'A-Za-z0-9._-' '_')"
+cache_dir="${STATE_ROOT}/audit/cache"
+report_dir="${PLUMOS_ROOT}/logs/apps/portmaster-audits"
+mkdir -p "$cache_dir" "$report_dir"
+
+exec "${PLUMOS_ROOT}/bin/plumos-python-pixel2" \
+  "$AUDIT_TOOL" \
+  --script "$script" \
+  --ports-root "$ports_root" \
+  --library-dir "$RUN_ROOT/lib" \
+  --library-dir "${PLUMOS_ROOT}/apps/pyxel/lib" \
+  --library-dir "${PLUMOS_ROOT}/apps/python/lib" \
+  --library-dir "${PLUMOS_ROOT}/lib" \
+  --library-dir "${PLUMOS_ROOT}/apps/nextcommander/lib" \
+  --library-dir "${PLUMOS_ROOT}/emulator/lib" \
+  --library-dir "${PLUMOS_ROOT}/apps/pyxel/site/pygame.libs" \
+  --library-dir /lib \
+  --library-dir /usr/lib \
+  --cache-dir "$cache_dir" \
+  --output "${report_dir}/${safe_name}.json"

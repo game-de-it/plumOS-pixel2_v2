@@ -35,6 +35,16 @@
 
 ## Implementation audit and release blockers
 
+- [ ] v0.1.3更新後のPortMaster起動regressionを解消する
+  - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL
+    library、共通port launcher、frontend環境隔離はいずれもpackageへ収録済みであることを
+    確認。正式v0.1.3実機でも同一hashをreadbackした。一方、v0.1.3で追加した同期
+    pre-launch auditはRockboxだけで約6秒・203 ELFと共通library群を走査し、FE経路では
+    その間black frameになる。中断時には追跡fileを消した後もpatcher/state bind mountが
+    残り、次回以降の全portを`stale ... mount`で拒否する状態も再現した。auditを起動後の
+    advisory処理へ移し、mount cleanupを再試行・既知stale mount回収付きにして、Rockboxと
+    Blaze of Stormを含むPortMaster全体へ共通対策する。
+
 - [x] PyxelのPixel2実機acceptanceを完了する
   - 2026-08-20: 全Pyxelタイトルが`EGL not initialized`で終了する原因を、存在しない
     root EGL pathと誤った`panfrost` loader強制に特定。PortMaster実機合格経路と同じ
