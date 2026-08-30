@@ -60,6 +60,7 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
                    _drmvars->rotation);
           }
 @@ -1483,22 +1505,39 @@ static void drm_set_rotation(void *data, unsigned rotation)
+ static void drm_set_rotation(void *data, unsigned rotation)
  {
     struct drm_video *_drmvars = data;
 +   settings_t *settings = config_get_ptr();
@@ -67,9 +68,9 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
 +   unsigned next_panel_rotation;
 +   unsigned core_rotation;
 +   unsigned next_rotation;
-+
-+   (void)rotation;
  
++   (void)rotation;
++
     if (panel_rotation && *panel_rotation)
     {
        RARCH_LOG("[DRM] Fixed panel rotation remains %u.\n",
@@ -89,7 +90,7 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
 +      : _drmvars->panel_rotation;
 +   core_rotation = retroarch_get_core_requested_rotation() & 3;
 +   next_rotation = (next_panel_rotation + 4 - core_rotation) & 3;
-+
+ 
 +   if (_drmvars->rotation == next_rotation &&
 +       _drmvars->panel_rotation == next_panel_rotation)
 +      return;
@@ -98,6 +99,7 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
 +   _drmvars->panel_rotation = next_panel_rotation;
 +   RARCH_LOG("[DRM] Pixel2 rotations panel=%u core=%u content=%u.\n",
 +         next_panel_rotation, core_rotation, next_rotation);
- 
++
     if (_drmvars->main_surface)
     {
+       drm_surface_free(_drmvars, &_drmvars->main_surface);
