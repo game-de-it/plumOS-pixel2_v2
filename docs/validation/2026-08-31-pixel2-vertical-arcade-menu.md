@@ -142,3 +142,17 @@ and glyph construction in logical 640x480 coordinates, explicitly maps each
 vertex to physical 480x640 coordinates, and draws it with the unrotated MVP in
 the native viewport. This must restore both placement and glyph aspect without
 reintroducing the x=480 clip wall.
+
+## Final device acceptance
+
+Commit `14f3efe` was deployed as the complete seven-file managed RetroArch
+delta. All 7,060 component entries and 11,334 Runtime entries verified, and the
+saved RetroArch configuration retained SHA-256
+`b55e47acfb3b02ac9ccd7a96526e4b99736802ef8db659b5897fc85d6518801c`.
+
+On the same vertical Varth route, the operator accepted XMB orientation, icon
+and text placement, glyph aspect, and text visibility across the landscape
+width. A temporary Ozone launch then passed orientation, text placement, and
+cursor movement without modifying the saved menu driver. Together with the
+earlier RGUI acceptance, all three Pixel2 menu routes now pass this rotated-core
+regression.

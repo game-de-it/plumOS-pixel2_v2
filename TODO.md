@@ -35,7 +35,7 @@
 
 ## Implementation audit and release blockers
 
-- [ ] 縦画面ArcadeのRetroArchメニュー更新時にLCDが崩れる問題を解消する
+- [x] 縦画面ArcadeのRetroArchメニュー更新時にLCDが崩れる問題を解消する
   - 2026-08-31: MAME 2003-Xtreme / Varthでゲーム、FPS表示、静止後のQuick Menuを
     DRM captureし、向き・比率・buffer内容は正常、ゲームはoperator確認で60 fpsとなった。
     カーソル移動時だけLCDが崩れ、静止後bufferは正常へ戻り、kernel/runtime logにも
@@ -88,6 +88,11 @@
     menu矩形が通る回転関数を通らないため、共通MVPだけでは同じ座標にならない。fontは
     論理640x480の配置とglyph比率を保持したまま各頂点を物理480x640へ明示回転し、native
     viewportへ非回転MVPで描く。XMBの配置・全幅とOzoneを再試験する。
+  - 2026-08-31: `14f3efe`を管理7 fileのatomic deployとして反映し、component 7,060件、
+    Runtime 11,334件、保存済みRetroArch cfg保持に合格。VarthのQuick MenuでXMBの向き、
+    iconと文字の配置、glyph比率、右端までの表示をoperator合格とした。同じ縦coreを一時
+    Ozoneへ切り替え、向き、文字配置、カーソル移動にも問題がないことをoperator合格。
+    RGUIを含む3 menu driverの縦core経路が揃ったため本項目を完了する。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL
