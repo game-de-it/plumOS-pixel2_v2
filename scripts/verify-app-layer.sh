@@ -193,7 +193,7 @@ grep -q 'parallel_n64_libretro.so)' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'km_duckswanstation_xtreme_amped_libretro.so|' "$ROOT/bin/plumos-retroarch-launch"
 grep -q 'n64|psx)' "$ROOT/bin/plumos-retroarch-launch"
 grep -a -q 'PLUMOS_GL_MENU_ROTATION' "$ROOT/bin/retroarch"
-grep -a -q 'Core aspect corrected for Pixel2 rotation' "$ROOT/bin/retroarch"
+grep -a -q 'Core aspect converted to Pixel2 panel coordinates' "$ROOT/bin/retroarch"
 while IFS= read -r gles_binary; do
     gles_basename="${gles_binary##*/}"
     grep -F -q "$gles_basename" "$ROOT/bin/plumos-retroarch-launch" || {
