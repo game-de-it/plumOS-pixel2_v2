@@ -516,6 +516,12 @@ grep -F -q 'rotated_menu_video_info.width        = menu_width' \
     "$ROOT_DIR/patches/retroarch/033-pixel2-gl-menu-fixed-logical-size.patch"
 grep -F -q 'rotated_menu_video_info.height       = menu_height' \
     "$ROOT_DIR/patches/retroarch/033-pixel2-gl-menu-fixed-logical-size.patch"
+grep -F -q 'unsigned logical_width =' \
+    "$ROOT_DIR/patches/retroarch/034-pixel2-gl-menu-fixed-render-size.patch"
+grep -F -q 'menu_render_width  = logical_width' \
+    "$ROOT_DIR/patches/retroarch/034-pixel2-gl-menu-fixed-render-size.patch"
+grep -F -q 'menu_render_height = logical_height' \
+    "$ROOT_DIR/patches/retroarch/034-pixel2-gl-menu-fixed-render-size.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \

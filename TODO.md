@@ -73,6 +73,11 @@
     `video_info`を再交換した結果、XMBへ480x640のlayout寸法を渡していた。GLES menuの
     width/heightを物理panelの長辺・短辺から常に640x480として算出し、core geometryから
     layoutとclip領域を分離する。
+  - 2026-08-31: `af7567e`でもXMB文字の見切れが残り、DRM captureでは最終frameが
+    640x480である一方、項目名・説明だけがx=480でclipされることを再確認。frame描画側とは
+    別に、`xmb_render()`へ渡す初期layout寸法が旧patch 020の無条件swapで480x640のまま
+    だった。render/frame両段を長辺640・短辺480へ統一し、XMBのticker幅と項目配置も
+    content rotationから分離する。XMB合格後にOzoneの回帰がないことを再確認する。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL

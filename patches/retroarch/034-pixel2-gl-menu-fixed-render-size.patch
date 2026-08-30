@@ -1,0 +1,20 @@
+diff --git a/runloop.c b/runloop.c
+--- a/runloop.c
++++ b/runloop.c
+@@ -6317,8 +6317,14 @@ int runloop_iterate(void)
+ 
+                   if (menu_rotation && string_is_equal(menu_rotation, "display"))
+                   {
+-                     menu_render_width  = video_st->height;
+-                     menu_render_height = video_st->width;
++                     unsigned logical_width =
++                           menu_render_width > menu_render_height
++                           ? menu_render_width : menu_render_height;
++                     unsigned logical_height =
++                           menu_render_width > menu_render_height
++                           ? menu_render_height : menu_render_width;
++                     menu_render_width  = logical_width;
++                     menu_render_height = logical_height;
+                   }
+ 
+                   menu->driver_ctx->render(menu->userdata,

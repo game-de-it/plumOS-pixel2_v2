@@ -110,3 +110,12 @@ selected, so XMB laid out a 480-pixel-wide UI. Patch 033 derives a stable
 landscape width and height from the GL panel dimensions and passes 640x480 to
 all graphical menus, independent of core geometry. XMB requires another device
 trial; Ozone must be checked for regression afterwards.
+
+The `af7567e` device trial remained clipped. Patch 033 corrected the dimensions
+used by `xmb_frame()`, which fixed the final draw and clip surface, but the
+earlier `xmb_render()` phase still received the unconditional width/height swap
+from patch 020. XMB therefore cached its ticker widths and item geometry for a
+480-pixel-wide portrait layout, then drew that layout into a valid 640x480
+frame. Patch 034 normalizes both render-phase dimensions to the panel long and
+short sides. This makes `xmb_render()` and `xmb_frame()` consistently receive
+640x480 without changing the content projection or saved user configuration.
