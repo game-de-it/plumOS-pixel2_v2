@@ -116,6 +116,8 @@ case "$system_id:${core##*/}" in
         "$root/bin/plumos-np2kai-config-repair" \
             "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}/np2kai/np2kai.cfg" \
             "$root/state/retroarch/recovery" \
+            "$root/config/retroarch/config/Neko Project II kai/Neko Project II kai.opt" \
+            "Arrows 3button" \
             >>"$root/logs/retroarch-launch.log" 2>&1
         ;;
 esac
