@@ -35,11 +35,10 @@
     char pending_osd_msg[sizeof(_drmvars->pending_osd_msg)];
     struct font_params pending_osd_params;
     bool pending_osd_msg_valid = false;
-@@ -713,6 +723,27 @@
-       logical_width = 1;
+@@ -714,6 +724,27 @@
     if (!logical_height)
        logical_height = 1;
-+
+ 
 +   /* Notifications and performance statistics belong to the fixed display
 +    * UI, not to the core's content orientation. Render them through a shallow
 +    * view of the same scanout buffer using the panel rotation. */
@@ -60,9 +59,10 @@
 +      }
 +      osd_surface = &osd_view;
 +   }
- 
++
     if (surface->bpp == 2)
     {
+       for (y = 0; y < (unsigned int)surface->src_height; y++)
 @@ -762,9 +793,9 @@
     }
  
@@ -146,6 +146,15 @@
              RARCH_LOG("[DRM] Fixed panel rotation set to %u.\n",
                    _drmvars->rotation);
           }
+@@ -1386,7 +1433,7 @@
+             210,
+             _drmvars->current_aspect,
+             2,
+-            0,
++            2,
+             &_drmvars->menu_surface);
+ 
+       /* We need to re-setup the ONLY plane as the setup
 @@ -1483,22 +1530,39 @@
  static void drm_set_rotation(void *data, unsigned rotation)
  {

@@ -449,6 +449,8 @@ grep -F -q '(_drmvars->panel_rotation + 4 - core_rotation) & 3' \
     "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
 grep -q 'layer == 2' \
     "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
+grep -q '^+            2,$' \
+    "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
 grep -F -q 'surface->rotation ^ _drmvars->rotation' \
     "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
 grep -q 'surface->aspect = 1.0f / aspect' \
@@ -470,6 +472,8 @@ if grep -q '^+.*aspect_ratio_idx == ASPECT_RATIO_CORE && (effective_rotation & 1
     printf 'Pixel2 Core Provided aspect conversion must cover rotated arcade cores\n' >&2
     exit 1
 fi
+grep -F -q 'DRM_MODE_PAGE_FLIP_EVENT | DRM_MODE_ATOMIC_NONBLOCK' \
+    "$ROOT_DIR/patches/retroarch/028-pixel2-drm-nonblocking-page-flip.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
