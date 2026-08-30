@@ -35,6 +35,7 @@ ROCKBOX_COMPAT_LIB="${APP_ROOT}/adapter/lib/aarch64/libplumos-portmaster-rockbox
 SESSION_CLEANUP="${PLUMOS_ROOT}/bin/plumos-portmaster-session-cleanup"
 MOUNT_CLEANUP="${PLUMOS_ROOT}/bin/plumos-portmaster-mount-cleanup"
 AUDIT_HELPER="${PLUMOS_ROOT}/bin/plumos-portmaster-audit-port"
+MOONLIGHT_PATCHER="${APP_ROOT}/adapter/plumos_moonlight_gui_patch.py"
 child=""
 restore_frontend=0
 deferred_audit=0
@@ -257,39 +258,24 @@ prepare_patcher_compat() {
   printf '%s\n' "$talkies_target" >> "$MOUNTS_FILE"
 }
 
-patch_known_port_runtime_path() {
+patch_known_port_runtime() {
   case "$(basename "$script" | tr '[:upper:]' '[:lower:]')" in
     'moonlight new.sh') ;;
     *) return 0 ;;
   esac
 
   gui_file="$(dirname "$script")/moonlightnew/gui/main.lua"
-  old_path='LD_LIBRARY_PATH=%s/moonlight/libs:/usr/lib/compat'
-  interim_path='LD_LIBRARY_PATH=%s/moonlight/libs:/run/plumos/portmaster/lib:/usr/lib/compat'
-  new_path='LD_LIBRARY_PATH=%s/moonlight/libs:/usr/lib/compat:${LD_LIBRARY_PATH:-}'
   [ -f "$gui_file" ] || {
     printf 'PortMaster Moonlight GUI is missing: %s\n' "$gui_file" >&2
     return 1
   }
-  grep -Fq "$new_path" "$gui_file" && return 0
-  if grep -Fq "$old_path" "$gui_file"; then
-    source_path="$old_path"
-  elif grep -Fq "$interim_path" "$gui_file"; then
-    source_path="$interim_path"
-  else
-    printf 'PortMaster Moonlight GUI has an unknown runtime-path contract: %s\n' "$gui_file" >&2
-    return 1
-  fi
-
-  temp_file="${gui_file}.plumos.$$"
-  sed "s#${source_path}#${new_path}#" "$gui_file" > "$temp_file" || {
-    rm -f "$temp_file"
+  [ -f "$MOONLIGHT_PATCHER" ] || {
+    printf 'PortMaster Moonlight GUI patcher is missing: %s\n' "$MOONLIGHT_PATCHER" >&2
     return 1
   }
-  mv -f "$temp_file" "$gui_file" || {
-    rm -f "$temp_file"
-    return 1
-  }
+  "${PLUMOS_ROOT}/bin/plumos-python-pixel2" \
+    "$MOONLIGHT_PATCHER" "$gui_file" \
+    "${STATE_ROOT}/backups/moonlight-gui" || return 1
   sync "$gui_file" 2>/dev/null || sync
 }
 
@@ -361,7 +347,7 @@ if [ -x "${PLUMOS_ROOT}/bin/plumos-volume-control" ]; then
     >>"$LOG_FILE" 2>&1 || true
 fi
 : > "$MOUNTS_FILE"
-patch_known_port_runtime_path || exit 1
+patch_known_port_runtime || exit 1
 prepare_compat_mount || exit 1
 prepare_patcher_compat || exit 1
 for name in config libs themes; do

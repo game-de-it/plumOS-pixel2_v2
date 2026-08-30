@@ -767,6 +767,7 @@ grep -q 'lib/libretro/libopusfile.so.0' \
 "$ROOT_DIR/tests/test-portmaster-pgrep.sh"
 "$ROOT_DIR/tests/test-portmaster-df.sh"
 "$ROOT_DIR/tests/test-portmaster-pixel2-runtime.sh"
+"$ROOT_DIR/tests/test-portmaster-pixel2-moonlight-gui.sh"
 "$ROOT_DIR/tests/test-portmaster-pixel2-audit.sh"
 "$ROOT_DIR/tests/test-portmaster-pixel2-exec-guard.sh"
 "$ROOT_DIR/tests/test-portmaster-pixel2-rockbox.sh"
