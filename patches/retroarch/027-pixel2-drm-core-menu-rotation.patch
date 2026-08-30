@@ -1,7 +1,6 @@
-diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
 --- a/gfx/drivers/drm_gfx.c
 +++ b/gfx/drivers/drm_gfx.c
-@@ -173,8 +173,9 @@ struct drm_video
+@@ -173,8 +173,9 @@
     int core_pitch;
  
     unsigned rotation;
@@ -13,7 +12,7 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
     float current_aspect;
  
     const font_renderer_driver_t *font_driver;
-@@ -322,6 +323,13 @@ static void drm_surface_setup(void *data,  int src_width, int src_height,
+@@ -322,6 +323,13 @@
     surface->frame_height = src_height;
     surface->aspect      = aspect;
     surface->rotation    = _drmvars ? (_drmvars->rotation & 3) : 0;
@@ -27,12 +26,93 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
     drm_surface_update_viewport(surface);
     surface->logical_width  = surface->viewport.width;
     surface->logical_height = surface->viewport.height;
-@@ -1246,7 +1254,20 @@ static void *drm_init(const video_info_t *video,
+@@ -700,6 +708,8 @@
+ {
+    struct drm_video *_drmvars  = data;
+    struct drm_page       *page = NULL;
++   struct drm_surface osd_view;
++   struct drm_surface *osd_surface = surface;
+    char pending_osd_msg[sizeof(_drmvars->pending_osd_msg)];
+    struct font_params pending_osd_params;
+    bool pending_osd_msg_valid = false;
+@@ -713,6 +723,27 @@
+       logical_width = 1;
+    if (!logical_height)
+       logical_height = 1;
++
++   /* Notifications and performance statistics belong to the fixed display
++    * UI, not to the core's content orientation. Render them through a shallow
++    * view of the same scanout buffer using the panel rotation. */
++   if (_drmvars &&
++       ((_drmvars->panel_rotation & 3) != (surface->rotation & 3)))
++   {
++      osd_view          = *surface;
++      osd_view.rotation = _drmvars->panel_rotation & 3;
++      if (osd_view.rotation & 1)
++      {
++         osd_view.logical_width  = surface->src_height;
++         osd_view.logical_height = surface->src_width;
++      }
++      else
++      {
++         osd_view.logical_width  = surface->src_width;
++         osd_view.logical_height = surface->src_height;
++      }
++      osd_surface = &osd_view;
++   }
+ 
+    if (surface->bpp == 2)
+    {
+@@ -762,9 +793,9 @@
+    }
+ 
+    if (stat_msg && *stat_msg)
+-      drm_render_osd_msg(_drmvars, surface, dst_base, stat_msg, stat_params);
++      drm_render_osd_msg(_drmvars, osd_surface, dst_base, stat_msg, stat_params);
+    if (msg && *msg)
+-      drm_render_osd_msg(_drmvars, surface, dst_base, msg, NULL);
++      drm_render_osd_msg(_drmvars, osd_surface, dst_base, msg, NULL);
+    slock_lock(_drmvars->pending_mutex);
+    if (_drmvars->pending_osd_msg_valid)
+    {
+@@ -776,7 +807,7 @@
+    }
+    slock_unlock(_drmvars->pending_mutex);
+    if (pending_osd_msg_valid)
+-      drm_render_osd_msg(_drmvars, surface, dst_base,
++      drm_render_osd_msg(_drmvars, osd_surface, dst_base,
+             pending_osd_msg, &pending_osd_params);
+ 
+    /* Page flipping */
+@@ -1225,18 +1256,14 @@
+    _drmvars->current_aspect = video_driver_get_aspect_ratio();
+    {
+       settings_t *settings = config_get_ptr();
+-      unsigned effective_rotation = (retroarch_get_rotation() +
+-            retroarch_get_core_requested_rotation()) & 3;
+ 
+-      /* Core geometry is already inverted by RetroArch for a 90 degree
+-       * frontend rotation. Pixel2's DRM backend performs that rotation while
+-       * writing the scanout buffer, so undo only this core-provided inversion
+-       * here. Fixed and custom ratios are expressed in logical coordinates. */
++      /* Core Provided is expressed in logical output coordinates. Pixel2's
++       * DRM buffers are allocated in portrait panel coordinates. */
+       if (settings && settings->uints.video_aspect_ratio_idx == ASPECT_RATIO_CORE &&
+-          (effective_rotation & 1) && _drmvars->current_aspect > 0.0f)
++          _drmvars->current_aspect > 0.0f)
+       {
+          _drmvars->current_aspect = 1.0f / _drmvars->current_aspect;
+-         RARCH_LOG("[DRM] Core aspect corrected for Pixel2 rotation.\n");
++         RARCH_LOG("[DRM] Core aspect converted to Pixel2 panel coordinates.\n");
+       }
+    }
+ 
+@@ -1246,8 +1273,21 @@
     _drmvars->pending_mutex    = slock_new();
     _drmvars->core_width       = 0;
     _drmvars->core_height      = 0;
 -   _drmvars->rotation         = retroarch_get_rotation() & 3;
-+   {
+    {
 +      settings_t *settings = config_get_ptr();
 +      unsigned core_rotation = retroarch_get_core_requested_rotation() & 3;
 +
@@ -46,10 +126,11 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
 +      RARCH_LOG("[DRM] Pixel2 rotations panel=%u core=%u content=%u.\n",
 +            _drmvars->panel_rotation, core_rotation, _drmvars->rotation);
 +   }
-    {
++   {
        const char *panel_rotation = getenv("PLUMOS_DRM_PANEL_ROTATION");
        if (panel_rotation && *panel_rotation)
-@@ -1255,7 +1276,8 @@ static void *drm_init(const video_info_t *video,
+       {
+@@ -1255,7 +1295,8 @@
           unsigned long parsed = strtoul(panel_rotation, &end, 10);
           if (end && *end == '\0' && parsed <= 3)
           {
@@ -59,7 +140,7 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
              RARCH_LOG("[DRM] Fixed panel rotation set to %u.\n",
                    _drmvars->rotation);
           }
-@@ -1483,22 +1505,39 @@ static void drm_set_rotation(void *data, unsigned rotation)
+@@ -1483,22 +1524,39 @@
  static void drm_set_rotation(void *data, unsigned rotation)
  {
     struct drm_video *_drmvars = data;
@@ -103,3 +184,22 @@ diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
     if (_drmvars->main_surface)
     {
        drm_surface_free(_drmvars, &_drmvars->main_surface);
+@@ -1518,13 +1576,14 @@
+    struct drm_video *_drmvars = data;
+    /* Here we obtain the new aspect ratio. */
+    float new_aspect = aspectratio_lut[aspect_ratio_idx].value;
+-   unsigned effective_rotation = (retroarch_get_rotation() +
+-         retroarch_get_core_requested_rotation()) & 3;
+ 
+-   if (aspect_ratio_idx == ASPECT_RATIO_CORE && (effective_rotation & 1) && new_aspect > 0.0f)
++   /* RetroArch's Core Provided value is expressed in the logical output
++    * coordinates. Pixel2's DRM buffers are allocated in the portrait panel's
++    * physical coordinates, so their aspect is always the reciprocal. */
++   if (aspect_ratio_idx == ASPECT_RATIO_CORE && new_aspect > 0.0f)
+    {
+       new_aspect = 1.0f / new_aspect;
+-      RARCH_LOG("[DRM] Core aspect corrected for Pixel2 rotation.\n");
++      RARCH_LOG("[DRM] Core aspect converted to Pixel2 panel coordinates.\n");
+    }
+ 
+    if (_drmvars && _drmvars->current_aspect != new_aspect)
