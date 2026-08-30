@@ -114,7 +114,7 @@ grep -q '^video_rotation = "3"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^video_force_aspect = "true"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
-grep -q '^aspect_ratio_index = "0"$' \
+grep -q '^aspect_ratio_index = "22"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"
 grep -q '^audio_latency = "96"$' \
     "$ROOT/factory-defaults/retroarch/retroarch.cfg"

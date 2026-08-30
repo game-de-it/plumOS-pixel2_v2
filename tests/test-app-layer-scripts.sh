@@ -217,13 +217,14 @@ import sys
 
 path = Path(sys.argv[1])
 data = path.read_bytes()
-assert hashlib.sha256(data).hexdigest() == "c88ea45f9d341d31dfacc272d1b2cb930702c399b8c992d5953784d7aac44ac8"
+assert hashlib.sha256(data).hexdigest() == "97f4a4952dd5fa3b3e3bafb0af00609e72e1825c373af1ed3926a9caf792db6a"
 lines = data.decode().splitlines()
 pairs = [line.split(" = ", 1) for line in lines if " = " in line]
 values = dict(pairs)
 assert len(pairs) == 3376
 assert len(values) == 3376
 required = {
+    "aspect_ratio_index": "\"22\"",
     "assets_directory": "\"/mnt/plumos/retroarch/assets\"",
     "auto_overrides_enable": "\"true\"",
     "auto_remaps_enable": "\"true\"",
@@ -280,7 +281,7 @@ for forbidden in ("mali_fbdev", "~/", "/root/", "V90S", "v90s", "Miyoo", "miyoo"
 PY
 grep -q 'video_force_aspect = "true"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
-grep -q 'aspect_ratio_index = "0"' \
+grep -q 'aspect_ratio_index = "22"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"
 grep -q 'input_joypad_driver = "udev"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch.cfg"

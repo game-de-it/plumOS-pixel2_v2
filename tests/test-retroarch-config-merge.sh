@@ -127,6 +127,7 @@ grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 # byte-identical to the known factory generation.
 cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
 sed -i \
+    -e "s/aspect_ratio_index = \"22\"/aspect_ratio_index = \"0\"/" \
     -e "s|assets_directory = \"/mnt/plumos/retroarch/assets\"|assets_directory = \"/mnt/plumos/config/retroarch/assets\"|" \
     -e "s/menu_scale_factor = \"1.500000\"/menu_scale_factor = \"1.000000\"/" \
     -e "s/ozone_font_scale = \"1\"/ozone_font_scale = \"0\"/" \
@@ -149,6 +150,7 @@ grep -q "^video_message_color = \"ffff00\"$" "$active/retroarch.cfg"
 # Preserve both its explicit black colour and its unrelated hotkey.
 cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
 sed -i \
+    -e "s/aspect_ratio_index = \"22\"/aspect_ratio_index = \"0\"/" \
     -e "s|assets_directory = \"/mnt/plumos/retroarch/assets\"|assets_directory = \"/mnt/plumos/config/retroarch/assets\"|" \
     -e "s/menu_scale_factor = \"1.500000\"/menu_scale_factor = \"1.000000\"/" \
     -e "s/ozone_font_scale = \"1\"/ozone_font_scale = \"0\"/" \
@@ -192,6 +194,7 @@ grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
 # preserving the selected driver, language and unrelated user settings.
 cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
 sed -i \
+    -e "s/aspect_ratio_index = \"22\"/aspect_ratio_index = \"0\"/" \
     -e "s/menu_scale_factor = \"1.500000\"/menu_scale_factor = \"1.000000\"/" \
     -e "s/ozone_font_scale = \"1\"/ozone_font_scale = \"0\"/" \
     -e "s/ozone_font_scale_factor_global = \"1.350000\"/ozone_font_scale_factor_global = \"1.000000\"/" \
@@ -213,4 +216,19 @@ grep -q "^ozone_font_scale_factor_global = \"1.350000\"$" \
 grep -q "^menu_driver = \"ozone\"$" "$active/retroarch.cfg"
 grep -q "^user_language = \"1\"$" "$active/retroarch.cfg"
 grep -q "^input_save_state_btn = \"42\"$" "$active/retroarch.cfg"
+
+# Core Provided is the factory default for fresh installs and factory reset,
+# but an existing user-selected aspect must remain authoritative across a
+# factory generation change. The merge adds missing keys only; it must not
+# rewrite a present aspect_ratio_index.
+cp "$factory/retroarch.cfg" "$active/retroarch.cfg"
+sed -i "s/aspect_ratio_index = \"22\"/aspect_ratio_index = \"0\"/" \
+    "$active/retroarch.cfg"
+printf "%s\n" "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
+    > "$root/state/retroarch/factory-config.sha256"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/aspect-user.log
+grep -q "^aspect_ratio_index = \"0\"$" "$active/retroarch.cfg"
+grep -q "retroarch_config=result-unchanged added=0" /tmp/aspect-user.log
 '
