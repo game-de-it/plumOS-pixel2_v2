@@ -428,6 +428,20 @@ grep -q 'surface->aspect, keep_aspect' \
     "$ROOT_DIR/patches/retroarch/023-pixel2-drm-surface-aspect.patch"
 grep -q 'video_viewport_get_scaled_aspect2' \
     "$ROOT_DIR/patches/retroarch/023-pixel2-drm-surface-aspect.patch"
+grep -q 'Surfaces invalidated for runtime aspect change' \
+    "$ROOT_DIR/patches/retroarch/026-pixel2-drm-dynamic-aspect-recreate.patch"
+grep -q 'drm_surface_free(_drmvars, &_drmvars->main_surface)' \
+    "$ROOT_DIR/patches/retroarch/026-pixel2-drm-dynamic-aspect-recreate.patch"
+grep -q 'drm_surface_free(_drmvars, &_drmvars->menu_surface)' \
+    "$ROOT_DIR/patches/retroarch/026-pixel2-drm-dynamic-aspect-recreate.patch"
+grep -q '_drmvars->core_width  = 0' \
+    "$ROOT_DIR/patches/retroarch/026-pixel2-drm-dynamic-aspect-recreate.patch"
+if grep -q '_drmvars->menu_active = false' \
+    "$ROOT_DIR/patches/retroarch/026-pixel2-drm-dynamic-aspect-recreate.patch"; then
+    exit 1
+fi
+grep -q '^-static void drm_surface_set_aspect' \
+    "$ROOT_DIR/patches/retroarch/026-pixel2-drm-dynamic-aspect-recreate.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
