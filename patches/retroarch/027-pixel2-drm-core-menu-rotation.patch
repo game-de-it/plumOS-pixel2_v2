@@ -84,22 +84,28 @@
              pending_osd_msg, &pending_osd_params);
  
     /* Page flipping */
-@@ -1225,18 +1256,14 @@
+@@ -1225,18 +1256,20 @@
     _drmvars->current_aspect = video_driver_get_aspect_ratio();
     {
        settings_t *settings = config_get_ptr();
 -      unsigned effective_rotation = (retroarch_get_rotation() +
 -            retroarch_get_core_requested_rotation()) & 3;
++      unsigned panel_rotation = settings
++         ? (settings->uints.video_rotation & 3)
++         : (retroarch_get_rotation() & 3);
++      unsigned core_rotation = retroarch_get_core_requested_rotation() & 3;
++      unsigned content_rotation = (panel_rotation + 4 - core_rotation) & 3;
  
 -      /* Core geometry is already inverted by RetroArch for a 90 degree
 -       * frontend rotation. Pixel2's DRM backend performs that rotation while
 -       * writing the scanout buffer, so undo only this core-provided inversion
 -       * here. Fixed and custom ratios are expressed in logical coordinates. */
-+      /* Core Provided is expressed in logical output coordinates. Pixel2's
-+       * DRM buffers are allocated in portrait panel coordinates. */
++      /* RetroArch has already adjusted Core Provided for its composed
++       * rotation. Convert it only when Pixel2's final content surface swaps
++       * the physical panel axes. */
        if (settings && settings->uints.video_aspect_ratio_idx == ASPECT_RATIO_CORE &&
 -          (effective_rotation & 1) && _drmvars->current_aspect > 0.0f)
-+          _drmvars->current_aspect > 0.0f)
++          (content_rotation & 1) && _drmvars->current_aspect > 0.0f)
        {
           _drmvars->current_aspect = 1.0f / _drmvars->current_aspect;
 -         RARCH_LOG("[DRM] Core aspect corrected for Pixel2 rotation.\n");
@@ -107,7 +113,7 @@
        }
     }
  
-@@ -1246,8 +1273,21 @@
+@@ -1246,8 +1279,21 @@
     _drmvars->pending_mutex    = slock_new();
     _drmvars->core_width       = 0;
     _drmvars->core_height      = 0;
@@ -130,7 +136,7 @@
        const char *panel_rotation = getenv("PLUMOS_DRM_PANEL_ROTATION");
        if (panel_rotation && *panel_rotation)
        {
-@@ -1255,7 +1295,8 @@
+@@ -1255,7 +1301,8 @@
           unsigned long parsed = strtoul(panel_rotation, &end, 10);
           if (end && *end == '\0' && parsed <= 3)
           {
@@ -140,7 +146,7 @@
              RARCH_LOG("[DRM] Fixed panel rotation set to %u.\n",
                    _drmvars->rotation);
           }
-@@ -1483,22 +1524,39 @@
+@@ -1483,22 +1530,39 @@
  static void drm_set_rotation(void *data, unsigned rotation)
  {
     struct drm_video *_drmvars = data;
@@ -184,7 +190,7 @@
     if (_drmvars->main_surface)
     {
        drm_surface_free(_drmvars, &_drmvars->main_surface);
-@@ -1518,13 +1576,14 @@
+@@ -1518,13 +1582,15 @@
     struct drm_video *_drmvars = data;
     /* Here we obtain the new aspect ratio. */
     float new_aspect = aspectratio_lut[aspect_ratio_idx].value;
@@ -192,10 +198,11 @@
 -         retroarch_get_core_requested_rotation()) & 3;
  
 -   if (aspect_ratio_idx == ASPECT_RATIO_CORE && (effective_rotation & 1) && new_aspect > 0.0f)
-+   /* RetroArch's Core Provided value is expressed in the logical output
-+    * coordinates. Pixel2's DRM buffers are allocated in the portrait panel's
-+    * physical coordinates, so their aspect is always the reciprocal. */
-+   if (aspect_ratio_idx == ASPECT_RATIO_CORE && new_aspect > 0.0f)
++   /* Keep the current content rotation as the source of truth. Rotated
++    * horizontal cores need the reciprocal; vertical arcade cores already
++    * arrive in the physical panel coordinates required by the DRM surface. */
++   if (aspect_ratio_idx == ASPECT_RATIO_CORE && _drmvars &&
++       (_drmvars->rotation & 1) && new_aspect > 0.0f)
     {
        new_aspect = 1.0f / new_aspect;
 -      RARCH_LOG("[DRM] Core aspect corrected for Pixel2 rotation.\n");

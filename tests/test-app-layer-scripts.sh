@@ -461,6 +461,10 @@ grep -q 'drm_render_osd_msg(_drmvars, osd_surface' \
     "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
 grep -q 'Core aspect converted to Pixel2 panel coordinates' \
     "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
+grep -F -q 'unsigned content_rotation = (panel_rotation + 4 - core_rotation) & 3;' \
+    "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
+grep -F -q '(_drmvars->rotation & 1) && new_aspect > 0.0f' \
+    "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
 if grep -q '^+.*aspect_ratio_idx == ASPECT_RATIO_CORE && (effective_rotation & 1)' \
     "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"; then
     printf 'Pixel2 Core Provided aspect conversion must cover rotated arcade cores\n' >&2
