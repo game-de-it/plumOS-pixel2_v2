@@ -77,3 +77,20 @@ surface continues to honor Core Provided. If RGUI changes its input width,
 height, or pitch during the game-to-menu transition, the menu surface is freed
 and recreated before that frame is read. This applies to every rotated
 RetroArch core, rather than naming an arcade core or title.
+
+The operator accepted the fixed 4:3 aspect and confirmed that repeated cursor
+movement no longer corrupts the LCD on `3a1c045`. A single blink could remain
+either on menu entry or the first cursor movement. This is the expected visible
+boundary where the geometry guard replaces the provisional first surface.
+
+Patch 031 removes the provisional geometry. While the menu is active but its
+surface has not yet been allocated, `viewport_info` now reports the same fixed
+4:3 viewport that the eventual menu surface will use. RGUI therefore renders
+its first frame at the final dimensions, while the width/height/pitch guard is
+retained as a safety check for unexpected later changes.
+
+Ozone and XMB use the Pixel2 GLES presentation path rather than this plain-DRM
+RGUI surface. After the RGUI transition is accepted, both graphical drivers
+must be launched with temporary overrides against the same vertical Varth
+content. Validate orientation, aspect, repeated cursor movement, and return to
+the running game without replacing the user's saved menu driver or config.

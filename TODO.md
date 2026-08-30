@@ -55,6 +55,14 @@
     保持し続ける不整合を特定した。RGUI menuをcoreの回転・aspectから分離した固定4:3とし、
     input width/height/pitch変更時にmenu surfaceを再生成する。縦Arcadeで顕在化したが、
     odd rotationを要求する全RetroArch coreへ共通適用する。
+  - 2026-08-31: `3a1c045`を実機反映し、固定4:3、連続カーソル操作、画面崩れ解消を
+    operator確認。初回カーソル移動時、またはmenu進入時に一度だけ点滅する場合が残った。
+    これはgeometry guardが初回game viewport寸法のsurfaceを固定menu viewport寸法へ
+    再生成する境界と一致する。menu surface生成前から`viewport_info`が固定4:3を返し、
+    最初のRGUI frame自体を最終寸法で生成して一時surfaceと点滅をなくす。
+  - 2026-08-31: 固定4:3変更はplain DRM/RGUI専用。GLESを使うOzone/XMBについても同じ
+    Varthからmenu進入、連続カーソル移動、向き・比率、game復帰を一時設定で再確認し、
+    ユーザーの保存済み`menu_driver`とRetroArch cfgは変更しない。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL

@@ -498,6 +498,12 @@ grep -F -q '_drmvars->menu_surface->total_pitch != (int)(width * 4)' \
     "$ROOT_DIR/patches/retroarch/030-pixel2-drm-fixed-menu-geometry.patch"
 grep -F -q 'drm_surface_free(_drmvars, &_drmvars->menu_surface)' \
     "$ROOT_DIR/patches/retroarch/030-pixel2-drm-fixed-menu-geometry.patch"
+grep -F -q 'if (vid->menu_active && !vid->menu_surface)' \
+    "$ROOT_DIR/patches/retroarch/031-pixel2-drm-menu-first-viewport.patch"
+grep -F -q 'menu_view.aspect   = 4.0f / 3.0f' \
+    "$ROOT_DIR/patches/retroarch/031-pixel2-drm-menu-first-viewport.patch"
+grep -F -q 'drm_surface_update_viewport(&menu_view)' \
+    "$ROOT_DIR/patches/retroarch/031-pixel2-drm-menu-first-viewport.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
