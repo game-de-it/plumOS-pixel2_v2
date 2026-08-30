@@ -482,6 +482,12 @@ grep -F -q 'if (!surface || surface->layer != 2)' \
     "$ROOT_DIR/patches/retroarch/028-pixel2-drm-nonblocking-page-flip.patch"
 grep -F -q 'commit_flags |= DRM_MODE_ATOMIC_NONBLOCK' \
     "$ROOT_DIR/patches/retroarch/028-pixel2-drm-nonblocking-page-flip.patch"
+grep -F -q 'struct drm_page *scanout_page = surface->current_page' \
+    "$ROOT_DIR/patches/retroarch/029-pixel2-drm-surface-page-ownership.patch"
+grep -F -q 'surface->flip_page = (surface->flip_page + 1) % surface->numpages' \
+    "$ROOT_DIR/patches/retroarch/029-pixel2-drm-surface-page-ownership.patch"
+grep -q '^+            3,$' \
+    "$ROOT_DIR/patches/retroarch/029-pixel2-drm-surface-page-ownership.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \

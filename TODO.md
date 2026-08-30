@@ -43,6 +43,12 @@
     物理scanout競合に限定。ゲーム面は非同期60 Hzを維持し、menu layer 2だけ同期commitへ
     戻した。host回帰試験とAArch64 RetroArch buildは合格。実機で連続カーソル移動後の
     LCD、menu向き、ゲーム60 fpsを再確認する。
+  - 2026-08-31: `b97935a`を7管理fileのatomic deployとして実機へ反映し、component
+    7,060件、Runtime 11,334件、active cfg保持に合格したが、最初のカーソル移動で再現。
+    2回目でも復帰せず、同期commit単独と片側FB故障の仮説を棄却した。新規surfaceが
+    scanout中のpage 0へ最初のframeを書いていた所有権不備を修正し、producerをpage 1へ
+    先行させる。menuも安定中のgame面と同じ3 pageへ揃え、menu終了時はmain面の次の
+    writable pageではなく最後のcompleted pageを復帰表示する。再build/deploy後に再試験する。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL

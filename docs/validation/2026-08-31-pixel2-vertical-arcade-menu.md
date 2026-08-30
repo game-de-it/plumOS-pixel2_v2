@@ -43,6 +43,18 @@ ROMs, saves, or the game-surface rotation/aspect path.
 
 ## Device acceptance
 
+The first `b97935a` device trial retained the reported break-up on the first
+cursor movement. A second movement did not restore the LCD, which rejects both
+the asynchronous-commit-only hypothesis and a single defective framebuffer.
+The captured settled buffer remained coherent.
+
+The follow-up repair aligns menu ownership with the already stable three-page
+game path. A new surface presents page zero as its initial scanout page and
+advances the producer to page one before the first render. Returning from the
+menu presents the main surface's last completed page instead of its next
+writable page. The menu now has three pages, leaving a full extra frame before
+an old scanout buffer can be reused by the producer.
+
 Pending deployment and physical cursor-motion confirmation. Acceptance must
 confirm all of the following on the same Varth route:
 
