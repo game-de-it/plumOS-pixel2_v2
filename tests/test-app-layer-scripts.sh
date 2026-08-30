@@ -528,6 +528,12 @@ grep -F -q 'return gl->vp.height;' \
     "$ROOT_DIR/patches/retroarch/035-pixel2-gl-menu-font-logical-viewport.patch"
 grep -F -q 'clips text at logical' \
     "$ROOT_DIR/patches/retroarch/035-pixel2-gl-menu-font-logical-viewport.patch"
+grep -F -q 'glViewport(0, 0, gl->video_width, gl->video_height)' \
+    "$ROOT_DIR/patches/retroarch/036-pixel2-gl-menu-font-physical-rotation.patch"
+grep -F -q 'physical x = 1 - logical y' \
+    "$ROOT_DIR/patches/retroarch/036-pixel2-gl-menu-font-physical-rotation.patch"
+grep -F -q 'font_vertex[(2 * vertex) + 1] = logical_x' \
+    "$ROOT_DIR/patches/retroarch/036-pixel2-gl-menu-font-physical-rotation.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \

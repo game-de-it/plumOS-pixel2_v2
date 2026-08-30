@@ -131,3 +131,14 @@ Patch 035 keeps font normalization at 640x480 and leaves the existing menu MVP
 to rotate all primitives into the physical 480x640 scanout. Validate complete
 XMB labels at a readable scale, then repeat the Ozone orientation and clipping
 check.
+
+The `b2a9dc0` trial removed the hard boundary, but the font's absolute X
+coordinates were compressed to 75 percent of the graphical-menu coordinates.
+The captured Quick Menu placed labels around x=276 instead of XMB's intended
+x=368, overlapping the icons. Batched font vertices do not pass through the
+rectangle rotation used by the other menu primitives, so sharing the rotated
+MVP does not preserve the same coordinate system. Patch 036 leaves font layout
+and glyph construction in logical 640x480 coordinates, explicitly maps each
+vertex to physical 480x640 coordinates, and draws it with the unrotated MVP in
+the native viewport. This must restore both placement and glyph aspect without
+reintroducing the x=480 clip wall.

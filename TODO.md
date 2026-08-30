@@ -83,6 +83,11 @@
     font頂点だけ旧patch 019が物理幅480で正規化し、論理x=480以降をclip space外へ落として
     いた。背景・iconと同じ論理640x480でfontを正規化し、既存MVPだけで物理480x640へ
     回転する。読みやすいscaleでXMB全文字とOzone回帰を実機確認する。
+  - 2026-08-31: `b2a9dc0`でclip境界は消えたが、Quick Menu captureではfontの絶対X座標が
+    75%へ圧縮され、本来x≈368のlabelがx≈276へ移ってiconと重なった。batched fontは他の
+    menu矩形が通る回転関数を通らないため、共通MVPだけでは同じ座標にならない。fontは
+    論理640x480の配置とglyph比率を保持したまま各頂点を物理480x640へ明示回転し、native
+    viewportへ非回転MVPで描く。XMBの配置・全幅とOzoneを再試験する。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL

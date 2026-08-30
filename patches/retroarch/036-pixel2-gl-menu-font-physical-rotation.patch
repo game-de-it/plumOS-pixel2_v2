@@ -1,0 +1,54 @@
+diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -401,8 +401,8 @@ static unsigned gl2_menu_font_width(gl2_t *gl)
+ {
+    /* gl->vp is already the graphical menu's logical 640x480 viewport.
+-    * The menu MVP rotates these vertices into Pixel2's 480x640 scanout;
+-    * swapping the normalization dimensions here clips text at logical
+-    * x=480 while backgrounds and icons continue to the 640-pixel edge. */
++    * Font vertices are explicitly rotated into Pixel2's 480x640 scanout
++    * before drawing; swapping the normalization dimensions here clips text
++    * at logical x=480 while backgrounds and icons continue to x=640. */
+    return gl->vp.width;
+ }
+ 
+@@ -891,9 +891,9 @@ static void gl2_raster_font_draw_vertices(gl2_t *gl,
+    if (gl->shader)
+    {
+       gl->shader->set_coords(gl->shader_data, coords);
+-      gl->shader->set_mvp(gl->shader_data,
+-            gl2_menu_display_rotation()
+-            ? &gl->mvp : &gl->mvp_no_rot);
++      if (gl2_menu_display_rotation())
++         glViewport(0, 0, gl->video_width, gl->video_height);
++      gl->shader->set_mvp(gl->shader_data, &gl->mvp_no_rot);
+    }
+ 
+    glDrawArrays(GL_TRIANGLES, 0, coords->vertices);
+@@ -972,6 +972,25 @@ static void gl2_raster_font_render_line(gl2_t *gl,
+ 
+          i++;
+ 
++         /* Unlike textured menu rectangles, batched font glyphs do not pass
++          * through gfx_display_gl2_draw(), so rotate their normalized
++          * logical coordinates explicitly. This preserves XMB/Ozone's
++          * 640x480 placement and glyph aspect while targeting the native
++          * 480x640 EGL surface: physical x = 1 - logical y,
++          * physical y = logical x. */
++         if (gl2_menu_display_rotation())
++         {
++            unsigned vertex;
++            for (vertex = (unsigned)((i - 1) * 6);
++                  vertex < (unsigned)(i * 6); vertex++)
++            {
++               float logical_x = font_vertex[(2 * vertex) + 0];
++               float logical_y = font_vertex[(2 * vertex) + 1];
++               font_vertex[(2 * vertex) + 0] = 1.0f - logical_y;
++               font_vertex[(2 * vertex) + 1] = logical_x;
++            }
++         }
++
+          delta_x += glyph->advance_x;
+          delta_y -= glyph->advance_y;
+       }
