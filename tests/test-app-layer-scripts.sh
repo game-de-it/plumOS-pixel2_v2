@@ -474,6 +474,8 @@ if grep -q '^+.*aspect_ratio_idx == ASPECT_RATIO_CORE && (effective_rotation & 1
 fi
 grep -q 'mame2003-xtreme-amped-turboboost = "disabled"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch-core-options.cfg"
+grep -F -q 'DRM_MODE_PAGE_FLIP_EVENT | DRM_MODE_ATOMIC_NONBLOCK' \
+    "$ROOT_DIR/patches/retroarch/028-pixel2-drm-nonblocking-page-flip.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
