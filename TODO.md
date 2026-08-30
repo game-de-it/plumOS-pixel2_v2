@@ -78,6 +78,11 @@
     別に、`xmb_render()`へ渡す初期layout寸法が旧patch 020の無条件swapで480x640のまま
     だった。render/frame両段を長辺640・短辺480へ統一し、XMBのticker幅と項目配置も
     content rotationから分離する。XMB合格後にOzoneの回帰がないことを再確認する。
+  - 2026-08-31: `89de0dc`でも硬い境界が残り、scale factorを上げてglyphを小さくすると
+    同じ境界内に表示できる文字数だけ増えることをoperator確認。XMBのticker省略ではなく、
+    font頂点だけ旧patch 019が物理幅480で正規化し、論理x=480以降をclip space外へ落として
+    いた。背景・iconと同じ論理640x480でfontを正規化し、既存MVPだけで物理480x640へ
+    回転する。読みやすいscaleでXMB全文字とOzone回帰を実機確認する。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL

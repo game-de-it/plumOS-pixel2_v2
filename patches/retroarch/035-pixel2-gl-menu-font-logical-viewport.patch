@@ -1,0 +1,24 @@
+diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -397,12 +397,18 @@ static void gl2_rotate_menu_rect(float logical_height,
+ 
+ static unsigned gl2_menu_font_width(gl2_t *gl)
+ {
+-   return gl2_menu_display_rotation() ? gl->vp.height : gl->vp.width;
++   /* gl->vp is already the graphical menu's logical 640x480 viewport.
++    * The menu MVP rotates these vertices into Pixel2's 480x640 scanout;
++    * swapping the normalization dimensions here clips text at logical
++    * x=480 while backgrounds and icons continue to the 640-pixel edge. */
++   return gl->vp.width;
+ }
+ 
+ static unsigned gl2_menu_font_height(gl2_t *gl)
+ {
+-   return gl2_menu_display_rotation() ? gl->vp.width : gl->vp.height;
++   /* Keep font vertices in the same logical coordinate system as every
++    * other graphical-menu primitive. */
++   return gl->vp.height;
+ }
+ 
+ static void *gfx_display_gl2_get_default_mvp(void *data)

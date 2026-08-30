@@ -119,3 +119,15 @@ from patch 020. XMB therefore cached its ticker widths and item geometry for a
 frame. Patch 034 normalizes both render-phase dimensions to the panel long and
 short sides. This makes `xmb_render()` and `xmb_frame()` consistently receive
 640x480 without changing the content projection or saved user configuration.
+
+The `89de0dc` device trial still showed a hard vertical boundary. Increasing
+the XMB scale factor exposed more characters only because it made each glyph
+smaller; it did not move the boundary. The remaining fault was therefore not
+XMB's ticker or thumbnail reservation. Patch 019 normalized font vertices with
+the swapped physical dimensions even after the menu viewport became a stable
+logical 640x480. Text vertices beyond logical x=480 were outside clip space,
+while backgrounds and icons used the correct 640-pixel coordinate system.
+Patch 035 keeps font normalization at 640x480 and leaves the existing menu MVP
+to rotate all primitives into the physical 480x640 scanout. Validate complete
+XMB labels at a readable scale, then repeat the Ozone orientation and clipping
+check.
