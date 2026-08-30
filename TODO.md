@@ -868,6 +868,13 @@
     mGBA ModernのgameとRGUI menuはともに物理`427x640`、logical`640x427`となり、
     Runtime `0.1.0-dev-e4e689b`のhealthy/full checksumと実機目視に合格した。
     [検証記録](docs/validation/2026-08-27-pixel2-retroarch-core-aspect.md)を参照。
+  - 2026-08-30: 実行中にaspectを変更すると既存game surfaceだけ旧比率へ残り、後から
+    作られるmenu surfaceだけ新比率になる問題を`6777ec6`で修正。main/menu surfaceを
+    runtime変更時に再生成し、GBで`480x640`から`480x533`へ即時反映されることと、game/menu
+    両方の実LCD表示を確認した。`0292cc5`で新規・Factory Resetの既定をCore Providedへ変更し、
+    既存ユーザー値はmergeで維持する試験を追加。Runtime `0.1.4-dev-0292cc5`はRetroArch
+    7,060件、app-layer 11,333件の実機checksumに合格。
+    [検証記録](docs/validation/2026-08-30-pixel2-retroarch-dynamic-aspect.ja.md)を参照。
 - [x] Pixel2の標準system pickerをV90S共通の3x2・6アイコンgridに揃える
   - 2026-08-14: 初期移植時の`default-horizontal` / `tile_strip`（2x1）を廃止し、標準`default` themeを`tile_grid`（3x2）、vertical page transitionへ変更。`c808952`の署名Runtime差分を実機適用し、3490 checksum、`runtime_healthy`、設定保持を確認。LCD上の6 tileと物理navigationは目視確認待ち。
 - [x] 参照frontendをPixel2専用としてvendor化し、他機種・旧distribution名称を除去する
