@@ -752,14 +752,19 @@
 - [x] `plumos_output`経由のaudio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
 - [ ] PC-98 NP2kaiとX68000 PX68kのPixel2入力・表示・音声・終了経路を実機確認する
   - 2026-08-30: NP2kaiの上流既定`np2kai_joymode=OFF`により、core起動後も
-    Pixel2 RetroPadがkeyboard-driven contentへ変換されないことを特定。MMF実績に合わせ、
-    未設定時だけ`Arrows 3button`をfactory core optionからmergeする。既存ユーザー値は保持する。
+    Pixel2 RetroPadがkeyboard-driven contentへ変換されないことを特定。factory既定は
+    `Arrows 3button`とし、既存ユーザー値は保持する。
   - PX68kは配布元が明確なX68000版「超連射68k」v1.10 XDFを一時検証contentとして使い、
     release imageやrepositoryへROMを収録せず実機FE経路を確認する。
   - 2026-08-30: PX68kで「超連射68k」v1.10をFE経路から起動。機械検査で映像出力と
     ALSA playback pointer進行に合格し、実機operatorがゲーム起動と物理操作を確認した。
-    NP2kaiはFE経路からの起動をoperator確認済みで、今回追加したPixel2入力mappingの
-    最終物理確認を継続する。[検証記録](docs/validation/2026-08-30-pixel2-pc98-x68000-input.ja.md)
+    NP2kaiはFE経路からの起動をoperator確認済み。
+  - 2026-08-30: global factory optionよりper-core `.opt`の`OFF`が優先される既存SD回帰を
+    特定。RetroPad入力がcoreへ届くことを直接traceし、`4948bb5`で一回限りの
+    `OFF` migrationとユーザー選択保持を実装した。正式coreでの起動、frontend 200/200、
+    app-layer 11333/11333、設定SHA不変を確認し、operatorが十字キーとゲーム操作を合格とした。
+    音質と通常終了の最終物理確認を継続する。
+    [検証記録](docs/validation/2026-08-30-pixel2-pc98-x68000-input.ja.md)
 - [x] save/stateが再起動後も保持されることを実機確認する
   - 2026-08-15: content-local save/state、自動exit state、10秒autosave、20世代state、thumbnailをfactoryで有効化。更新前から存在したfallback state 2件は更新・再起動後もSHA一致。ゲーム内で新規save/stateを書き、再起動後にloadする物理acceptanceは継続。
   - 2026-08-23: エミュレータ全体の最終操作、終了、FE復帰、save/state保持をoperator合格とした。
