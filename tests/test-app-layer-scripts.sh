@@ -34,7 +34,9 @@ for script in \
 done
 test -x "$ROOT_DIR/tests/test-retroarch-config-merge.sh"
 test -x "$ROOT_DIR/tests/test-np2kai-config-repair.sh"
+test -x "$ROOT_DIR/tests/test-mame2003-xtreme-config-repair.sh"
 "$ROOT_DIR/tests/test-np2kai-config-repair.sh"
+"$ROOT_DIR/tests/test-mame2003-xtreme-config-repair.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-retroarch-game-menu-selection.sh"
 "$ROOT_DIR/tests/test-pixel2-retroarch-game-menu-selection.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-power-menu-sleep.sh"
@@ -474,6 +476,8 @@ if grep -q '^+.*aspect_ratio_idx == ASPECT_RATIO_CORE && (effective_rotation & 1
 fi
 grep -q 'mame2003-xtreme-amped-turboboost = "disabled"' \
     "$ROOT_DIR/package/retroarch-pixel2/retroarch-core-options.cfg"
+grep -q 'plumos-mame2003-xtreme-config-repair' \
+    "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-launch"
 grep -F -q 'DRM_MODE_PAGE_FLIP_EVENT | DRM_MODE_ATOMIC_NONBLOCK' \
     "$ROOT_DIR/patches/retroarch/028-pixel2-drm-nonblocking-page-flip.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \

@@ -1,0 +1,68 @@
+#!/bin/sh
+set -eu
+
+bb=${PLUMOS_BUSYBOX:-}
+if [ -z "$bb" ] && [ -x /bin/busybox ]; then
+    bb=/bin/busybox
+fi
+bb_run() {
+    if [ -n "$bb" ]; then
+        "$bb" "$@"
+    else
+        "$@"
+    fi
+}
+
+core_options=${1:-/mnt/plumos/config/retroarch/config/MAME 2003-Xtreme/MAME 2003-Xtreme.opt}
+recovery_dir=${2:-/mnt/plumos/state/retroarch/recovery}
+default_turboboost=${3:-disabled}
+marker="$recovery_dir/mame2003-xtreme-turboboost-v1-migrated"
+key=mame2003-xtreme-amped-turboboost
+
+# The upstream Xtreme core advertises X6 as its first/default value. Older
+# Pixel2 launches persisted that value into the per-core .opt file, which has
+# precedence over plumOS's global core-options default and discards six of
+# every twelve frames. Migrate only that exact stale value once. The marker
+# makes a later deliberate X6 selection a user setting that remains untouched.
+if [ -e "$marker" ]; then
+    printf 'mame2003_xtreme_config=result-valid field=turboboost reason=migration-complete\n'
+    exit 0
+fi
+
+bb_run mkdir -p "$recovery_dir" "${core_options%/*}"
+if [ ! -f "$core_options" ]; then
+    next="${core_options}.plumos-repair.$$"
+    trap 'bb_run rm -f "$next"' EXIT HUP INT TERM
+    printf '%s = "%s"\n' "$key" "$default_turboboost" >"$next"
+    bb_run sync
+    bb_run mv "$next" "$core_options"
+    : >"$marker"
+    bb_run sync
+    trap - EXIT HUP INT TERM
+    printf 'mame2003_xtreme_config=result-installed field=turboboost value=%s\n' \
+        "$default_turboboost"
+elif bb_run grep -Eq \
+    '^[[:space:]]*mame2003-xtreme-amped-turboboost[[:space:]]*=[[:space:]]*"X6"[[:space:]]*$' \
+    "$core_options"; then
+    backup="$recovery_dir/MAME-2003-Xtreme.opt.before-turboboost-migration"
+    if [ ! -e "$backup" ]; then
+        bb_run cp -p "$core_options" "$backup"
+    fi
+    next="${core_options}.plumos-repair.$$"
+    trap 'bb_run rm -f "$next"' EXIT HUP INT TERM
+    bb_run sed \
+        "s/^[[:space:]]*mame2003-xtreme-amped-turboboost[[:space:]]*=.*/$key = \"$default_turboboost\"/" \
+        "$core_options" >"$next"
+    bb_run chmod --reference="$core_options" "$next" 2>/dev/null || true
+    bb_run sync
+    bb_run mv "$next" "$core_options"
+    : >"$marker"
+    bb_run sync
+    trap - EXIT HUP INT TERM
+    printf 'mame2003_xtreme_config=result-repaired field=turboboost reason=stale-x6 value=%s backup=%s\n' \
+        "$default_turboboost" "$backup"
+else
+    : >"$marker"
+    bb_run sync
+    printf 'mame2003_xtreme_config=result-valid field=turboboost reason=user-selection-preserved\n'
+fi

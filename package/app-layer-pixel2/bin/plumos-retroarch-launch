@@ -112,6 +112,13 @@ if [ ! -s "$alsa_config" ] && [ -s "$alsa_factory" ]; then
 fi
 
 case "$system_id:${core##*/}" in
+    arcade:km_mame2003_xtreme_libretro.so)
+        "$root/bin/plumos-mame2003-xtreme-config-repair" \
+            "$root/config/retroarch/config/MAME 2003-Xtreme/MAME 2003-Xtreme.opt" \
+            "$root/state/retroarch/recovery" \
+            "disabled" \
+            >>"$root/logs/retroarch-launch.log" 2>&1
+        ;;
     pc98:np2kai_libretro.so)
         "$root/bin/plumos-np2kai-config-repair" \
             "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}/np2kai/np2kai.cfg" \
