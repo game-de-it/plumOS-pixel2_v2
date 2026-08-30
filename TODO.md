@@ -51,6 +51,14 @@
     mount残留0、追跡fileなしのstale-mount fixture回収に合格。GameMaker代表のTiny Rallyも
     同期監査に遮られず`gmloadernext.aarch64`開始、終了後回収に合格したが、検証機に
     Blaze of Storm本体がないため同titleの画面・操作は利用者再試験待ち。
+  - 2026-08-30: v0.1.4実機でTiny Rallyと、過去に表示合格済みのApotrisがともに
+    game process開始前に黒画面となる回帰を確認。FEの実体は`plumos-frontend-pixel2`
+    だが、共通port launcherの祖先判定が旧内部名だけを認識していた。この誤判定で
+    launcherが親FEへstopを送り、FEのforeground process-group回収がlauncher自身を
+    `SIGTERM`で終了させ、FE停止とprivate bind mount残留を引き起こしていた。adapter 51は
+    `/run/plumos/frontend.pid`の実PIDを祖先chainで照合し、現行binary名もfallback認識する。
+    host runtime、mount cleanup、session cleanup試験は合格。実機FE経路でApotris/Tiny
+    Rallyの表示、終了、FE復帰、mount 0を再確認する。
 
 - [x] PyxelのPixel2実機acceptanceを完了する
   - 2026-08-20: 全Pyxelタイトルが`EGL not initialized`で終了する原因を、存在しない

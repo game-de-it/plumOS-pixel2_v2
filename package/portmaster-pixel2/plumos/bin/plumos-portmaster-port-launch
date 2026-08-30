@@ -13,6 +13,7 @@ PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
 PLUMOS_SDCARD_ROOT="${PLUMOS_SDCARD_ROOT:-/mnt/plumos-user}"
 PLUMOS_ROM_ROOT="${PLUMOS_ROM_ROOT:-$PLUMOS_SDCARD_ROOT/roms}"
 RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+FRONTEND_PID_FILE="${PLUMOS_RUNTIME_ROOT:-/run/plumos}/frontend.pid"
 BB="${PLUMOS_BUSYBOX:-/mnt/plumos-user/.tmp_update/busybox}"
 APP_ROOT="${PLUMOS_PORTMASTER_APP_ROOT:-${PLUMOS_ROOT}/apps/portmaster}"
 LIB_DIR="${RUN_ROOT}/lib"
@@ -105,12 +106,17 @@ prepare_content_alias() {
 prepare_content_alias || exit 1
 
 frontend_is_ancestor() {
+  frontend_pid="$(cat "$FRONTEND_PID_FILE" 2>/dev/null || true)"
+  case "$frontend_pid" in ''|*[!0-9]*) frontend_pid="" ;; esac
   parent=$PPID
   count=0
   while [ "$parent" -gt 1 ] 2>/dev/null && [ "$count" -lt 16 ]; do
+    [ -n "$frontend_pid" ] && [ "$parent" = "$frontend_pid" ] && return 0
     cmdline="$(tr '\000' ' ' < "/proc/${parent}/cmdline" 2>/dev/null || true)"
     case "$cmdline" in
-      *plumos-controller-ui-pixel2*|*plumos-controller-ui-fbdev*) return 0 ;;
+      *plumos-frontend-pixel2*|*plumos-controller-ui-pixel2*|*plumos-controller-ui-fbdev*)
+        return 0
+        ;;
     esac
     parent="$(sed 's/.*) //' "/proc/${parent}/stat" 2>/dev/null | awk '{print $2}' || true)"
     case "$parent" in ''|*[!0-9]*) return 1 ;; esac
