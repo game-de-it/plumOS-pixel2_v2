@@ -35,6 +35,15 @@
 
 ## Implementation audit and release blockers
 
+- [ ] 縦画面ArcadeのRetroArchメニュー更新時にLCDが崩れる問題を解消する
+  - 2026-08-31: MAME 2003-Xtreme / Varthでゲーム、FPS表示、静止後のQuick Menuを
+    DRM captureし、向き・比率・buffer内容は正常、ゲームはoperator確認で60 fpsとなった。
+    カーソル移動時だけLCDが崩れ、静止後bufferは正常へ戻り、kernel/runtime logにも
+    atomic commit errorがないため、全surfaceを非同期化したpage-flipと2-page menu面の
+    物理scanout競合に限定。ゲーム面は非同期60 Hzを維持し、menu layer 2だけ同期commitへ
+    戻した。host回帰試験とAArch64 RetroArch buildは合格。実機で連続カーソル移動後の
+    LCD、menu向き、ゲーム60 fpsを再確認する。
+
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL
     library、共通port launcher、frontend環境隔離はいずれもpackageへ収録済みであることを

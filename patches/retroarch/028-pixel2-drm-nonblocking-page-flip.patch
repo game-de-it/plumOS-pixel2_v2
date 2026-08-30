@@ -1,11 +1,17 @@
 --- a/gfx/drivers/drm_gfx.c
 +++ b/gfx/drivers/drm_gfx.c
-@@ -494,7 +494,7 @@
+@@ -494,7 +494,13 @@
      * PicoArch presenters while retaining RetroArch's threaded video path.
      */
++   uint32_t commit_flags = DRM_MODE_PAGE_FLIP_EVENT;
++
++   /* RGUI redraws directly from the frontend thread. Keep its two-page
++    * surface synchronous so a moving cursor cannot race panel scanout. */
++   if (!surface || surface->layer != 2)
++      commit_flags |= DRM_MODE_ATOMIC_NONBLOCK;
     ret = drmModeAtomicCommit(drm.fd, req,
 -         DRM_MODE_PAGE_FLIP_EVENT, &pending);
-+         DRM_MODE_PAGE_FLIP_EVENT | DRM_MODE_ATOMIC_NONBLOCK, &pending);
++         commit_flags, &pending);
     drmModeAtomicFree(req);
     if (ret < 0)
     {
