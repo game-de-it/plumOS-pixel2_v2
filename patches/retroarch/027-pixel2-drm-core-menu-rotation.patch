@@ -1,0 +1,103 @@
+diff --git a/gfx/drivers/drm_gfx.c b/gfx/drivers/drm_gfx.c
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -173,8 +173,9 @@ struct drm_video
+    int core_pitch;
+ 
+    unsigned rotation;
+-   /* Both main and menu surfaces are going to have the same aspect,
+-    * so we keep it here for future reference. */
++   unsigned panel_rotation;
++   /* Keep the content aspect here. A menu whose fixed panel rotation has
++    * different parity converts this value when its surface is created. */
+    float current_aspect;
+ 
+    const font_renderer_driver_t *font_driver;
+@@ -322,6 +323,13 @@ static void drm_surface_setup(void *data,  int src_width, int src_height,
+    surface->frame_height = src_height;
+    surface->aspect      = aspect;
+    surface->rotation    = _drmvars ? (_drmvars->rotation & 3) : 0;
++   if (_drmvars && layer == 2)
++   {
++      surface->rotation = _drmvars->panel_rotation & 3;
++      if (((surface->rotation ^ _drmvars->rotation) & 1) && aspect > 0.0f)
++         surface->aspect = 1.0f / aspect;
++   }
++   surface->layer       = layer;
+    drm_surface_update_viewport(surface);
+    surface->logical_width  = surface->viewport.width;
+    surface->logical_height = surface->viewport.height;
+@@ -1246,7 +1254,20 @@ static void *drm_init(const video_info_t *video,
+    _drmvars->pending_mutex    = slock_new();
+    _drmvars->core_width       = 0;
+    _drmvars->core_height      = 0;
+-   _drmvars->rotation         = retroarch_get_rotation() & 3;
++   {
++      settings_t *settings = config_get_ptr();
++      unsigned core_rotation = retroarch_get_core_requested_rotation() & 3;
++
++      _drmvars->panel_rotation = settings
++         ? (settings->uints.video_rotation & 3)
++         : (retroarch_get_rotation() & 3);
++      /* Pixel2's software blitter rotates in the opposite direction from
++       * libretro's frontend rotation convention. Keep the physical panel
++       * correction as the base and subtract the core request. */
++      _drmvars->rotation = (_drmvars->panel_rotation + 4 - core_rotation) & 3;
++      RARCH_LOG("[DRM] Pixel2 rotations panel=%u core=%u content=%u.\n",
++            _drmvars->panel_rotation, core_rotation, _drmvars->rotation);
++   }
+    {
+       const char *panel_rotation = getenv("PLUMOS_DRM_PANEL_ROTATION");
+       if (panel_rotation && *panel_rotation)
+@@ -1255,7 +1276,8 @@ static void *drm_init(const video_info_t *video,
+          unsigned long parsed = strtoul(panel_rotation, &end, 10);
+          if (end && *end == '\0' && parsed <= 3)
+          {
+-            _drmvars->rotation = (unsigned)parsed;
++            _drmvars->panel_rotation = (unsigned)parsed;
++            _drmvars->rotation       = (unsigned)parsed;
+             RARCH_LOG("[DRM] Fixed panel rotation set to %u.\n",
+                   _drmvars->rotation);
+          }
+@@ -1483,22 +1505,39 @@ static void drm_set_rotation(void *data, unsigned rotation)
+ {
+    struct drm_video *_drmvars = data;
++   settings_t *settings = config_get_ptr();
+    const char *panel_rotation = getenv("PLUMOS_DRM_PANEL_ROTATION");
++   unsigned next_panel_rotation;
++   unsigned core_rotation;
++   unsigned next_rotation;
++
++   (void)rotation;
+ 
+    if (panel_rotation && *panel_rotation)
+    {
+       RARCH_LOG("[DRM] Fixed panel rotation remains %u.\n",
+             _drmvars ? _drmvars->rotation : 0);
+       return;
+    }
+-   unsigned next_rotation = rotation & 3;
+ 
+-   if (!_drmvars || _drmvars->rotation == next_rotation)
++   if (!_drmvars)
+       return;
+ 
+-   _drmvars->rotation = next_rotation;
+-   RARCH_LOG("[DRM] Software rotation set to %u.\n", next_rotation);
++   next_panel_rotation = settings
++      ? (settings->uints.video_rotation & 3)
++      : _drmvars->panel_rotation;
++   core_rotation = retroarch_get_core_requested_rotation() & 3;
++   next_rotation = (next_panel_rotation + 4 - core_rotation) & 3;
++
++   if (_drmvars->rotation == next_rotation &&
++       _drmvars->panel_rotation == next_panel_rotation)
++      return;
++
++   _drmvars->rotation       = next_rotation;
++   _drmvars->panel_rotation = next_panel_rotation;
++   RARCH_LOG("[DRM] Pixel2 rotations panel=%u core=%u content=%u.\n",
++         next_panel_rotation, core_rotation, next_rotation);
+ 
+    if (_drmvars->main_surface)
+    {

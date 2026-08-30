@@ -443,6 +443,16 @@ if grep -q '_drmvars->menu_active = false' \
 fi
 grep -q '^-static void drm_surface_set_aspect' \
     "$ROOT_DIR/patches/retroarch/026-pixel2-drm-dynamic-aspect-recreate.patch"
+grep -q 'unsigned panel_rotation;' \
+    "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
+grep -F -q '(_drmvars->panel_rotation + 4 - core_rotation) & 3' \
+    "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
+grep -q 'layer == 2' \
+    "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
+grep -F -q 'surface->rotation ^ _drmvars->rotation' \
+    "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
+grep -q 'surface->aspect = 1.0f / aspect' \
+    "$ROOT_DIR/patches/retroarch/027-pixel2-drm-core-menu-rotation.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
