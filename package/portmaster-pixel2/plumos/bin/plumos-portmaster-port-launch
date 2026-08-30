@@ -414,6 +414,13 @@ export PLUMOS_PORTMASTER_SESSION_ID="${PLUMOS_PORTMASTER_SESSION_ID:-pixel2-$(da
 export PLUMOS_PORTMASTER_REQUIRED_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 export PLUMOS_PORTMASTER_REQUIRED_LD_PRELOAD="${EXEC_GUARD_LIB}:${SDL_ROTATE_LIB}:${GL_ROTATE_LIB}"
 case "$(basename "$script" | tr '[:upper:]' '[:lower:]')" in
+  'moonlight new.sh')
+    # Moonlight Embedded 2.7.0 presents red and blue channels reversed through
+    # SDL's GLES2 renderer on the stock Pixel2 KMS/Mesa path.  The SDL software
+    # renderer keeps the decoded 640x480 XR24 channel order and still uses the
+    # common final rotation presenter.  Do not impose this on unrelated ports.
+    export SDL_RENDER_DRIVER="software"
+    ;;
   rockbox.sh)
     [ -r "$ROCKBOX_COMPAT_LIB" ] || {
       printf 'PortMaster Pixel2 Rockbox compatibility library is missing: %s\n' \
