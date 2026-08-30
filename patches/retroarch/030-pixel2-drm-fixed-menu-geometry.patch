@@ -1,0 +1,38 @@
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -325,9 +325,10 @@ static void drm_surface_setup(void *data,  int src_width, int src_height,
+    surface->rotation    = _drmvars ? (_drmvars->rotation & 3) : 0;
+    if (_drmvars && layer == 2)
+    {
++      /* The display UI is always the Pixel2's landscape 4:3 viewport. Do
++       * not inherit a rotated core's aspect ratio into RGUI. */
+       surface->rotation = _drmvars->panel_rotation & 3;
+-      if (((surface->rotation ^ _drmvars->rotation) & 1) && aspect > 0.0f)
+-         surface->aspect = 1.0f / aspect;
++      surface->aspect   = 4.0f / 3.0f;
+    }
+    surface->layer       = layer;
+    drm_surface_update_viewport(surface);
+@@ -1437,6 +1439,22 @@ static void drm_set_texture_frame(void *data, const void *frame, bool rgb32,
+    if (!_drmvars->menu_active)
+       return;
+ 
++   /* On the first menu frame, RGUI may still use the running core's
++    * viewport. Once the menu surface becomes active, viewport_info reports
++    * the fixed display viewport and RGUI changes its output dimensions.
++    * Reusing the first surface would retain the old frame size and pitch,
++    * causing the first cursor redraw to read the new frame with stale
++    * geometry and visibly break up the LCD. */
++   if (_drmvars->menu_surface &&
++       (_drmvars->menu_surface->frame_width != (int)width ||
++        _drmvars->menu_surface->frame_height != (int)height ||
++        _drmvars->menu_surface->total_pitch != (int)(width * 4)))
++   {
++      RARCH_LOG("[DRM] Recreating menu surface for %ux%u input.\n",
++            width, height);
++      drm_surface_free(_drmvars, &_drmvars->menu_surface);
++   }
++
+    /* If menu is active in this frame but the
+     * menu surface is NULL, we allocate a new one.*/
+    if (!_drmvars->menu_surface)

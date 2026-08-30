@@ -62,3 +62,18 @@ confirm all of the following on the same Varth route:
 2. FPS remains approximately 60;
 3. Quick Menu remains upright;
 4. repeated up/down cursor movement no longer breaks up the LCD.
+
+The `fd69baf` device trial also retained the break-up, rejecting page ownership
+and the number of menu buffers as the cause. The remaining transition has two
+different geometries: RGUI's first frame is produced against the running
+vertical core viewport, then `viewport_info` begins reporting the active menu
+viewport. The DRM menu surface retained the first frame's width, height, and
+pitch while reading the later frame, so the first cursor redraw was the first
+visible mismatched read.
+
+Patch 030 makes the display UI independent of content geometry. Every plain-DRM
+RGUI surface uses the Pixel2's fixed landscape 4:3 viewport, while the game
+surface continues to honor Core Provided. If RGUI changes its input width,
+height, or pitch during the game-to-menu transition, the menu surface is freed
+and recreated before that frame is read. This applies to every rotated
+RetroArch core, rather than naming an arcade core or title.

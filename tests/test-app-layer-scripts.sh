@@ -488,6 +488,16 @@ grep -F -q 'surface->flip_page = (surface->flip_page + 1) % surface->numpages' \
     "$ROOT_DIR/patches/retroarch/029-pixel2-drm-surface-page-ownership.patch"
 grep -q '^+            3,$' \
     "$ROOT_DIR/patches/retroarch/029-pixel2-drm-surface-page-ownership.patch"
+grep -F -q 'surface->aspect   = 4.0f / 3.0f' \
+    "$ROOT_DIR/patches/retroarch/030-pixel2-drm-fixed-menu-geometry.patch"
+grep -F -q '_drmvars->menu_surface->frame_width != (int)width' \
+    "$ROOT_DIR/patches/retroarch/030-pixel2-drm-fixed-menu-geometry.patch"
+grep -F -q '_drmvars->menu_surface->frame_height != (int)height' \
+    "$ROOT_DIR/patches/retroarch/030-pixel2-drm-fixed-menu-geometry.patch"
+grep -F -q '_drmvars->menu_surface->total_pitch != (int)(width * 4)' \
+    "$ROOT_DIR/patches/retroarch/030-pixel2-drm-fixed-menu-geometry.patch"
+grep -F -q 'drm_surface_free(_drmvars, &_drmvars->menu_surface)' \
+    "$ROOT_DIR/patches/retroarch/030-pixel2-drm-fixed-menu-geometry.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \

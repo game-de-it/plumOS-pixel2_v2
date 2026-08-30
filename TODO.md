@@ -49,6 +49,12 @@
     scanout中のpage 0へ最初のframeを書いていた所有権不備を修正し、producerをpage 1へ
     先行させる。menuも安定中のgame面と同じ3 pageへ揃え、menu終了時はmain面の次の
     writable pageではなく最後のcompleted pageを復帰表示する。再build/deploy後に再試験する。
+  - 2026-08-31: `fd69baf`も同じ最初のカーソル移動で再現し、page ownershipとbuffer数を
+    原因から除外。縦coreからmenuへ切り替わる最初のframeはgame viewport寸法だが、次の
+    redrawではmenu viewport寸法へ変わる一方、DRM menu surfaceが最初のframe寸法・pitchを
+    保持し続ける不整合を特定した。RGUI menuをcoreの回転・aspectから分離した固定4:3とし、
+    input width/height/pitch変更時にmenu surfaceを再生成する。縦Arcadeで顕在化したが、
+    odd rotationを要求する全RetroArch coreへ共通適用する。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL
