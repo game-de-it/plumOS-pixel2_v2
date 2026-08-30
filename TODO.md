@@ -750,6 +750,12 @@
   - 2026-08-16: DreamcastのFlycast XtremeをKMS/GBM `gl`へ移し、GL用`video_rotation=1`、Dreamcastのcore rotation拒否、Full aspectで正立640x480全面表示へ修正。続いてRGUIだけが無回転行列で描画される問題を`f46740d`でDreamcast限定のcontent行列へ修正。署名Runtime `0.1.0-dev-f46740d`はhealthy、Frontend 194/194、RetroArch 59/59、PicoArch 11/11、root 4248/4248に合格。最終DRM captureと物理Functionで開いたメニューの実LCD方向をoperator確認済み。[検証記録](docs/validation/2026-08-16-pixel2-dreamcast-display.md)
   - 2026-08-16: app-layer manifestのGLES必須4 core（Flycast 2種、ParaLLEl N64、DuckSwanStation）を監査。N64だけ`drm`へ漏れて逆さま・3:4表示だったため、`2944596`で全hardware-GLES coreを`gl`、rotation 1、Full aspect、content-matrix RGUIへ統一し、manifestに追加されたGLES coreのlauncher漏れをrelease gate化。署名Runtime `0.1.0-dev-2944596`はhealthy、Frontend 194/194、RetroArch 59/59、cores 357/357、root 4248/4248に合格。N64、DuckSwan、通常Flycastの最終DRM game captureとN64/DuckSwanのRGUI captureは正立640x480。さらに正式Runtime上で物理Functionから開いたN64メニューの実LCD方向をoperator確認し、最終XR24 plane captureも合格。[検証記録](docs/validation/2026-08-16-pixel2-gles-core-audit.md)
 - [x] `plumos_output`経由のaudio、D-pad、ABXY、START/SELECT、shoulder、終了hotkeyを実機確認する
+- [ ] PC-98 NP2kaiとX68000 PX68kのPixel2入力・表示・音声・終了経路を実機確認する
+  - 2026-08-30: NP2kaiの上流既定`np2kai_joymode=OFF`により、core起動後も
+    Pixel2 RetroPadがkeyboard-driven contentへ変換されないことを特定。MMF実績に合わせ、
+    未設定時だけ`Arrows 3button`をfactory core optionからmergeする。既存ユーザー値は保持する。
+  - PX68kは配布元が明確なX68000版「超連射68k」v1.10 XDFを一時検証contentとして使い、
+    release imageやrepositoryへROMを収録せず実機FE経路を確認する。
 - [x] save/stateが再起動後も保持されることを実機確認する
   - 2026-08-15: content-local save/state、自動exit state、10秒autosave、20世代state、thumbnailをfactoryで有効化。更新前から存在したfallback state 2件は更新・再起動後もSHA一致。ゲーム内で新規save/stateを書き、再起動後にloadする物理acceptanceは継続。
   - 2026-08-23: エミュレータ全体の最終操作、終了、FE復帰、save/state保持をoperator合格とした。

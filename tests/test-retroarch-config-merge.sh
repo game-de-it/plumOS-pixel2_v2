@@ -36,10 +36,24 @@ grep -q "^reicast_cpu_mode = \"interpreter\"$" \
     "$active/retroarch-core-options.cfg"
 grep -q "^parallel-n64-gfxplugin = \"gliden64\"$" \
     "$active/retroarch-core-options.cfg"
+grep -q "^np2kai_joymode = \"Arrows 3button\"$" \
+    "$active/retroarch-core-options.cfg"
 grep -q "^input_player1_btn_up = \"99\"$" \
     "$active/remaps/ParaLLEl N64/ParaLLEl N64.rmp"
 grep -q "^input_player1_btn_down = \"18\"$" \
     "$active/remaps/ParaLLEl N64/ParaLLEl N64.rmp"
+
+# An explicit NP2kai mode selected by the user must not be replaced by a later
+# factory merge.
+sed -i "s/np2kai_joymode = \"Arrows 3button\"/np2kai_joymode = \"Mouse\"/" \
+    "$active/retroarch-core-options.cfg"
+PLUMOS_ROOT=$root PLUMOS_BUSYBOX=/bin/busybox \
+    /work/package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    > /tmp/np2kai-user.log
+grep -q "^np2kai_joymode = \"Mouse\"$" \
+    "$active/retroarch-core-options.cfg"
+test "$(grep -c "^np2kai_joymode[[:space:]]*=" \
+    "$active/retroarch-core-options.cfg")" = "1"
 
 # A previous factory cfg becomes byte-different when RetroArch saves it. Use
 # its generation marker to migrate only values that still equal the old
