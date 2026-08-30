@@ -111,6 +111,15 @@ if [ ! -s "$alsa_config" ] && [ -s "$alsa_factory" ]; then
     $bb mv "$alsa_config.next" "$alsa_config"
 fi
 
+case "$system_id:${core##*/}" in
+    pc98:np2kai_libretro.so)
+        "$root/bin/plumos-np2kai-config-repair" \
+            "${PLUMOS_BIOS_ROOT:-/mnt/plumos-user/bios}/np2kai/np2kai.cfg" \
+            "$root/state/retroarch/recovery" \
+            >>"$root/logs/retroarch-launch.log" 2>&1
+        ;;
+esac
+
 menu_driver=$(
     $bb sed -n 's/^[[:space:]]*menu_driver[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
         "$config" | $bb sed -n '1p'

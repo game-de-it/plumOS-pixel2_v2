@@ -11,6 +11,7 @@ for script in \
     scripts/build-app-layer.sh \
     scripts/verify-app-layer.sh \
     package/app-layer-pixel2/bin/plumos-retroarch-config-merge \
+    package/app-layer-pixel2/bin/plumos-np2kai-config-repair \
     package/app-layer-pixel2/bin/plumos-retroarch-launch \
     package/app-layer-pixel2/bin/plumos-retroarch-menu-launch \
     package/app-layer-pixel2/bin/plumos-ensure-udev-input-db \
@@ -32,6 +33,8 @@ for script in \
     bash -n "$ROOT_DIR/$script"
 done
 test -x "$ROOT_DIR/tests/test-retroarch-config-merge.sh"
+test -x "$ROOT_DIR/tests/test-np2kai-config-repair.sh"
+"$ROOT_DIR/tests/test-np2kai-config-repair.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-retroarch-game-menu-selection.sh"
 "$ROOT_DIR/tests/test-pixel2-retroarch-game-menu-selection.sh"
 test -x "$ROOT_DIR/tests/test-pixel2-power-menu-sleep.sh"

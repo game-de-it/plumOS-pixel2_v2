@@ -12,7 +12,8 @@ for path in \
     licenses/drastic-upstream-NOTICE.txt \
     licenses/nextcommander-upstream-NOTICE.txt \
     bin/plumos-frontend-pixel2 bin/plumos-library-scan bin/plumos-text-ui \
-    bin/plumos-retroarch-config-merge bin/plumos-retroarch-launch \
+    bin/plumos-retroarch-config-merge bin/plumos-np2kai-config-repair \
+    bin/plumos-retroarch-launch \
     bin/plumos-ensure-udev-input-db \
     bin/plumos-picoarch-launch bin/plumos-picoarch-stop \
     bin/plumos-standalone-launch bin/plumos-standalone-stop \
