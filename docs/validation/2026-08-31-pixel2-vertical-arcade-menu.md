@@ -94,3 +94,11 @@ RGUI surface. After the RGUI transition is accepted, both graphical drivers
 must be launched with temporary overrides against the same vertical Varth
 content. Validate orientation, aspect, repeated cursor movement, and return to
 the running game without replacing the user's saved menu driver or config.
+
+The first temporary Ozone trial reproduced a 90-degree menu rotation in the
+final 480x640 DRM scanout. Graphical UI drawing still used `gl->mvp`, whose
+rotation had been changed by the vertical core's `SET_ROTATION` request. Patch
+032 temporarily selects the Pixel2 display's fixed 90-degree projection for the
+entire graphical menu frame, including private cursor and icon matrices, then
+restores the content projection. Horizontal content already using 90 degrees is
+left unchanged. Ozone and XMB both require device acceptance after deployment.

@@ -1,0 +1,40 @@
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -3696,10 +3696,23 @@ static bool gl2_frame(void *data, const void *frame,
+ #if defined(HAVE_MENU)
+    if (gl->flags & GL2_FLAG_MENU_TEXTURE_ENABLE)
+    {
++      bool fixed_menu_rotation = gl2_menu_display_rotation();
++      unsigned content_rotation = gl->rotation;
+       video_frame_info_t rotated_menu_video_info;
+       video_frame_info_t *menu_video_info = video_info;
+ 
+-      if (gl2_menu_display_rotation())
++      /* Core SET_ROTATION changes gl->rotation for the game. Graphical menus
++       * are display UI and must keep Pixel2's 90 degree panel correction,
++       * including their private cursor/icon matrices. Temporarily select the
++       * display rotation for the complete menu draw, then restore the game
++       * projection before the next content frame. */
++      if (fixed_menu_rotation && gl->rotation != 90)
++      {
++         gl->rotation = 90;
++         gl2_set_projection(gl, &default_ortho, true);
++      }
++
++      if (fixed_menu_rotation)
+       {
+          rotated_menu_video_info              = *video_info;
+          rotated_menu_video_info.width        = video_info->height;
+@@ -3712,6 +3726,12 @@ static bool gl2_frame(void *data, const void *frame,
+ 
+       if (gl->menu_texture)
+          gl2_draw_texture(gl);
++
++      if (fixed_menu_rotation && gl->rotation != content_rotation)
++      {
++         gl->rotation = content_rotation;
++         gl2_set_projection(gl, &default_ortho, true);
++      }
+    }
+    else if (statistics_show)
+    {

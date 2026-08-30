@@ -63,6 +63,11 @@
   - 2026-08-31: 固定4:3変更はplain DRM/RGUI専用。GLESを使うOzone/XMBについても同じ
     Varthからmenu進入、連続カーソル移動、向き・比率、game復帰を一時設定で再確認し、
     ユーザーの保存済み`menu_driver`とRetroArch cfgは変更しない。
+  - 2026-08-31: `3af87a5`でRGUIのmenu進入、初回移動、連続移動をoperator合格。
+    一時cfgでOzoneを起動するとmenu全体が論理画面に対して90度回転し、DRM scanoutでも
+    再現した。縦coreの`SET_ROTATION`が変更したgame用GL rotationをdisplay UIも共有する
+    ことが原因。Ozone/XMBのmenu frame中だけPixel2 panel用90度projectionへ固定し、描画後は
+    content rotationへ復帰させる。保存済みcfg hashは維持されている。
 
 - [ ] v0.1.3更新後のPortMaster起動regressionを解消する
   - 2026-08-30: 公開Runtime updateのSHA-256とpayloadを再検査し、Rockbox専用SDL

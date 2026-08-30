@@ -504,6 +504,12 @@ grep -F -q 'menu_view.aspect   = 4.0f / 3.0f' \
     "$ROOT_DIR/patches/retroarch/031-pixel2-drm-menu-first-viewport.patch"
 grep -F -q 'drm_surface_update_viewport(&menu_view)' \
     "$ROOT_DIR/patches/retroarch/031-pixel2-drm-menu-first-viewport.patch"
+grep -F -q 'unsigned content_rotation = gl->rotation' \
+    "$ROOT_DIR/patches/retroarch/032-pixel2-gl-menu-fixed-display-rotation.patch"
+grep -F -q 'if (fixed_menu_rotation && gl->rotation != 90)' \
+    "$ROOT_DIR/patches/retroarch/032-pixel2-gl-menu-fixed-display-rotation.patch"
+grep -F -q 'gl->rotation = content_rotation' \
+    "$ROOT_DIR/patches/retroarch/032-pixel2-gl-menu-fixed-display-rotation.patch"
 grep -q 'ID_INPUT_JOYSTICK=1' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-ensure-udev-input-db"
 grep -q 'plumos-ensure-udev-input-db' \
