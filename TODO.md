@@ -824,6 +824,16 @@
     app-layer 11333/11333、設定SHA不変を確認し、operatorが十字キーとゲーム操作を合格とした。
     音質と通常終了の最終物理確認を継続する。
     [検証記録](docs/validation/2026-08-30-pixel2-pc98-x68000-input.ja.md)
+  - 2026-08-31: PicoArch NP2kaiは上流core既定`OFF`をそのまま使用し、PC-98 keyboard
+    変換が無効だった。英語・日本語core option既定をRAと同じ`Arrows 3button`へ変更し、
+    保存済みPicoArch user configは後勝ちで保持する。PC-98へPicoArch NP2kai/NEKOP2の
+    正式導線も追加し、3つの非既定経路で起動・映像・ALSA進行・終了に合格。物理入力の
+    operator確認を継続する。
+  - 2026-08-31: NEKOP2が存在しない`bios/np2`だけを探索してfontを読み込まない問題へ、
+    MF実績の`bios/np2kai/{font.bmp,FONT.ROM}` fallbackを移植。RA/PicoArch双方のcaptureで
+    日本語PC-9800 boot textを確認した。バッテリー切れ由来のFAT dirty bitもoffline修復し、
+    再起動後のstorage警告なし、app-layer 11,334/11,334 checksum一致を確認した。
+    [検証記録](docs/validation/2026-08-31-pixel2-picoarch-pc98-health.ja.md)
 - [x] save/stateが再起動後も保持されることを実機確認する
   - 2026-08-15: content-local save/state、自動exit state、10秒autosave、20世代state、thumbnailをfactoryで有効化。更新前から存在したfallback state 2件は更新・再起動後もSHA一致。ゲーム内で新規save/stateを書き、再起動後にloadする物理acceptanceは継続。
   - 2026-08-23: エミュレータ全体の最終操作、終了、FE復帰、save/state保持をoperator合格とした。
