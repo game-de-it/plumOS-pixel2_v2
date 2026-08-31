@@ -84,7 +84,7 @@ FOREIGN_ADAPTER_FILES = (
     "mod_knul" "li.txt",
     "mod_muOS.txt",
 )
-ADAPTER_VERSION = 53
+ADAPTER_VERSION = 54
 STALE_UPDATE_PREFIXES = (
     "portmaster-download-",
     "upstream.next.",

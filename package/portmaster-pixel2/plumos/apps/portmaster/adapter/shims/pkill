@@ -9,11 +9,54 @@ for arg in "$@"; do
   esac
 done
 
+PLUMOS_ROOT="${PLUMOS_ROOT:-/mnt/plumos}"
+RUN_ROOT="${PLUMOS_PORTMASTER_RUN_ROOT:-/run/plumos/portmaster}"
+DATA_ROOT="${PLUMOS_PORTMASTER_DATA_ROOT:-${PLUMOS_ROOT}/state/portmaster/data}"
+PM_DIR="${DATA_ROOT}/upstream/PortMaster"
+
+owned_gptokey_pid() {
+  name=$1
+  file="${RUN_ROOT}/${name}.pid"
+  [ -f "$file" ] || return 1
+  pid="$(cat "$file" 2>/dev/null || true)"
+  case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+  cmdline="$(tr '\000' ' ' < "/proc/${pid}/cmdline" 2>/dev/null || true)"
+  case "$cmdline" in
+    *"${PM_DIR}/${name}"*) printf '%s\n' "$pid" ;;
+    *) return 1 ;;
+  esac
+}
+
+called_by_owned_gptokey() {
+  gptokey_pid="$(owned_gptokey_pid gptokeyb || true)"
+  gptokey2_pid="$(owned_gptokey_pid gptokeyb2 || true)"
+  ancestor="${PPID:-}"
+  depth=0
+
+  while [ "$depth" -lt 8 ]; do
+    case "$ancestor" in ''|*[!0-9]*|0|1) return 1 ;; esac
+    [ -n "$gptokey_pid" ] && [ "$ancestor" = "$gptokey_pid" ] && return 0
+    [ -n "$gptokey2_pid" ] && [ "$ancestor" = "$gptokey2_pid" ] && return 0
+    ancestor="$(sed -n 's/^PPid:[[:space:]]*//p' "/proc/${ancestor}/status" \
+      2>/dev/null || true)"
+    depth=$((depth + 1))
+  done
+  return 1
+}
+
 case "$pattern" in
   gptokeyb|gptokeyb2|*gptokeyb*)
-    exec "${PLUMOS_ROOT:-/mnt/plumos}/bin/plumos-portmaster-gptokeyb-stop" stop
+    exec "${PLUMOS_ROOT}/bin/plumos-portmaster-gptokeyb-stop" stop
     ;;
   *)
+    # GPTokeYB's built-in HOTKEY+START exit asks pkill to terminate the
+    # watched executable, then exits itself.  A global process-name kill is
+    # unsafe, but denying it strands the port after its virtual input devices
+    # disappear.  Authenticate the caller against the wrapper-owned GPTokeYB
+    # PID, then stop the already ownership-checked PortMaster process group.
+    if called_by_owned_gptokey; then
+      exec "${PLUMOS_ROOT}/bin/plumos-portmaster-port-stop" stop
+    fi
     printf 'plumOS PortMaster: denied unowned pkill pattern: %s\n' "$pattern" >&2
     exit 1
     ;;

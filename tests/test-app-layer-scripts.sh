@@ -889,6 +889,7 @@ grep -q 'lib/libretro/libopusfile.so.0' \
 "$ROOT_DIR/tests/test-portmaster-pixel2-exec-guard.sh"
 "$ROOT_DIR/tests/test-portmaster-pixel2-rockbox.sh"
 "$ROOT_DIR/tests/test-portmaster-pixel2-session-cleanup.sh"
+"$ROOT_DIR/tests/test-portmaster-pixel2-gptokey-exit.sh"
 grep -q 'retroarch" --menu -v' \
     "$ROOT_DIR/package/app-layer-pixel2/bin/plumos-retroarch-menu-launch"
 grep -q 'plumos-ensure-udev-input-db' \
