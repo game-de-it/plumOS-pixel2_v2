@@ -2388,7 +2388,9 @@
       },
       "launch_profiles": [
         "retroarch:np2kai",
-        "retroarch:nekop2"
+        "retroarch:nekop2",
+        "picoarch:np2kai",
+        "picoarch:nekop2"
       ],
       "default_launch_profile": "retroarch:np2kai",
       "default_cpu_policy": "ondemand",

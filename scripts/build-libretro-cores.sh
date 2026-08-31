@@ -532,6 +532,13 @@ patch_core_source() {
         fi
       fi
       ;;
+    np2kai)
+      perl -0pi -e 'BEGIN { $count = 0 }
+        $count += s{("np2kai_joymode".*?\{NULL, NULL\},\r?\n[[:space:]]*\},\r?\n[[:space:]]*)"OFF"}{$1"Arrows 3button"}sg;
+        END { die "NP2kai joymode default markers missing: $count\n" unless $count == 2 }' \
+        "$src/sdl/libretro/libretro_core_options.h"
+      printf '\n[plumOS] set NP2kai PicoArch default input to Arrows 3button\n' >> "$log"
+      ;;
     nekop2)
       if [ -f "$patch_dir/nekop2-libretro-joypad-keyboard.patch" ]; then
         if patch --dry-run -d "$src" -p1 < "$patch_dir/nekop2-libretro-joypad-keyboard.patch" >/dev/null 2>> "$log"; then
@@ -540,6 +547,18 @@ patch_core_source() {
         else
           printf '\n[plumOS] skipped nekop2 joypad patch: source already patched or layout does not match\n' >> "$log"
         fi
+      fi
+      if [ -f "$patch_dir/nekop2-np2kai-bios-fallback.patch" ]; then
+        if patch --dry-run -d "$src" -p1 < "$patch_dir/nekop2-np2kai-bios-fallback.patch" >/dev/null 2>> "$log"; then
+          patch -d "$src" -p1 < "$patch_dir/nekop2-np2kai-bios-fallback.patch" >> "$log" 2>&1
+          printf '\n[plumOS] patched nekop2 to share the NP2kai PC-98 BIOS/font set\n' >> "$log"
+        else
+          printf '\n[plumOS] required nekop2 NP2kai BIOS fallback patch does not apply\n' >> "$log"
+          return 1
+        fi
+      else
+        printf '\n[plumOS] missing required nekop2 NP2kai BIOS fallback patch\n' >> "$log"
+        return 1
       fi
       ;;
     px68k)

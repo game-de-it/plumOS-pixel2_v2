@@ -90,6 +90,14 @@ grep -q 'retroarch:gambatte' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:mgba_modern' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'retroarch:pcsx_rearmed' "$ROOT_DIR/package/frontend-pixel2/systems.json"
 grep -q 'picoarch:quicknes' "$ROOT_DIR/package/frontend-pixel2/systems.json"
+jq -e '.systems[] | select(.id == "pc98") |
+       .launch_profiles == ["retroarch:np2kai", "retroarch:nekop2",
+                            "picoarch:np2kai", "picoarch:nekop2"]' \
+    "$ROOT_DIR/package/frontend-pixel2/systems.json" >/dev/null
+grep -q 'NP2kai joymode default markers missing' \
+    "$ROOT_DIR/scripts/build-libretro-cores.sh"
+grep -q 'np2kai' \
+    "$ROOT_DIR/docker/pixel2-tools/patches/nekop2-np2kai-bios-fallback.patch"
 jq -e '.systems[] | select(.id == "gameandwatch") |
        .extensions == ["mgw", "zip"]' \
     "$ROOT_DIR/package/frontend-pixel2/systems.json" >/dev/null

@@ -1,0 +1,55 @@
+diff --git a/libretro/libretro.c b/libretro/libretro.c
+--- a/libretro/libretro.c
++++ b/libretro/libretro.c
+@@ -839,9 +839,12 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
+ bool retro_load_game(const struct retro_game_info *game)
+ {
+    
+-   //get system dir
++   // Get system dir. Legacy Neko Project II uses system/np2, while NP2kai
++   // uses system/np2kai. Keep the legacy location first, but share the
++   // installed PC-98 BIOS/font set when only the NP2kai location exists.
+    const char* syspath = 0;
+    char np2path[4096];
++   char fontpath[4096];
+    bool load_floppy=false;
+    bool worked = environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &syspath);
+    if(!worked)abort();
+@@ -855,13 +858,35 @@ bool retro_load_game(const struct retro_game_info *game)
+    strcat(np2path, "/np2");
+ #endif
+ 
++   snprintf(fontpath, sizeof(fontpath), "%s%cfont.bmp",
++         np2path, G_DIR_SEPARATOR);
++   if (file_attr(fontpath) == -1)
++   {
++      snprintf(fontpath, sizeof(fontpath), "%s%cFONT.ROM",
++            np2path, G_DIR_SEPARATOR);
++   }
++
++   if (file_attr(fontpath) == -1)
++   {
++      snprintf(np2path, sizeof(np2path), "%s%cnp2kai",
++            syspath, G_DIR_SEPARATOR);
++      snprintf(fontpath, sizeof(fontpath), "%s%cfont.bmp",
++            np2path, G_DIR_SEPARATOR);
++      if (file_attr(fontpath) == -1)
++      {
++         snprintf(fontpath, sizeof(fontpath), "%s%cFONT.ROM",
++               np2path, G_DIR_SEPARATOR);
++      }
++   }
++
+    sprintf(tmppath,"%s%c",np2path,G_DIR_SEPARATOR);
+ 
+    np2cfg.delayms = 0;
+    
+-   sprintf(np2cfg.fontfile,"%s%cfont.bmp",np2path,G_DIR_SEPARATOR);
++   snprintf(np2cfg.fontfile, sizeof(np2cfg.fontfile), "%s", fontpath);
+   
+-   sprintf(np2cfg.biospath,"%s%c",np2path,G_DIR_SEPARATOR);
++   snprintf(np2cfg.biospath, sizeof(np2cfg.biospath), "%s%c",
++         np2path, G_DIR_SEPARATOR);
+ 
+    strcpy(RPATH,game->path);
+ 
