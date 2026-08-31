@@ -521,6 +521,14 @@
       - adapter 49でGUI texture生成後にPixel2 panel向けresizeを適用し、正立表示、
         D-pad/決定/戻る、音楽再生、`START+R2`終了、FE復帰をoperator合格。Rockbox終了後の
         private表示環境がFEと次のPyxelへ漏れる問題も`508b567`で共通遮断した。
+      - 2026-08-31: Rockbox操作中の`FUNCTION+START`はGPTokeYB2内蔵終了処理から
+        `pkill rockbox`を呼ぶが、Pixel2の安全shimが未所有process名killを拒否した後に
+        GPTokeYB2だけが終了し、port本体が仮想入力なしで残る経路を確認。adapter 54では
+        wrapper管理PIDと最大8段の親process chainで呼出元を認証し、認証済みGPTokeYB
+        からの任意対象終了要求だけを所有確認済みPortMaster session stopへ変換する。
+        通常port shellの`pkill`拒否は維持した。動的host fixture、PortMaster Runtime試験、
+        strict app-layer build、component 180件・Runtime 11,334件の実機checksumに合格し、
+        operatorが同hotkey後のFE復帰を確認。Rockboxの`.resume.cfg` hashも保持した。
     - [x] 起動時間を増やさず、build/CI、PortMaster更新後、初回port起動時だけ監査し、
       package hashが同じportの結果を再利用する
     - 2026-08-27: adapter 48でpure-Python ELF audit、SONAME単位のAvahi/nghttp2投影、

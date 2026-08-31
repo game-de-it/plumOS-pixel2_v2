@@ -33,6 +33,7 @@ physical controls.
 - [v0.1.3 device update](../validation/2026-08-29-pixel2-v0.1.3-device-update.md)
 - [v0.1.4 release artifacts](../validation/2026-08-30-pixel2-v0.1.4-artifacts.md)
 - [v0.1.4 device update and Rockbox](../validation/2026-08-30-pixel2-v0.1.4-device-update.md)
+- [PortMaster GPTokeYB exit recovery](../validation/2026-08-31-pixel2-portmaster-gptokey-exit.md)
 
 ## Release Gate Direction
 
