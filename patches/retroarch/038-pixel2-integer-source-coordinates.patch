@@ -1,0 +1,151 @@
+--- a/gfx/video_driver.c
++++ b/gfx/video_driver.c
+@@ -2418,6 +2418,15 @@
+       float aspect_ratio, bool keep_aspect,
+       bool y_down)
+ {
++   video_viewport_get_scaled_integer_rotation(vp, width, height,
++         aspect_ratio, keep_aspect, y_down, retroarch_get_rotation());
++}
++
++void video_viewport_get_scaled_integer_rotation(struct video_viewport *vp,
++      unsigned width, unsigned height,
++      float aspect_ratio, bool keep_aspect,
++      bool y_down, unsigned rotation)
++{
+    int x                           = 0;
+    int y                           = 0;
+    settings_t *settings            = config_get_ptr();
+@@ -2431,7 +2440,6 @@
+    float vp_bias_y                 = settings->floats.video_vp_bias_y;
+    unsigned content_width          = video_st->frame_cache_width;
+    unsigned content_height         = video_st->frame_cache_height;
+-   unsigned int rotation           = retroarch_get_rotation();
+ #if defined(RARCH_MOBILE)
+    if (width < height)
+    {
+@@ -2463,7 +2471,8 @@
+    /* Use regular scaling if there is no room for 1x */
+    if (content_width > width || content_height > height)
+    {
+-      video_viewport_get_scaled_aspect(vp, width, height, y_down);
++      video_viewport_get_scaled_aspect2(vp, width, height, y_down,
++            (float)width / height, aspect_ratio);
+       return;
+    }
+ 
+@@ -2590,7 +2599,8 @@
+                /* Use regular scaling if there is no room for 1x */
+                if (content_width > width || content_height > height)
+                {
+-                  video_viewport_get_scaled_aspect(vp, width, height, y_down);
++                  video_viewport_get_scaled_aspect2(vp, width, height, y_down,
++                        (float)width / height, aspect_ratio);
+                   return;
+                }
+ 
+@@ -2713,7 +2723,8 @@
+             float height_utilization = (float)(height - padding_y) / height;
+             if (MAX(height_utilization, width_utilization) < 0.88)
+             {
+-               video_viewport_get_scaled_aspect(vp, width, height, y_down);
++               video_viewport_get_scaled_aspect2(vp, width, height, y_down,
++                     (float)width / height, aspect_ratio);
+                return;
+             }
+          }
+@@ -2722,7 +2733,8 @@
+          if (     padding_x <= (int)-video_st->av_info.geometry.base_width
+                || padding_y <= (int)-video_st->av_info.geometry.base_height)
+          {
+-            video_viewport_get_scaled_aspect(vp, width, height, y_down);
++            video_viewport_get_scaled_aspect2(vp, width, height, y_down,
++                  (float)width / height, aspect_ratio);
+             return;
+          }
+       }
+--- a/gfx/video_driver.h
++++ b/gfx/video_driver.h
+@@ -1021,6 +1021,12 @@
+       unsigned width, unsigned height,
+       float aspect_ratio, bool keep_aspect,
+       bool ydown);
++
++/* Explicit source rotation for drivers that rotate the output separately. */
++void video_viewport_get_scaled_integer_rotation(struct video_viewport *vp,
++      unsigned width, unsigned height,
++      float aspect_ratio, bool keep_aspect,
++      bool ydown, unsigned rotation);
+ 
+ /**
+  * video_viewport_get_scaled_aspect:
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -283,8 +283,8 @@
+     * point. Do not re-read RetroArch's pre-correction global aspect while
+     * sizing either the game or menu surface. */
+    if (surface->layer != 2 && settings && settings->bools.video_scale_integer)
+-      video_viewport_get_scaled_integer(vp, vp->full_width, vp->full_height,
+-            surface->aspect, keep_aspect, true);
++      video_viewport_get_scaled_integer_rotation(vp, vp->full_width, vp->full_height,
++            surface->aspect, keep_aspect, true, 0);
+    else if (keep_aspect)
+       video_viewport_get_scaled_aspect2(vp, vp->full_width, vp->full_height,
+             true, (float)vp->full_width / (float)vp->full_height,
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -1391,11 +1391,40 @@
+ 
+    if (video_scale_integer && !force_full)
+    {
+-      video_viewport_get_scaled_integer(&gl->vp,
+-            vp_width, vp_height,
+-            video_driver_get_aspect_ratio(),
+-            (gl->flags & GL2_FLAG_KEEP_ASPECT) ? true : false,
+-            false);
++      const char *panel_route = getenv("PLUMOS_GL_MENU_ROTATION");
++      if (panel_route && (gl->rotation == 90 || gl->rotation == 270))
++      {
++         /* Integer axes describe the source game, not Pixel2's portrait
++          * scanout. Size in source coordinates, then rotate the rectangle. */
++         int x, y;
++         float aspect = video_driver_get_aspect_ratio();
++         gl->vp.full_width = vp_height;
++         gl->vp.full_height = vp_width;
++         video_viewport_get_scaled_integer_rotation(&gl->vp,
++               vp_height, vp_width, aspect > 0.0f ? 1.0f / aspect : aspect,
++               (gl->flags & GL2_FLAG_KEEP_ASPECT) ? true : false, false, 0);
++         x = gl->vp.x;
++         y = gl->vp.y;
++         if (gl->rotation == 90)
++         {
++            gl->vp.x = (int)vp_width - y - (int)gl->vp.height;
++            gl->vp.y = x;
++         }
++         else
++         {
++            gl->vp.x = y;
++            gl->vp.y = (int)vp_height - x - (int)gl->vp.width;
++         }
++         vp_width = gl->vp.width;
++         gl->vp.width = gl->vp.height;
++         gl->vp.height = vp_width;
++      }
++      else
++         video_viewport_get_scaled_integer(&gl->vp,
++               vp_width, vp_height,
++               video_driver_get_aspect_ratio(),
++               (gl->flags & GL2_FLAG_KEEP_ASPECT) ? true : false,
++               false);
+       vp_width     = gl->vp.width;
+       vp_height    = gl->vp.height;
+    }
+@@ -3754,6 +3783,8 @@
+          gl->rotation = content_rotation;
+          gl2_set_projection(gl, &default_ortho, true);
+       }
++      if (fixed_menu_rotation)
++         gl2_set_shader_viewports(gl, video_scale_integer);
+    }
+    else if (statistics_show)
+    {

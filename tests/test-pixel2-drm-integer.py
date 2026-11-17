@@ -33,9 +33,9 @@ static void drm_plane_setup(struct drm_surface *s) { assert(s); }
 static void drm_surface_free(void *d,struct drm_surface **s) { (void)d; *s=NULL; }
 static struct { unsigned hdisplay,vdisplay; } mode = {480,640};
 static struct { typeof(mode) *current_mode; } drm = {&mode};
-static void video_viewport_get_scaled_integer(struct video_viewport *vp,
- unsigned w,unsigned h,float a,bool b,bool c) {
- (void)w;(void)h;(void)a;(void)b;(void)c;
+static void video_viewport_get_scaled_integer_rotation(struct video_viewport *vp,
+ unsigned w,unsigned h,float a,bool b,bool c,unsigned rotation) {
+ (void)w;(void)h;(void)a;(void)b;(void)c;assert(rotation==0);
  vp->width=512;vp->height=448;vp->x=64;vp->y=16;
 }
 static void video_viewport_get_scaled_aspect2(struct video_viewport *vp,
