@@ -35,10 +35,14 @@
 
 ## Implementation audit and release blockers
 
-- [ ] v0.1.5新規SD image・署名Runtime updateを生成し、実機updateを検証する
+- [x] v0.1.5新規SD image・署名Runtime updateを生成し、実機updateを検証する
   - 2026-11-18: frontend/RetroArchを再build、変更なしcomponentは検証して再利用。
     strict gate、image再現性、配布update適用後のchecksum・設定保持・主要修正を確認する。
     [作業記録](docs/validation/2026-11-18-pixel2-v0.1.5-preparation.ja.md)
+  - source `b03d294`でstrict gate、SD連続生成hash一致、7z往復・配布物検証に合格。
+    配布用v0.1.4→0.1.5 updateを実機適用し、`runtime_healthy`、管理11,334件、
+    設定・ROM保持、4種類のRA menu／整数scale、POWER→B 3回、ALSA進行を確認。
+    FEへ復帰済み。新規SDの実機bootとLCD／音の最終目視・聴感は別途operator確認。
 
 - [x] RGUIとOzoneで整数スケールのサイズが違う問題を修正する
   - 2026-11-18: source座標で倍率計算してからpanel回転するようDRM/GLESを統一。
