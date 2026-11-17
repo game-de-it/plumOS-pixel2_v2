@@ -445,6 +445,46 @@ static pid_t drastic_core_for_runner(pid_t owner) {
   return core;
 }
 
+static int snapshot_drm_plane_geometry(int drm_fd,
+                                       struct drm_plane_snapshot *snapshot) {
+  static const char *names[] = {
+      "CRTC_X", "CRTC_Y", "CRTC_W", "CRTC_H",
+      "SRC_X", "SRC_Y", "SRC_W", "SRC_H"};
+  uint32_t *values[] = {
+      &snapshot->crtc_x, &snapshot->crtc_y, &snapshot->crtc_w,
+      &snapshot->crtc_h, &snapshot->src_x, &snapshot->src_y,
+      &snapshot->src_w, &snapshot->src_h};
+  drmModeObjectProperties *properties = drmModeObjectGetProperties(
+      drm_fd, snapshot->plane_id, DRM_MODE_OBJECT_PLANE);
+  unsigned int found = 0;
+  uint32_t i;
+
+  if (!properties) {
+    return 0;
+  }
+  /* GETPLANE's legacy x/y fields do not describe atomic plane geometry.
+   * Framebuffer dimensions also need not match the scaled/cropped CRTC area.
+   * Preserve the actual KMS rectangles, including 16.16 source coordinates. */
+  for (i = 0; i < properties->count_props; i++) {
+    drmModePropertyRes *property = drmModeGetProperty(drm_fd, properties->props[i]);
+    size_t j;
+    if (!property) {
+      continue;
+    }
+    for (j = 0; j < sizeof(names) / sizeof(names[0]); j++) {
+      if (strcmp(property->name, names[j]) == 0) {
+        *values[j] = (uint32_t)properties->prop_values[i];
+        found |= 1U << j;
+        break;
+      }
+    }
+    drmModeFreeProperty(property);
+  }
+  drmModeFreeObjectProperties(properties);
+  return found == 0xff && snapshot->crtc_w && snapshot->crtc_h &&
+         snapshot->src_w && snapshot->src_h;
+}
+
 static size_t suspend_drm_planes(
     int drm_fd, struct drm_plane_snapshot *snapshots, size_t capacity) {
   drmModePlaneRes *resources;
@@ -462,7 +502,6 @@ static size_t suspend_drm_planes(
   for (index = 0; index < resources->count_planes && count < capacity;
        index++) {
     drmModePlane *plane = drmModeGetPlane(drm_fd, resources->planes[index]);
-    drmModeFB *framebuffer;
     struct drm_plane_snapshot *snapshot;
 
     if (!plane) {
@@ -472,28 +511,26 @@ static size_t suspend_drm_planes(
       drmModeFreePlane(plane);
       continue;
     }
-    framebuffer = drmModeGetFB(drm_fd, plane->fb_id);
-    if (!framebuffer) {
-      drmModeFreePlane(plane);
-      continue;
-    }
     snapshot = &snapshots[count];
     snapshot->plane_id = plane->plane_id;
     snapshot->crtc_id = plane->crtc_id;
     snapshot->fb_id = plane->fb_id;
-    snapshot->crtc_x = plane->crtc_x;
-    snapshot->crtc_y = plane->crtc_y;
-    snapshot->crtc_w = framebuffer->width;
-    snapshot->crtc_h = framebuffer->height;
-    snapshot->src_x = plane->x;
-    snapshot->src_y = plane->y;
-    snapshot->src_w = framebuffer->width << 16;
-    snapshot->src_h = framebuffer->height << 16;
+    if (!snapshot_drm_plane_geometry(drm_fd, snapshot)) {
+      fprintf(stderr, "hardware-keys: drm-plane=snapshot-failed plane=%u\n",
+              snapshot->plane_id);
+      drmModeFreePlane(plane);
+      continue;
+    }
+    fprintf(stderr,
+            "hardware-keys: drm-plane=snapshot plane=%u dst=%d,%d,%u,%u "
+            "src=%u,%u,%u,%u\n", snapshot->plane_id,
+            (int32_t)snapshot->crtc_x, (int32_t)snapshot->crtc_y,
+            snapshot->crtc_w, snapshot->crtc_h, snapshot->src_x,
+            snapshot->src_y, snapshot->src_w, snapshot->src_h);
     if (drmModeSetPlane(drm_fd, snapshot->plane_id, 0, 0, 0, 0, 0, 0,
                         0, 0, 0, 0, 0) == 0) {
       count++;
     }
-    drmModeFreeFB(framebuffer);
     drmModeFreePlane(plane);
   }
   drmModeFreePlaneResources(resources);
