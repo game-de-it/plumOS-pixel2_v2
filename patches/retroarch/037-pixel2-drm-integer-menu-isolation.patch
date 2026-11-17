@@ -1,0 +1,76 @@
+--- a/gfx/drivers/drm_gfx.c
++++ b/gfx/drivers/drm_gfx.c
+@@ -160,6 +160,7 @@
+ 
+    /* Menu */
+    bool menu_active;
++   bool viewport_dirty;
+ 
+    bool rgb32;
+ 
+@@ -281,7 +282,7 @@
+    /* Pixel2 corrects Core Provided geometry in surface->aspect before this
+     * point. Do not re-read RetroArch's pre-correction global aspect while
+     * sizing either the game or menu surface. */
+-   if (settings && settings->bools.video_scale_integer)
++   if (surface->layer != 2 && settings && settings->bools.video_scale_integer)
+       video_viewport_get_scaled_integer(vp, vp->full_width, vp->full_height,
+             surface->aspect, keep_aspect, true);
+    else if (keep_aspect)
+@@ -1357,6 +1358,26 @@
+ #ifdef HAVE_MENU
+    bool menu_is_alive         = (video_info->menu_st_flags & MENU_ST_FLAG_ALIVE) ? true : false;
+ #endif
++
++   /* Settings changes may not alter the core's input resolution. Rebuild
++    * viewport-sized pages on the first game frame after leaving the menu,
++    * once RGUI has restored the content settings. */
++   if (_drmvars->viewport_dirty && !_drmvars->menu_active && frame)
++   {
++      if (_drmvars->main_surface)
++      {
++         struct drm_surface next = *_drmvars->main_surface;
++         const struct video_viewport *old = &_drmvars->main_surface->viewport;
++         drm_surface_update_viewport(&next);
++         if (old->x != next.viewport.x || old->y != next.viewport.y ||
++             old->width != next.viewport.width || old->height != next.viewport.height)
++         {
++            _drmvars->core_width = 0;
++            _drmvars->core_height = 0;
++         }
++      }
++      _drmvars->viewport_dirty = false;
++   }
+ 
+    if (   (width  != _drmvars->core_width)
+        || (height != _drmvars->core_height))
+@@ -1420,6 +1441,7 @@
+    /* If menu was active but it's not anymore... */
+    if (!state && _drmvars->menu_active)
+    {
++      _drmvars->viewport_dirty = true;
+       /* We tell only the plane we have to read from the main surface again */
+       drm_plane_setup(_drmvars->main_surface);
+       /* We free the menu surface buffers */
+@@ -1542,6 +1564,7 @@
+       memset(&menu_view, 0, sizeof(menu_view));
+       menu_view.rotation = vid->panel_rotation & 3;
+       menu_view.aspect   = 4.0f / 3.0f;
++      menu_view.layer    = 2;
+       drm_surface_update_viewport(&menu_view);
+       *vp = menu_view.viewport;
+       return;
+@@ -1571,10 +1594,9 @@
+    if (!_drmvars)
+       return;
+ 
+-   if (_drmvars->menu_active && _drmvars->menu_surface)
+-      drm_plane_setup(_drmvars->menu_surface);
+-   else if (_drmvars->main_surface)
+-      drm_plane_setup(_drmvars->main_surface);
++   /* Plane setup alone retains the old software-scaled buffer dimensions.
++    * Defer content geometry to a game frame; menu scaling is independent. */
++   _drmvars->viewport_dirty = true;
+ }
+ 
+ static void drm_set_rotation(void *data, unsigned rotation)
