@@ -44,15 +44,20 @@
  
     if (   (width  != _drmvars->core_width)
         || (height != _drmvars->core_height))
-@@ -1420,6 +1441,7 @@
+@@ -1420,8 +1441,12 @@
     /* If menu was active but it's not anymore... */
     if (!state && _drmvars->menu_active)
     {
 +      _drmvars->viewport_dirty = true;
        /* We tell only the plane we have to read from the main surface again */
-       drm_plane_setup(_drmvars->main_surface);
+-      drm_plane_setup(_drmvars->main_surface);
++      /* RGUI's aspect lock may have invalidated it while restoring content
++       * settings. The next game frame recreates it; never restore NULL. */
++      if (_drmvars->main_surface)
++         drm_plane_setup(_drmvars->main_surface);
        /* We free the menu surface buffers */
-@@ -1542,6 +1564,7 @@
+       drm_surface_free(_drmvars, &_drmvars->menu_surface);
+@@ -1542,6 +1567,7 @@
        memset(&menu_view, 0, sizeof(menu_view));
        menu_view.rotation = vid->panel_rotation & 3;
        menu_view.aspect   = 4.0f / 3.0f;
@@ -60,7 +65,7 @@
        drm_surface_update_viewport(&menu_view);
        *vp = menu_view.viewport;
        return;
-@@ -1571,10 +1594,9 @@
+@@ -1571,10 +1597,9 @@
     if (!_drmvars)
        return;
  

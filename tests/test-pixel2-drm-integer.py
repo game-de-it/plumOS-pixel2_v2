@@ -28,7 +28,9 @@ typedef struct { struct { bool video_force_aspect,video_scale_integer; } bools; 
 static settings_t settings = {{true, true}};
 static settings_t *config_get_ptr(void) { return &settings; }
 struct drm_surface { unsigned rotation; int layer; float aspect; struct video_viewport viewport; };
-struct drm_video { bool viewport_dirty,menu_active; struct drm_surface *main_surface; int core_width,core_height; };
+struct drm_video { bool viewport_dirty,menu_active; struct drm_surface *main_surface,*menu_surface; int core_width,core_height; };
+static void drm_plane_setup(struct drm_surface *s) { assert(s); }
+static void drm_surface_free(void *d,struct drm_surface **s) { (void)d; *s=NULL; }
 static struct { unsigned hdisplay,vdisplay; } mode = {480,640};
 static struct { typeof(mode) *current_mode; } drm = {&mode};
 static void video_viewport_get_scaled_integer(struct video_viewport *vp,
@@ -43,6 +45,7 @@ static void video_viewport_get_scaled_aspect2(struct video_viewport *vp,
 '''
 harness += function('drm_surface_update_viewport') + '\n'
 harness += function('drm_apply_state_changes') + '\n'
+harness += function('drm_set_texture_enable') + '\n'
 harness += 'static void next_frame(struct drm_video *_drmvars, const void *frame) {\n' + frame + '\n}\n'
 harness += r'''
 int main(void) {
@@ -71,12 +74,15 @@ int main(void) {
  settings.bools.video_scale_integer=false;
  drm_apply_state_changes(&vid); next_frame(&vid,&vid);
  assert(vid.core_width==0 && !vid.viewport_dirty);
+ vid.main_surface=NULL; vid.menu_active=true; vid.menu_surface=&menu;
+ drm_set_texture_enable(&vid,false,false);
+ assert(!vid.menu_active && !vid.menu_surface && vid.viewport_dirty);
  puts("drm_integer_menu_test=result-ok");
 }
 '''
 with tempfile.TemporaryDirectory() as temp:
     path = pathlib.Path(temp)
     (path / 'test.c').write_text(harness)
-    subprocess.run(['cc', '-std=gnu99', '-Wall', '-Wextra', '-Werror',
+    subprocess.run(['cc', '-std=gnu99', '-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter',
                     str(path / 'test.c'), '-o', str(path / 'test')], check=True)
     subprocess.run([str(path / 'test')], check=True)
