@@ -31,3 +31,18 @@ Axis Yでは縦224が2倍の448となる。Core Providedの非正方形pixel比�
 `627eb7842a4a3fdceb9fb1f273429c988791de8a4fd84e860e42cbfd2a80631b`で不変。
 検証process終了後にFEを復帰。最終LCD目視はoperator確認待ち。
 release公開・SD image生成は行っていない。
+
+## 起動中PCEの実機確認
+
+operatorがFEから起動した`AirZonk_U.pce`／`mednafen_pce_fast`を、Ozone/GLES、
+整数ON・Axis Y・Underscale・Core Providedで確認した。coreの初期geometryは
+256x243だが、実際のgame中は256x240、aspect 1.215へ動的変更されている。
+menu開閉前後のscanout captureはどちらも非黒領域が`(28,0)-(612,480)`、すなわち
+584x480の中央表示だった。縦240→480の2倍で整数スケールが適用されている。
+横584はcore指定のpixel比補正を含む。
+
+RetroArch PID 19377を維持し、ALSA RUNNING、1秒でhw_ptrが96984→145176へ進行。
+保存cfg hashは`b08b271c864a90ad21a33302aaff30235853fcdd1ed30bf174c50e6807569dd2`で
+不変。ゲームは起動したままとし、追加修正は行っていない。
+証跡は`output/validation/2026-11-18-pce-integer/`。今回の256x240での合格であり、
+PCE全タイトル・全解像度の検証済みという意味にはしない。

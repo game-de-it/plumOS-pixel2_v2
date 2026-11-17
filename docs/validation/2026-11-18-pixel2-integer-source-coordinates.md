@@ -55,3 +55,22 @@ Y/X can enforce integer factors on both raw pixel axes instead.
 The saved RetroArch cfg was unchanged during temporary comparisons:
 `627eb7842a4a3fdceb9fb1f273429c988791de8a4fd84e860e42cbfd2a80631b`.
 Test processes were stopped and FE restored. No release or SD image was made.
+
+## Running PCE acceptance
+
+The operator then launched `AirZonk_U.pce` through FE with
+`mednafen_pce_fast_libretro.so`, Ozone/GLES and Integer ON / Axis Y / Underscale /
+Core Provided. The same RetroArch PID 19377 was retained throughout inspection.
+The core initially advertised 256x243, then reported dynamic geometry 256x240
+with aspect 1.215. Scanout captures before and after opening/closing Ozone both
+had non-black bounds `(28,0)-(612,480)`, i.e. centered 584x480 content.
+The 480 displayed lines are exactly twice the 240 source lines. Horizontal
+size includes the core-provided pixel-aspect correction.
+
+The menu capture confirms the active settings. Audio remained RUNNING and
+hw_ptr advanced from 96984 to 145176 across one second. The saved cfg hash was
+unchanged (`b08b271c864a90ad21a33302aaff30235853fcdd1ed30bf174c50e6807569dd2`).
+The game was left running. Evidence is under
+`output/validation/2026-11-18-pce-integer/`. This validates the current 256x240
+PCE content, not every possible PCE resolution or game. No runtime changes
+were needed.
