@@ -43,6 +43,9 @@
     配布用v0.1.4→0.1.5 updateを実機適用し、`runtime_healthy`、管理11,334件、
     設定・ROM保持、4種類のRA menu／整数scale、POWER→B 3回、ALSA進行を確認。
     FEへ復帰済み。新規SDの実機bootとLCD／音の最終目視・聴感は別途operator確認。
+  - 2026-11-18: operatorの公開指示によりv0.1.5をGitHub Latestとして公開。
+    tagは配布manifestの`b03d294`に固定。7 assetのGitHub digest一致、公開URLからの
+    認証なし再download、7z展開後hash検証に合格。未実施の新規SD実機bootはrelease noteに明記。
 
 - [x] RGUIとOzoneで整数スケールのサイズが違う問題を修正する
   - 2026-11-18: source座標で倍率計算してからpanel回転するようDRM/GLESを統一。
