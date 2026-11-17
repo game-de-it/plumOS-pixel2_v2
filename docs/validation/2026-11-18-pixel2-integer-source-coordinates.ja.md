@@ -46,3 +46,16 @@ RetroArch PID 19377を維持し、ALSA RUNNING、1秒でhw_ptrが96984→145176�
 不変。ゲームは起動したままとし、追加修正は行っていない。
 証跡は`output/validation/2026-11-18-pce-integer/`。今回の256x240での合格であり、
 PCE全タイトル・全解像度の検証済みという意味にはしない。
+
+## 起動中XMBの実機確認
+
+operatorがQuickNES／悪魔城伝説をXMB/GLESで起動。整数ON・Axis Y・Underscale・
+Core Provided、core出力256x224、aspect 1.306を確認した。
+XMB開閉前後のprimary-plane captureはともに非黒領域`(45,16)-(595,464)`で、
+縦448 = 224の2倍を維持。非黒領域の横幅はゲーム自身の黒余白を除いた値であり、
+計算上のviewport 586x448とは区別する。XMB自体はlogical 640x480全面表示で、
+captureを目視確認した。
+
+RetroArch PID 19807、保存cfg hash
+`3c735d80e0cf186441f3b673e5504fc9f54bf6ff3325e64ad82fa4f4b08213ab`を保持。
+証跡は`output/validation/2026-11-18-xmb-integer/`。追加修正なし、ゲームは起動したまま。

@@ -74,3 +74,18 @@ The game was left running. Evidence is under
 `output/validation/2026-11-18-pce-integer/`. This validates the current 256x240
 PCE content, not every possible PCE resolution or game. No runtime changes
 were needed.
+
+## Running XMB acceptance
+
+The operator launched QuickNES / Akumajou Densetsu with XMB/GLES and Integer
+ON / Axis Y / Underscale / Core Provided. The core reported 256x224 and aspect
+1.306. Primary-plane captures before and after XMB open/close had identical
+non-black bounds `(45,16)-(595,464)`, with height 448 = 224 x 2. The narrower
+non-black width is the game's own black border inside the calculated 586x448
+viewport, not a different viewport width. XMB itself occupied the full 640x480
+logical display. Captures were visually inspected.
+
+RetroArch PID 19807 and the saved cfg hash
+`3c735d80e0cf186441f3b673e5504fc9f54bf6ff3325e64ad82fa4f4b08213ab`
+were retained. Evidence: `output/validation/2026-11-18-xmb-integer/`.
+The game was left running and no runtime modifications were necessary.

@@ -43,6 +43,8 @@
   - 2026-11-18: 起動中PCE／Air Zonk／mednafen_pce_fast／Ozoneで、256x240→
     584x480（Y軸2倍）の適用をscanout capture確認。menu開閉後も同じ中央表示、
     同一PID・音声進行・保存設定保持に合格。PCE全解像度の網羅試験とは区別する。
+  - 2026-11-18: XMB／QuickNESで縦224→448の2倍をcapture確認。menu開閉前後の
+    中央表示・縦448維持、XMB全面表示、同一PID・保存設定保持に合格。
 
 - [x] RGUIの整数スケール反映遅延と、Fit Screenでもmenuが小さくなる問題を修正する
   - 2026-11-17: game viewport変更時のbuffer再生成とmenuの整数スケール独立化を実装。
