@@ -35,6 +35,12 @@
 
 ## Implementation audit and release blockers
 
+- [x] RGUIとOzoneで整数スケールのサイズが違う問題を修正する
+  - 2026-11-18: source座標で倍率計算してからpanel回転するようDRM/GLESを統一。
+    QuickNESのAxis Yはlogical 586x448（縦224の2倍）へ一致。実関数回帰試験、
+    AArch64 build、DRM property/captureとmenu復帰を確認。最終LCD目視はoperator待ち。
+    [検証記録](docs/validation/2026-11-18-pixel2-integer-source-coordinates.ja.md)
+
 - [x] RGUIの整数スケール反映遅延と、Fit Screenでもmenuが小さくなる問題を修正する
   - 2026-11-17: game viewport変更時のbuffer再生成とmenuの整数スケール独立化を実装。
     Fit Screen復帰時のNULL surfaceも保護。AArch64 build・関数回帰試験・実機ON/OFF・
