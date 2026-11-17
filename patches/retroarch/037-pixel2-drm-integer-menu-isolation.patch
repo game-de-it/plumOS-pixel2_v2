@@ -17,11 +17,10 @@
        video_viewport_get_scaled_integer(vp, vp->full_width, vp->full_height,
              surface->aspect, keep_aspect, true);
     else if (keep_aspect)
-@@ -1357,6 +1358,26 @@
- #ifdef HAVE_MENU
+@@ -1358,6 +1359,26 @@
     bool menu_is_alive         = (video_info->menu_st_flags & MENU_ST_FLAG_ALIVE) ? true : false;
  #endif
-+
+ 
 +   /* Settings changes may not alter the core's input resolution. Rebuild
 +    * viewport-sized pages on the first game frame after leaving the menu,
 +    * once RGUI has restored the content settings. */
@@ -41,9 +40,10 @@
 +      }
 +      _drmvars->viewport_dirty = false;
 +   }
- 
++
     if (   (width  != _drmvars->core_width)
         || (height != _drmvars->core_height))
+    {
 @@ -1420,8 +1441,12 @@
     /* If menu was active but it's not anymore... */
     if (!state && _drmvars->menu_active)
@@ -57,6 +57,7 @@
 +         drm_plane_setup(_drmvars->main_surface);
        /* We free the menu surface buffers */
        drm_surface_free(_drmvars, &_drmvars->menu_surface);
+    }
 @@ -1542,6 +1567,7 @@
        memset(&menu_view, 0, sizeof(menu_view));
        menu_view.rotation = vid->panel_rotation & 3;
