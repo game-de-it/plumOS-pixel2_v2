@@ -35,6 +35,12 @@
 
 ## Implementation audit and release blockers
 
+- [x] RGUIの整数スケール反映遅延と、Fit Screenでもmenuが小さくなる問題を修正する
+  - 2026-11-17: game viewport変更時のbuffer再生成とmenuの整数スケール独立化を実装。
+    Fit Screen復帰時のNULL surfaceも保護。AArch64 build・関数回帰試験・実機ON/OFF・
+    Fit Screen表示／game復帰に合格。LCD目視はoperator確認待ち。
+    [検証記録](docs/validation/2026-11-17-pixel2-rgui-integer-scaling.ja.md)
+
 - [x] RGUI実行中の電源メニュー→Bでゲーム表示が横へずれる問題を修正する
   - 2026-11-17: legacy GETPLANE座標では実際のCRTC_Y=54が0となることを実機再現。
     CRTC/SRC 8 propertyの保存・復元へ変更し、拡大縮小・切り出しも保持する。
