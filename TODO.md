@@ -35,6 +35,13 @@
 
 ## Implementation audit and release blockers
 
+- [x] RGUI実行中の電源メニュー→Bでゲーム表示が横へずれる問題を修正する
+  - 2026-11-17: legacy GETPLANE座標では実際のCRTC_Y=54が0となることを実機再現。
+    CRTC/SRC 8 propertyの保存・復元へ変更し、拡大縮小・切り出しも保持する。
+    AArch64 build、geometry回帰試験、既存power/sleep試験、実機3回のCancel、
+    ALSA進行、component/root checksum、設定保持を合格。LCD目視はoperator確認待ち。
+    [検証記録](docs/validation/2026-11-17-pixel2-power-menu-geometry.ja.md)
+
 - [x] 縦画面ArcadeのRetroArchメニュー更新時にLCDが崩れる問題を解消する
   - 2026-08-31: MAME 2003-Xtreme / Varthでゲーム、FPS表示、静止後のQuick Menuを
     DRM captureし、向き・比率・buffer内容は正常、ゲームはoperator確認で60 fpsとなった。
