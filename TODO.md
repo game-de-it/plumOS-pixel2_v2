@@ -35,6 +35,11 @@
 
 ## Implementation audit and release blockers
 
+- [ ] v0.1.5新規SD image・署名Runtime updateを生成し、実機updateを検証する
+  - 2026-11-18: frontend/RetroArchを再build、変更なしcomponentは検証して再利用。
+    strict gate、image再現性、配布update適用後のchecksum・設定保持・主要修正を確認する。
+    [作業記録](docs/validation/2026-11-18-pixel2-v0.1.5-preparation.ja.md)
+
 - [x] RGUIとOzoneで整数スケールのサイズが違う問題を修正する
   - 2026-11-18: source座標で倍率計算してからpanel回転するようDRM/GLESを統一。
     QuickNESのAxis Yはlogical 586x448（縦224の2倍）へ一致。実関数回帰試験、
