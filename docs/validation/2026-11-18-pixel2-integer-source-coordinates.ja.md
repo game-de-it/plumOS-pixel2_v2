@@ -59,3 +59,20 @@ captureを目視確認した。
 RetroArch PID 19807、保存cfg hash
 `3c735d80e0cf186441f3b673e5504fc9f54bf6ff3325e64ad82fa4f4b08213ab`を保持。
 証跡は`output/validation/2026-11-18-xmb-integer/`。追加修正なし、ゲームは起動したまま。
+
+## 起動中GLUIの実機確認
+
+Wi-Fi復旧後、QuickNES／悪魔城伝説、GLUI/GLES、整数ON・Axis Y・Underscale・
+Core Provided、core出力256x224を確認。同一PID 20209のまま、1回の接続で
+game→menu→game復帰のcaptureを取得した。前回の転送失敗時の画像は判定に使わない。
+
+menu前の非黒領域は`(45,16)-(595,464)`。復帰後はfilm borderのscrollによる黒い隙間が
+上部に入るため、非黒領域の高さだけをviewport高さとは扱わない。
+計算上の586x448領域でpixel行を比較すると、前後とも224組中224組すべての
+隣接2行が一致した。非自明な行間変化も各167・171箇所あり、単なる黒画像ではない。
+元の縦224ラインが実際に2行ずつ表示されている証拠となる。
+GLUI menuの640x480全面表示もcaptureで目視確認した。
+
+ALSA RUNNING、1秒でhw_ptrが1680792→1729200へ進行。同一PIDを維持し、保存cfg hashは
+`37a45c081482ab23bf8fbba159717295eb1a6bbde084eeab3cb219e84676eefc`で不変。
+証跡は`output/validation/2026-11-18-glui-integer/`。追加修正・設定変更なし、ゲーム継続中。

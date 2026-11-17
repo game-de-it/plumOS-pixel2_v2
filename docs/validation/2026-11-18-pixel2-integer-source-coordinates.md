@@ -89,3 +89,26 @@ RetroArch PID 19807 and the saved cfg hash
 `3c735d80e0cf186441f3b673e5504fc9f54bf6ff3325e64ad82fa4f4b08213ab`
 were retained. Evidence: `output/validation/2026-11-18-xmb-integer/`.
 The game was left running and no runtime modifications were necessary.
+
+## Running GLUI acceptance
+
+After the Wi-Fi connection returned, the same QuickNES / Akumajou Densetsu
+process (PID 20209) was inspected with GLUI/GLES, Integer ON / Axis Y /
+Underscale / Core Provided and 256x224 source geometry. Fresh successful
+captures were taken in one device session for game, menu and game return;
+the earlier failed-transfer images were not used.
+
+The pre-menu game capture had non-black bounds `(45,16)-(595,464)`. After
+return, the scrolling film border had a black gap at the top, so its non-black
+height alone was not a viewport measurement. Instead, within the calculated
+586x448 game viewport, both captures had 224/224 identical consecutive row
+pairs (source-line doubling), with respectively 167 and 171 nontrivial row
+transitions. This verifies actual Y x2 sampling before and after GLUI, not
+merely a saved ON flag or a black-margin estimate. The GLUI capture used the
+full 640x480 logical display and was visually inspected.
+
+Audio remained RUNNING; hw_ptr advanced 1680792 to 1729200 over one second.
+The cfg SHA-256 remained
+`37a45c081482ab23bf8fbba159717295eb1a6bbde084eeab3cb219e84676eefc`.
+Evidence: `output/validation/2026-11-18-glui-integer/`.
+No runtime/config changes were made, and the game was left running.
