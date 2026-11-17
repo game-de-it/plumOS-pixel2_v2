@@ -23,6 +23,16 @@ fi
 grep -q 'mutable app-layer file: state/user-save.dat' "$work/rejected.log"
 rm "$work/app/state/user-save.dat"
 
+for metadata in .DS_Store licenses/._test; do
+    printf 'Finder metadata\n' >"$work/app/$metadata"
+    if python3 "$AUDIT" --app-root "$work/app" >"$work/metadata-rejected.log" 2>&1; then
+        echo 'release content audit accepted macOS metadata' >&2
+        exit 1
+    fi
+    grep -q 'macOS metadata in app layer:' "$work/metadata-rejected.log"
+    rm "$work/app/$metadata"
+done
+
 printf '%s%s\n' '-----BEGIN OPENSSH ' 'PRIVATE KEY-----' \
     >"$work/app/licenses/test.txt"
 if python3 "$AUDIT" --app-root "$work/app" >"$work/key-rejected.log" 2>&1; then

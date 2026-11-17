@@ -79,6 +79,8 @@ def app_findings(app_root: Path) -> list[str]:
         parts = tuple(part.casefold() for part in rel.parts)
         name = path.name.casefold()
         suffix = path.suffix.casefold()
+        if name == ".ds_store" or name.startswith("._"):
+            findings.append(f"macOS metadata in app layer: {rel}")
         if parts and parts[0] in MUTABLE_TOP_LEVEL:
             findings.append(f"mutable app-layer file: {rel}")
         if name in PROHIBITED_NAMES:

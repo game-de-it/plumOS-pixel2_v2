@@ -47,18 +47,21 @@ done
 
 rm -rf "$OUT_ROOT"
 mkdir -p "$PLUMOS_DIR"
-rsync -a "$FRONTEND/" "$PLUMOS_DIR/"
-rsync -a "$RETROARCH/" "$PLUMOS_DIR/"
-rsync -a "$CORES/" "$PLUMOS_DIR/"
-rsync -a "$PICOARCH/" "$PLUMOS_DIR/"
-rsync -a "$STANDALONE/" "$PLUMOS_DIR/"
-rsync -a "$AUDIO_ROUTER/" "$PLUMOS_DIR/"
-rsync -a "$PYXEL/" "$PLUMOS_DIR/"
-rsync -a "$NEXTCOMMANDER/" "$PLUMOS_DIR/"
-rsync -a "$MUSIC_PLAYER/" "$PLUMOS_DIR/"
-rsync -a "$NETWORK_SERVICES/" "$PLUMOS_DIR/"
-rsync -a "$PORTMASTER/" "$PLUMOS_DIR/"
-rsync -a "$ROOT_DIR/package/app-layer-pixel2/" "$PLUMOS_DIR/"
+# Finder metadata may appear in generated component trees on the build host.
+# It is not runtime content and must never enter the managed checksum index.
+rsync_flags=(-a --exclude=.DS_Store --exclude='._*')
+rsync "${rsync_flags[@]}" "$FRONTEND/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$RETROARCH/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$CORES/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$PICOARCH/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$STANDALONE/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$AUDIO_ROUTER/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$PYXEL/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$NEXTCOMMANDER/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$MUSIC_PLAYER/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$NETWORK_SERVICES/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$PORTMASTER/" "$PLUMOS_DIR/"
+rsync "${rsync_flags[@]}" "$ROOT_DIR/package/app-layer-pixel2/" "$PLUMOS_DIR/"
 chmod 0755 "$PLUMOS_DIR/bin/"*
 
 # Publish the repository and third-party license boundary inside the binary
