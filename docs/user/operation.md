@@ -26,6 +26,8 @@ The START menu contains `UI Settings`, `System Settings`, `Network Settings`,
 - A starts the highlighted game.
 - FUNCTION opens the menu in RetroArch, PicoArch, and supported standalone
   emulators.
+- In DraStic, hold FN (FUNCTION) and press SELECT for the main menu or START
+  for the secondary menu. See [DraStic menu controls](emulators.md#drastic).
 - RetroArch uses START + SELECT to exit to the frontend.
 - The global Power button works in the frontend, games, and supported apps. It
   pauses the foreground program before showing Sleep, Reboot, or Shutdown.

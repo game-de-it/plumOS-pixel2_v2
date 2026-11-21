@@ -35,6 +35,11 @@
 
 ## Implementation audit and release blockers
 
+- [x] DraSticのメニュー操作を日英ユーザーガイドへ追記する
+  - 2026-11-21: operatorの実機報告に基づき、FN + SELECTでメインメニュー、
+    FN + STARTでサブメニューを開く操作と、FNを押したまま操作する手順を記載。
+    基本操作からエミュレータ別説明へのリンクも追加。runtimeや既存release assetの変更なし。
+
 - [x] v0.1.5新規SD image・署名Runtime updateを生成し、実機updateを検証する
   - 2026-11-18: frontend/RetroArchを再build、変更なしcomponentは検証して再利用。
     strict gate、image再現性、配布update適用後のchecksum・設定保持・主要修正を確認する。

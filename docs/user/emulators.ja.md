@@ -46,6 +46,18 @@ Pixel2にはアナログスティックがないため、このstandalone版で�
 START + SELECTが通常の終了操作です。セーブとhotkeyは
 [セーブ・ステート・スクリーンショット](save-data.ja.md)を参照してください。
 
+## DraStic
+
+Nintendo DSのDraSticでは、FN（本体のFUNCTIONボタン）を押したまま、次のボタンを
+押してメニューを開きます。
+
+| 操作 | 動作 |
+| --- | --- |
+| FN + SELECT | メインメニューを開く |
+| FN + START | サブメニュー（別のメニュー画面）を開く |
+
+FN単独でメニューを開くRetroArchなどとは操作が異なります。
+
 ## PICO-8
 
 PICO-8本体は有償のため、plumOSには同梱されません。正規に入手したRaspberry Pi版の

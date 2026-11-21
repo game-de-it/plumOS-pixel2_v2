@@ -49,6 +49,19 @@ FUNCTION opens an emulator menu where that runtime supports it. RetroArch uses
 START + SELECT for its normal exit path. Save and hotkey details are in
 [Save data, states, and screenshots](save-data.md).
 
+## DraStic
+
+In the Nintendo DS standalone emulator DraStic, hold FN (the physical FUNCTION
+button), then press the following button to open a menu.
+
+| Shortcut | Action |
+| --- | --- |
+| FN + SELECT | Open the main menu |
+| FN + START | Open the secondary menu (a separate menu screen) |
+
+Unlike RetroArch and some other emulators, these DraStic shortcuts require a
+button combination rather than FN alone.
+
 ## PICO-8
 
 PICO-8 is commercial software and is not bundled with plumOS. Copy the

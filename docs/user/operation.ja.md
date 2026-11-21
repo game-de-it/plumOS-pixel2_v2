@@ -26,6 +26,8 @@ Cancelを選択します。
 
 - 選択中のゲームはAで起動します。
 - RetroArch、PicoArch、対応スタンドアロンではFUNCTIONでメニューを開きます。
+- DraSticはFN（FUNCTION）を押しながらSELECTでメインメニュー、STARTで
+  サブメニューを開きます。詳しくは[DraSticのメニュー操作](emulators.ja.md#drastic)を参照してください。
 - RetroArchはSTART + SELECTで終了し、フロントエンドへ戻ります。
 - 電源ボタンはフロントエンド、ゲーム、対応アプリで利用できます。前面のプログラムを
   一時停止してからSleep、Reboot、Shutdownを表示します。
